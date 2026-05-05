@@ -125,6 +125,7 @@ class NetworkAnalyst:
             chart=chart,
             last_table=last_table,
             turns=self.max_turns,
+            converged=False,
         )
 
     # ---- Mock ----

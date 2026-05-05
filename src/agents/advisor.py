@@ -39,6 +39,7 @@ class AgentResponse:
     chart: dict[str, Any] | None = None
     last_table: dict[str, Any] | None = None
     turns: int = 0
+    converged: bool = True
 
 
 def _render_prompt(merchant_id: str) -> str:
@@ -160,6 +161,7 @@ class MerchantAdvisor:
             chart=chart,
             last_table=last_table,
             turns=self.max_turns,
+            converged=False,
         )
 
     # ---- Mock mode (used when ANTHROPIC_API_KEY is missing or for demo safety) ----
