@@ -463,7 +463,7 @@ The simpler approach for the demo: tell the agent in the system prompt to always
 - Output: headline finding, bullet detail, SQL of every query you ran in fenced blocks.
 
 **Demo questions when role = Kroger:**
-1. *"What are my top 10 SKUs by revenue last week?"* → tenant only
+1. *"What are my top categories by revenue last week, and which subcategories drove each?"* → tenant only
 2. *"What products are most often bought together with milk in my stores?"* → tenant only
 3. *"Have any of my stores seen a drop in transaction count recently?"* → tenant only (finds planted anomaly)
 4. *"How does my average basket size compare to other grocery merchants in the panel?"* → tenant + lake
@@ -686,7 +686,7 @@ Practice once at 4:55.
 2. **Open SQLite and `SELECT * FROM tenant_customers LIMIT 3`.** "Tenant view. PII gone. Card number hashed. Full ZIP and timestamp retained — this is what the merchant sees."
 3. **`SELECT * FROM lake_customers LIMIT 3`.** "Lake view. Same hashed IDs but ZIP3 only and some nulled. Aggregate analytics safe."
 4. **Show that the same `customer_id` appears in `tenant_transactions` for all three merchants.** "Same person, same hashed ID at Kroger, Taco Bell, and TJ Maxx. The cross-merchant join key. Card networks see the payment but not the basket. POS vendors see the basket but only their merchant. We see both — and we see the join."
-5. **Open the dashboard. Role: Kroger.** Run question 1 (top SKUs). Show chart and the SQL — labeled "tenant query."
+5. **Open the dashboard. Role: Kroger.** Run question 1 (top categories by revenue). Show chart and the SQL — labeled "tenant query."
 6. **Run question 4** ("how does my basket compare to peers?"). Show two SQL blocks in the expander — one tenant, one lake. "The agent decided to query both layers. The lake gives anonymized peer comparison."
 7. **Switch role to Network Analyst.** Run question 1 (customers active at all three). "Only the payments network can answer this — and the lake's anonymization means we answer it without exposing anyone."
 
