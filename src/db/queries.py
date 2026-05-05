@@ -11,11 +11,13 @@ from datetime import timedelta
 from src.generate.parameters import END_DATE
 
 
-def top_skus_by_revenue_last_week(merchant_id: str = "KRG", days: int = 7) -> str:
-    """Q1 — Top 10 SKUs by revenue in the last `days`. Tenant only."""
+def top_categories_by_revenue_last_week(merchant_id: str = "KRG", days: int = 7) -> str:
+    """Q1 — Top categories by revenue in the last `days`, with the subcategories
+    that drove each category's revenue. Tenant only.
+    """
     cutoff = (END_DATE - timedelta(days=days)).isoformat()
     return f"""
-        SELECT p.sku, p.name, p.category,
+        SELECT p.category, p.subcategory,
                SUM(i.line_total) AS revenue,
                SUM(i.qty)        AS units_sold
         FROM tenant_transaction_items i
@@ -23,9 +25,8 @@ def top_skus_by_revenue_last_week(merchant_id: str = "KRG", days: int = 7) -> st
         JOIN tenant_products p     ON i.sku    = p.sku
         WHERE t.merchant_id = '{merchant_id}'
           AND t.txn_ts >= '{cutoff}'
-        GROUP BY p.sku
-        ORDER BY revenue DESC
-        LIMIT 10
+        GROUP BY p.category, p.subcategory
+        ORDER BY p.category, revenue DESC
     """
 
 
@@ -149,7 +150,7 @@ def my_customers_qsr_overlap(merchant_id: str = "KRG") -> dict[str, str]:
 
 
 CANNED_QUERIES = {
-    "top_skus_by_revenue_last_week":             top_skus_by_revenue_last_week,
+    "top_categories_by_revenue_last_week":       top_categories_by_revenue_last_week,
     "items_co_purchased_with":                   items_co_purchased_with,
     "store_dropouts_last_7_days":                store_dropouts_last_7_days,
     "my_basket_size_and_grocery_peer_basket_size": my_basket_size_and_grocery_peer_basket_size,

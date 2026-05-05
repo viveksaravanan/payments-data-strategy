@@ -32,7 +32,29 @@ The same hashed `customer_id` resolves to the same physical customer across both
 | What {{current_merchant_name}}'s customers do at OTHER merchants | `query_tenant` (identify your customers) + `query_lake` (their cross-merchant behavior) |
 | Pure cross-merchant patterns | `query_lake` only |
 
-# Two worked examples
+# Three worked examples
+
+**Q: "What are my top categories by revenue last week, and which subcategories drove each?"**
+
+```
+1. query_tenant: SELECT p.category, p.subcategory,
+       ROUND(SUM(i.line_total), 2) AS revenue,
+       SUM(i.qty)                  AS units
+   FROM tenant_transaction_items i
+   JOIN tenant_transactions t USING (txn_id)
+   JOIN tenant_products p ON p.sku = i.sku
+   WHERE t.merchant_id = '{{current_merchant_id}}'
+     AND t.txn_ts >= (
+       SELECT date(MAX(txn_ts), '-6 days')
+       FROM tenant_transactions
+       WHERE merchant_id = '{{current_merchant_id}}'
+     )
+   GROUP BY p.category, p.subcategory
+   ORDER BY p.category, revenue DESC
+   LIMIT 200;
+```
+
+Synthesize: lead with the top 3–5 categories by total revenue, then call out the standout subcategory inside each.
 
 **Q: "How does my basket size compare to grocery peers?"**
 
