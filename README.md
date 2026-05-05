@@ -19,6 +19,8 @@ The architecture has two parallel data layers:
 
 A Streamlit dashboard lets you switch between four roles — Kroger, Taco Bell, TJ Maxx, or Network Analyst — and ask questions answered by AI agents that query the appropriate layer.
 
+![Dashboard screenshot](docs/screenshot.png)
+
 ## How to run
 
 Requires Python 3.11+, [uv](https://github.com/astral-sh/uv), and an Anthropic API key.
@@ -35,23 +37,23 @@ cp .env.example .env
 make demo
 ```
 
-`make demo` generates synthetic data, runs the dual-path anonymization pipeline, loads SQLite, and launches the dashboard on `http://localhost:8501`. Total cold-start time: ~45 seconds.
+`make demo` generates synthetic data, runs the dual-path anonymization pipeline, loads SQLite, and launches the dashboard on `http://localhost:8501`. Total cold-start time: ~25 seconds (≈9s generate, ≈2s anonymize, ≈10s SQLite seed, plus Streamlit startup). `scripts/demo.sh` is the equivalent shell wrapper.
 
 ## What's in the demo
 
 **As Kroger** (or Taco Bell, or TJ Maxx):
-1. Top SKUs by revenue last week
-2. Products most often bought together with milk
+1. Top categories by revenue last week, and which subcategories drove each
+2. Products most often bought together with milk *(Kroger; equivalent affinity questions for Taco Bell and TJ Maxx)*
 3. Stores with a recent transaction-count drop *(catches a planted anomaly)*
-4. How does my basket size compare to grocery peers? *(combines tenant + lake)*
+4. How does my basket size compare to other merchants in the panel? *(combines tenant + lake)*
 5. What share of my customers also shop at QSRs, and how does that affect their behavior? *(the strategic punchline)*
 
 **As Network Analyst:**
-1. Customers active across all three merchants in the last 30 days
-2. Pay-cycle effects across grocery, QSR, and retail
+1. Customers active across all three merchants in the last 30 days, with average spend at each
+2. Pay-cycle effects (1st–3rd, 15th–17th vs other days) across grocery, QSR, and retail
 3. Emerging customer segments across merchants this month *(catches a planted cohort)*
 
-Each answer shows the SQL the agent ran in an expandable panel — the demo is auditable, not magic.
+Each answer shows the SQL the agent ran in an expandable panel — the demo is auditable, not magic. There's also a **MOCK MODE** toggle in the page header for offline demos (skips the LLM API and returns canned responses).
 
 ## Architecture
 
