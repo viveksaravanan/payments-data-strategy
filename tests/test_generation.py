@@ -27,13 +27,6 @@ TXN_DTYPES = {
 }
 
 
-@pytest.fixture(scope="session", autouse=True)
-def _ensure_generated() -> None:
-    if not (RAW / "transactions.csv").exists():
-        from src.generate.run_all import main
-        main()
-
-
 @pytest.fixture(scope="module")
 def customers() -> pd.DataFrame:
     return pd.read_csv(RAW / "customers.csv", dtype={"customer_pan": str, "home_zip5": str})
