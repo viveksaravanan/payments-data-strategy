@@ -1,0 +1,10 @@
+.env
+data/raw/*
+!data/raw/.gitkeep
+data/anon/**/*
+!data/anon/**/.gitkeep
+data/*.db
+__pycache__/
+.pytest_cache/
+.venv/
+*.egg-info/
