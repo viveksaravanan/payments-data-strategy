@@ -1,0 +1,1404 @@
+{
+  "generated_at": "2026-05-05T16:42:04",
+  "window": {
+    "start": "2026-02-05",
+    "end": "2026-05-05",
+    "days": 90
+  },
+  "promo_days": [
+    "2026-04-15",
+    "2026-04-22",
+    "2026-05-01"
+  ],
+  "anomaly_window": {
+    "start": "2026-04-29",
+    "end": "2026-05-05"
+  },
+  "stats": {
+    "n_customers": 5000,
+    "n_transactions": 107581,
+    "n_line_items": 1250243,
+    "n_skus": 1760,
+    "n_suppressed": 713,
+    "n_multi_merchant": 3572
+  },
+  "merchants": [
+    {
+      "merchant_id": "KRG",
+      "name": "Kroger",
+      "segment": "grocery",
+      "mcc": "5411",
+      "n_stores": 25,
+      "n_customers": 4500,
+      "n_transactions": 68168,
+      "n_line_items": 1081298,
+      "avg_basket_size": 15.86,
+      "avg_ticket": 156.8,
+      "payment_mix": {
+        "cash": 5.0,
+        "credit": 55.2,
+        "debit": 30.0,
+        "ebt": 9.9
+      }
+    },
+    {
+      "merchant_id": "TBL",
+      "name": "Taco Bell",
+      "segment": "qsr",
+      "mcc": "5814",
+      "n_stores": 40,
+      "n_customers": 3000,
+      "n_transactions": 30519,
+      "n_line_items": 123500,
+      "avg_basket_size": 4.05,
+      "avg_ticket": 17.45,
+      "payment_mix": {
+        "cash": 10.2,
+        "credit": 50.1,
+        "debit": 39.7
+      }
+    },
+    {
+      "merchant_id": "TJX",
+      "name": "TJ Maxx",
+      "segment": "retail_offprice",
+      "mcc": "5651",
+      "n_stores": 15,
+      "n_customers": 1988,
+      "n_transactions": 8894,
+      "n_line_items": 45445,
+      "avg_basket_size": 5.11,
+      "avg_ticket": 266.76,
+      "payment_mix": {
+        "cash": 5.0,
+        "credit": 70.2,
+        "debit": 24.8
+      }
+    }
+  ],
+  "revenue_by_category_kroger": [
+    {
+      "category": "MEAT",
+      "revenue": 1643549.85,
+      "sku_count": 150,
+      "subcategories": [
+        {
+          "subcategory": "Chicken",
+          "revenue": 433878.68
+        },
+        {
+          "subcategory": "Beef",
+          "revenue": 430908.61
+        },
+        {
+          "subcategory": "Seafood",
+          "revenue": 402394.25
+        },
+        {
+          "subcategory": "Pork",
+          "revenue": 376368.31
+        }
+      ]
+    },
+    {
+      "category": "PANTRY",
+      "revenue": 1436044.73,
+      "sku_count": 220,
+      "subcategories": [
+        {
+          "subcategory": "Cereal",
+          "revenue": 296052.3
+        },
+        {
+          "subcategory": "Oils",
+          "revenue": 294164.38
+        },
+        {
+          "subcategory": "Pasta & Sauce",
+          "revenue": 285438.53
+        },
+        {
+          "subcategory": "Baking",
+          "revenue": 282488.06
+        },
+        {
+          "subcategory": "Canned",
+          "revenue": 277901.46
+        }
+      ]
+    },
+    {
+      "category": "BABY",
+      "revenue": 1288601.28,
+      "sku_count": 80,
+      "subcategories": [
+        {
+          "subcategory": "Formula",
+          "revenue": 456255.66
+        },
+        {
+          "subcategory": "Baby Food",
+          "revenue": 421139.25
+        },
+        {
+          "subcategory": "Diapers",
+          "revenue": 411206.37
+        }
+      ]
+    },
+    {
+      "category": "PET",
+      "revenue": 1009416.43,
+      "sku_count": 50,
+      "subcategories": [
+        {
+          "subcategory": "Cat",
+          "revenue": 519595.24
+        },
+        {
+          "subcategory": "Dog",
+          "revenue": 489821.19
+        }
+      ]
+    },
+    {
+      "category": "BEVERAGES",
+      "revenue": 1008974.36,
+      "sku_count": 160,
+      "subcategories": [
+        {
+          "subcategory": "Water",
+          "revenue": 277157.44
+        },
+        {
+          "subcategory": "Juice",
+          "revenue": 273769.27
+        },
+        {
+          "subcategory": "Soda",
+          "revenue": 231496.34
+        },
+        {
+          "subcategory": "Coffee",
+          "revenue": 226551.31
+        }
+      ]
+    },
+    {
+      "category": "HOUSEHOLD",
+      "revenue": 859681.87,
+      "sku_count": 120,
+      "subcategories": [
+        {
+          "subcategory": "Paper Goods",
+          "revenue": 321496.63
+        },
+        {
+          "subcategory": "Laundry",
+          "revenue": 274826.05
+        },
+        {
+          "subcategory": "Cleaning",
+          "revenue": 263359.19
+        }
+      ]
+    },
+    {
+      "category": "FROZEN",
+      "revenue": 831952.07,
+      "sku_count": 140,
+      "subcategories": [
+        {
+          "subcategory": "Frozen Meals",
+          "revenue": 288691.9
+        },
+        {
+          "subcategory": "Frozen Veg",
+          "revenue": 279169.18
+        },
+        {
+          "subcategory": "Ice Cream",
+          "revenue": 264090.99
+        }
+      ]
+    },
+    {
+      "category": "DAIRY",
+      "revenue": 623376.77,
+      "sku_count": 140,
+      "subcategories": [
+        {
+          "subcategory": "Eggs",
+          "revenue": 164299.02
+        },
+        {
+          "subcategory": "Yogurt",
+          "revenue": 162960.64
+        },
+        {
+          "subcategory": "Milk & Cream",
+          "revenue": 155773.49
+        },
+        {
+          "subcategory": "Cheese",
+          "revenue": 140343.62
+        }
+      ]
+    },
+    {
+      "category": "PRODUCE",
+      "revenue": 620786.87,
+      "sku_count": 120,
+      "subcategories": [
+        {
+          "subcategory": "Fresh Produce",
+          "revenue": 620786.87
+        }
+      ]
+    },
+    {
+      "category": "PERSONAL",
+      "revenue": 524719.13,
+      "sku_count": 100,
+      "subcategories": [
+        {
+          "subcategory": "Hygiene",
+          "revenue": 285225.36
+        },
+        {
+          "subcategory": "Hair Care",
+          "revenue": 239493.77
+        }
+      ]
+    },
+    {
+      "category": "SNACKS",
+      "revenue": 520448.35,
+      "sku_count": 140,
+      "subcategories": [
+        {
+          "subcategory": "Cookies",
+          "revenue": 174854.51
+        },
+        {
+          "subcategory": "Chips",
+          "revenue": 173108.14
+        },
+        {
+          "subcategory": "Bars",
+          "revenue": 172485.7
+        }
+      ]
+    },
+    {
+      "category": "BAKERY",
+      "revenue": 320875.11,
+      "sku_count": 80,
+      "subcategories": [
+        {
+          "subcategory": "Pastry",
+          "revenue": 85805.0
+        },
+        {
+          "subcategory": "Tortillas",
+          "revenue": 80472.83
+        },
+        {
+          "subcategory": "Bread",
+          "revenue": 80418.83
+        },
+        {
+          "subcategory": "Buns",
+          "revenue": 74178.45
+        }
+      ]
+    }
+  ],
+  "daily_volume": [
+    {
+      "date": "2026-02-05",
+      "kroger_count": 666,
+      "tacobell_count": 266,
+      "tjmaxx_count": 76
+    },
+    {
+      "date": "2026-02-06",
+      "kroger_count": 587,
+      "tacobell_count": 422,
+      "tjmaxx_count": 83
+    },
+    {
+      "date": "2026-02-07",
+      "kroger_count": 983,
+      "tacobell_count": 459,
+      "tjmaxx_count": 109
+    },
+    {
+      "date": "2026-02-08",
+      "kroger_count": 982,
+      "tacobell_count": 258,
+      "tjmaxx_count": 142
+    },
+    {
+      "date": "2026-02-09",
+      "kroger_count": 606,
+      "tacobell_count": 321,
+      "tjmaxx_count": 75
+    },
+    {
+      "date": "2026-02-10",
+      "kroger_count": 570,
+      "tacobell_count": 278,
+      "tjmaxx_count": 81
+    },
+    {
+      "date": "2026-02-11",
+      "kroger_count": 605,
+      "tacobell_count": 290,
+      "tjmaxx_count": 91
+    },
+    {
+      "date": "2026-02-12",
+      "kroger_count": 631,
+      "tacobell_count": 298,
+      "tjmaxx_count": 68
+    },
+    {
+      "date": "2026-02-13",
+      "kroger_count": 652,
+      "tacobell_count": 415,
+      "tjmaxx_count": 74
+    },
+    {
+      "date": "2026-02-14",
+      "kroger_count": 960,
+      "tacobell_count": 388,
+      "tjmaxx_count": 116
+    },
+    {
+      "date": "2026-02-15",
+      "kroger_count": 1122,
+      "tacobell_count": 331,
+      "tjmaxx_count": 132
+    },
+    {
+      "date": "2026-02-16",
+      "kroger_count": 700,
+      "tacobell_count": 284,
+      "tjmaxx_count": 106
+    },
+    {
+      "date": "2026-02-17",
+      "kroger_count": 715,
+      "tacobell_count": 365,
+      "tjmaxx_count": 87
+    },
+    {
+      "date": "2026-02-18",
+      "kroger_count": 628,
+      "tacobell_count": 275,
+      "tjmaxx_count": 69
+    },
+    {
+      "date": "2026-02-19",
+      "kroger_count": 633,
+      "tacobell_count": 288,
+      "tjmaxx_count": 79
+    },
+    {
+      "date": "2026-02-20",
+      "kroger_count": 618,
+      "tacobell_count": 436,
+      "tjmaxx_count": 86
+    },
+    {
+      "date": "2026-02-21",
+      "kroger_count": 960,
+      "tacobell_count": 449,
+      "tjmaxx_count": 138
+    },
+    {
+      "date": "2026-02-22",
+      "kroger_count": 943,
+      "tacobell_count": 297,
+      "tjmaxx_count": 132
+    },
+    {
+      "date": "2026-02-23",
+      "kroger_count": 605,
+      "tacobell_count": 255,
+      "tjmaxx_count": 74
+    },
+    {
+      "date": "2026-02-24",
+      "kroger_count": 629,
+      "tacobell_count": 276,
+      "tjmaxx_count": 91
+    },
+    {
+      "date": "2026-02-25",
+      "kroger_count": 666,
+      "tacobell_count": 297,
+      "tjmaxx_count": 91
+    },
+    {
+      "date": "2026-02-26",
+      "kroger_count": 582,
+      "tacobell_count": 300,
+      "tjmaxx_count": 80
+    },
+    {
+      "date": "2026-02-27",
+      "kroger_count": 654,
+      "tacobell_count": 439,
+      "tjmaxx_count": 94
+    },
+    {
+      "date": "2026-02-28",
+      "kroger_count": 953,
+      "tacobell_count": 454,
+      "tjmaxx_count": 122
+    },
+    {
+      "date": "2026-03-01",
+      "kroger_count": 1107,
+      "tacobell_count": 330,
+      "tjmaxx_count": 167
+    },
+    {
+      "date": "2026-03-02",
+      "kroger_count": 739,
+      "tacobell_count": 316,
+      "tjmaxx_count": 97
+    },
+    {
+      "date": "2026-03-03",
+      "kroger_count": 698,
+      "tacobell_count": 347,
+      "tjmaxx_count": 91
+    },
+    {
+      "date": "2026-03-04",
+      "kroger_count": 623,
+      "tacobell_count": 307,
+      "tjmaxx_count": 75
+    },
+    {
+      "date": "2026-03-05",
+      "kroger_count": 613,
+      "tacobell_count": 287,
+      "tjmaxx_count": 73
+    },
+    {
+      "date": "2026-03-06",
+      "kroger_count": 601,
+      "tacobell_count": 382,
+      "tjmaxx_count": 91
+    },
+    {
+      "date": "2026-03-07",
+      "kroger_count": 938,
+      "tacobell_count": 422,
+      "tjmaxx_count": 152
+    },
+    {
+      "date": "2026-03-08",
+      "kroger_count": 945,
+      "tacobell_count": 259,
+      "tjmaxx_count": 133
+    },
+    {
+      "date": "2026-03-09",
+      "kroger_count": 676,
+      "tacobell_count": 273,
+      "tjmaxx_count": 83
+    },
+    {
+      "date": "2026-03-10",
+      "kroger_count": 633,
+      "tacobell_count": 292,
+      "tjmaxx_count": 95
+    },
+    {
+      "date": "2026-03-11",
+      "kroger_count": 643,
+      "tacobell_count": 234,
+      "tjmaxx_count": 82
+    },
+    {
+      "date": "2026-03-12",
+      "kroger_count": 560,
+      "tacobell_count": 291,
+      "tjmaxx_count": 75
+    },
+    {
+      "date": "2026-03-13",
+      "kroger_count": 643,
+      "tacobell_count": 413,
+      "tjmaxx_count": 70
+    },
+    {
+      "date": "2026-03-14",
+      "kroger_count": 950,
+      "tacobell_count": 423,
+      "tjmaxx_count": 108
+    },
+    {
+      "date": "2026-03-15",
+      "kroger_count": 1112,
+      "tacobell_count": 330,
+      "tjmaxx_count": 147
+    },
+    {
+      "date": "2026-03-16",
+      "kroger_count": 722,
+      "tacobell_count": 342,
+      "tjmaxx_count": 96
+    },
+    {
+      "date": "2026-03-17",
+      "kroger_count": 723,
+      "tacobell_count": 333,
+      "tjmaxx_count": 106
+    },
+    {
+      "date": "2026-03-18",
+      "kroger_count": 622,
+      "tacobell_count": 314,
+      "tjmaxx_count": 93
+    },
+    {
+      "date": "2026-03-19",
+      "kroger_count": 613,
+      "tacobell_count": 276,
+      "tjmaxx_count": 79
+    },
+    {
+      "date": "2026-03-20",
+      "kroger_count": 641,
+      "tacobell_count": 392,
+      "tjmaxx_count": 84
+    },
+    {
+      "date": "2026-03-21",
+      "kroger_count": 997,
+      "tacobell_count": 430,
+      "tjmaxx_count": 137
+    },
+    {
+      "date": "2026-03-22",
+      "kroger_count": 1017,
+      "tacobell_count": 306,
+      "tjmaxx_count": 118
+    },
+    {
+      "date": "2026-03-23",
+      "kroger_count": 626,
+      "tacobell_count": 280,
+      "tjmaxx_count": 71
+    },
+    {
+      "date": "2026-03-24",
+      "kroger_count": 604,
+      "tacobell_count": 275,
+      "tjmaxx_count": 76
+    },
+    {
+      "date": "2026-03-25",
+      "kroger_count": 628,
+      "tacobell_count": 307,
+      "tjmaxx_count": 90
+    },
+    {
+      "date": "2026-03-26",
+      "kroger_count": 603,
+      "tacobell_count": 317,
+      "tjmaxx_count": 93
+    },
+    {
+      "date": "2026-03-27",
+      "kroger_count": 669,
+      "tacobell_count": 409,
+      "tjmaxx_count": 86
+    },
+    {
+      "date": "2026-03-28",
+      "kroger_count": 1031,
+      "tacobell_count": 431,
+      "tjmaxx_count": 125
+    },
+    {
+      "date": "2026-03-29",
+      "kroger_count": 979,
+      "tacobell_count": 302,
+      "tjmaxx_count": 127
+    },
+    {
+      "date": "2026-03-30",
+      "kroger_count": 622,
+      "tacobell_count": 280,
+      "tjmaxx_count": 90
+    },
+    {
+      "date": "2026-03-31",
+      "kroger_count": 651,
+      "tacobell_count": 270,
+      "tjmaxx_count": 64
+    },
+    {
+      "date": "2026-04-01",
+      "kroger_count": 706,
+      "tacobell_count": 349,
+      "tjmaxx_count": 101
+    },
+    {
+      "date": "2026-04-02",
+      "kroger_count": 744,
+      "tacobell_count": 326,
+      "tjmaxx_count": 82
+    },
+    {
+      "date": "2026-04-03",
+      "kroger_count": 726,
+      "tacobell_count": 500,
+      "tjmaxx_count": 101
+    },
+    {
+      "date": "2026-04-04",
+      "kroger_count": 1002,
+      "tacobell_count": 420,
+      "tjmaxx_count": 115
+    },
+    {
+      "date": "2026-04-05",
+      "kroger_count": 977,
+      "tacobell_count": 248,
+      "tjmaxx_count": 117
+    },
+    {
+      "date": "2026-04-06",
+      "kroger_count": 614,
+      "tacobell_count": 281,
+      "tjmaxx_count": 80
+    },
+    {
+      "date": "2026-04-07",
+      "kroger_count": 583,
+      "tacobell_count": 262,
+      "tjmaxx_count": 79
+    },
+    {
+      "date": "2026-04-08",
+      "kroger_count": 638,
+      "tacobell_count": 293,
+      "tjmaxx_count": 73
+    },
+    {
+      "date": "2026-04-09",
+      "kroger_count": 606,
+      "tacobell_count": 255,
+      "tjmaxx_count": 109
+    },
+    {
+      "date": "2026-04-10",
+      "kroger_count": 613,
+      "tacobell_count": 444,
+      "tjmaxx_count": 78
+    },
+    {
+      "date": "2026-04-11",
+      "kroger_count": 968,
+      "tacobell_count": 400,
+      "tjmaxx_count": 129
+    },
+    {
+      "date": "2026-04-12",
+      "kroger_count": 958,
+      "tacobell_count": 288,
+      "tjmaxx_count": 132
+    },
+    {
+      "date": "2026-04-13",
+      "kroger_count": 596,
+      "tacobell_count": 290,
+      "tjmaxx_count": 81
+    },
+    {
+      "date": "2026-04-14",
+      "kroger_count": 627,
+      "tacobell_count": 276,
+      "tjmaxx_count": 78
+    },
+    {
+      "date": "2026-04-15",
+      "kroger_count": 1152,
+      "tacobell_count": 442,
+      "tjmaxx_count": 111
+    },
+    {
+      "date": "2026-04-16",
+      "kroger_count": 725,
+      "tacobell_count": 309,
+      "tjmaxx_count": 102
+    },
+    {
+      "date": "2026-04-17",
+      "kroger_count": 686,
+      "tacobell_count": 518,
+      "tjmaxx_count": 101
+    },
+    {
+      "date": "2026-04-18",
+      "kroger_count": 999,
+      "tacobell_count": 494,
+      "tjmaxx_count": 136
+    },
+    {
+      "date": "2026-04-19",
+      "kroger_count": 969,
+      "tacobell_count": 303,
+      "tjmaxx_count": 136
+    },
+    {
+      "date": "2026-04-20",
+      "kroger_count": 628,
+      "tacobell_count": 300,
+      "tjmaxx_count": 78
+    },
+    {
+      "date": "2026-04-21",
+      "kroger_count": 548,
+      "tacobell_count": 274,
+      "tjmaxx_count": 95
+    },
+    {
+      "date": "2026-04-22",
+      "kroger_count": 978,
+      "tacobell_count": 353,
+      "tjmaxx_count": 79
+    },
+    {
+      "date": "2026-04-23",
+      "kroger_count": 567,
+      "tacobell_count": 283,
+      "tjmaxx_count": 69
+    },
+    {
+      "date": "2026-04-24",
+      "kroger_count": 654,
+      "tacobell_count": 416,
+      "tjmaxx_count": 74
+    },
+    {
+      "date": "2026-04-25",
+      "kroger_count": 944,
+      "tacobell_count": 433,
+      "tjmaxx_count": 129
+    },
+    {
+      "date": "2026-04-26",
+      "kroger_count": 968,
+      "tacobell_count": 313,
+      "tjmaxx_count": 130
+    },
+    {
+      "date": "2026-04-27",
+      "kroger_count": 621,
+      "tacobell_count": 307,
+      "tjmaxx_count": 75
+    },
+    {
+      "date": "2026-04-28",
+      "kroger_count": 664,
+      "tacobell_count": 295,
+      "tjmaxx_count": 92
+    },
+    {
+      "date": "2026-04-29",
+      "kroger_count": 619,
+      "tacobell_count": 253,
+      "tjmaxx_count": 86
+    },
+    {
+      "date": "2026-04-30",
+      "kroger_count": 592,
+      "tacobell_count": 260,
+      "tjmaxx_count": 76
+    },
+    {
+      "date": "2026-05-01",
+      "kroger_count": 1148,
+      "tacobell_count": 667,
+      "tjmaxx_count": 104
+    },
+    {
+      "date": "2026-05-02",
+      "kroger_count": 1111,
+      "tacobell_count": 471,
+      "tjmaxx_count": 158
+    },
+    {
+      "date": "2026-05-03",
+      "kroger_count": 1107,
+      "tacobell_count": 319,
+      "tjmaxx_count": 149
+    },
+    {
+      "date": "2026-05-04",
+      "kroger_count": 639,
+      "tacobell_count": 277,
+      "tjmaxx_count": 90
+    },
+    {
+      "date": "2026-05-05",
+      "kroger_count": 612,
+      "tacobell_count": 289,
+      "tjmaxx_count": 99
+    }
+  ],
+  "hour_distribution": [
+    {
+      "hour": 0,
+      "kroger_pct": 0.22,
+      "tacobell_pct": 0.2,
+      "tjmaxx_pct": 0.27
+    },
+    {
+      "hour": 1,
+      "kroger_pct": 0.21,
+      "tacobell_pct": 0.2,
+      "tjmaxx_pct": 0.16
+    },
+    {
+      "hour": 2,
+      "kroger_pct": 0.2,
+      "tacobell_pct": 0.19,
+      "tjmaxx_pct": 0.21
+    },
+    {
+      "hour": 3,
+      "kroger_pct": 0.19,
+      "tacobell_pct": 0.18,
+      "tjmaxx_pct": 0.22
+    },
+    {
+      "hour": 4,
+      "kroger_pct": 0.19,
+      "tacobell_pct": 0.19,
+      "tjmaxx_pct": 0.26
+    },
+    {
+      "hour": 5,
+      "kroger_pct": 0.21,
+      "tacobell_pct": 0.19,
+      "tjmaxx_pct": 0.22
+    },
+    {
+      "hour": 6,
+      "kroger_pct": 1.56,
+      "tacobell_pct": 1.63,
+      "tjmaxx_pct": 1.52
+    },
+    {
+      "hour": 7,
+      "kroger_pct": 1.64,
+      "tacobell_pct": 1.71,
+      "tjmaxx_pct": 1.7
+    },
+    {
+      "hour": 8,
+      "kroger_pct": 1.59,
+      "tacobell_pct": 1.54,
+      "tjmaxx_pct": 1.65
+    },
+    {
+      "hour": 9,
+      "kroger_pct": 1.71,
+      "tacobell_pct": 1.66,
+      "tjmaxx_pct": 1.63
+    },
+    {
+      "hour": 10,
+      "kroger_pct": 12.41,
+      "tacobell_pct": 4.12,
+      "tjmaxx_pct": 4.35
+    },
+    {
+      "hour": 11,
+      "kroger_pct": 12.43,
+      "tacobell_pct": 4.0,
+      "tjmaxx_pct": 12.56
+    },
+    {
+      "hour": 12,
+      "kroger_pct": 4.02,
+      "tacobell_pct": 12.38,
+      "tjmaxx_pct": 11.96
+    },
+    {
+      "hour": 13,
+      "kroger_pct": 4.04,
+      "tacobell_pct": 12.24,
+      "tjmaxx_pct": 12.03
+    },
+    {
+      "hour": 14,
+      "kroger_pct": 4.1,
+      "tacobell_pct": 4.05,
+      "tjmaxx_pct": 12.5
+    },
+    {
+      "hour": 15,
+      "kroger_pct": 4.14,
+      "tacobell_pct": 4.23,
+      "tjmaxx_pct": 12.1
+    },
+    {
+      "hour": 16,
+      "kroger_pct": 3.92,
+      "tacobell_pct": 3.93,
+      "tjmaxx_pct": 3.87
+    },
+    {
+      "hour": 17,
+      "kroger_pct": 12.28,
+      "tacobell_pct": 4.05,
+      "tjmaxx_pct": 3.59
+    },
+    {
+      "hour": 18,
+      "kroger_pct": 12.04,
+      "tacobell_pct": 4.09,
+      "tjmaxx_pct": 4.28
+    },
+    {
+      "hour": 19,
+      "kroger_pct": 12.21,
+      "tacobell_pct": 12.32,
+      "tjmaxx_pct": 4.15
+    },
+    {
+      "hour": 20,
+      "kroger_pct": 4.1,
+      "tacobell_pct": 12.16,
+      "tjmaxx_pct": 3.94
+    },
+    {
+      "hour": 21,
+      "kroger_pct": 4.08,
+      "tacobell_pct": 12.2,
+      "tjmaxx_pct": 4.22
+    },
+    {
+      "hour": 22,
+      "kroger_pct": 1.24,
+      "tacobell_pct": 1.37,
+      "tjmaxx_pct": 1.41
+    },
+    {
+      "hour": 23,
+      "kroger_pct": 1.26,
+      "tacobell_pct": 1.19,
+      "tjmaxx_pct": 1.2
+    }
+  ],
+  "customer_overlap": {
+    "merchants_0": 119,
+    "merchants_1": 1309,
+    "merchants_2": 2537,
+    "merchants_3": 1035,
+    "by_set": {
+      "KRG": 1054,
+      "KRG,TBL,TJX": 1035,
+      "TBL": 173,
+      "KRG,TJX": 745,
+      "KRG,TBL": 1666,
+      "TBL,TJX": 126,
+      "TJX": 82
+    }
+  },
+  "pay_cycle": [
+    {
+      "bucket": "1-3 (paychecks/SNAP)",
+      "kroger_avg": 898.4,
+      "tacobell_avg": 402.8,
+      "tjmaxx_avg": 116.7
+    },
+    {
+      "bucket": "4-14 (mid-month)",
+      "kroger_avg": 720.6,
+      "tacobell_avg": 323.6,
+      "tjmaxx_avg": 94.5
+    },
+    {
+      "bucket": "15-17 (paychecks)",
+      "kroger_avg": 850.8,
+      "tacobell_avg": 361.6,
+      "tjmaxx_avg": 109.8
+    },
+    {
+      "bucket": "18-31 (late-month)",
+      "kroger_avg": 734.9,
+      "tacobell_avg": 332.6,
+      "tjmaxx_avg": 95.9
+    }
+  ],
+  "example_transaction": {
+    "txn_id": "KRG-0000007",
+    "merchant_id": "KRG",
+    "merchant_name": "Kroger",
+    "store_id": "KRG-OH-0007",
+    "txn_ts": "2026-04-10 15:22:08",
+    "payment_type": "credit",
+    "card_network": "mc",
+    "entry_mode": "contactless",
+    "wallet_type": null,
+    "txn_total": 107.99,
+    "items": [
+      {
+        "line_id": 1,
+        "sku": "KRG-HOUSEHOLD-0102",
+        "name": "Household item 0102",
+        "subcategory": "Laundry",
+        "qty": 1,
+        "unit_price": 9.51,
+        "line_total": 9.51
+      },
+      {
+        "line_id": 2,
+        "sku": "KRG-FROZEN-0132",
+        "name": "Frozen item 0132",
+        "subcategory": "Frozen Veg",
+        "qty": 1,
+        "unit_price": 4.55,
+        "line_total": 4.55
+      },
+      {
+        "line_id": 3,
+        "sku": "KRG-MEAT-0073",
+        "name": "Meat item 0073",
+        "subcategory": "Beef",
+        "qty": 1,
+        "unit_price": 16.97,
+        "line_total": 16.97
+      },
+      {
+        "line_id": 4,
+        "sku": "KRG-MEAT-0086",
+        "name": "Meat item 0086",
+        "subcategory": "Chicken",
+        "qty": 1,
+        "unit_price": 22.47,
+        "line_total": 22.47
+      },
+      {
+        "line_id": 5,
+        "sku": "KRG-PERSONAL-0007",
+        "name": "Personal item 0007",
+        "subcategory": "Hygiene",
+        "qty": 1,
+        "unit_price": 14.9,
+        "line_total": 14.9
+      },
+      {
+        "line_id": 6,
+        "sku": "KRG-FROZEN-0106",
+        "name": "Frozen item 0106",
+        "subcategory": "Frozen Meals",
+        "qty": 1,
+        "unit_price": 4.34,
+        "line_total": 4.34
+      },
+      {
+        "line_id": 7,
+        "sku": "KRG-HOUSEHOLD-0064",
+        "name": "Household item 0064",
+        "subcategory": "Cleaning",
+        "qty": 1,
+        "unit_price": 19.91,
+        "line_total": 19.91
+      },
+      {
+        "line_id": 8,
+        "sku": "KRG-BAKERY-0031",
+        "name": "Bakery item 0031",
+        "subcategory": "Buns",
+        "qty": 1,
+        "unit_price": 3.73,
+        "line_total": 3.73
+      },
+      {
+        "line_id": 9,
+        "sku": "KRG-MEAT-0017",
+        "name": "Meat item 0017",
+        "subcategory": "Beef",
+        "qty": 1,
+        "unit_price": 5.17,
+        "line_total": 5.17
+      },
+      {
+        "line_id": 10,
+        "sku": "KRG-MEAT-0085",
+        "name": "Meat item 0085",
+        "subcategory": "Beef",
+        "qty": 1,
+        "unit_price": 6.44,
+        "line_total": 6.44
+      }
+    ]
+  },
+  "anonymization_demo": {
+    "raw": {
+      "customer_pan": "6485847256140512",
+      "customer_name": "Jordan Martin",
+      "customer_email": "garrettpaul@example.com",
+      "age_band": "35-44",
+      "income_band": "75-125k",
+      "home_zip5": "75073"
+    },
+    "tenant": {
+      "customer_id": "e653e5aa9679d13e",
+      "age_band": "35-44",
+      "income_band": "75-125k",
+      "home_zip5": "75073"
+    },
+    "lake": {
+      "customer_id": "e653e5aa9679d13e",
+      "age_band": "35-44",
+      "income_band": "75-125k",
+      "home_zip3": "750"
+    }
+  },
+  "cross_merchant_finding": {
+    "n_customers_all_three": 769,
+    "window_days": 30,
+    "window_start": "2026-04-06",
+    "avg_spend_30d": {
+      "kroger": 880.45,
+      "tacobell": 64.15,
+      "tjmaxx": 521.09
+    },
+    "agent_sql": "WITH active_30d AS (\n  SELECT customer_id, COUNT(DISTINCT merchant_id) AS n_merchants\n  FROM lake_transactions\n  WHERE txn_ts >= '2026-04-06'\n  GROUP BY customer_id\n),\nall_three AS (\n  SELECT customer_id FROM active_30d WHERE n_merchants = 3\n)\nSELECT m.name AS merchant,\n       ROUND(AVG(per_cust.spend), 2) AS avg_30d_spend,\n       COUNT(DISTINCT per_cust.customer_id) AS n_customers\nFROM (\n  SELECT customer_id, merchant_id, SUM(txn_total) AS spend\n  FROM lake_transactions\n  WHERE txn_ts >= '2026-04-06'\n    AND customer_id IN (SELECT customer_id FROM all_three)\n  GROUP BY customer_id, merchant_id\n) per_cust\nJOIN merchants m ON m.merchant_id = per_cust.merchant_id\nGROUP BY m.merchant_id\nORDER BY avg_30d_spend DESC;"
+  },
+  "sql_basket_comparison": "SELECT m.name AS merchant, m.segment,\n       ROUND(AVG(items_per_txn), 2) AS avg_basket_size\nFROM (\n  SELECT t.merchant_id, t.txn_id,\n         SUM(i.qty) AS items_per_txn\n  FROM lake_transactions t\n  JOIN lake_transaction_items i USING (txn_id)\n  GROUP BY t.txn_id\n) sub\nJOIN merchants m ON sub.merchant_id = m.merchant_id\nGROUP BY m.merchant_id\nORDER BY avg_basket_size DESC;",
+  "affinity_pairs": [
+    {
+      "merchant": "Kroger",
+      "anchor": "Diapers",
+      "companion": "Infant formula",
+      "prob": 0.45
+    },
+    {
+      "merchant": "Kroger",
+      "anchor": "Spaghetti",
+      "companion": "Marinara sauce",
+      "prob": 0.55
+    },
+    {
+      "merchant": "Kroger",
+      "anchor": "Tortillas",
+      "companion": "Ground beef",
+      "prob": 0.4
+    },
+    {
+      "merchant": "Kroger",
+      "anchor": "Tortillas",
+      "companion": "Shredded cheese",
+      "prob": 0.45
+    },
+    {
+      "merchant": "Kroger",
+      "anchor": "Whole milk",
+      "companion": "Cereal",
+      "prob": 0.3
+    },
+    {
+      "merchant": "Kroger",
+      "anchor": "Coffee",
+      "companion": "Half & half",
+      "prob": 0.4
+    },
+    {
+      "merchant": "Taco Bell",
+      "anchor": "Any entree",
+      "companion": "Drink",
+      "prob": 0.7
+    },
+    {
+      "merchant": "Taco Bell",
+      "anchor": "Combo meal",
+      "companion": "Cinnamon Twists",
+      "prob": 0.35
+    },
+    {
+      "merchant": "TJ Maxx",
+      "anchor": "Women's apparel",
+      "companion": "Accessory",
+      "prob": 0.4
+    },
+    {
+      "merchant": "TJ Maxx",
+      "anchor": "Kitchen towels",
+      "companion": "Other home goods",
+      "prob": 0.5
+    }
+  ],
+  "agents_status": [
+    {
+      "name": "Conversational Business Advisor \u2014 Merchant",
+      "status": "Built",
+      "section": "\u00a710.2"
+    },
+    {
+      "name": "Conversational Business Advisor \u2014 Network",
+      "status": "Built",
+      "section": "\u00a710.2"
+    },
+    {
+      "name": "Demand Forecasting",
+      "status": "Stretch",
+      "section": "\u00a710.2"
+    },
+    {
+      "name": "Dynamic Pricing",
+      "status": "Roadmap",
+      "section": "\u00a710.2"
+    },
+    {
+      "name": "Location Intelligence",
+      "status": "Roadmap",
+      "section": "\u00a710.2"
+    },
+    {
+      "name": "Payment Optimization",
+      "status": "Roadmap",
+      "section": "\u00a710.2"
+    },
+    {
+      "name": "Anomaly Detection",
+      "status": "Roadmap",
+      "section": "\u00a710.2"
+    }
+  ],
+  "schema": [
+    {
+      "table": "merchants",
+      "layer": "shared",
+      "columns": [
+        "merchant_id",
+        "name",
+        "segment",
+        "mcc"
+      ]
+    },
+    {
+      "table": "tenant_customers",
+      "layer": "tenant",
+      "columns": [
+        "customer_id",
+        "age_band",
+        "income_band",
+        "home_zip5",
+        "signup_date",
+        "primary_card_type",
+        "has_mobile_wallet"
+      ]
+    },
+    {
+      "table": "tenant_stores",
+      "layer": "tenant",
+      "columns": [
+        "store_id",
+        "merchant_id",
+        "store_zip5",
+        "region",
+        "open_date"
+      ]
+    },
+    {
+      "table": "tenant_products",
+      "layer": "tenant",
+      "columns": [
+        "sku",
+        "merchant_id",
+        "name",
+        "category",
+        "subcategory",
+        "is_organic",
+        "base_price"
+      ]
+    },
+    {
+      "table": "tenant_transactions",
+      "layer": "tenant",
+      "columns": [
+        "txn_id",
+        "merchant_id",
+        "customer_id",
+        "store_id",
+        "txn_ts",
+        "payment_type",
+        "card_network",
+        "entry_mode",
+        "wallet_type",
+        "txn_total"
+      ]
+    },
+    {
+      "table": "tenant_transaction_items",
+      "layer": "tenant",
+      "columns": [
+        "txn_id",
+        "line_id",
+        "sku",
+        "qty",
+        "unit_price",
+        "discount",
+        "line_total"
+      ]
+    },
+    {
+      "table": "lake_customers",
+      "layer": "lake",
+      "columns": [
+        "customer_id",
+        "age_band",
+        "income_band",
+        "home_zip3",
+        "signup_date",
+        "primary_card_type",
+        "has_mobile_wallet"
+      ]
+    },
+    {
+      "table": "lake_transactions",
+      "layer": "lake",
+      "columns": [
+        "txn_id",
+        "merchant_id",
+        "customer_id",
+        "store_zip3",
+        "region",
+        "txn_ts",
+        "txn_hour_bucket",
+        "payment_type",
+        "card_network",
+        "entry_mode",
+        "wallet_type",
+        "txn_total"
+      ]
+    },
+    {
+      "table": "lake_transaction_items",
+      "layer": "lake",
+      "columns": [
+        "txn_id",
+        "line_id",
+        "sku_category",
+        "qty",
+        "unit_price",
+        "line_total"
+      ]
+    }
+  ]
+}

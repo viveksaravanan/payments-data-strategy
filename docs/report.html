@@ -1,0 +1,1743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payments Data Strategy: Cross-Merchant Intelligence Through Privacy-Preserved Analytics</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Embedded data fallback for file:// double-click (Chrome blocks fetch from file://). -->
+  <script src="./report_data.js"></script>
+  <style>
+    /* ========== Reset & base ========== */
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 17px;
+      line-height: 1.6;
+      color: #2d3748;
+      background: #ffffff;
+      -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3, h4 { color: #1a4d7a; line-height: 1.25; }
+    h1 { font-size: 2.4rem; font-weight: 700; margin: 0 0 0.4em; letter-spacing: -0.01em; }
+    h2 { font-size: 1.85rem; font-weight: 700; margin: 0 0 0.6em; letter-spacing: -0.005em; }
+    h3 { font-size: 1.25rem; font-weight: 600; margin: 1.6em 0 0.5em; }
+    h4 { font-size: 1.05rem; font-weight: 600; margin: 1.2em 0 0.4em; color: #2d3748; }
+    p  { margin: 0 0 1em; }
+    a  { color: #1a4d7a; text-decoration: none; border-bottom: 1px solid rgba(26,77,122,0.3); }
+    a:hover { border-bottom-color: #1a4d7a; }
+    code, pre { font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.92em; }
+
+    /* ========== Layout ========== */
+    main { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+    section { padding: 80px 0; border-top: 1px solid #edf2f7; }
+    section.alt { background: #f7fafc; }
+    section.alt-wrap { margin: 0 -100vw; padding-left: 100vw; padding-right: 100vw; }
+    /* Better alt-section approach using full-bleed */
+    .full-bleed { position: relative; }
+    .full-bleed::before {
+      content: ""; position: absolute; top: 0; left: 50%;
+      width: 100vw; height: 100%; transform: translateX(-50%);
+      background: #f7fafc; z-index: -1;
+    }
+    .lede { font-size: 1.12em; color: #4a5568; max-width: 800px; }
+
+    /* ========== Top nav ========== */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; height: 56px;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: saturate(180%) blur(12px);
+      border-bottom: 1px solid #e2e8f0;
+      z-index: 100;
+      display: flex; align-items: center; padding: 0 24px;
+    }
+    nav .brand {
+      font-weight: 700; color: #1a4d7a; margin-right: auto;
+      font-size: 0.95rem;
+    }
+    nav ul { list-style: none; display: flex; gap: 4px; margin: 0; padding: 0; flex-wrap: wrap; }
+    nav a {
+      display: block; padding: 8px 12px; font-size: 0.85rem;
+      color: #4a5568; border: none; border-radius: 4px;
+      transition: background 0.15s, color 0.15s;
+    }
+    nav a:hover { background: #edf2f7; color: #1a4d7a; }
+    nav a.active { color: #1a4d7a; background: #e6efef; font-weight: 600; }
+
+    /* ========== Hero ========== */
+    .hero { padding: 140px 0 60px; }
+    .hero .eyebrow {
+      text-transform: uppercase; letter-spacing: 0.12em;
+      color: #1a4d7a; font-size: 0.78rem; font-weight: 600;
+      margin-bottom: 16px;
+    }
+    .hero p.tagline { font-size: 1.2rem; color: #4a5568; max-width: 780px; margin-top: 18px; }
+    .stat-row {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 16px; margin-top: 48px;
+    }
+    .stat-card {
+      background: white; padding: 24px 20px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(26,77,122,0.05);
+      transition: transform 0.2s;
+    }
+    .stat-card:hover { transform: translateY(-2px); }
+    .stat-num {
+      display: block; font-size: 2.1rem; font-weight: 700;
+      color: #1a4d7a; line-height: 1; letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-label { display: block; font-size: 0.85rem; color: #718096; margin-top: 6px; }
+
+    /* ========== Anchor pills ========== */
+    .anchor-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+    .anchor-pills a {
+      display: inline-block; padding: 6px 14px; font-size: 0.86rem;
+      background: white; border: 1px solid #cbd5e0;
+      border-radius: 999px; color: #4a5568;
+    }
+    .anchor-pills a:hover { background: #1a4d7a; color: white; border-color: #1a4d7a; }
+
+    /* ========== Three-col strategic argument ========== */
+    .three-cols {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 24px; margin-top: 32px;
+    }
+    .party-card {
+      background: white; padding: 28px 24px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      border-top: 4px solid #cbd5e0;
+    }
+    .party-card.highlight { border-top-color: #1a4d7a; }
+    .party-card h3 { margin-top: 0; font-size: 1.15rem; }
+    .party-card .role { font-size: 0.85rem; color: #718096; }
+    .visibility { list-style: none; padding: 0; margin: 16px 0 0; }
+    .visibility li {
+      padding: 8px 0; border-bottom: 1px solid #f0f4f8;
+      font-size: 0.95rem;
+      /* Inline flow so the icon sits at the start of the first line and the
+         italic clarifications stay inline with the rest of the sentence. */
+    }
+    .visibility li:last-child { border-bottom: none; }
+    .visibility li em { font-style: italic; }
+    .check, .cross {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; border-radius: 50%;
+      font-size: 0.85rem; font-weight: 700; flex-shrink: 0;
+      vertical-align: -6px; margin-right: 10px;
+    }
+    .check { background: #d4edda; color: #155724; }
+    .cross { background: #f8d7da; color: #721c24; }
+
+    /* ========== Tables ========== */
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    table th, table td {
+      padding: 12px 14px; text-align: left;
+      border-bottom: 1px solid #edf2f7;
+    }
+    table th {
+      background: #f7fafc; font-weight: 600; font-size: 0.88rem;
+      color: #2d3748; text-transform: none;
+    }
+    table.sortable th { cursor: pointer; user-select: none; }
+    table.sortable th:hover { background: #edf2f7; }
+    /* Default: no arrow. Hover: faint up-down hint. Sorted: full opacity ↑ or ↓. */
+    table.sortable th .arrow {
+      margin-left: 6px; font-size: 0.75rem; color: #1a4d7a;
+      opacity: 0; transition: opacity 0.15s;
+    }
+    table.sortable th:hover .arrow { opacity: 0.4; }
+    table.sortable th.sorted-asc .arrow,
+    table.sortable th.sorted-desc .arrow { opacity: 1; }
+    table tbody tr { transition: background 0.1s; }
+    table tbody tr:hover { background: #f7fafc; }
+    .num { font-variant-numeric: tabular-nums; text-align: right; }
+
+    /* ========== Charts ========== */
+    .chart-wrap { background: white; padding: 24px; border-radius: 8px;
+                  box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin: 20px 0; }
+    .chart-wrap h3 { margin-top: 0; }
+    .chart-canvas { position: relative; height: 360px; }
+    .chart-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 20px 0; }
+    .chart-row .chart-wrap { margin: 0; }
+    .chart-row .chart-canvas { height: 240px; }
+    .chart-legend {
+      display: flex; gap: 16px; flex-wrap: wrap;
+      font-size: 0.85rem; margin-top: 8px;
+    }
+    .chart-legend .swatch {
+      display: inline-block; width: 12px; height: 12px;
+      border-radius: 2px; margin-right: 6px; vertical-align: middle;
+    }
+    .chart-legend .swatch.dashed-line {
+      width: 0; height: 14px; border-radius: 0;
+      border-left: 2px dashed currentColor;
+      background: transparent;
+    }
+    .chart-legend .swatch.window-rect {
+      background: rgba(220, 38, 38, 0.12);
+      border: 1px solid rgba(220, 38, 38, 0.45);
+    }
+
+    /* ========== Affinity grid ========== */
+    .affinity-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr);
+      gap: 8px; margin: 16px 0;
+    }
+    .affinity-item {
+      background: white; padding: 10px 14px; border-radius: 6px;
+      font-size: 0.92rem; display: flex; align-items: center; gap: 10px;
+      border-left: 3px solid #1a4d7a;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .affinity-item .arrow { color: #a0aec0; }
+    .affinity-item .prob {
+      margin-left: auto; font-weight: 600; color: #1a4d7a;
+      font-size: 0.85rem; font-variant-numeric: tabular-nums;
+    }
+    .affinity-item .merchant-tag {
+      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;
+      background: #e2e8f0; color: #4a5568;
+      padding: 2px 6px; border-radius: 3px;
+    }
+
+    /* ========== Real transaction card ========== */
+    .txn-card {
+      background: white; border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      overflow: hidden; margin: 24px 0;
+    }
+    .txn-header {
+      background: #1a4d7a; color: white; padding: 16px 20px;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+    }
+    .txn-header dt { font-size: 0.72rem; text-transform: uppercase;
+                     letter-spacing: 0.08em; opacity: 0.8; margin: 0; }
+    .txn-header dd { margin: 2px 0 0; font-weight: 600; font-size: 0.95rem; }
+    .txn-items { padding: 0 20px 16px; }
+    .txn-items table { margin: 0; }
+    .txn-total {
+      padding: 12px 20px; background: #f7fafc;
+      display: flex; justify-content: space-between; align-items: center;
+      font-weight: 600; border-top: 1px solid #edf2f7;
+    }
+    .txn-total .amount { font-size: 1.15rem; color: #1a4d7a; }
+
+    /* ========== Schema visual ========== */
+    .schema-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 16px; margin: 20px 0;
+    }
+    .schema-group h4 {
+      margin: 0 0 10px; padding-bottom: 6px;
+      text-transform: uppercase; font-size: 0.78rem; letter-spacing: 0.1em;
+      color: #718096; border-bottom: 1px solid #e2e8f0;
+    }
+    .schema-table {
+      background: white; border-radius: 6px; padding: 12px 14px;
+      margin-bottom: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+      font-size: 0.86rem;
+    }
+    .schema-table .name { font-weight: 600; color: #1a4d7a; margin-bottom: 6px; }
+    .schema-table .cols { color: #4a5568; font-family: 'SF Mono', monospace; font-size: 0.78rem; line-height: 1.5; }
+
+    /* ========== Architecture diagram ========== */
+    .arch-svg-wrap { background: white; border-radius: 8px; padding: 32px;
+                     box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin: 16px 0; }
+    .arch-stage rect { fill: white; stroke: #cbd5e0; stroke-width: 2; cursor: pointer; transition: all 0.2s; }
+    .arch-stage:hover rect, .arch-stage.active rect {
+      fill: #ebf3f9; stroke: #1a4d7a; stroke-width: 2.5;
+    }
+    .arch-stage text { font-family: -apple-system, sans-serif; pointer-events: none; }
+    .arch-stage .stage-name { fill: #1a4d7a; font-weight: 600; font-size: 16px; }
+    .arch-stage .stage-path { fill: #718096; font-size: 11px; font-family: monospace; }
+    .arch-arrow { fill: #cbd5e0; }
+    #arch-detail {
+      background: white; border-radius: 6px; padding: 18px 20px; margin-top: 12px;
+      border-left: 4px solid #1a4d7a; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      display: none;
+    }
+    #arch-detail.show { display: block; animation: fadeIn 0.25s; }
+    #arch-detail h4 { margin: 0 0 8px; }
+    #arch-detail p { margin: 4px 0; font-size: 0.95rem; }
+    #arch-detail code { background: #f7fafc; padding: 2px 5px; border-radius: 3px; }
+
+    /* ========== Anonymization play demo ========== */
+    .anon-demo {
+      background: white; border-radius: 8px; padding: 28px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin: 24px 0;
+    }
+    .anon-cols {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px;
+      margin-bottom: 18px;
+    }
+    .anon-col h4 {
+      margin: 0 0 12px; padding-bottom: 8px;
+      border-bottom: 2px solid #edf2f7;
+      text-transform: uppercase; font-size: 0.78rem; letter-spacing: 0.1em;
+      color: #718096; font-weight: 600;
+    }
+    .anon-col.tenant h4, .anon-col.lake h4 {
+      color: #cbd5e0; transition: color 0.4s;
+    }
+    .anon-col.tenant.active h4, .anon-col.lake.active h4 { color: #1a4d7a; }
+    .anon-row {
+      padding: 8px 12px; margin-bottom: 4px;
+      background: #f7fafc; border-radius: 4px;
+      font-size: 0.85rem; font-family: 'SF Mono', monospace;
+      transition: opacity 0.4s, color 0.4s, background 0.4s, transform 0.4s;
+    }
+    .anon-row .label {
+      display: block; color: #718096; font-size: 0.7rem;
+      margin-bottom: 2px; font-family: -apple-system, sans-serif;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .anon-row.empty { background: #fafafa; color: #cbd5e0; min-height: 40px; }
+    .anon-row.fading { opacity: 0.3; color: #a0aec0; }
+    .anon-row.removed { opacity: 0; transform: translateY(-4px); pointer-events: none; }
+    .anon-row.hashing { color: #1a4d7a; background: #ebf3f9; }
+    .anon-row.zip-truncating .original { text-decoration: line-through; color: #a0aec0; }
+    .anon-annotation {
+      position: absolute; right: -8px; top: 50%; transform: translateY(-50%);
+      background: #1a4d7a; color: white; font-size: 0.7rem;
+      padding: 2px 6px; border-radius: 3px; font-family: -apple-system, sans-serif;
+      opacity: 0; transition: opacity 0.3s;
+    }
+    .anon-row.show-zip-annotation { position: relative; }
+    .anon-row.show-zip-annotation .anon-annotation { opacity: 1; }
+    .anon-controls { display: flex; gap: 12px; align-items: center; }
+    .btn {
+      background: #1a4d7a; color: white; border: none;
+      padding: 10px 20px; border-radius: 5px; cursor: pointer;
+      font-size: 0.92rem; font-weight: 600;
+      font-family: inherit;
+      transition: background 0.15s;
+    }
+    .btn:hover { background: #143b5d; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn.secondary { background: #4a5568; }
+    .btn.secondary:hover { background: #2d3748; }
+
+    /* ========== K-anon callout ========== */
+    .callout {
+      background: white; border-left: 4px solid #1a4d7a;
+      padding: 18px 22px; margin: 24px 0; border-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      display: flex; gap: 16px; align-items: center;
+    }
+    .callout .num {
+      font-size: 2rem; font-weight: 700; color: #1a4d7a;
+      line-height: 1; font-variant-numeric: tabular-nums;
+    }
+    .callout .copy { flex: 1; font-size: 0.95rem; }
+    .callout .copy strong { color: #1a4d7a; }
+    /* Amber "note" variant for honest caveats — same shape, warning palette. */
+    .callout.note { border-left-color: #b7791f; align-items: flex-start; }
+    .callout.note .num { color: #b7791f; font-size: 1.5rem; }
+    .callout.note .copy strong { color: #975a16; }
+    .callout.note .copy p { margin: 0; }
+    .callout.note .copy p + p { margin-top: 10px; }
+
+    /* ========== Venn / overlap ========== */
+    .venn-wrap {
+      background: white; padding: 28px; border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      display: grid; grid-template-columns: 1.2fr 1fr; gap: 28px;
+      align-items: center; margin: 24px 0;
+    }
+    .venn-svg { width: 100%; max-width: 480px; height: auto; }
+    .venn-region {
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .venn-region.active { transform: scale(1.04); transform-origin: center; }
+    .venn-circle { fill-opacity: 0.18; stroke-width: 2; cursor: pointer; }
+    .venn-label { font-size: 13px; font-weight: 600; pointer-events: none; }
+    .venn-info {
+      background: #f7fafc; padding: 18px 20px; border-radius: 6px;
+      min-height: 200px;
+    }
+    .venn-info h4 { margin-top: 0; }
+    .venn-info dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; }
+    .venn-info dt { color: #718096; font-size: 0.88rem; }
+    .venn-info dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+    /* ========== Pay cycle / hour charts ========== */
+    .small-mult-row {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+    }
+    .small-mult { background: white; padding: 18px; border-radius: 8px;
+                  box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .small-mult h4 { margin: 0 0 4px; font-size: 0.95rem; }
+    .small-mult .subtitle { font-size: 0.78rem; color: #718096; margin-bottom: 8px; }
+    .small-mult-canvas { height: 200px; position: relative; }
+
+    /* ========== Agents grid ========== */
+    .agents-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr);
+      gap: 12px; margin: 16px 0;
+    }
+    .agent-card {
+      background: white; padding: 14px 16px; border-radius: 6px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 12px;
+    }
+    .agent-name { font-weight: 500; font-size: 0.92rem; }
+    .agent-status {
+      font-size: 0.72rem; padding: 3px 10px; border-radius: 999px;
+      font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .status-built   { background: #d4edda; color: #155724; }
+    .status-stretch { background: #fff3cd; color: #856404; }
+    .status-roadmap { background: #e2e8f0; color: #4a5568; }
+
+    /* ========== Tool access SVG ========== */
+    .tool-access-svg {
+      background: white; padding: 24px; border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      display: block; max-width: 580px; margin: 16px auto;
+    }
+
+    /* ========== SQL reveal ========== */
+    .sql-block {
+      background: white; border-radius: 6px; padding: 18px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin: 16px 0;
+    }
+    .sql-block h4 { margin: 0 0 10px; }
+    .sql-block p { font-size: 0.92rem; margin: 0 0 10px; color: #4a5568; }
+    .sql-block .show-sql-btn {
+      background: #edf2f7; color: #1a4d7a; border: 1px solid #cbd5e0;
+      padding: 6px 14px; border-radius: 4px; font-size: 0.85rem;
+      font-weight: 500; cursor: pointer; font-family: inherit;
+    }
+    .sql-block .show-sql-btn:hover { background: #1a4d7a; color: white; }
+    .sql-content {
+      max-height: 0; overflow: hidden; transition: max-height 0.4s ease-out;
+    }
+    .sql-content.open { max-height: 600px; }
+    .sql-content pre {
+      background: #1e2733; color: #d4d4d4; border-radius: 5px;
+      padding: 16px 18px; overflow-x: auto; margin: 12px 0 0;
+      font-size: 0.84rem; line-height: 1.5;
+    }
+    .sql-content .kw   { color: #c586c0; font-weight: 700; }
+    .sql-content .tbl  { color: #4ec9b0; }
+    .sql-content .fn   { color: #dcdcaa; }
+    .sql-content .str  { color: #ce9178; }
+    .sql-content .num  { color: #b5cea8; text-align: left; }
+    .sql-content .cmt  { color: #6a9955; font-style: italic; }
+
+    /* ========== Hero callout (cross-merchant finding) ========== */
+    .hero-callout {
+      background: linear-gradient(135deg, #1a4d7a 0%, #2c6ba0 100%);
+      color: white; padding: 40px 36px; border-radius: 10px;
+      margin: 24px 0; box-shadow: 0 4px 16px rgba(26,77,122,0.2);
+    }
+    .hero-callout .number {
+      font-size: 3rem; font-weight: 700; line-height: 1;
+      margin-bottom: 8px; letter-spacing: -0.02em;
+    }
+    .hero-callout .label { font-size: 1.05rem; opacity: 0.92; margin-bottom: 28px; }
+    .ratio-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+    .ratio-card .merchant { font-size: 0.85rem; opacity: 0.85; }
+    .ratio-card .amount { font-size: 1.8rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .ratio-card .note { font-size: 0.78rem; opacity: 0.7; }
+    .ratio-bar { height: 32px; margin-top: 24px; display: flex; border-radius: 4px; overflow: hidden; width: 100%; }
+    .ratio-bar > div {
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 0.85rem; color: white;
+      /* Allow segments to shrink below their content width and clip cleanly. */
+      min-width: 0; overflow: hidden; white-space: nowrap;
+      padding: 0 6px;
+      box-sizing: border-box;
+    }
+    .ratio-bar .seg-krg { background: rgba(255,255,255,0.95); color: #1a4d7a; }
+    .ratio-bar .seg-tjx { background: rgba(255,255,255,0.55); }
+    .ratio-bar .seg-tbl { background: rgba(255,255,255,0.25); padding: 0; }
+
+    /* ========== Built vs deferred ========== */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 24px; }
+    .two-col h3 { margin-top: 0; }
+    .status-list { list-style: none; padding: 0; margin: 0; }
+    .status-list li { padding: 8px 0; border-bottom: 1px solid #edf2f7; font-size: 0.95rem; }
+    .status-list li:last-child { border-bottom: none; }
+    .status-list .ref { color: #a0aec0; font-size: 0.82rem; margin-left: 8px; }
+
+    /* ========== Misc ========== */
+    .note { color: #718096; font-size: 0.88rem; }
+    .loading-banner {
+      position: fixed; top: 56px; left: 0; right: 0;
+      background: #fef3cd; color: #856404; padding: 8px 24px;
+      text-align: center; font-size: 0.9rem; z-index: 50;
+    }
+    .footer-block {
+      background: #1e2733; color: #cbd5e0; padding: 32px 24px;
+      margin-top: 60px;
+    }
+    .footer-block .inner { max-width: 1080px; margin: 0 auto; font-size: 0.88rem; }
+    .footer-block a { color: #a0c4dd; }
+
+    /* Animations */
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* ========== Responsive ========== */
+    @media (max-width: 900px) {
+      h1 { font-size: 1.9rem; }
+      .stat-row, .three-cols, .schema-grid, .small-mult-row,
+      .agents-grid, .two-col, .ratio-row, .chart-row, .anon-cols,
+      .venn-wrap { grid-template-columns: 1fr; }
+      .txn-header { grid-template-columns: 1fr 1fr; }
+      nav ul { display: none; }
+    }
+
+    /* ========== Print styles ========== */
+    @media print {
+      body { background: white !important; font-size: 12pt; }
+      nav, .show-sql-btn, .anon-controls, .loading-banner { display: none !important; }
+      section { padding: 30px 0; page-break-inside: avoid; border-top: 1px solid #ccc; }
+      .full-bleed::before { display: none; }
+      .sql-content { max-height: none !important; }
+      .sql-content pre { background: #f4f4f4; color: #333; }
+      .chart-canvas, .small-mult-canvas { height: 220px !important; }
+      .hero-callout { background: #1a4d7a !important; -webkit-print-color-adjust: exact; }
+      .stat-card, .party-card, .schema-table, .txn-card,
+      .anon-demo, .callout, .venn-wrap, .small-mult, .agent-card,
+      .sql-block, .arch-svg-wrap { box-shadow: none !important; border: 1px solid #ccc; }
+      a { color: #1a4d7a; text-decoration: underline; }
+      a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 0.85em; color: #666; }
+    }
+  </style>
+</head>
+<body>
+
+<nav id="main-nav" aria-label="Section navigation">
+  <span class="brand">Payments Data Strategy</span>
+  <ul>
+    <li><a href="#exec">Summary</a></li>
+    <li><a href="#strategic">Strategic argument</a></li>
+    <li><a href="#merchants">Merchants</a></li>
+    <li><a href="#data">Data generation</a></li>
+    <li><a href="#schema">Schema</a></li>
+    <li><a href="#anonymization">Anonymization</a></li>
+    <li><a href="#agents">Agents</a></li>
+    <li><a href="#insight">Insight</a></li>
+    <li><a href="#status">Status</a></li>
+  </ul>
+</nav>
+
+<div id="loading-banner" class="loading-banner" hidden>Loading data&hellip;</div>
+
+<main>
+
+<!-- ===================== HERO ===================== -->
+<header class="hero" id="hero">
+  <p class="eyebrow">Interactive Demonstration · Synthetic Data</p>
+  <h1>Payments Data Strategy: Cross-Merchant Intelligence Through Privacy-Preserved Analytics</h1>
+  <p class="tagline">A working prototype of the dual-path data architecture &mdash; synthetic transactions, real anonymization, AI agents that answer questions about a merchant's own data and about cross-merchant patterns no single party in the commerce stack can see alone.</p>
+
+  <div class="stat-row">
+    <div class="stat-card">
+      <span class="stat-num" data-counter="n_customers">0</span>
+      <span class="stat-label">Synthetic customers in the panel</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num" data-counter="n_transactions">0</span>
+      <span class="stat-label">Transactions across 90 days</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num" data-counter="n_line_items">0</span>
+      <span class="stat-label">Line items at SKU level</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num" data-counter="all_three_30d">0</span>
+      <span class="stat-label">Customers shopping at all 3 in 30 days</span>
+    </div>
+  </div>
+</header>
+
+<!-- ===================== EXEC SUMMARY ===================== -->
+<section id="exec">
+  <h2>Executive summary</h2>
+  <p class="lede">A payments company sees a join no one else does &mdash; the basket, the payment instrument, and the same physical customer across every merchant they shop. This prototype turns that vantage point into a working system: capture &rarr; anonymize &rarr; store &rarr; insight, end to end, with two complementary AI agents on top.</p>
+  <p>Three fictional merchants &mdash; Kroger, Taco Bell, TJ Maxx &mdash; share a 5,000-customer synthetic panel for 90 days. The pipeline produces two parallel data layers: a <strong>tenant layer</strong> with each merchant's own granular transactions, and a <strong>lake layer</strong> that implements the dual-path privacy architecture with PAN tokenization, ZIP3 + hour-bucket generalization, and k=5 anonymity (three of the six &sect;8.2 techniques; see the <a href="#anonymization">anonymization section</a> for what's deferred). Sitting on top: a Merchant Advisor that answers ops questions for a single merchant by combining its tenant data with peer benchmarks from the lake, and a Network Analyst that surfaces cross-merchant patterns no single merchant could see alone.</p>
+  <p>The headline finding the system produces in &lt;15 seconds: <strong id="headline-summary">&hellip;</strong></p>
+  <div class="anchor-pills">
+    <a href="#strategic">The strategic argument</a>
+    <a href="#anonymization">How the dual-path works</a>
+    <a href="#agents">The two agents</a>
+    <a href="#insight">The cross-merchant finding</a>
+    <a href="#status">What's built vs. deferred</a>
+  </div>
+</section>
+
+<!-- ===================== STRATEGIC ARGUMENT ===================== -->
+<section id="strategic" class="full-bleed">
+  <h2>Why a payments network can do this</h2>
+  <p class="lede">Three parties in the commerce stack each see a slice of every transaction. Only one sees enough to answer cross-merchant questions about real human shopping behavior.</p>
+
+  <div class="three-cols">
+    <div class="party-card">
+      <h3>Card networks</h3>
+      <p class="role">Visa, Mastercard, Amex, Discover</p>
+      <ul class="visibility">
+        <li><span class="cross" aria-label="cannot see">&times;</span> The basket (no SKU detail)</li>
+        <li><span class="check" aria-label="can see">&check;</span> The payment instrument</li>
+        <li><span class="check" aria-label="can see">&check;</span> Same person across merchants &mdash; <em>but only via the card</em></li>
+      </ul>
+    </div>
+    <div class="party-card">
+      <h3>POS / loyalty vendors</h3>
+      <p class="role">Toast, NCR, in-store loyalty programs</p>
+      <ul class="visibility">
+        <li><span class="check" aria-label="can see">&check;</span> The basket at full SKU detail</li>
+        <li><span class="cross" aria-label="cannot see">&times;</span> The payment instrument (mostly)</li>
+        <li><span class="cross" aria-label="cannot see">&times;</span> The same person at other merchants</li>
+      </ul>
+    </div>
+    <div class="party-card highlight">
+      <h3>Payments network &mdash; you</h3>
+      <p class="role">Acquirer / processor with merchant data partnerships</p>
+      <ul class="visibility">
+        <li><span class="check" aria-label="can see">&check;</span> The basket (via merchant data)</li>
+        <li><span class="check" aria-label="can see">&check;</span> The payment instrument</li>
+        <li><span class="check" aria-label="can see">&check;</span> Same person across <em>all merchants</em> in the network</li>
+      </ul>
+    </div>
+  </div>
+  <p style="margin-top: 24px;">The third column is the strategic argument. A card network has the join key but not the basket; a POS vendor has the basket but not the join key. A payments network sitting on top of merchant data has both &mdash; and that combination is what the lake layer in this prototype is built to expose, safely.</p>
+</section>
+
+<!-- ===================== THE THREE MERCHANTS ===================== -->
+<section id="merchants">
+  <h2>The three-merchant panel</h2>
+  <p>The panel deliberately spans three different segments &mdash; grocery, QSR, and off-price retail &mdash; because different segments produce different basket shapes, transaction cadences, and payment mixes. Different shapes are exactly what makes cross-merchant comparisons interesting; an analysis where everyone behaves the same has nothing to find.</p>
+  <table class="sortable" id="merchant-table">
+    <thead>
+      <tr>
+        <th data-sort="name">Merchant <span class="arrow">&#8645;</span></th>
+        <th data-sort="segment">Segment <span class="arrow">&#8645;</span></th>
+        <th class="num" data-sort="n_stores" data-num="1">Stores <span class="arrow">&#8645;</span></th>
+        <th class="num" data-sort="n_customers" data-num="1">Active customers <span class="arrow">&#8645;</span></th>
+        <th class="num" data-sort="n_transactions" data-num="1">Transactions <span class="arrow">&#8645;</span></th>
+        <th class="num" data-sort="avg_basket_size" data-num="1">Avg basket <span class="arrow">&#8645;</span></th>
+        <th class="num" data-sort="avg_ticket" data-num="1">Avg ticket <span class="arrow">&#8645;</span></th>
+        <th>Payment mix</th>
+      </tr>
+    </thead>
+    <tbody id="merchant-tbody"></tbody>
+  </table>
+  <p class="note">Click any column header to sort. Note Kroger's much larger basket (≈16 items), Taco Bell's much smaller ticket (&lt;$10), TJ Maxx's lower transaction frequency, and the fact that EBT only appears at Kroger &mdash; SNAP rules exclude QSR and apparel retail.</p>
+</section>
+
+<!-- ===================== DATA GENERATION ===================== -->
+<section id="data" class="full-bleed">
+  <h2>How the data was generated</h2>
+  <p class="lede">Synthetic data only earns its keep when it has the same statistical texture as production data. The generator captures the rhythms, behavioral clusters, and edge cases the agents need something to find.</p>
+
+  <h3>The shared customer panel and the cross-merchant invariant</h3>
+  <p>5,000 customers are generated <em>once</em> with full PII (name, email, ZIP5) and a stable 16-digit synthetic PAN. Each merchant generator picks a participation share (Kroger 90%, Taco Bell 60%, TJ Maxx 40%) from this single panel. The same physical customer always carries the same PAN to every merchant they shop. After hashing, that single PAN becomes a single <code>customer_id</code> in the lake &mdash; the foundation of every cross-merchant query later.</p>
+
+  <h3>Behavioral segments and bimodal baskets</h3>
+  <p>About 70% of customers behave as "fillers" &mdash; small frequent baskets &mdash; and 30% as "stockers" &mdash; large biweekly baskets. Within a single shopping trip, basket size is drawn from a bimodal mixture so the data has both quick-trip and weekly-haul shapes co-existing realistically. About 5% of customers are flagged as "lapsers" who transact only once or twice in the 90-day window, putting a long tail on retention questions.</p>
+
+  <h3>Day-of-week and pay-cycle patterns</h3>
+  <p>Each merchant has segment-appropriate peak days (Sat&ndash;Sun for grocery and retail, Fri&ndash;Sat for QSR) and peak hours (evenings + weekend mornings for grocery, lunch + dinner for QSR, weekend afternoons for retail). On top of that, a ~15% pay-cycle bump on the 1st&ndash;3rd and 15th&ndash;17th of every month captures paychecks and SNAP issuance. The chart below shows what these multipliers actually produce across the 90 days.</p>
+
+  <div class="chart-wrap">
+    <h3>Daily transaction volume across the 90-day window</h3>
+    <p class="note">Vertical lines mark the three configured promo days (April 15, April 22, May 1) and the planted store-dropout window (the last 7 days). Hover the chart to read exact daily counts for each merchant.</p>
+    <div class="chart-canvas"><canvas id="chart-daily"></canvas></div>
+    <div class="chart-legend" id="legend-daily"></div>
+  </div>
+
+  <h3>Affinity pairs (what gets bought together)</h3>
+  <p>Without deliberate co-purchase patterns, basket-affinity questions return noise. A small number of anchor &rarr; companion rules are wired into the basket sampler. They're a small fraction of all line items, but they're enough that "what gets bought with milk?" returns a sensible list rather than random SKUs.</p>
+  <div class="affinity-grid" id="affinity-grid"></div>
+
+  <h3>Three planted anomalies</h3>
+  <p>To give the agent something genuinely interesting to find, three signals are deliberately injected at Kroger:</p>
+  <ol>
+    <li><strong>Price spike.</strong> SKU <code>KRG-PRODUCE-0042</code> (avocados) priced at 5&times; baseline on a single day in the last 7 days &mdash; a glitch the operations team would want to catch.</li>
+    <li><strong>Store dropout.</strong> Store <code>KRG-OH-0011</code> sees ~30% fewer transactions in the last 7 days vs. the prior week &mdash; the kind of soft signal a regional manager wants surfaced before it becomes a quarterly miss.</li>
+    <li><strong>Cohort surge.</strong> ~50 customers who never bought baby SKUs before suddenly start in the last 21 days &mdash; the "new parent" cohort, the most strategically valuable customer transition a grocer can spot.</li>
+  </ol>
+  <p>Two of these anomalies are visible in the daily-volume chart above &mdash; if you know where to look. The agents find them by writing SQL.</p>
+</section>
+
+<!-- ===================== A REAL TRANSACTION ===================== -->
+<section id="transaction">
+  <h2>The data: one real transaction</h2>
+  <p>Every figure on this page is pulled live from the SQLite database. Here is one actual Kroger transaction, with its full line items at SKU level &mdash; a slice of the ~107k transactions and ~1.25M line items the generator produced.</p>
+  <div class="txn-card" id="txn-card"><div class="txn-header"></div></div>
+
+  <h3>The patterns the data captures</h3>
+  <p>Two charts, side-by-side, show what's actually in there. <strong>Left:</strong> hour-of-day distribution per merchant, % of transactions in each clock hour. The lunch-and-dinner double peak at Taco Bell, the evening peak at Kroger, and the weekend-afternoon shape at TJ Maxx come straight from the generator's per-merchant peak-hour configuration. <strong>Right:</strong> the pay-cycle bump &mdash; transaction volume on the 1st&ndash;3rd and 15th&ndash;17th of each month vs. other days.</p>
+
+  <div class="small-mult-row" id="hour-charts"></div>
+
+  <div class="chart-wrap" style="margin-top: 24px;">
+    <h3>Pay-cycle effect: avg daily transactions by day-of-month bucket</h3>
+    <p class="note">Higher bars on days 1&ndash;3 and 15&ndash;17 reflect bi-monthly paycheck and SNAP issuance.</p>
+    <div class="chart-canvas"><canvas id="chart-paycycle"></canvas></div>
+  </div>
+</section>
+
+<!-- ===================== SCHEMA + ARCHITECTURE ===================== -->
+<section id="schema" class="full-bleed">
+  <h2>The dual-table-prefix database design</h2>
+  <p>SQLite holds two parallel sets of tables sharing one merchants dimension. The <code>tenant_*</code> prefix is what each merchant sees about itself: hashed customer IDs but full granularity on everything else. The <code>lake_*</code> prefix is what the network sees across merchants: same hashed IDs, but ZIP3 instead of ZIP5, hour-bucketed timestamps, k-anonymity-suppressed cells, and category-level baskets instead of SKU-level. Same database file, two consistent views.</p>
+
+  <div class="schema-grid" id="schema-grid"></div>
+
+  <h3>The four-stage pipeline</h3>
+  <p>Click any stage to see what the code actually does in that step.</p>
+  <div class="arch-svg-wrap">
+    <svg viewBox="0 0 880 200" xmlns="http://www.w3.org/2000/svg" aria-label="Pipeline diagram" role="img">
+      <defs>
+        <marker id="arr" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L9,3 z" class="arch-arrow" />
+        </marker>
+      </defs>
+      <g class="arch-stage" data-stage="capture" tabindex="0" role="button" aria-label="Capture stage">
+        <rect x="20" y="60" width="180" height="80" rx="6"/>
+        <text x="110" y="92" text-anchor="middle" class="stage-name">Capture</text>
+        <text x="110" y="115" text-anchor="middle" class="stage-path">src/generate/</text>
+      </g>
+      <line x1="200" y1="100" x2="240" y2="100" stroke="#cbd5e0" stroke-width="2" marker-end="url(#arr)"/>
+      <g class="arch-stage" data-stage="anonymize" tabindex="0" role="button" aria-label="Anonymize stage">
+        <rect x="240" y="60" width="200" height="80" rx="6"/>
+        <text x="340" y="92" text-anchor="middle" class="stage-name">Anonymize</text>
+        <text x="340" y="115" text-anchor="middle" class="stage-path">src/anonymize/ (2 stages)</text>
+      </g>
+      <line x1="440" y1="100" x2="480" y2="100" stroke="#cbd5e0" stroke-width="2" marker-end="url(#arr)"/>
+      <g class="arch-stage" data-stage="store" tabindex="0" role="button" aria-label="Store stage">
+        <rect x="480" y="60" width="180" height="80" rx="6"/>
+        <text x="570" y="92" text-anchor="middle" class="stage-name">Store</text>
+        <text x="570" y="115" text-anchor="middle" class="stage-path">src/db/  (SQLite)</text>
+      </g>
+      <line x1="660" y1="100" x2="700" y2="100" stroke="#cbd5e0" stroke-width="2" marker-end="url(#arr)"/>
+      <g class="arch-stage" data-stage="insight" tabindex="0" role="button" aria-label="Insight stage">
+        <rect x="700" y="60" width="160" height="80" rx="6"/>
+        <text x="780" y="92" text-anchor="middle" class="stage-name">Insight</text>
+        <text x="780" y="115" text-anchor="middle" class="stage-path">src/agents/</text>
+      </g>
+    </svg>
+    <div id="arch-detail"></div>
+  </div>
+</section>
+
+<!-- ===================== ANONYMIZATION ===================== -->
+<section id="anonymization">
+  <h2>Anonymization: the dual-path pipeline</h2>
+
+  <div class="callout note" role="note">
+    <span class="num" aria-hidden="true">&#9888;</span>
+    <div class="copy">
+      <p><strong>Note: this is a partial implementation.</strong> Strategy doc &sect;8.2 specifies six anonymization techniques; this demo builds three of them &mdash; PAN tokenization, ZIP3 + hour-bucket generalization, and k-anonymity. The k threshold is set to <strong>k = 5</strong> rather than the spec's k &ge; 50 because the demo dataset (5,000 customers) is too small for k = 50 to leave usable data; the architecture supports any k.</p>
+      <p><strong>Not yet implemented:</strong> transaction amount binning, l-diversity within k-anonymous groups, &epsilon;-bounded differential privacy on aggregates, and low-volume entity suppression. Each is incremental work on the existing architecture rather than a rewrite &mdash; see <a href="../ARCHITECTURE.md">ARCHITECTURE.md</a> for the roadmap.</p>
+    </div>
+  </div>
+
+  <p class="lede">This is the strategically critical part. Two stages, two outputs, two purposes &mdash; and the only thing that lets a payments network do cross-merchant analytics without ever exposing a real human.</p>
+
+  <h3>Watch one customer flow through</h3>
+  <p>Click "Run Anonymization Pipeline" to step through what happens to one real customer's row as the data moves from raw &rarr; tenant &rarr; lake. The PAN is hashed, name and email vanish, and the ZIP5 truncates to ZIP3.</p>
+
+  <div class="anon-demo">
+    <div class="anon-cols">
+      <div class="anon-col raw active" id="anon-raw">
+        <h4>Raw &mdash; <code>data/raw/</code></h4>
+        <div class="anon-rows" id="anon-raw-rows"></div>
+      </div>
+      <div class="anon-col tenant" id="anon-tenant">
+        <h4>Tenant &mdash; <code>tenant_*</code></h4>
+        <div class="anon-rows" id="anon-tenant-rows"></div>
+      </div>
+      <div class="anon-col lake" id="anon-lake">
+        <h4>Lake &mdash; <code>lake_*</code></h4>
+        <div class="anon-rows" id="anon-lake-rows"></div>
+      </div>
+    </div>
+    <div class="anon-controls">
+      <button id="anon-run" class="btn">Run Anonymization Pipeline</button>
+      <button id="anon-replay" class="btn secondary" hidden>Replay</button>
+      <span id="anon-status" class="note"></span>
+    </div>
+  </div>
+
+  <h3>Stage 1 &mdash; Tenant processing</h3>
+  <ul>
+    <li><strong>Drop PII columns.</strong> <code>customer_name</code> and <code>customer_email</code> are removed entirely &mdash; they never appear in tenant output.</li>
+    <li><strong>Hash the PAN.</strong> <code>customer_id = sha256(secret + pan)[:16]</code>. Irreversible. Deterministic &mdash; the same PAN at any merchant produces the same 16-character hex string.</li>
+    <li><strong>Keep everything else.</strong> Full timestamps, full ZIP5, full basket detail, real prices. Tenant data is the merchant's own &mdash; granularity is preserved for their analytics.</li>
+  </ul>
+
+  <h3>Stage 2 &mdash; Lake processing</h3>
+  <ul>
+    <li><strong>Truncate ZIPs.</strong> <code>home_zip5</code> &rarr; <code>home_zip3</code>; <code>store_zip5</code> &rarr; <code>store_zip3</code>. ZIP3 covers ~100,000 people on average &mdash; too broad to identify individuals.</li>
+    <li><strong>Hour-bucket the timestamps.</strong> A new <code>txn_hour_bucket</code> column rounds every transaction down to the start of its hour, alongside the original timestamp.</li>
+    <li><strong>Collapse SKU detail to category.</strong> Lake transaction items are aggregated to <code>(txn_id, category)</code> &mdash; the lake doesn't need SKU-level snooping, and merchants get to keep their SKU-level patterns proprietary.</li>
+    <li><strong>k=5 anonymity.</strong> Group customers by <code>(age_band, income_band, home_zip3)</code>; any group with fewer than 5 customers has its <code>home_zip3</code> set to NULL.</li>
+  </ul>
+
+  <div class="callout">
+    <span class="num" id="suppressed-num">0</span>
+    <p class="copy"><strong>customers had their <code>home_zip3</code> suppressed by k=5</strong> on this run &mdash; meaning the cell that would have made them re-identifiable was set to NULL. The architecture supports any <em>k</em>; a production deployment per Strategy Doc &sect;8.2 would use k=50.</p>
+  </div>
+
+  <h3>And here's why all this work matters</h3>
+  <p>The hash is deterministic, so the same physical customer's <code>customer_id</code> is identical across all three merchants. That single fact is what makes cross-merchant joins possible in the lake &mdash; without ever holding a name, an email, or a usable card number anywhere in the database.</p>
+
+  <div class="venn-wrap">
+    <div>
+      <h4>Customer overlap across the three merchants</h4>
+      <p class="note">Click any region to see the cohort details.</p>
+      <svg class="venn-svg" viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg" aria-label="Customer-overlap Venn diagram" role="img">
+        <!-- Three circles -->
+        <circle class="venn-circle" cx="170" cy="170" r="110" fill="#1a4d7a" stroke="#1a4d7a"/>
+        <circle class="venn-circle" cx="310" cy="170" r="110" fill="#2c6ba0" stroke="#2c6ba0"/>
+        <circle class="venn-circle" cx="240" cy="270" r="110" fill="#4a90c2" stroke="#4a90c2"/>
+        <!-- Region click overlays (transparent, with hit-detection) -->
+        <g id="venn-regions" fill="transparent">
+          <circle class="venn-region" data-region="KRG"            cx="115" cy="135" r="35"/>
+          <circle class="venn-region" data-region="TBL"            cx="365" cy="135" r="35"/>
+          <circle class="venn-region" data-region="TJX"            cx="240" cy="320" r="35"/>
+          <circle class="venn-region" data-region="KRG,TBL"        cx="240" cy="135" r="32"/>
+          <circle class="venn-region" data-region="KRG,TJX"        cx="180" cy="240" r="32"/>
+          <circle class="venn-region" data-region="TBL,TJX"        cx="300" cy="240" r="32"/>
+          <circle class="venn-region" data-region="KRG,TBL,TJX"    cx="240" cy="200" r="35"/>
+        </g>
+        <!-- Static merchant labels (outside the diagram) -->
+        <text class="venn-label" x="60" y="50" text-anchor="middle" fill="#1a4d7a">Kroger</text>
+        <text class="venn-label" x="420" y="50" text-anchor="middle" fill="#2c6ba0">Taco Bell</text>
+        <text class="venn-label" x="240" y="355" text-anchor="middle" fill="#4a90c2">TJ Maxx</text>
+        <!-- Region count labels -->
+        <g id="venn-counts" fill="white" font-weight="700" font-size="14" text-anchor="middle"></g>
+      </svg>
+    </div>
+    <div class="venn-info" id="venn-info">
+      <h4>Click a region</h4>
+      <p class="note">Each region shows how many customers shop at exactly that combination of merchants in the panel. The center &mdash; "all three" &mdash; is the cohort the network is uniquely positioned to study.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== AGENTS ===================== -->
+<section id="agents" class="full-bleed">
+  <h2>The AI agents</h2>
+  <p class="lede">Strategy Doc &sect;10.2 enumerates seven AI agents. This prototype builds two &mdash; the Conversational Business Advisor in two flavors, one tenant-aware (Merchant Advisor) and one network-only (Network Analyst). The other five are noted as roadmap.</p>
+
+  <div class="agents-grid" id="agents-grid"></div>
+
+  <h3>Tool surface: who can see what</h3>
+  <p>The Merchant Advisor has access to its merchant's tenant data <em>and</em> the cross-merchant lake. The Network Analyst has access to the lake only &mdash; no tenant-table tool exists in its tool list, so the agent literally cannot query a single merchant's proprietary data even if asked. This is a real isolation barrier, not a polite request.</p>
+
+  <svg class="tool-access-svg" viewBox="0 0 580 240" aria-label="Agent tool access diagram" role="img">
+    <!-- Agent boxes -->
+    <rect x="20" y="40" width="180" height="60" rx="6" fill="#ebf3f9" stroke="#1a4d7a" stroke-width="2"/>
+    <text x="110" y="68" text-anchor="middle" font-weight="700" fill="#1a4d7a" font-size="14">Merchant Advisor</text>
+    <text x="110" y="86" text-anchor="middle" fill="#4a5568" font-size="11">acts as Kroger / TBL / TJX</text>
+    <rect x="20" y="140" width="180" height="60" rx="6" fill="#ebf3f9" stroke="#1a4d7a" stroke-width="2"/>
+    <text x="110" y="168" text-anchor="middle" font-weight="700" fill="#1a4d7a" font-size="14">Network Analyst</text>
+    <text x="110" y="186" text-anchor="middle" fill="#4a5568" font-size="11">payments-network role</text>
+    <!-- Tool boxes -->
+    <rect x="380" y="20" width="180" height="50" rx="6" fill="white" stroke="#1a4d7a" stroke-width="2"/>
+    <text x="470" y="40" text-anchor="middle" font-weight="600" fill="#1a4d7a" font-size="13">query_tenant</text>
+    <text x="470" y="58" text-anchor="middle" fill="#718096" font-size="11">tenant_* tables</text>
+    <rect x="380" y="95" width="180" height="50" rx="6" fill="white" stroke="#1a4d7a" stroke-width="2"/>
+    <text x="470" y="115" text-anchor="middle" font-weight="600" fill="#1a4d7a" font-size="13">query_lake</text>
+    <text x="470" y="133" text-anchor="middle" fill="#718096" font-size="11">lake_* tables (cross-merchant)</text>
+    <rect x="380" y="170" width="180" height="50" rx="6" fill="white" stroke="#1a4d7a" stroke-width="2"/>
+    <text x="470" y="190" text-anchor="middle" font-weight="600" fill="#1a4d7a" font-size="13">schema_info + chart_spec</text>
+    <text x="470" y="208" text-anchor="middle" fill="#718096" font-size="11">DDL and chart declarations</text>
+    <!-- Lines: Advisor -> all three -->
+    <line x1="200" y1="60" x2="380" y2="40" stroke="#1a4d7a" stroke-width="2"/>
+    <line x1="200" y1="70" x2="380" y2="115" stroke="#1a4d7a" stroke-width="2"/>
+    <line x1="200" y1="85" x2="380" y2="190" stroke="#1a4d7a" stroke-width="2"/>
+    <!-- Lines: Analyst -> lake + schema only (NOT tenant) -->
+    <line x1="200" y1="170" x2="380" y2="120" stroke="#1a4d7a" stroke-width="2"/>
+    <line x1="200" y1="180" x2="380" y2="190" stroke="#1a4d7a" stroke-width="2"/>
+    <!-- Forbidden line: Analyst -> tenant (with X) -->
+    <line x1="200" y1="155" x2="380" y2="50" stroke="#cbd5e0" stroke-width="1.5" stroke-dasharray="4,4"/>
+    <text x="290" y="98" fill="#c0392b" font-size="20" font-weight="700" text-anchor="middle">&times;</text>
+  </svg>
+  <p class="note">Solid lines: tools the agent can call. Dashed line with &times;: <code>query_tenant</code> is not in the analyst's tool list at the API layer &mdash; the model literally cannot emit a call to it.</p>
+
+  <h3>The SQL the agents actually run</h3>
+  <p>Every final answer the agents produce includes the exact SQL that backs it. Two examples below. (The agent's full transcript is rendered in the dashboard's expandable panel; here we show the synthesizing query only.)</p>
+
+  <div class="sql-block">
+    <h4>Merchant Advisor &mdash; "How does my basket size compare to peers?"</h4>
+    <p>Query against the lake. Returns one row per merchant in the panel &mdash; the merchant's own tenant query (separate, not shown here) gives the comparison anchor.</p>
+    <button class="show-sql-btn" data-target="sql-basket">Show the SQL</button>
+    <div class="sql-content" id="sql-basket"><pre><code id="sql-basket-code"></code></pre></div>
+  </div>
+
+  <div class="sql-block">
+    <h4>Network Analyst &mdash; "Customers active across all three merchants in 30 days"</h4>
+    <p>Pure lake query. Identifies the all-three cohort, then computes their average 30-day spend at each merchant. This is the query that produces the headline finding in the next section.</p>
+    <button class="show-sql-btn" data-target="sql-cross">Show the SQL</button>
+    <div class="sql-content" id="sql-cross"><pre><code id="sql-cross-code"></code></pre></div>
+  </div>
+</section>
+
+<!-- ===================== CROSS-MERCHANT INSIGHT ===================== -->
+<section id="insight">
+  <h2>The cross-merchant finding</h2>
+  <p>The Network Analyst answers a question no single merchant in the panel could:</p>
+  <div class="hero-callout">
+    <div class="number" id="cm-number">0</div>
+    <div class="label">customers shopped at <strong>all three</strong> merchants in the last 30 days. Their average 30-day spend:</div>
+    <div class="ratio-row">
+      <div class="ratio-card">
+        <div class="merchant">Kroger (grocery)</div>
+        <div class="amount" id="cm-krg">$0</div>
+        <div class="note">weekly fill / stocker</div>
+      </div>
+      <div class="ratio-card">
+        <div class="merchant">TJ Maxx (off-price retail)</div>
+        <div class="amount" id="cm-tjx">$0</div>
+        <div class="note">monthly browse</div>
+      </div>
+      <div class="ratio-card">
+        <div class="merchant">Taco Bell (QSR)</div>
+        <div class="amount" id="cm-tbl">$0</div>
+        <div class="note">low-ticket frequency</div>
+      </div>
+    </div>
+    <div class="ratio-bar" id="ratio-bar" aria-hidden="true">
+      <div class="seg-krg" id="ratio-krg">Kroger</div>
+      <div class="seg-tjx" id="ratio-tjx">TJ Maxx</div>
+      <div class="seg-tbl" id="ratio-tbl">Taco Bell</div>
+    </div>
+  </div>
+  <p>No single merchant in this panel could produce the number on the left of this callout: each one knows its own customer base but cannot tell which of those customers also shop at the other two without querying for them by name &mdash; which they don't have, and shouldn't have. A card network <em>could</em> count distinct cards across all three merchants but couldn't compute the average spend per merchant, because it lacks SKU-level basket data and per-merchant transaction context tied to a real customer concept rather than a card. The payments network in the strategic argument above is the only party that can produce this answer &mdash; and produce it without holding a single piece of personally identifiable information in the database that backs it.</p>
+</section>
+
+<!-- ===================== STATUS ===================== -->
+<section id="status" class="full-bleed">
+  <h2>What's built · What's deferred</h2>
+  <p class="lede">Honest accounting. The prototype is a vertical slice, not the production system.</p>
+  <div class="two-col">
+    <div>
+      <h3>Built today</h3>
+      <ul class="status-list">
+        <li>Three-merchant synthetic data generator with realistic basket / day / hour / pay-cycle / affinity behavior</li>
+        <li>Two-stage anonymization (tenant + lake) with deterministic SHA-256 hashing, ZIP3 truncation, hour bucketing, k=5 anonymity</li>
+        <li>SQLite database, dual-table-prefix design, foreign-keyed, indexed</li>
+        <li>Two AI agents (Merchant Advisor, Network Analyst) with tool-level isolation and a SELECT-only SQL guard</li>
+        <li>Streamlit dashboard with role selector, canned questions, free-text input, MOCK MODE for offline demos</li>
+        <li>69 passing tests covering generation, anonymization, DB integrity, and agent guard rails</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Deferred to roadmap</h3>
+      <ul class="status-list">
+        <li>The other 5 agents (Demand Forecasting, Dynamic Pricing, Location Intelligence, Payment Optimization, standalone Anomaly Detection) <span class="ref">Strategy &sect;10.2</span></li>
+        <li>k=50 anonymity (current k=5 documented in <code>ARCHITECTURE.md</code>) <span class="ref">Strategy &sect;8.2</span></li>
+        <li>l-diversity and differential-privacy noise (DP stub only) <span class="ref">Strategy &sect;8.2</span></li>
+        <li>Real-time pipeline (Kafka, Flink, sub-second latency) &mdash; current pipeline is batch <span class="ref">Strategy &sect;9</span></li>
+        <li>Real authn/authz for tenant isolation (currently enforced by SQL filtering, not access control) <span class="ref">Strategy &sect;8.3</span></li>
+        <li>Hardware/edge story (terminal simulator, P2PE ceremony, mTLS to cloud) <span class="ref">Strategy &sect;3&ndash;6</span></li>
+        <li>Annual seasonality (90-day window doesn't cover it)</li>
+        <li>Postgres or any DB more complex than SQLite</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CONCLUSION ===================== -->
+<section id="conclusion">
+  <h2>The argument, restated</h2>
+  <p>A payments company's strategic data asset isn't the payment metadata, and isn't the basket either. It's the join between them, anchored on an identity that's stable across merchants. Card networks can't write the basket query. POS vendors can't write the cross-merchant query. A payments network sitting on top of merchant data can write both &mdash; and the dual-path architecture demonstrated here is what lets it do so safely, without holding any data that could re-identify a real human.</p>
+  <p>This prototype is the floor of that vision, not the ceiling. The architectural shape &mdash; tenant tables for granular merchant analytics, lake tables for anonymized cross-merchant analytics, AI agents with role-appropriate tool access &mdash; is what scales to k=50, to billions of transactions per day, to seven agents, to real authn/authz, and to all the rest of the strategy doc. What's here is enough to make the argument concretely: 769 customers, $880 + $521 + $64, in &lt;15 seconds, from a database that holds no PII.</p>
+</section>
+
+</main>
+
+<!-- ===================== FOOTER ===================== -->
+<footer class="footer-block">
+  <div class="inner">
+    <p><strong>Synthetic data only.</strong> No real customers, real cards, or real merchants are involved. The merchant names are plausible-sounding stand-ins for grocery / QSR / off-price retail; this prototype is not affiliated with Kroger, Taco Bell, or TJ Maxx.</p>
+    <p><strong>Privacy implementation is partial</strong> &mdash; see the <a href="#anonymization">Anonymization section</a> for details.</p>
+    <p><span id="generated-at">&hellip;</span> &middot; See <a href="../ARCHITECTURE.md">ARCHITECTURE.md</a> for the full strategy-doc mapping and deferred-items list. Source code lives in <code>src/</code> and <code>tests/</code> &mdash; see <code>PLAN.md</code> for the build plan.</p>
+  </div>
+</footer>
+
+<!-- ===================== JAVASCRIPT ===================== -->
+<script>
+(function () {
+  'use strict';
+
+  // ---------- Tiny helpers ----------
+  const $  = (sel, ctx = document) => ctx.querySelector(sel);
+  const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
+  const fmt   = n => Number(n).toLocaleString();
+  const money = n => '$' + Number(n).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  const moneyR = n => '$' + Math.round(Number(n)).toLocaleString();
+  const escapeHtml = s => String(s).replace(/[&<>"']/g, ch =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+
+  const ACCENT = '#1a4d7a';
+  const PALETTE = { KRG: '#1a4d7a', TBL: '#e07b00', TJX: '#2f855a' };
+
+  // ---------- Boot ----------
+  let DATA = null;
+  document.addEventListener('DOMContentLoaded', async () => {
+    setupNavScrollSpy();
+    const banner = $('#loading-banner');
+    banner.hidden = false;
+    try {
+      const resp = await fetch('./report_data.json');
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      DATA = await resp.json();
+    } catch (err) {
+      // fetch from file:// is blocked in Chrome; fall back to the data preloaded
+      // by report_data.js (a <script> tag, which works under file://).
+      if (window.REPORT_DATA) {
+        DATA = window.REPORT_DATA;
+      } else {
+        banner.textContent = 'Could not load report data ('
+          + err.message + '). Run `make report` first.';
+        return;
+      }
+    }
+    banner.hidden = true;
+    render();
+  });
+
+  // ---------- Nav scroll spy ----------
+  function setupNavScrollSpy() {
+    const links = $$('#main-nav a[href^="#"]');
+    const targets = links.map(a => document.getElementById(a.getAttribute('href').slice(1)))
+                         .filter(Boolean);
+    if (!('IntersectionObserver' in window)) return;
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          links.forEach(l => l.classList.toggle('active',
+            l.getAttribute('href') === '#' + e.target.id));
+        }
+      });
+    }, { rootMargin: '-50% 0px -50% 0px' });
+    targets.forEach(t => obs.observe(t));
+  }
+
+  // ---------- Top-level render ----------
+  function render() {
+    setExecHeadline();
+    animateCounters();
+    renderMerchantTable();
+    renderAffinity();
+    renderTransactionCard();
+    renderSchema();
+    renderArchDetails();
+    renderAnonDemo();
+    renderSuppressedCallout();
+    renderVenn();
+    renderAgentsGrid();
+    renderSqlBlocks();
+    renderCrossMerchantHero();
+    renderCharts();
+    renderGeneratedAt();
+  }
+
+  // ---------- Exec headline (one sentence with live numbers) ----------
+  function setExecHeadline() {
+    const f = DATA.cross_merchant_finding;
+    const txt = `${f.n_customers_all_three} customers shopped at all three merchants in `
+      + `the last 30 days, with average spend ${moneyR(f.avg_spend_30d.kroger)} at Kroger, `
+      + `${moneyR(f.avg_spend_30d.tjmaxx)} at TJ Maxx, and ${moneyR(f.avg_spend_30d.tacobell)} `
+      + `at Taco Bell &mdash; from a database that holds no PII.`;
+    $('#headline-summary').innerHTML = txt;
+  }
+
+  // ---------- Animated stat counters ----------
+  function animateCounters() {
+    const targets = {
+      n_customers:    DATA.stats.n_customers,
+      n_transactions: DATA.stats.n_transactions,
+      n_line_items:   DATA.stats.n_line_items,
+      all_three_30d:  DATA.cross_merchant_finding.n_customers_all_three,
+    };
+    const els = $$('[data-counter]');
+    const start = performance.now();
+    const dur = 1500;
+    const ease = t => 1 - Math.pow(1 - t, 3);
+    function tick(now) {
+      const t = Math.min(1, (now - start) / dur);
+      const e = ease(t);
+      els.forEach(el => {
+        const target = targets[el.dataset.counter] || 0;
+        el.textContent = fmt(Math.round(target * e));
+      });
+      if (t < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  // ---------- Merchant table ----------
+  let tableState = { col: 'avg_basket_size', dir: -1 };
+  function renderMerchantTable() {
+    const tbody = $('#merchant-tbody');
+    const rows = [...DATA.merchants];
+    rows.sort(sortFor(tableState.col, tableState.dir));
+    tbody.innerHTML = rows.map(m => {
+      const mix = Object.entries(m.payment_mix)
+        .sort((a,b) => b[1] - a[1])
+        .map(([k,v]) => `${escapeHtml(k)} ${v}%`).join(' &middot; ');
+      return `<tr>
+        <td><strong>${escapeHtml(m.name)}</strong></td>
+        <td>${escapeHtml(m.segment)}</td>
+        <td class="num">${fmt(m.n_stores)}</td>
+        <td class="num">${fmt(m.n_customers)}</td>
+        <td class="num">${fmt(m.n_transactions)}</td>
+        <td class="num">${m.avg_basket_size}</td>
+        <td class="num">${money(m.avg_ticket)}</td>
+        <td><span class="note">${mix}</span></td>
+      </tr>`;
+    }).join('');
+    // Sort indicators: only the active column gets an arrow at full opacity.
+    // Non-sorted columns share the default '⇵' glyph that the CSS keeps hidden
+    // until hover (consistent appearance, self-explanatory affordance).
+    $$('#merchant-table th[data-sort]').forEach(th => {
+      th.classList.remove('sorted-asc', 'sorted-desc');
+      const arr = th.querySelector('.arrow');
+      if (th.dataset.sort === tableState.col) {
+        th.classList.add(tableState.dir === 1 ? 'sorted-asc' : 'sorted-desc');
+        if (arr) arr.textContent = tableState.dir === 1 ? '↑' : '↓';
+      } else if (arr) {
+        arr.textContent = '⇵';
+      }
+    });
+  }
+  $$('#merchant-table th[data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.sort;
+      if (tableState.col === col) tableState.dir *= -1;
+      else { tableState.col = col; tableState.dir = th.dataset.num ? -1 : 1; }
+      renderMerchantTable();
+    });
+  });
+  function sortFor(col, dir) {
+    return (a, b) => {
+      const av = a[col], bv = b[col];
+      if (typeof av === 'number') return (av - bv) * dir;
+      return String(av).localeCompare(String(bv)) * dir;
+    };
+  }
+
+  // ---------- Affinity grid ----------
+  function renderAffinity() {
+    $('#affinity-grid').innerHTML = DATA.affinity_pairs.map(p => `
+      <div class="affinity-item">
+        <span class="merchant-tag">${escapeHtml(p.merchant)}</span>
+        <span><strong>${escapeHtml(p.anchor)}</strong></span>
+        <span class="arrow">&rarr;</span>
+        <span>${escapeHtml(p.companion)}</span>
+        <span class="prob">P = ${p.prob.toFixed(2)}</span>
+      </div>
+    `).join('');
+  }
+
+  // ---------- Transaction card ----------
+  function renderTransactionCard() {
+    const t = DATA.example_transaction;
+    const total = money(t.txn_total);
+    const items = t.items.map(i => `<tr>
+      <td><code>${escapeHtml(i.sku)}</code></td>
+      <td>${escapeHtml(i.name)}</td>
+      <td class="num">${i.qty}</td>
+      <td class="num">${money(i.unit_price)}</td>
+      <td class="num">${money(i.line_total)}</td>
+    </tr>`).join('');
+    $('#txn-card').innerHTML = `
+      <div class="txn-header">
+        <div><dt>Transaction</dt><dd><code>${escapeHtml(t.txn_id)}</code></dd></div>
+        <div><dt>Merchant</dt><dd>${escapeHtml(t.merchant_name)} &middot; <code>${escapeHtml(t.store_id)}</code></dd></div>
+        <div><dt>Timestamp</dt><dd>${escapeHtml(t.txn_ts)}</dd></div>
+        <div><dt>Payment</dt><dd>${escapeHtml(t.payment_type)}${t.card_network ? ' &middot; ' + escapeHtml(t.card_network) : ''} &middot; ${escapeHtml(t.entry_mode)}</dd></div>
+      </div>
+      <div class="txn-items">
+        <table>
+          <thead><tr><th>SKU</th><th>Item</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Line total</th></tr></thead>
+          <tbody>${items}</tbody>
+        </table>
+      </div>
+      <div class="txn-total"><span>Total ${t.items.length} line items</span><span class="amount">${total}</span></div>
+    `;
+  }
+
+  // ---------- Schema grid ----------
+  function renderSchema() {
+    const groups = { shared: [], tenant: [], lake: [] };
+    DATA.schema.forEach(t => groups[t.layer].push(t));
+    const labels = { shared: 'Shared dimension', tenant: 'Tenant layer (per merchant, full granularity)', lake: 'Lake layer (anonymized aggregate)' };
+    $('#schema-grid').innerHTML = ['shared', 'tenant', 'lake'].map(layer => `
+      <div class="schema-group">
+        <h4>${escapeHtml(labels[layer])}</h4>
+        ${groups[layer].map(t => `
+          <div class="schema-table">
+            <div class="name">${escapeHtml(t.table)}</div>
+            <div class="cols">${t.columns.map(escapeHtml).join(', ')}</div>
+          </div>
+        `).join('')}
+      </div>
+    `).join('');
+  }
+
+  // ---------- Architecture diagram ----------
+  function renderArchDetails() {
+    const details = {
+      capture: {
+        title: 'Capture',
+        body: 'Three per-merchant generators (<code>kroger.py</code>, <code>taco_bell.py</code>, <code>tjmaxx.py</code>) call a parameterized basket model in <code>base.py</code>. They share a 5,000-customer panel from <code>customers.py</code>. PII is intentionally present at this stage so the anonymization step has something visible to strip.',
+        files: ['src/generate/customers.py', 'src/generate/base.py', 'src/generate/{kroger,taco_bell,tjmaxx}.py', 'src/generate/run_all.py'],
+        out: 'CSV files in <code>data/raw/</code>: customers, merchants, stores, products, transactions, transaction_items.',
+      },
+      anonymize: {
+        title: 'Anonymize (two stages)',
+        body: 'Stage 1 (<code>tenant.py</code>) drops PII columns and hashes the PAN to a 16-character <code>customer_id</code>. Stage 2 (<code>lake.py</code>) takes tenant output and additionally truncates ZIPs to ZIP3, adds an hour-bucketed timestamp, collapses items to category level, and applies k=5 anonymity to <code>(age_band, income_band, home_zip3)</code>.',
+        files: ['src/anonymize/hash.py', 'src/anonymize/tenant.py', 'src/anonymize/lake.py', 'src/anonymize/pipeline.py'],
+        out: 'CSV files in <code>data/anon/tenant/</code> and <code>data/anon/lake/</code>.',
+      },
+      store: {
+        title: 'Store',
+        body: 'A single SQLite file with two parallel table prefixes. Foreign keys enforced per-connection. Dropped and rebuilt on every <code>make seed</code> for idempotency.',
+        files: ['src/db/schema.sql', 'src/db/seed.py'],
+        out: '<code>data/payments.db</code> (~110 MB) with merchants, tenant_*, and lake_* tables.',
+      },
+      insight: {
+        title: 'Insight',
+        body: 'Two AI agents share an identical tool-use loop with a hard cap of 6 turns. The Merchant Advisor has tools for both layers; the Network Analyst has only the lake. A SELECT-only SQL guard runs before any DB connection opens; the tenant tool additionally requires a <code>WHERE merchant_id = \'X\'</code> predicate.',
+        files: ['src/agents/tools.py', 'src/agents/advisor.py', 'src/agents/analyst.py', 'src/agents/prompts/{advisor,analyst}.md', 'src/dashboard/app.py'],
+        out: 'Streamlit dashboard at <code>http://localhost:8501</code> with role selector and canned questions.',
+      },
+    };
+    let active = null;
+    $$('.arch-stage').forEach(g => {
+      g.addEventListener('click', () => {
+        const id = g.dataset.stage;
+        if (active === id) { hideArch(); return; }
+        active = id;
+        $$('.arch-stage').forEach(s => s.classList.toggle('active', s.dataset.stage === id));
+        const d = details[id];
+        const panel = $('#arch-detail');
+        panel.innerHTML = `
+          <h4>${escapeHtml(d.title)}</h4>
+          <p>${d.body}</p>
+          <p><strong>Files:</strong> ${d.files.map(f => `<code>${escapeHtml(f)}</code>`).join(' &middot; ')}</p>
+          <p><strong>Output:</strong> ${d.out}</p>
+        `;
+        panel.classList.add('show');
+      });
+      g.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); g.click(); }
+      });
+    });
+    function hideArch() {
+      active = null;
+      $$('.arch-stage').forEach(s => s.classList.remove('active'));
+      $('#arch-detail').classList.remove('show');
+    }
+  }
+
+  // ---------- Anonymization play demo ----------
+  function renderAnonDemo() {
+    const a = DATA.anonymization_demo;
+    function row(label, value, attrs = '') {
+      return `<div class="anon-row" ${attrs}>
+        <span class="label">${escapeHtml(label)}</span>${escapeHtml(String(value))}
+      </div>`;
+    }
+    function emptyRow(label) {
+      return `<div class="anon-row empty"><span class="label">${escapeHtml(label)}</span>&mdash;</div>`;
+    }
+    $('#anon-raw-rows').innerHTML = [
+      row('customer_pan', a.raw.customer_pan, 'data-key="pan"'),
+      row('customer_name', a.raw.customer_name, 'data-key="name"'),
+      row('customer_email', a.raw.customer_email, 'data-key="email"'),
+      row('age_band', a.raw.age_band),
+      row('income_band', a.raw.income_band),
+      row('home_zip5', a.raw.home_zip5, 'data-key="zip5-raw"'),
+    ].join('');
+    $('#anon-tenant-rows').innerHTML = [
+      emptyRow('customer_id'),
+      emptyRow('age_band'),
+      emptyRow('income_band'),
+      emptyRow('home_zip5'),
+    ].join('');
+    $('#anon-lake-rows').innerHTML = [
+      emptyRow('customer_id'),
+      emptyRow('age_band'),
+      emptyRow('income_band'),
+      emptyRow('home_zip3'),
+    ].join('');
+
+    $('#anon-run').addEventListener('click', playAnon);
+    $('#anon-replay').addEventListener('click', () => { renderAnonDemo(); playAnon(); });
+  }
+
+  function playAnon() {
+    const a = DATA.anonymization_demo;
+    const runBtn = $('#anon-run');
+    const replayBtn = $('#anon-replay');
+    const status = $('#anon-status');
+    runBtn.disabled = true; runBtn.textContent = 'Running…'; replayBtn.hidden = true;
+    status.textContent = 'Stage 1: dropping PII…';
+
+    const rawRows = $$('#anon-raw-rows .anon-row');
+    const nameRow  = rawRows.find(r => r.dataset.key === 'name');
+    const emailRow = rawRows.find(r => r.dataset.key === 'email');
+    const panRow   = rawRows.find(r => r.dataset.key === 'pan');
+    const zip5Raw  = rawRows.find(r => r.dataset.key === 'zip5-raw');
+
+    const tenantRows = $$('#anon-tenant-rows .anon-row');
+    const lakeRows = $$('#anon-lake-rows .anon-row');
+
+    setTimeout(() => { nameRow.classList.add('fading'); emailRow.classList.add('fading'); }, 200);
+    setTimeout(() => { nameRow.classList.add('removed'); emailRow.classList.add('removed'); }, 700);
+
+    setTimeout(() => {
+      status.textContent = 'Stage 1: hashing PAN…';
+      panRow.classList.add('hashing');
+      const final = a.tenant.customer_id;
+      const start = performance.now();
+      const dur = 700;
+      function flicker(now) {
+        const t = (now - start) / dur;
+        if (t >= 1) {
+          panRow.querySelector('.label').nextSibling
+            ? null : null;
+          panRow.innerHTML = `<span class="label">customer_pan &rarr; customer_id</span>${escapeHtml(final)}`;
+          // Move into tenant column
+          tenantRows[0].textContent = '';
+          tenantRows[0].innerHTML = `<span class="label">customer_id</span>${escapeHtml(final)}`;
+          tenantRows[0].classList.remove('empty');
+          tenantRows[1].innerHTML = `<span class="label">age_band</span>${escapeHtml(a.tenant.age_band)}`;
+          tenantRows[1].classList.remove('empty');
+          tenantRows[2].innerHTML = `<span class="label">income_band</span>${escapeHtml(a.tenant.income_band)}`;
+          tenantRows[2].classList.remove('empty');
+          tenantRows[3].innerHTML = `<span class="label">home_zip5</span>${escapeHtml(a.tenant.home_zip5)}`;
+          tenantRows[3].classList.remove('empty');
+          $('#anon-tenant').classList.add('active');
+          return;
+        }
+        const hex = '0123456789abcdef';
+        let s = '';
+        for (let i = 0; i < 16; i++) s += hex[Math.floor(Math.random() * 16)];
+        panRow.innerHTML = `<span class="label">customer_pan &rarr; customer_id</span>${s}`;
+        requestAnimationFrame(flicker);
+      }
+      requestAnimationFrame(flicker);
+    }, 900);
+
+    setTimeout(() => {
+      status.textContent = 'Stage 2: ZIP5 → ZIP3…';
+      lakeRows[0].innerHTML = `<span class="label">customer_id</span>${escapeHtml(a.lake.customer_id)}`;
+      lakeRows[0].classList.remove('empty');
+      lakeRows[1].innerHTML = `<span class="label">age_band</span>${escapeHtml(a.lake.age_band)}`;
+      lakeRows[1].classList.remove('empty');
+      lakeRows[2].innerHTML = `<span class="label">income_band</span>${escapeHtml(a.lake.income_band)}`;
+      lakeRows[2].classList.remove('empty');
+      lakeRows[3].innerHTML = `<span class="label">home_zip3 <span class="anon-annotation">ZIP5 &rarr; ZIP3</span></span>
+        <span class="original">${escapeHtml(a.tenant.home_zip5)}</span> &nbsp; ${escapeHtml(a.lake.home_zip3)}`;
+      lakeRows[3].classList.remove('empty');
+      lakeRows[3].classList.add('zip-truncating', 'show-zip-annotation');
+      $('#anon-lake').classList.add('active');
+    }, 2200);
+
+    setTimeout(() => {
+      status.textContent = 'Done.';
+      runBtn.textContent = 'Run Anonymization Pipeline';
+      replayBtn.hidden = false;
+    }, 3200);
+  }
+
+  // ---------- k-anon callout ----------
+  function renderSuppressedCallout() {
+    const n = DATA.stats.n_suppressed;
+    const el = $('#suppressed-num');
+    const start = performance.now();
+    const dur = 1200;
+    function tick(now) {
+      const t = Math.min(1, (now - start) / dur);
+      el.textContent = fmt(Math.round(n * (1 - Math.pow(1 - t, 3))));
+      if (t < 1) requestAnimationFrame(tick);
+    }
+    // Animate when scrolled into view
+    if ('IntersectionObserver' in window) {
+      const obs = new IntersectionObserver((entries) => {
+        entries.forEach(e => { if (e.isIntersecting) { requestAnimationFrame(tick); obs.disconnect(); } });
+      });
+      obs.observe(el);
+    } else { requestAnimationFrame(tick); }
+  }
+
+  // ---------- Venn ----------
+  function renderVenn() {
+    const set = DATA.customer_overlap.by_set;
+    const counts = $('#venn-counts');
+    const positions = [
+      { region: 'KRG',         x: 115, y: 145, label: 'Kroger only' },
+      { region: 'TBL',         x: 365, y: 145, label: 'Taco Bell only' },
+      { region: 'TJX',         x: 240, y: 320, label: 'TJ Maxx only' },
+      { region: 'KRG,TBL',     x: 240, y: 145, label: 'Kroger + Taco Bell' },
+      { region: 'KRG,TJX',     x: 175, y: 245, label: 'Kroger + TJ Maxx' },
+      { region: 'TBL,TJX',     x: 305, y: 245, label: 'Taco Bell + TJ Maxx' },
+      { region: 'KRG,TBL,TJX', x: 240, y: 210, label: 'All three' },
+    ];
+    counts.innerHTML = positions.map(p => `
+      <text x="${p.x}" y="${p.y + 5}" text-anchor="middle" fill="white" font-weight="700" font-size="14">
+        ${set[p.region] || 0}
+      </text>
+    `).join('');
+    $$('.venn-region').forEach(r => {
+      r.addEventListener('click', () => showVennInfo(r.dataset.region));
+      r.addEventListener('mouseenter', () => r.style.fillOpacity = '0.15');
+      r.addEventListener('mouseleave', () => r.style.fillOpacity = '0');
+    });
+    showVennInfo('KRG,TBL,TJX'); // default selection: the strategic cohort
+  }
+
+  function showVennInfo(region) {
+    $$('.venn-region').forEach(r => r.classList.toggle('active', r.dataset.region === region));
+    const set = DATA.customer_overlap.by_set;
+    const f = DATA.cross_merchant_finding;
+    const labels = {
+      'KRG': 'Kroger only',
+      'TBL': 'Taco Bell only',
+      'TJX': 'TJ Maxx only',
+      'KRG,TBL': 'Kroger + Taco Bell',
+      'KRG,TJX': 'Kroger + TJ Maxx',
+      'TBL,TJX': 'Taco Bell + TJ Maxx',
+      'KRG,TBL,TJX': 'All three (the strategic cohort)',
+    };
+    const n = set[region] || 0;
+    const traits = {
+      'KRG':         'Single-merchant grocery shoppers. The base loyalty cohort.',
+      'TBL':         'QSR-only customers. Often younger, weekday lunch and weekend evening.',
+      'TJX':         'Off-price retail only. Lowest visit cadence; weekend afternoon skew.',
+      'KRG,TBL':     'The everyday cohort &mdash; weekly grocery plus occasional QSR.',
+      'KRG,TJX':     'The household-managers cohort &mdash; grocery plus monthly retail browse.',
+      'TBL,TJX':     'Smaller cross-segment cohort, often urban / younger.',
+      'KRG,TBL,TJX': 'High-engagement cross-merchant customers. Visible only to the network.',
+    };
+    let extra = '';
+    if (region === 'KRG,TBL,TJX') {
+      const w = DATA.cross_merchant_finding.window_days;
+      extra = `
+        <h4>Last ${w} days &mdash; avg spend at each merchant</h4>
+        <dl>
+          <dt>Kroger</dt><dd>${moneyR(f.avg_spend_30d.kroger)}</dd>
+          <dt>TJ Maxx</dt><dd>${moneyR(f.avg_spend_30d.tjmaxx)}</dd>
+          <dt>Taco Bell</dt><dd>${moneyR(f.avg_spend_30d.tacobell)}</dd>
+        </dl>`;
+    }
+    $('#venn-info').innerHTML = `
+      <h4>${escapeHtml(labels[region])}</h4>
+      <dl><dt>Customers</dt><dd>${fmt(n)}</dd></dl>
+      <p style="margin-top: 12px; font-size: 0.92rem;">${traits[region]}</p>
+      ${extra}
+    `;
+  }
+
+  // ---------- Agents grid ----------
+  function renderAgentsGrid() {
+    $('#agents-grid').innerHTML = DATA.agents_status.map(a => {
+      const cls = 'status-' + a.status.toLowerCase();
+      return `<div class="agent-card">
+        <span class="agent-name">${escapeHtml(a.name)} <span class="note">${escapeHtml(a.section)}</span></span>
+        <span class="agent-status ${cls}">${escapeHtml(a.status)}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // ---------- SQL reveal ----------
+  function renderSqlBlocks() {
+    $('#sql-basket-code').innerHTML = highlightSQL(DATA.sql_basket_comparison);
+    $('#sql-cross-code').innerHTML  = highlightSQL(DATA.cross_merchant_finding.agent_sql);
+    $$('.show-sql-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = $('#' + btn.dataset.target);
+        target.classList.toggle('open');
+        btn.textContent = target.classList.contains('open') ? 'Hide the SQL' : 'Show the SQL';
+      });
+    });
+  }
+
+  function highlightSQL(sql) {
+    const KW = ['SELECT','FROM','WHERE','GROUP BY','ORDER BY','HAVING','WITH','AS','AND','OR','NOT','IN',
+                'LEFT','RIGHT','INNER','OUTER','JOIN','ON','USING','LIMIT','DISTINCT','CASE','WHEN','THEN','ELSE','END',
+                'BETWEEN','DESC','ASC','UNION','ALL'];
+    const FN = ['COUNT','SUM','AVG','ROUND','MIN','MAX','date','strftime','CAST'];
+    let out = escapeHtml(sql);
+    // Comments
+    out = out.replace(/(--[^\n]*)/g, '<span class="cmt">$1</span>');
+    // Strings
+    out = out.replace(/('[^']*')/g, '<span class="str">$1</span>');
+    // Numbers
+    out = out.replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="num">$1</span>');
+    // Tables
+    out = out.replace(/\b(tenant_\w+|lake_\w+|merchants)\b/g, '<span class="tbl">$1</span>');
+    // Functions
+    FN.forEach(fn => {
+      const re = new RegExp(`\\b(${fn})(?=\\s*\\()`, 'gi');
+      out = out.replace(re, '<span class="fn">$1</span>');
+    });
+    // Keywords
+    KW.sort((a,b) => b.length - a.length).forEach(kw => {
+      const re = new RegExp(`(?<!<span[^>]*>)\\b(${kw.replace(/ /g,'\\s+')})\\b(?![^<]*<\\/span>)`, 'gi');
+      out = out.replace(re, '<span class="kw">$1</span>');
+    });
+    return out;
+  }
+
+  // ---------- Cross-merchant hero callout ----------
+  function renderCrossMerchantHero() {
+    const f = DATA.cross_merchant_finding;
+    const krg = f.avg_spend_30d.kroger;
+    const tjx = f.avg_spend_30d.tjmaxx;
+    const tbl = f.avg_spend_30d.tacobell;
+    const total = krg + tjx + tbl;
+    $('#cm-number').textContent = fmt(f.n_customers_all_three);
+    $('#cm-krg').textContent = moneyR(krg);
+    $('#cm-tjx').textContent = moneyR(tjx);
+    $('#cm-tbl').textContent = moneyR(tbl);
+    // Use integer dollar amounts as flex-grow weights with flex-basis: 0 so
+    // segment widths are exactly proportional (Kroger ≈14× wider than Taco Bell).
+    $('#ratio-krg').style.flex = `${Math.round(krg)} 1 0`;
+    $('#ratio-tjx').style.flex = `${Math.round(tjx)} 1 0`;
+    $('#ratio-tbl').style.flex = `${Math.round(tbl)} 1 0`;
+    $('#ratio-krg').textContent = `Kroger ${moneyR(krg)}`;
+    $('#ratio-tjx').textContent = `TJ Maxx ${moneyR(tjx)}`;
+    // Smallest segment (~4.4%, ≈40px) is too narrow for a label; rely on the
+    // ratio-card row above for naming and use a tooltip on hover.
+    $('#ratio-tbl').textContent = '';
+    $('#ratio-tbl').setAttribute('title', `Taco Bell ${moneyR(tbl)}`);
+  }
+
+  // ---------- Charts ----------
+  function renderCharts() {
+    Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    Chart.defaults.font.size = 12;
+    Chart.defaults.color = '#4a5568';
+    Chart.defaults.plugins.legend.display = false;
+
+    renderRevenueByCategory();
+    renderDailyVolume();
+    renderHourCharts();
+    renderPayCycle();
+  }
+
+  function renderRevenueByCategory() {
+    // Inserted dynamically so Section 5 has it
+    const wrap = document.createElement('div');
+    wrap.className = 'chart-wrap';
+    wrap.innerHTML = `
+      <h3>Kroger revenue by category &mdash; click a bar for subcategory detail</h3>
+      <p class="note">Total Kroger line-item revenue across the 90-day window. SKU count per category in tooltips.</p>
+      <div class="chart-canvas"><canvas id="chart-revcat"></canvas></div>
+      <div id="revcat-detail" style="display:none; padding:14px 16px; background:#f7fafc; margin-top:12px; border-radius:6px; border-left:3px solid #1a4d7a;"></div>
+    `;
+    document.querySelector('#data .affinity-grid').insertAdjacentElement('beforebegin', wrap);
+
+    const cats = DATA.revenue_by_category_kroger;
+    const ctx = $('#chart-revcat').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: cats.map(c => c.category),
+        datasets: [{
+          data: cats.map(c => c.revenue),
+          backgroundColor: ACCENT,
+          borderRadius: 3,
+          maxBarThickness: 24,
+        }],
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const c = cats[ctx.dataIndex];
+                return [`${money(c.revenue)} revenue`, `${c.sku_count} SKUs in category`];
+              },
+            },
+          },
+        },
+        scales: {
+          x: { grid: { color: '#edf2f7' }, ticks: { callback: v => '$' + (v/1000).toFixed(0) + 'k' } },
+          y: { grid: { display: false } },
+        },
+        onClick: (e, els) => {
+          if (!els.length) return;
+          const c = cats[els[0].index];
+          const det = $('#revcat-detail');
+          det.style.display = 'block';
+          det.innerHTML = `<strong>${escapeHtml(c.category)}</strong> &mdash; ${money(c.revenue)} total
+            from ${c.sku_count} SKUs. Subcategory breakdown:<br>
+            <ul style="margin:6px 0 0 18px; font-size:0.92rem;">${
+              c.subcategories.slice(0, 8).map(s =>
+                `<li>${escapeHtml(s.subcategory)} &mdash; ${money(s.revenue)}</li>`).join('')
+            }</ul>`;
+        },
+      },
+    });
+  }
+
+  function renderDailyVolume() {
+    const data = DATA.daily_volume;
+    const labels = data.map(d => d.date);
+    const ctx = $('#chart-daily').getContext('2d');
+    const promoIdx = DATA.promo_days.map(p => labels.indexOf(p)).filter(i => i >= 0);
+    const dropoutStart = labels.indexOf(DATA.anomaly_window.start);
+    const dropoutEnd = labels.length - 1;
+
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Kroger',    data: data.map(d => d.kroger_count),    borderColor: PALETTE.KRG, backgroundColor: 'transparent', tension: 0.25, borderWidth: 1.6, pointRadius: 0, pointHoverRadius: 4 },
+          { label: 'Taco Bell', data: data.map(d => d.tacobell_count), borderColor: PALETTE.TBL, backgroundColor: 'transparent', tension: 0.25, borderWidth: 1.6, pointRadius: 0, pointHoverRadius: 4 },
+          { label: 'TJ Maxx',   data: data.map(d => d.tjmaxx_count),    borderColor: PALETTE.TJX, backgroundColor: 'transparent', tension: 0.25, borderWidth: 1.6, pointRadius: 0, pointHoverRadius: 4 },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+        plugins: { tooltip: { callbacks: { title: (items) => items[0].label } } },
+        scales: {
+          x: { ticks: { maxTicksLimit: 12, autoSkip: true }, grid: { display: false } },
+          y: { grid: { color: '#edf2f7' }, beginAtZero: true },
+        },
+      },
+      plugins: [{
+        id: 'annotations',
+        // Drawn behind data points (`beforeDatasetsDraw`) so the lake-window
+        // shading sits under the lines rather than washing them out.
+        beforeDatasetsDraw: (chart) => {
+          const ctx = chart.ctx;
+          const xs = chart.scales.x;
+          const ys = chart.scales.y;
+          ctx.save();
+
+          // Last-7-days window: translucent red filled rectangle.
+          if (dropoutStart >= 0 && dropoutEnd > dropoutStart) {
+            const x1 = xs.getPixelForValue(dropoutStart);
+            const x2 = xs.getPixelForValue(dropoutEnd);
+            ctx.fillStyle = 'rgba(220, 38, 38, 0.08)';
+            ctx.fillRect(x1, ys.top, x2 - x1, ys.bottom - ys.top);
+          }
+
+          // Promo days: orange dashed vertical lines.
+          ctx.strokeStyle = 'rgba(224, 123, 0, 0.75)';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([4, 4]);
+          promoIdx.forEach(i => {
+            const x = xs.getPixelForValue(i);
+            ctx.beginPath();
+            ctx.moveTo(x, ys.top);
+            ctx.lineTo(x, ys.bottom);
+            ctx.stroke();
+          });
+          ctx.setLineDash([]);
+          ctx.restore();
+        },
+      }],
+    });
+
+    $('#legend-daily').innerHTML = [
+      { label: 'Kroger',    kind: 'fill',   color: PALETTE.KRG },
+      { label: 'Taco Bell', kind: 'fill',   color: PALETTE.TBL },
+      { label: 'TJ Maxx',   kind: 'fill',   color: PALETTE.TJX },
+      { label: 'Promo days',          kind: 'dashed', color: '#e07b00' },
+      { label: 'Last-7-days window',  kind: 'window' },
+    ].map(({label, kind, color}) => {
+      if (kind === 'dashed') {
+        return `<span><span class="swatch dashed-line" style="color:${color}"></span>${label}</span>`;
+      }
+      if (kind === 'window') {
+        return `<span><span class="swatch window-rect"></span>${label}</span>`;
+      }
+      return `<span><span class="swatch" style="background:${color}"></span>${label}</span>`;
+    }).join('');
+  }
+
+  function renderHourCharts() {
+    const dist = DATA.hour_distribution;
+    const max = Math.max(...dist.flatMap(d => [d.kroger_pct, d.tacobell_pct, d.tjmaxx_pct]));
+    const yMax = Math.ceil(max);
+
+    const merchants = [
+      { id: 'kroger',   name: 'Kroger',   subtitle: 'evening + weekend-morning peak', key: 'kroger_pct',   color: PALETTE.KRG },
+      { id: 'tacobell', name: 'Taco Bell', subtitle: 'lunch + dinner double peak',     key: 'tacobell_pct', color: PALETTE.TBL },
+      { id: 'tjmaxx',   name: 'TJ Maxx',  subtitle: 'weekend-afternoon shape',         key: 'tjmaxx_pct',   color: PALETTE.TJX },
+    ];
+    $('#hour-charts').innerHTML = merchants.map(m => `
+      <div class="small-mult">
+        <h4>${m.name}</h4>
+        <div class="subtitle">${m.subtitle}</div>
+        <div class="small-mult-canvas"><canvas id="chart-hour-${m.id}"></canvas></div>
+      </div>
+    `).join('');
+    merchants.forEach(m => {
+      new Chart($('#chart-hour-' + m.id).getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: dist.map(d => d.hour),
+          datasets: [{ data: dist.map(d => d[m.key]), backgroundColor: m.color, borderRadius: 2, maxBarThickness: 12 }],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { tooltip: { callbacks: { label: (ctx) => `${ctx.parsed.y.toFixed(1)}% of transactions in hour ${ctx.label}` } } },
+          scales: {
+            x: { grid: { display: false }, ticks: { autoSkip: true, maxTicksLimit: 8 } },
+            y: { grid: { color: '#edf2f7' }, beginAtZero: true, max: yMax,
+                 ticks: { callback: v => v + '%' } },
+          },
+        },
+      });
+    });
+  }
+
+  function renderPayCycle() {
+    const data = DATA.pay_cycle;
+    new Chart($('#chart-paycycle').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: data.map(d => d.bucket),
+        datasets: [
+          { label: 'Kroger',    data: data.map(d => d.kroger_avg),    backgroundColor: PALETTE.KRG, borderRadius: 3, maxBarThickness: 36 },
+          { label: 'Taco Bell', data: data.map(d => d.tacobell_avg), backgroundColor: PALETTE.TBL, borderRadius: 3, maxBarThickness: 36 },
+          { label: 'TJ Maxx',   data: data.map(d => d.tjmaxx_avg),    backgroundColor: PALETTE.TJX, borderRadius: 3, maxBarThickness: 36 },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: true, position: 'top', labels: { boxWidth: 12, padding: 14 } } },
+        scales: {
+          x: { grid: { display: false } },
+          y: { grid: { color: '#edf2f7' }, beginAtZero: true, title: { display: true, text: 'avg transactions / day' } },
+        },
+      },
+    });
+  }
+
+  function renderGeneratedAt() {
+    const ts = DATA.generated_at.replace('T', ' ').replace(/:\d\d$/, '');
+    $('#generated-at').textContent = `Report generated ${ts}.`;
+  }
+})();
+</script>
+
+</body>
+</html>

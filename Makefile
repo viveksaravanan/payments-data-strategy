@@ -1,11 +1,16 @@
-.PHONY: seed demo test clean
+.PHONY: seed demo test clean report
 
 seed:
 	uv run python -m src.generate.run_all
 	uv run python -m src.anonymize.pipeline
 	uv run python -m src.db.seed
 
-demo: seed
+report:
+	uv run python scripts/generate_report_data.py
+	@echo
+	@echo "Interactive report: file://$(PWD)/docs/report.html"
+
+demo: seed report
 	uv run streamlit run src/dashboard/app.py
 
 test:
