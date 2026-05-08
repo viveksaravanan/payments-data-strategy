@@ -138,11 +138,13 @@ At default settings, expected output:
 | TJ Maxx | 2,000 (40% × 5k) | 0.35 | ~9,000 | 4 | ~36,000 |
 | **Totals** | **5,000 unique** | — | **~109,300** | — | **~962,000** |
 
-Customer overlap (controlled by participation rates):
-- All three merchants: ~1,080 customers (90% × 60% × 40% × 5,000)
-- Exactly two merchants: ~1,860 customers
-- Exactly one merchant: ~1,860 customers
-- Zero merchants: ~200 customers (in the panel but never transact in the window — realistic)
+Customer overlap (measured from the regenerated `data/payments.db`):
+- All three merchants: **1,070** customers
+- Exactly two merchants: **2,456** customers
+- Exactly one merchant: **1,347** customers
+- Zero merchants: **127** customers (in the panel but never transact in the window — realistic)
+
+These differ from independent-probability calculations (90% × 60% × 40% = 21.6% for all-three; ~1,080 expected) because customer behavioral segments correlate across merchants — a stocker who shops at Kroger is more likely to also shop at TJ Maxx than chance would predict, and the `participation_rate` parameters are not drawn independently per merchant.
 
 **Storage:** SQLite `payments.db` ≈ 200 MB. **Generation runtime target:** under 30 seconds. **DB seeding target:** under 15 seconds.
 
@@ -324,7 +326,7 @@ Per `MERCHANT_CONFIGS[m]["payment_mix"]`. Sampled per transaction.
 
 **Entry mode** (of card transactions): contactless 65%, chip 30%, swipe 5%. Reflects modern terminal capability with legacy fallback.
 
-**EBT-specific rule:** EBT-ineligible items are flagged at the SKU level via the `ebt_eligible` field in the catalog JSON files (`data/catalogs/kroger/*.json`). Examples of ineligible items: hot prepared foods (e.g. rotisserie chicken), alcohol, household goods, personal care, pet supplies. Most basic grocery items including fresh produce, dairy, eggs, bread, and meat are eligible. The basket sampler filters to `ebt_eligible == 1` for EBT transactions and re-normalizes category weights over the remaining categories — so EBT baskets have a realistic composition shift toward Pantry / Produce / Dairy.
+**EBT-specific rule:** EBT-ineligible items are flagged at the SKU level via the `ebt_eligible` field in the catalog JSON files (`data/catalogs/kroger/*.json`). Examples of ineligible items: hot prepared foods (e.g. rotisserie chicken), alcohol, household goods, personal care, pet supplies. Most basic grocery items including fresh produce, dairy, eggs, bread, and meat are eligible. The basket sampler filters to `ebt_eligible == 1` for EBT transactions and re-normalizes category weights over the remaining categories — so EBT baskets have a realistic composition shift toward Pantry / Produce / Dairy. **873 of 1,112** Kroger SKUs are currently EBT-eligible.
 
 ---
 
