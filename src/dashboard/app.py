@@ -8,26 +8,20 @@ a dataframe, and an optional chart.
 """
 from __future__ import annotations
 
-import sys
 from pathlib import Path
-
-# Streamlit launches `app.py` as a script (its sys.path includes the dashboard
-# dir), not as `python -m`, so the project root is missing — add it explicitly
-# so `from src.*` imports resolve.
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 # Load `.env` BEFORE importing the agents — they read ANTHROPIC_API_KEY at
 # construction time. (They also call `load_dotenv()` themselves; doing it here
 # too is harmless and makes the dashboard's dependency on `.env` explicit.)
-from dotenv import load_dotenv  # noqa: E402
+from dotenv import load_dotenv
 
 load_dotenv()
 
-import pandas as pd  # noqa: E402
-import streamlit as st  # noqa: E402
+import pandas as pd
+import streamlit as st
 
-from src.agents.advisor import MAX_TURNS, MerchantAdvisor  # noqa: E402
-from src.agents.analyst import NetworkAnalyst  # noqa: E402
+from src.agents.advisor import MAX_TURNS, MerchantAdvisor
+from src.agents.analyst import NetworkAnalyst
 
 ROOT = Path(__file__).resolve().parents[2]
 DB_PATH = ROOT / "data" / "payments.db"

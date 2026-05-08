@@ -16,16 +16,15 @@ from pathlib import Path
 
 import pandas as pd
 
+from src.anonymize.hash import customer_id_for
+from src.generate.parameters import END_DATE, MERCHANT_CONFIGS, START_DATE
+
 ROOT = Path(__file__).resolve().parents[1]
 DB = ROOT / "data" / "payments.db"
 RAW_CUSTOMERS = ROOT / "data" / "raw" / "customers.csv"
 RAW_TXNS = ROOT / "data" / "raw" / "transactions.csv"
 OUT = ROOT / "docs" / "report_data.json"
 OUT_JS = ROOT / "docs" / "report_data.js"
-
-sys.path.insert(0, str(ROOT))
-from src.anonymize.hash import customer_id_for  # noqa: E402
-from src.generate.parameters import END_DATE, MERCHANT_CONFIGS, START_DATE  # noqa: E402
 
 MERCHANT_KEYS = {"KRG": "kroger", "TBL": "tacobell", "TJX": "tjmaxx"}
 

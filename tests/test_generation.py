@@ -3,6 +3,7 @@
 Includes the cross-merchant ``customer_pan`` invariant (DATA.md §11) and the
 EBT-only-at-Kroger rule (DATA.md §3, §10).
 """
+from datetime import timedelta
 from pathlib import Path
 
 import numpy as np
@@ -150,3 +151,142 @@ def test_ebt_only_at_kroger(transactions: pd.DataFrame) -> None:
 def test_no_ebt_at_taco_bell_or_tjmaxx(transactions: pd.DataFrame) -> None:
     non_kroger = transactions[transactions["merchant_id"].isin(["TBL", "TJX"])]
     assert (non_kroger["payment_type"] != "ebt").all()
+
+
+# ---------------------------------------------------------------------------
+# v2 regression tests — realistic catalog and planted anomalies
+# ---------------------------------------------------------------------------
+
+import sqlite3  # noqa: E402
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+_DB_PATH = ROOT_DIR / "data" / "payments.db"
+
+
+def _conn() -> sqlite3.Connection:
+    return sqlite3.connect(f"file:{_DB_PATH}?mode=ro", uri=True)
+
+
+def test_no_placeholder_kroger_names() -> None:
+    """After the JSON-catalog rewrite, no Kroger product should have a
+    placeholder name like 'Pet item 0042' or 'Bakery item 0010'."""
+    with _conn() as conn:
+        n = conn.execute(
+            "SELECT COUNT(*) FROM tenant_products "
+            "WHERE merchant_id='KRG' AND (name LIKE '%item%' OR name LIKE '%Item%')"
+        ).fetchone()[0]
+    assert n == 0, f"{n} Kroger products still have placeholder names containing 'item'"
+
+
+def test_planted_anomalies_present() -> None:
+    """All three planted anomalies should be detectable in the regenerated DB.
+    Lookups are by name / query, not by hard-coded SKU or store ID, so the
+    test stays valid as catalog details shift."""
+    with _conn() as conn:
+        # (a) Avocado price spike: max unit_price >> 4x min for that SKU's lines.
+        sku_row = conn.execute(
+            "SELECT sku FROM tenant_products "
+            "WHERE merchant_id='KRG' AND name='Avocados (4-pack)'"
+        ).fetchone()
+        assert sku_row is not None, "Avocados (4-pack) SKU not found in tenant_products"
+        avocado_sku = sku_row[0]
+        prices = conn.execute(
+            "SELECT MAX(unit_price), MIN(unit_price) "
+            "FROM tenant_transaction_items WHERE sku = ?",
+            (avocado_sku,),
+        ).fetchone()
+        assert prices[1] > 0, "Avocado SKU has no transactions"
+        ratio = prices[0] / prices[1]
+        assert ratio > 4, (
+            f"Anomaly 1 missing: avocado max/min unit_price ratio = {ratio:.2f}, "
+            f"expected > 4 (5x spike day)"
+        )
+
+        # (b) Largest 7-day-over-7-day decline: query for the worst-performing
+        # Kroger store, no hard-coded ID. Window: last 7 days vs prior 7 days
+        # of the data window (which ends 2026-05-05).
+        end = P.END_DATE
+        last7_start = (end - timedelta(days=6)).isoformat()
+        prior7_start = (end - timedelta(days=13)).isoformat()
+        worst = conn.execute(
+            f"""
+            WITH last7 AS (
+                SELECT store_id, COUNT(*) AS n FROM tenant_transactions
+                WHERE merchant_id='KRG' AND txn_ts >= '{last7_start}'
+                GROUP BY store_id
+            ),
+            prior7 AS (
+                SELECT store_id, COUNT(*) AS n FROM tenant_transactions
+                WHERE merchant_id='KRG'
+                  AND txn_ts >= '{prior7_start}' AND txn_ts < '{last7_start}'
+                GROUP BY store_id
+            )
+            SELECT s.store_id,
+                   COALESCE(p.n, 0) AS prior_n,
+                   COALESCE(l.n, 0) AS last_n,
+                   CAST(COALESCE(l.n, 0) AS REAL) / NULLIF(COALESCE(p.n, 0), 0) AS ratio
+            FROM tenant_stores s
+            LEFT JOIN last7  l USING(store_id)
+            LEFT JOIN prior7 p USING(store_id)
+            WHERE s.merchant_id='KRG' AND COALESCE(p.n, 0) > 50
+            ORDER BY ratio ASC
+            LIMIT 1
+            """
+        ).fetchone()
+        assert worst is not None, "No Kroger store has enough prior-week traffic to compare"
+        assert worst[3] is not None and worst[3] <= 0.75, (
+            f"Anomaly 2 missing: worst Kroger store ({worst[0]}) had ratio "
+            f"{worst[3]:.2f} (last={worst[2]}, prior={worst[1]}); expected <= 0.75"
+        )
+
+        # (c) Baby cohort surge: customers buying BABY items in last 21 days
+        # who never bought BABY before that.
+        cutoff = (end - timedelta(days=20)).isoformat()
+        new_buyers = conn.execute(
+            f"""
+            SELECT COUNT(DISTINCT t.customer_id)
+            FROM tenant_transactions t
+            JOIN tenant_transaction_items i ON i.txn_id = t.txn_id
+            JOIN tenant_products p ON p.sku = i.sku
+            WHERE t.merchant_id='KRG'
+              AND p.category='BABY'
+              AND t.txn_ts >= '{cutoff}'
+              AND t.customer_id NOT IN (
+                  SELECT DISTINCT t2.customer_id
+                  FROM tenant_transactions t2
+                  JOIN tenant_transaction_items i2 ON i2.txn_id = t2.txn_id
+                  JOIN tenant_products p2 ON p2.sku = i2.sku
+                  WHERE t2.merchant_id='KRG'
+                    AND p2.category='BABY'
+                    AND t2.txn_ts < '{cutoff}'
+              )
+            """
+        ).fetchone()[0]
+        assert new_buyers >= 30, (
+            f"Anomaly 3 missing: only {new_buyers} new baby buyers in last 21 days; "
+            f"expected >= 30"
+        )
+
+
+def test_kroger_category_distribution_realistic() -> None:
+    """Top 4 categories at Kroger by 90-day revenue should come from the
+    'staples' set (MEAT, PANTRY, PRODUCE, DAIRY, BEVERAGES, FROZEN). The
+    test fails if PET, BABY, or PERSONAL appears in the top 4 — those would
+    indicate uniform-by-SKU sampling has been re-introduced."""
+    allowed = {"MEAT", "PANTRY", "PRODUCE", "DAIRY", "BEVERAGES", "FROZEN"}
+    with _conn() as conn:
+        rows = conn.execute(
+            """
+            SELECT p.category
+            FROM tenant_transaction_items i
+            JOIN tenant_products p ON p.sku = i.sku
+            JOIN tenant_transactions t ON t.txn_id = i.txn_id
+            WHERE t.merchant_id='KRG'
+            GROUP BY p.category
+            ORDER BY SUM(i.line_total) DESC
+            LIMIT 4
+            """
+        ).fetchall()
+    top4 = {r[0] for r in rows}
+    leaks = top4 - allowed
+    assert not leaks, f"Top 4 Kroger categories include {leaks}, expected subset of {allowed}"
