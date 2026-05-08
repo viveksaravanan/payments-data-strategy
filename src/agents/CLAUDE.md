@@ -10,7 +10,7 @@ The shared loop is in each agent file rather than abstracted out — the duplica
 
 ## Hard rules
 
-- **`query_tenant` enforces tenant isolation.** Every query must include `WHERE merchant_id = '<current_merchant>'` (or join on `merchants` with the same predicate). Queries lacking the predicate are rejected before execution. The check lives in `tools.run_tenant_query`. If you modify it, update `tests/test_agents.py::test_tenant_isolation`.
+- **`query_tenant` enforces tenant isolation.** Every query must include `WHERE merchant_id = '<current_merchant>'` (or join on `merchants` with the same predicate). Queries lacking the predicate are rejected before execution. The check lives in `tools.query_tenant`. If you modify it, update `tests/test_agents.py::test_tenant_isolation`.
 - **All SQL tools are SELECT-only.** Reject anything that is not a single SELECT statement before executing — regex check, before any DB connection. Never trust the model to self-restrict.
 - **`MAX_TURNS = 6`.** Hard cap. If the loop hasn't terminated, return what the agent has and surface "didn't converge" in the dashboard. Don't raise without adding a regression test.
 - **Final answers must include the SQL.** The dashboard renders it in an expander. The agent's answer is not trustworthy without it.

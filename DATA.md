@@ -65,15 +65,15 @@ MERCHANT_CONFIGS = {
         "n_stores":               25,
         "participation_rate":     0.90,         # of N_CUSTOMERS who shop here
         "txn_per_week":           1.2,          # mean; bimodal underneath
-        "avg_basket_size":        12,           # items per transaction
-        "avg_ticket":             65.00,        # USD
+        "avg_basket_size":        12,           # see footnote below
         "promo_lift":             1.6,          # multiplier on promo days
         "payment_mix":            {"credit": 0.55, "debit": 0.30, "ebt": 0.10, "cash": 0.05},
         "wallet_share":           0.20,         # of card txns with mobile wallet
-        "n_skus":                 1500,
+        "n_skus":                 1112,
         "organic_share":          0.18,
         "peak_days":              [5, 6],        # Sat, Sun (Mon=0)
         "peak_hours":             [10, 11, 17, 18, 19],
+        "category_weights":       { ... },       # see footnote below; sums to 1.00
     },
     "taco_bell": {
         "merchant_id":           "TBL",
@@ -84,7 +84,6 @@ MERCHANT_CONFIGS = {
         "participation_rate":     0.60,
         "txn_per_week":           0.8,
         "avg_basket_size":        3,
-        "avg_ticket":             9.00,
         "promo_lift":             1.3,
         "payment_mix":            {"credit": 0.50, "debit": 0.40, "cash": 0.10},
         "wallet_share":           0.30,         # QSR over-indexes on contactless
@@ -102,7 +101,6 @@ MERCHANT_CONFIGS = {
         "participation_rate":     0.40,
         "txn_per_week":           0.35,         # ~1 visit every 2-3 weeks
         "avg_basket_size":        4,
-        "avg_ticket":             55.00,
         "promo_lift":             1.2,
         "payment_mix":            {"credit": 0.70, "debit": 0.25, "cash": 0.05},
         "wallet_share":           0.15,
@@ -119,7 +117,13 @@ MERCHANT_CONFIGS = {
 - **EBT only at Kroger.** SNAP rules generally exclude QSR and apparel retail. Taco Bell and TJ Maxx have no EBT key in `payment_mix`. Generation must respect this — the test suite checks for it.
 - **Wallet share varies by segment.** QSR (30%) > grocery (20%) > retail (15%), reflecting real industry contactless adoption.
 - **Peak hours differ.** Grocery peaks evenings + weekend mornings; QSR peaks lunch + dinner; retail peaks weekend afternoons.
-- **Catalog size scales with segment.** Real Kroger has ~40k SKUs; we use 1,500. Real Taco Bell has ~60 menu items; we use 60. TJ Maxx products are one-off; we use 200 generic categorical SKUs.
+- **Catalog size scales with segment.** Real Kroger has ~40k SKUs; we use 1,112 (loaded from per-category JSON files at `data/catalogs/kroger/`). Real Taco Bell has ~60 menu items; we use 60. TJ Maxx products are one-off; we use 200 generic categorical SKUs.
+
+**Footnotes on parameter semantics:**
+
+- **`avg_ticket` is not a parameter.** Ticket size emerges from `base_price × bimodal_basket_size × price_noise`. Typical observed values: Kroger ~$50–65 filler / $200+ stocker basket, Taco Bell ~$8–15, TJ Maxx ~$40–300 depending on basket composition. Don't treat ticket size as a knob — adjust base prices in the catalog or basket-size parameters instead.
+- **`avg_basket_size` anchors the lower mode of the bimodal basket-size distribution.** The actual mean basket is approximately `avg_basket_size × 1.3` because of stocker-mode mixing (≈30% of customers behave as stockers, drawing larger baskets that pull the overall mean up).
+- **`category_weights` (Kroger only)** is a `dict[category, float]` summing to 1.00 — basket-share weights, i.e. the probability that any given basket-item is from each category. Demand-weighted (not catalog-size-weighted) so small catalogs like Pet/Baby don't over-represent in the top-revenue leaderboard. Current weights: PRODUCE 0.15, DAIRY 0.13, BAKERY 0.05, MEAT 0.11, FROZEN 0.08, PANTRY 0.18, SNACKS 0.07, BEVERAGES 0.10, HOUSEHOLD 0.05, PERSONAL 0.04, BABY 0.02, PET 0.02. EBT transactions renormalize over EBT-eligible categories.
 
 ---
 
@@ -297,7 +301,7 @@ Three deliberate signals the AI agent finds when asked. **All three are at Kroge
 
 | # | Anomaly | Location | Window | How agent finds it |
 |---|---|---|---|---|
-| 1 | Price spike: SKU `KRG-PRODUCE-0042` (Avocados, 4-pack) at 5× base price | Kroger, all stores | One specific day in last 7 days | "Any unusual price moves recently?" |
+| 1 | Price spike: the **Avocados (4-pack)** SKU at 5× base price (resolved by name lookup at run time — `KRG-PRODUCE-NNNN` index depends on JSON ordering) | Kroger, all stores | One specific day in last 7 days | "Any unusual price moves recently?" |
 | 2 | Store dropout: store `KRG-OH-0011` transaction count cut by 30% | Single Kroger store | Last 7 days | "Have any of my stores seen a drop in transaction count recently?" |
 | 3 | Cohort surge: ~50 customers start buying baby SKUs they hadn't before | Kroger panel-wide | Last 21 days | "Any emerging customer segments this month?" / "What new patterns have you seen?" |
 
@@ -320,7 +324,7 @@ Per `MERCHANT_CONFIGS[m]["payment_mix"]`. Sampled per transaction.
 
 **Entry mode** (of card transactions): contactless 65%, chip 30%, swipe 5%. Reflects modern terminal capability with legacy fallback.
 
-**EBT-specific rule:** EBT transactions exclude prepared foods. Implemented by filtering the basket sampler — when payment_type is EBT, exclude SKUs with category `bakery` (some prepared) and explicitly mark certain SKUs as EBT-ineligible. This makes the data more credible and gives the agent a real pattern to find ("EBT customers have different basket composition").
+**EBT-specific rule:** EBT-ineligible items are flagged at the SKU level via the `ebt_eligible` field in the catalog JSON files (`data/catalogs/kroger/*.json`). Examples of ineligible items: hot prepared foods (e.g. rotisserie chicken), alcohol, household goods, personal care, pet supplies. Most basic grocery items including fresh produce, dairy, eggs, bread, and meat are eligible. The basket sampler filters to `ebt_eligible == 1` for EBT transactions and re-normalizes category weights over the remaining categories — so EBT baskets have a realistic composition shift toward Pantry / Produce / Dairy.
 
 ---
 
@@ -349,3 +353,35 @@ For any single physical customer in the panel, the value of `customer_pan` is **
 If you genuinely need to re-randomize for some reason: change the seed, re-run, expect to update the deterministic-hash test fixture. Don't change the seed for "variety" — a stable demo is more valuable than a varied one.
 
 When generating in `base.py`, take a `numpy.random.Generator` argument seeded once at the top level. Don't call `np.random.*` directly anywhere — that uses the global state and breaks reproducibility.
+
+---
+
+## 13. Strategy Doc §5.2 Field Mapping
+
+Comparison of fields specified in strategy doc §5.2 ("On-Device Data Capture: The Unified Transaction Record") against what the demo actually generates.
+
+| Strategy doc §5.2 field | Demo field | Status | Notes |
+|---|---|---|---|
+| Tokenized PAN | `customer_pan` (then hashed) | Built | Demo simulates terminal-side tokenization at the anonymization stage. |
+| Card type | implicit in `payment_type` | Partial | Have credit/debit/EBT/cash but not refined card subtype. |
+| Card network | `card_network` | Built | |
+| Issuer BIN | — | Missing | Skippable for analytics demo. |
+| Authorization code | — | Missing | Not relevant. |
+| Entry mode | `entry_mode` | Built | |
+| Line items with SKU | `tenant_transaction_items` | Built | |
+| Quantity per line | `qty` | Built | |
+| Unit price | `unit_price` | Built | |
+| Line total | `line_total` | Built | |
+| Discount per line | `discount` | Built | Populated on promo days for ~15% of SKUs. |
+| Promo / coupon attribution | — | Missing | Deferred to v3 (campaign attribution). |
+| Tax | — | Missing | Skippable for analytics demo. |
+| `merchant_id` | `merchant_id` | Built | |
+| MCC | `mcc` | Built | |
+| `store_id` | `store_id` | Built | |
+| Store ZIP | `store_zip5` (tenant) / `store_zip3` (lake) | Built | |
+| `terminal_id` | — | Missing | Not relevant for analytics. |
+| Transaction timestamp | `txn_ts` | Built | Lake adds `txn_hour_bucket`. |
+| Loyalty ID | — | Missing | Optional merchant-side identifier. |
+| Device telemetry (firmware, connectivity, etc.) | — | Missing | Not relevant for analytics demo. |
+
+The analytics-relevant fields are all built; missing fields are either device-telemetry (defer to real-time pipeline implementation) or campaign attribution (defer to v3).
