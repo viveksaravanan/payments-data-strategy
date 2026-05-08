@@ -28,10 +28,21 @@ OUT_DIR = Path(__file__).resolve().parents[2] / "data" / "raw"
 def _inject_price_spike(
     transactions: pd.DataFrame,
     items: pd.DataFrame,
+    krg_catalog: pd.DataFrame,
     rng: np.random.Generator,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Anomaly 1 — KRG-PRODUCE-0042 at 5× base price on one day in last 7 days."""
-    target_sku = "KRG-PRODUCE-0042"
+    """Anomaly 1 — Avocados (4-pack) at 5× base price on one day in last 7 days.
+
+    The SKU code is resolved by name lookup (not hard-coded) since the avocado's
+    KRG-PRODUCE-NNNN index depends on JSON ordering in `data/catalogs/kroger/`.
+    """
+    matches = krg_catalog.loc[krg_catalog["name"] == "Avocados (4-pack)", "sku"]
+    if matches.empty:
+        raise ValueError(
+            "Anomaly 1 target 'Avocados (4-pack)' not found in Kroger catalog. "
+            "Check data/catalogs/kroger/produce.json for the exact name."
+        )
+    target_sku = str(matches.iloc[0])
     spike_day = (P.END_DATE - timedelta(days=int(rng.integers(1, 7)))).isoformat()
     txn_ids_on_day = transactions.loc[
         (transactions["merchant_id"] == "KRG")
@@ -162,7 +173,7 @@ def inject_anomalies(
     krg_catalog: pd.DataFrame,
     rng: np.random.Generator,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    transactions, items = _inject_price_spike(transactions, items, rng)
+    transactions, items = _inject_price_spike(transactions, items, krg_catalog, rng)
     transactions, items = _inject_store_dropout(transactions, items, rng)
     transactions, items = _inject_baby_cohort(transactions, items, krg_catalog, rng)
     return transactions, items

@@ -158,19 +158,67 @@ def generate_merchant_transactions(
         for d, h, m, s in zip(base_dates, hours, minutes, seconds)
     ]
 
-    # ---- SKU pools (separate EBT-eligible pool when ebt_eligible column present) ----
+    # ---- SKU pools ----
+    # Two layers of refinement:
+    #   1. If the merchant has `category_weights`, basket items are sampled
+    #      category-first (demand-weighted), then SKU-uniform within category.
+    #      Otherwise the original uniform-over-all-SKUs path is preserved
+    #      (Taco Bell, TJ Maxx).
+    #   2. EBT transactions filter the pool to ebt_eligible=1 SKUs. When
+    #      category-weighting is on, weights are renormalized over the
+    #      categories that have at least one EBT-eligible SKU. (Note: the
+    #      EBT category mix necessarily skews toward Pantry / Produce / Dairy
+    #      because non-food categories like Pet / Household / Personal drop
+    #      out — this is correct, not a bug.)
     sku_arr_full = catalog["sku"].to_numpy()
-    price_arr_full = catalog["base_price"].to_numpy()
-    if "ebt_eligible" in catalog.columns:
+
+    has_ebt_col = "ebt_eligible" in catalog.columns
+    if has_ebt_col:
         ebt_mask = catalog["ebt_eligible"].to_numpy() == 1
-        sku_arr_ebt = catalog.loc[ebt_mask, "sku"].to_numpy()
-        price_arr_ebt = catalog.loc[ebt_mask, "base_price"].to_numpy()
     else:
-        sku_arr_ebt = sku_arr_full
-        price_arr_ebt = price_arr_full
+        ebt_mask = np.ones(len(catalog), dtype=bool)
+
+    cat_weights = config.get("category_weights")
+    if cat_weights is not None:
+        cat_array = catalog["category"].to_numpy()
+        cat_keys = list(cat_weights.keys())
+
+        def _build_per_category_indices(eligible_mask: np.ndarray):
+            keys: list[str] = []
+            probs: list[float] = []
+            indices: list[np.ndarray] = []
+            for c in cat_keys:
+                idx = np.where((cat_array == c) & eligible_mask)[0]
+                if len(idx) == 0:
+                    continue
+                keys.append(c)
+                probs.append(cat_weights[c])
+                indices.append(idx)
+            arr = np.asarray(probs, dtype=float)
+            arr = arr / arr.sum()
+            return keys, arr, indices
+
+        nonebt_keys, nonebt_probs, nonebt_idx = _build_per_category_indices(np.ones(len(catalog), dtype=bool))
+        ebt_keys, ebt_probs, ebt_idx = _build_per_category_indices(ebt_mask)
+    else:
+        # Fallback: uniform-over-all-SKUs (original Taco Bell / TJ Maxx behavior).
+        nonebt_pool = np.arange(len(catalog))
+        ebt_pool = np.where(ebt_mask)[0] if has_ebt_col else nonebt_pool
 
     sku_to_price = dict(zip(catalog["sku"].tolist(), catalog["base_price"].tolist()))
     is_promo_day = _is_promo_day_array()
+
+    # ---- Promo SKUs per promo day (~15% of catalog SKUs randomly per day) ----
+    # Drawn once up-front so the same SKU is on promotion all day, and so the
+    # set is deterministic given the seed. Applies to all merchants — promo
+    # days are global.
+    promo_skus_by_day: dict[int, set[str]] = {}
+    for d in range(P.DAYS):
+        if not is_promo_day[d]:
+            continue
+        n_promo = max(1, int(round(len(sku_arr_full) * P.PROMO_SKU_FRACTION)))
+        chosen = rng.choice(sku_arr_full, size=n_promo, replace=False)
+        promo_skus_by_day[int(d)] = set(chosen.tolist())
 
     avg_basket = config["avg_basket_size"]
 
@@ -195,25 +243,35 @@ def generate_merchant_transactions(
             bs_raw = rng.normal(avg_basket * 2.5, avg_basket * 0.5)
             bs = max(2, int(bs_raw))
 
-        if payment_arr[i] == "ebt":
-            pool_sku = sku_arr_ebt
-            pool_price = price_arr_ebt
-        else:
-            pool_sku = sku_arr_full
-            pool_price = price_arr_full
+        is_ebt = payment_arr[i] == "ebt"
 
-        chosen = rng.integers(0, len(pool_sku), size=bs)
-        basket: list[str] = list(pool_sku[chosen])
+        if cat_weights is not None:
+            keys = ebt_keys if is_ebt else nonebt_keys
+            probs = ebt_probs if is_ebt else nonebt_probs
+            per_cat_idx = ebt_idx if is_ebt else nonebt_idx
+            cat_choices = rng.choice(len(keys), size=bs, p=probs)
+            basket_indices = np.empty(bs, dtype=int)
+            for j, k in enumerate(cat_choices):
+                pool = per_cat_idx[k]
+                basket_indices[j] = pool[rng.integers(0, len(pool))]
+        else:
+            pool = ebt_pool if is_ebt else nonebt_pool
+            basket_indices = rng.choice(pool, size=bs, replace=True)
+
+        basket: list[str] = list(sku_arr_full[basket_indices])
         basket = affinity_fn(basket, rng)
 
-        promo = is_promo_day[day_idx[i]]
+        day_promo_skus = promo_skus_by_day.get(int(day_idx[i]), set())
         for line_id, sku in enumerate(basket, start=1):
             base_price = sku_to_price[sku]
             unit_price = round(base_price * (1.0 + (rng.random() * 2 - 1) * P.PRICE_NOISE_FRAC), 2)
             qty = 1
-            discount = 0.0
-            if promo and rng.random() < P.PROMO_DISCOUNT_PROB:
-                discount = round(unit_price * qty * P.PROMO_DISCOUNT_RATE, 2)
+            if sku in day_promo_skus:
+                # Single-semantics: unit_price stays at full base (with noise);
+                # discount is real money off; line_total = qty*unit_price - discount.
+                discount = round(base_price * P.PROMO_DISCOUNT_RATE * qty, 2)
+            else:
+                discount = 0.0
             line_total = round(unit_price * qty - discount, 2)
             all_txn_ids.append(txn_ids[i])
             all_line_ids.append(line_id)

@@ -1,113 +1,126 @@
-"""Kroger SKU catalog (~1,500 SKUs across 12 categories).
+"""Kroger SKU catalog — loaded from per-category JSON files.
 
-Anchor SKUs are placed at fixed indices so affinity rules and the price-spike
-anomaly (`KRG-PRODUCE-0042`) reference stable IDs.
+The catalog source-of-truth lives in `data/catalogs/kroger/<category>.json` —
+twelve files, each a JSON array of SKU specs:
+
+    {"name": ..., "subcategory": ..., "base_price": ..., "is_organic": bool,
+     "ebt_eligible": bool}
+
+This module loads the JSONs, assigns SKU codes of the form `KRG-<CATEGORY>-NNNN`
+(within-category 1-based sequence), and produces the `tenant_products` row
+shape. The SKU **prefix** format is stable (KRG-PRODUCE, KRG-DAIRY, ...) but
+within-category numbering depends on the JSON order, so anchor SKUs for the
+affinity rules and the planted avocado-price anomaly are resolved by **name
+lookup** at run time, not by hard-coded SKU code.
 """
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
-from . import parameters as P
+# `parameters` is imported lazily inside functions to avoid a circular import
+# when this module is loaded as part of the package.
 
-# Category -> (count, base price range, default subcategory pool, ebt_eligible_default)
-CATEGORIES = [
-    ("PRODUCE",    120, (0.69, 12.99), ["Fresh Produce"], 1),
-    ("DAIRY",      140, (1.99, 9.99),  ["Milk & Cream", "Cheese", "Yogurt", "Eggs"], 1),
-    ("BAKERY",      80, (1.99, 8.99),  ["Bread", "Tortillas", "Buns", "Pastry"], 1),
-    ("MEAT",       150, (3.99, 24.99), ["Beef", "Chicken", "Pork", "Seafood"], 1),
-    ("FROZEN",     140, (2.49, 12.99), ["Frozen Meals", "Ice Cream", "Frozen Veg"], 1),
-    ("PANTRY",     220, (1.49, 14.99), ["Pasta & Sauce", "Cereal", "Canned", "Baking", "Oils"], 1),
-    ("SNACKS",     140, (1.99, 7.99),  ["Chips", "Cookies", "Bars"], 1),
-    ("BEVERAGES",  160, (1.49, 14.99), ["Coffee", "Soda", "Juice", "Water"], 1),
-    ("HOUSEHOLD",  120, (2.99, 19.99), ["Cleaning", "Paper Goods", "Laundry"], 0),
-    ("PERSONAL",   100, (2.49, 14.99), ["Hygiene", "Hair Care"], 0),
-    ("BABY",        80, (3.99, 39.99), ["Diapers", "Formula", "Baby Food"], 1),
-    ("PET",         50, (4.99, 49.99), ["Dog", "Cat"], 0),
+# Order matters — JSON_FILES sets the iteration order so the SKU sequence is
+# deterministic. Use UPPERCASE category names (matches the rest of the schema).
+CATALOG_DIR = Path(__file__).resolve().parents[2] / "data" / "catalogs" / "kroger"
+JSON_FILES: list[tuple[str, Path]] = [
+    ("PRODUCE",   CATALOG_DIR / "produce.json"),
+    ("DAIRY",     CATALOG_DIR / "dairy.json"),
+    ("BAKERY",    CATALOG_DIR / "bakery.json"),
+    ("MEAT",      CATALOG_DIR / "meat.json"),
+    ("FROZEN",    CATALOG_DIR / "frozen.json"),
+    ("PANTRY",    CATALOG_DIR / "pantry.json"),
+    ("SNACKS",    CATALOG_DIR / "snacks.json"),
+    ("BEVERAGES", CATALOG_DIR / "beverages.json"),
+    ("HOUSEHOLD", CATALOG_DIR / "household.json"),
+    ("PERSONAL",  CATALOG_DIR / "personal.json"),
+    ("BABY",      CATALOG_DIR / "baby.json"),
+    ("PET",       CATALOG_DIR / "pet.json"),
 ]
 
-# Anchor SKUs — fixed slots for affinity rules and the planted price-spike anomaly.
-ANCHORS = {
-    "KRG-PRODUCE-0042":   ("Avocados (4-pack)",       "PRODUCE",   "Fresh Produce", 4.99,  1),
-    "KRG-DAIRY-0001":     ("Whole milk (gallon)",      "DAIRY",     "Milk & Cream",  3.99,  1),
-    "KRG-DAIRY-0010":     ("Half & half (quart)",      "DAIRY",     "Milk & Cream",  3.49,  1),
-    "KRG-DAIRY-0050":     ("Shredded cheddar (8 oz)",  "DAIRY",     "Cheese",        3.99,  1),
-    "KRG-PANTRY-0001":    ("Spaghetti (1 lb box)",     "PANTRY",    "Pasta & Sauce", 1.99,  1),
-    "KRG-PANTRY-0002":    ("Marinara sauce (24 oz)",   "PANTRY",    "Pasta & Sauce", 3.49,  1),
-    "KRG-PANTRY-0050":    ("Cheerios cereal (18 oz)",  "PANTRY",    "Cereal",        4.99,  1),
-    "KRG-MEAT-0001":      ("80/20 ground beef (lb)",   "MEAT",      "Beef",          5.99,  1),
-    "KRG-BAKERY-0010":    ("Tortillas flour (10 ct)",  "BAKERY",    "Tortillas",     2.99,  1),
-    "KRG-BABY-0001":      ("Diapers size 3 (144 ct)",  "BABY",      "Diapers",      34.99,  1),
-    "KRG-BABY-0010":      ("Infant formula (23 oz)",   "BABY",      "Formula",      28.99,  1),
-    "KRG-BEVERAGES-0001": ("Ground coffee (30 oz)",    "BEVERAGES", "Coffee",       12.99,  1),
-}
+
+def _load_json_items(path: Path) -> list[dict]:
+    if not path.exists():
+        raise FileNotFoundError(f"Missing catalog file: {path}")
+    with path.open() as f:
+        return json.load(f)
 
 
 def build_catalog() -> pd.DataFrame:
-    """Build the Kroger catalog deterministically (no rng — fixed pricing model)."""
-    # Use a local rng for any catalog jitter, but seed from a constant so the catalog
-    # is identical across runs without requiring callers to pass an rng.
-    rng = np.random.default_rng(P.RANDOM_SEED + 1)
+    """Build the Kroger catalog from the JSON files.
 
-    rows = []
-    for cat, count, (lo, hi), subs, ebt_default in CATEGORIES:
-        # Last 30% of bakery flagged as prepared/hot — ineligible for EBT.
-        for i in range(1, count + 1):
-            sku = f"KRG-{cat}-{i:04d}"
-            if sku in ANCHORS:
-                continue  # filled in below
-            subcategory = subs[(i - 1) % len(subs)]
-            base_price = round(float(rng.uniform(lo, hi)), 2)
-            ebt_eligible = ebt_default
-            if cat == "BAKERY" and i > int(count * 0.7):
-                ebt_eligible = 0
-            is_organic = int(rng.random() < P.MERCHANT_CONFIGS["kroger"]["organic_share"]
-                             and cat in {"PRODUCE", "DAIRY", "MEAT"})
+    Deterministic — same files in, same DataFrame out. No rng dependence.
+    """
+    rows: list[dict] = []
+    expected_total = 0
+    for category, path in JSON_FILES:
+        items = _load_json_items(path)
+        expected_total += len(items)
+        for i, item in enumerate(items, start=1):
+            sku = f"KRG-{category}-{i:04d}"
             rows.append({
                 "sku": sku,
                 "merchant_id": "KRG",
-                "name": f"{cat.title()} item {i:04d}",
-                "category": cat,
-                "subcategory": subcategory,
-                "is_organic": is_organic,
-                "base_price": base_price,
-                "ebt_eligible": ebt_eligible,
+                "name": item["name"],
+                "category": category,
+                "subcategory": item["subcategory"],
+                "is_organic": int(bool(item["is_organic"])),
+                "base_price": float(item["base_price"]),
+                "ebt_eligible": int(bool(item["ebt_eligible"])),
             })
 
-    for sku, (name, cat, subcat, price, ebt) in ANCHORS.items():
-        rows.append({
-            "sku": sku,
-            "merchant_id": "KRG",
-            "name": name,
-            "category": cat,
-            "subcategory": subcat,
-            "is_organic": 0,
-            "base_price": price,
-            "ebt_eligible": ebt,
-        })
-
     df = pd.DataFrame(rows).sort_values("sku").reset_index(drop=True)
-    assert len(df) == 1500, f"Kroger catalog size mismatch: {len(df)}"
+    assert len(df) == expected_total, (
+        f"Kroger catalog row count mismatch: built {len(df)}, expected {expected_total}"
+    )
     return df
 
 
-# Affinity rules: (anchor_sku, companion_sku, P(companion | anchor))
-KROGER_AFFINITY = [
-    ("KRG-BABY-0001",      "KRG-BABY-0010",   0.45),  # Diapers + Infant formula
-    ("KRG-PANTRY-0001",    "KRG-PANTRY-0002", 0.55),  # Spaghetti + Marinara
-    ("KRG-BAKERY-0010",    "KRG-MEAT-0001",   0.40),  # Tortillas + Ground beef
-    ("KRG-BAKERY-0010",    "KRG-DAIRY-0050",  0.45),  # Tortillas + Shredded cheddar
-    ("KRG-DAIRY-0001",     "KRG-PANTRY-0050", 0.30),  # Whole milk + Cereal
-    ("KRG-BEVERAGES-0001", "KRG-DAIRY-0010",  0.40),  # Coffee + Half & half
+# ---------------------------------------------------------------------------
+# Affinity rules — name-based anchors
+# ---------------------------------------------------------------------------
+# Each entry is (anchor_name_substring, companion_name_substring, P(companion|anchor)).
+# Anchors are resolved against the loaded catalog at make_apply_affinity time;
+# any unmatched anchor raises immediately so a JSON refactor can't silently
+# disable an affinity rule.
+KROGER_AFFINITY_BY_NAME: list[tuple[str, str, float]] = [
+    ("Diapers size 3 Pampers",  "Infant formula Similac Advance", 0.45),
+    ("Spaghetti (1 lb box)",    "Marinara sauce traditional",     0.55),
+    ("Tortilla wraps",          "80/20 ground beef",              0.40),
+    ("Tortilla wraps",          "Sharp cheddar shredded",         0.45),
+    ("Whole milk (gallon)",     "Cheerios cereal (18 oz)",        0.30),
+    ("Folgers ground coffee",   "Half and half (quart)",          0.40),
 ]
 
 
+def _resolve_name(catalog: pd.DataFrame, substring: str) -> str:
+    matches = catalog[catalog["name"].str.contains(substring, case=False, na=False, regex=False)]
+    if matches.empty:
+        raise ValueError(
+            f"Affinity anchor not found in Kroger catalog: {substring!r}. "
+            f"Check data/catalogs/kroger/*.json for an item whose name contains it."
+        )
+    return str(matches.iloc[0]["sku"])
+
+
 def make_apply_affinity(catalog: pd.DataFrame):
-    rules = KROGER_AFFINITY
+    """Resolve substring anchors to specific SKU codes once, return a closure
+    that applies the affinity rules to a single basket."""
+    resolved: list[tuple[str, str, float]] = [
+        (_resolve_name(catalog, anchor), _resolve_name(catalog, companion), prob)
+        for anchor, companion, prob in KROGER_AFFINITY_BY_NAME
+    ]
 
     def apply(basket: list[str], rng: np.random.Generator) -> list[str]:
         present = set(basket)
-        for anchor, companion, prob in rules:
-            if anchor in present and companion not in present and rng.random() < prob:
-                basket.append(companion)
-                present.add(companion)
+        for anchor_sku, companion_sku, prob in resolved:
+            if anchor_sku in present and companion_sku not in present and rng.random() < prob:
+                basket.append(companion_sku)
+                present.add(companion_sku)
         return basket
+
     return apply

@@ -50,8 +50,10 @@ ENTRY_MODE = {"contactless": 0.65, "chip": 0.30, "swipe": 0.05}
 
 # Per-transaction price noise and promo-day discount knobs
 PRICE_NOISE_FRAC = 0.10        # ±10% on unit_price
-PROMO_DISCOUNT_RATE = 0.15
-PROMO_DISCOUNT_PROB = 0.30
+PROMO_DISCOUNT_RATE = 0.15     # 15% off base for promoted SKUs
+PROMO_SKU_FRACTION = 0.15      # fraction of catalog SKUs flagged on-promo per promo day
+# Legacy alias (some older code paths may import the old name)
+PROMO_DISCOUNT_PROB = PROMO_SKU_FRACTION
 
 
 MERCHANT_CONFIGS = {
@@ -72,6 +74,27 @@ MERCHANT_CONFIGS = {
         "organic_share":       0.18,
         "peak_days":           [5, 6],            # Sat, Sun (Mon=0)
         "peak_hours":          [10, 11, 17, 18, 19],
+        # basket-share weights — probability that any given basket-item is from
+        # this category. Demand-weighted (not catalog-size-weighted) so small
+        # catalogs like PET / BABY don't over-represent in the top-revenue
+        # leaderboard. Tuned: BABY/PET pulled down (high unit prices were
+        # pushing them into the top-4 by revenue despite low basket share);
+        # HOUSEHOLD/PERSONAL trimmed; the slack reallocated to the
+        # high-frequency staples (PRODUCE / DAIRY / PANTRY). Sum to 1.00.
+        "category_weights": {
+            "PRODUCE":   0.15,
+            "DAIRY":     0.13,
+            "BAKERY":    0.05,
+            "MEAT":      0.11,
+            "FROZEN":    0.08,
+            "PANTRY":    0.18,
+            "SNACKS":    0.07,
+            "BEVERAGES": 0.10,
+            "HOUSEHOLD": 0.05,
+            "PERSONAL":  0.04,
+            "BABY":      0.02,
+            "PET":       0.02,
+        },
     },
     "taco_bell": {
         "merchant_id":         "TBL",
