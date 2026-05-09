@@ -1,0 +1,422 @@
+[
+  {
+    "name": "Diapers size 1 Pampers Swaddlers (84-count)",
+    "subcategory": "diapers",
+    "base_price": 24.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Diapers size 2 Pampers Swaddlers (76-count)",
+    "subcategory": "diapers",
+    "base_price": 24.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Diapers size 3 Pampers Swaddlers (62-count)",
+    "subcategory": "diapers",
+    "base_price": 24.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Diapers size 4 Pampers Swaddlers (54-count)",
+    "subcategory": "diapers",
+    "base_price": 24.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Diapers size 5 Pampers Cruisers (46-count)",
+    "subcategory": "diapers",
+    "base_price": 24.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Diapers size 6 Pampers Cruisers (38-count)",
+    "subcategory": "diapers",
+    "base_price": 24.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Diapers size 1 Huggies Little Snugglers (84-count)",
+    "subcategory": "diapers",
+    "base_price": 23.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Diapers size 2 Huggies (76-count)",
+    "subcategory": "diapers",
+    "base_price": 23.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Diapers size 3 Huggies (62-count)",
+    "subcategory": "diapers",
+    "base_price": 23.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Diapers size 4 Huggies (54-count)",
+    "subcategory": "diapers",
+    "base_price": 23.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Diapers Honest Company size 3 (35-count)",
+    "subcategory": "diapers",
+    "base_price": 14.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Diapers store brand size 3 (84-count)",
+    "subcategory": "diapers",
+    "base_price": 17.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Pull-Ups training pants 2T-3T (38-count)",
+    "subcategory": "diapers",
+    "base_price": 23.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Pull-Ups training pants 3T-4T (34-count)",
+    "subcategory": "diapers",
+    "base_price": 23.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Goodnites bedwetting underwear S/M (44-count)",
+    "subcategory": "diapers",
+    "base_price": 26.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Baby wipes Pampers sensitive (672-count)",
+    "subcategory": "wipes",
+    "base_price": 19.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Baby wipes Huggies natural care (624-count)",
+    "subcategory": "wipes",
+    "base_price": 19.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Baby wipes water wipes (540-count)",
+    "subcategory": "wipes",
+    "base_price": 24.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Baby wipes store brand sensitive (720-count)",
+    "subcategory": "wipes",
+    "base_price": 14.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Infant formula Similac Advance (23.2 oz)",
+    "subcategory": "formula",
+    "base_price": 39.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Infant formula Similac Pro-Advance (23.2 oz)",
+    "subcategory": "formula",
+    "base_price": 41.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Infant formula Similac Sensitive (20 oz)",
+    "subcategory": "formula",
+    "base_price": 39.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Infant formula Enfamil NeuroPro (20.7 oz)",
+    "subcategory": "formula",
+    "base_price": 39.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Infant formula Enfamil Gentlease (19.5 oz)",
+    "subcategory": "formula",
+    "base_price": 39.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Infant formula Gerber Good Start (32 oz)",
+    "subcategory": "formula",
+    "base_price": 32.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Toddler formula Similac Go & Grow (24 oz)",
+    "subcategory": "formula",
+    "base_price": 24.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Toddler formula Enfamil NeuroPro (20 oz)",
+    "subcategory": "formula",
+    "base_price": 24.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Organic infant formula (21 oz)",
+    "subcategory": "formula",
+    "base_price": 32.99,
+    "is_organic": true,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Soy-based infant formula (23.2 oz)",
+    "subcategory": "formula",
+    "base_price": 39.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Hypoallergenic formula (14.1 oz)",
+    "subcategory": "formula",
+    "base_price": 49.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Ready-to-feed formula 2 fl oz (48-count)",
+    "subcategory": "formula",
+    "base_price": 49.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Baby food stage 1 sweet potato (4 oz pouch)",
+    "subcategory": "food",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Baby food stage 1 banana (4 oz pouch)",
+    "subcategory": "food",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Baby food stage 2 apple oatmeal (4 oz pouch)",
+    "subcategory": "food",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Baby food stage 2 chicken vegetable (4 oz pouch)",
+    "subcategory": "food",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Baby food stage 3 toddler meal (4 oz pouch)",
+    "subcategory": "food",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Gerber rice cereal (8 oz)",
+    "subcategory": "food",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Gerber oatmeal cereal (8 oz)",
+    "subcategory": "food",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Gerber Puffs banana (1.48 oz)",
+    "subcategory": "food",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Gerber Puffs sweet potato (1.48 oz)",
+    "subcategory": "food",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Yogurt Melts mixed berries (1 oz)",
+    "subcategory": "food",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Toddler crackers (5 oz)",
+    "subcategory": "food",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Plum Organics pouch variety (6-pack)",
+    "subcategory": "food",
+    "base_price": 11.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Earth's Best organic baby food (4 oz)",
+    "subcategory": "food",
+    "base_price": 1.99,
+    "is_organic": true,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Happy Baby organic teething wafers (2.86 oz)",
+    "subcategory": "food",
+    "base_price": 3.99,
+    "is_organic": true,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Toddler milk drink (8-pack)",
+    "subcategory": "food",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Diaper rash cream Desitin (4 oz)",
+    "subcategory": "care",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Diaper rash cream Aquaphor (3 oz)",
+    "subcategory": "care",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Baby lotion Johnson's (16.9 oz)",
+    "subcategory": "care",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Baby shampoo Johnson's (20.3 oz)",
+    "subcategory": "care",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Baby wash 2-in-1 (16.9 oz)",
+    "subcategory": "care",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Baby powder Johnson's (9 oz)",
+    "subcategory": "care",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Baby sunscreen (3 oz)",
+    "subcategory": "care",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Baby Tylenol acetaminophen (1 oz)",
+    "subcategory": "care",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Children's Motrin ibuprofen (4 oz)",
+    "subcategory": "care",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Pacifiers (2-pack)",
+    "subcategory": "care",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Baby bottles (3-pack)",
+    "subcategory": "care",
+    "base_price": 14.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Bottle nipples slow flow (2-pack)",
+    "subcategory": "care",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Burp cloths (5-pack)",
+    "subcategory": "care",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Bibs (5-pack)",
+    "subcategory": "care",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  }
+]

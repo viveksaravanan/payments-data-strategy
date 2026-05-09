@@ -1,0 +1,1416 @@
+[
+  {
+    "name": "Spaghetti (1 lb box)",
+    "subcategory": "pasta",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Penne pasta (1 lb box)",
+    "subcategory": "pasta",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Rigatoni pasta (1 lb box)",
+    "subcategory": "pasta",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Rotini pasta (1 lb box)",
+    "subcategory": "pasta",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Elbow macaroni (1 lb box)",
+    "subcategory": "pasta",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Fettuccine pasta (1 lb box)",
+    "subcategory": "pasta",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Linguine pasta (1 lb box)",
+    "subcategory": "pasta",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Angel hair pasta (1 lb box)",
+    "subcategory": "pasta",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Lasagna noodles (16 oz)",
+    "subcategory": "pasta",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Bow tie pasta (1 lb box)",
+    "subcategory": "pasta",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Whole wheat spaghetti (1 lb box)",
+    "subcategory": "pasta",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Whole wheat penne (1 lb box)",
+    "subcategory": "pasta",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Gluten-free spaghetti (12 oz)",
+    "subcategory": "pasta",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Gluten-free penne (12 oz)",
+    "subcategory": "pasta",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Egg noodles (12 oz)",
+    "subcategory": "pasta",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Marinara sauce traditional (24 oz)",
+    "subcategory": "sauces",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Marinara sauce four cheese (24 oz)",
+    "subcategory": "sauces",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Marinara sauce garlic (24 oz)",
+    "subcategory": "sauces",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Vodka sauce (24 oz)",
+    "subcategory": "sauces",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Alfredo sauce (15 oz)",
+    "subcategory": "sauces",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pesto basil (6.7 oz)",
+    "subcategory": "sauces",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Arrabbiata sauce (24 oz)",
+    "subcategory": "sauces",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pizza sauce (14 oz)",
+    "subcategory": "sauces",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Tomato sauce (8 oz can)",
+    "subcategory": "sauces",
+    "base_price": 0.79,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Tomato paste (6 oz can)",
+    "subcategory": "sauces",
+    "base_price": 0.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Crushed tomatoes (28 oz can)",
+    "subcategory": "sauces",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Diced tomatoes (14.5 oz can)",
+    "subcategory": "sauces",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Diced tomatoes with chiles (10 oz can)",
+    "subcategory": "sauces",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Whole peeled tomatoes (28 oz can)",
+    "subcategory": "sauces",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Marinara sauce organic (24 oz)",
+    "subcategory": "sauces",
+    "base_price": 4.99,
+    "is_organic": true,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Olive oil extra virgin (17 oz)",
+    "subcategory": "oils",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Olive oil extra virgin (33.8 oz)",
+    "subcategory": "oils",
+    "base_price": 14.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Vegetable oil (48 oz)",
+    "subcategory": "oils",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Canola oil (48 oz)",
+    "subcategory": "oils",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Avocado oil (17 oz)",
+    "subcategory": "oils",
+    "base_price": 11.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Coconut oil (16 oz)",
+    "subcategory": "oils",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sesame oil (10 oz)",
+    "subcategory": "oils",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cooking spray olive oil (5 oz)",
+    "subcategory": "oils",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cooking spray canola (5 oz)",
+    "subcategory": "oils",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Balsamic vinegar (16.9 oz)",
+    "subcategory": "oils",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Red wine vinegar (12 oz)",
+    "subcategory": "oils",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Apple cider vinegar (32 oz)",
+    "subcategory": "oils",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "White vinegar (32 oz)",
+    "subcategory": "oils",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Rice vinegar (12 oz)",
+    "subcategory": "oils",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "All-purpose flour (5 lb)",
+    "subcategory": "baking",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Bread flour (5 lb)",
+    "subcategory": "baking",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Whole wheat flour (5 lb)",
+    "subcategory": "baking",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Self-rising flour (5 lb)",
+    "subcategory": "baking",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Almond flour (16 oz)",
+    "subcategory": "baking",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Granulated sugar (4 lb)",
+    "subcategory": "baking",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Powdered sugar (2 lb)",
+    "subcategory": "baking",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Brown sugar light (2 lb)",
+    "subcategory": "baking",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Brown sugar dark (2 lb)",
+    "subcategory": "baking",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cane sugar organic (2 lb)",
+    "subcategory": "baking",
+    "base_price": 4.99,
+    "is_organic": true,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Honey (12 oz)",
+    "subcategory": "baking",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Honey organic (16 oz)",
+    "subcategory": "baking",
+    "base_price": 9.99,
+    "is_organic": true,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Maple syrup pure (12 oz)",
+    "subcategory": "baking",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pancake syrup (24 oz)",
+    "subcategory": "baking",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Vanilla extract (2 oz)",
+    "subcategory": "baking",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Vanilla extract pure (4 oz)",
+    "subcategory": "baking",
+    "base_price": 12.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Baking soda (16 oz)",
+    "subcategory": "baking",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Baking powder (8.1 oz)",
+    "subcategory": "baking",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cornstarch (16 oz)",
+    "subcategory": "baking",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Yeast packets (3-count)",
+    "subcategory": "baking",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cocoa powder unsweetened (8 oz)",
+    "subcategory": "baking",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Chocolate chips semi-sweet (12 oz)",
+    "subcategory": "baking",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Chocolate chips milk (12 oz)",
+    "subcategory": "baking",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Chocolate chips white (12 oz)",
+    "subcategory": "baking",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cake mix yellow (15 oz)",
+    "subcategory": "baking",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cake mix chocolate (15 oz)",
+    "subcategory": "baking",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Brownie mix (18 oz)",
+    "subcategory": "baking",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cookie mix (17.5 oz)",
+    "subcategory": "baking",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pancake mix complete (32 oz)",
+    "subcategory": "baking",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frosting vanilla (16 oz)",
+    "subcategory": "baking",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frosting chocolate (16 oz)",
+    "subcategory": "baking",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Black pepper ground (3 oz)",
+    "subcategory": "spices",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Salt iodized (26 oz)",
+    "subcategory": "spices",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Kosher salt (16 oz)",
+    "subcategory": "spices",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sea salt fine (26 oz)",
+    "subcategory": "spices",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Garlic powder (3 oz)",
+    "subcategory": "spices",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Onion powder (3 oz)",
+    "subcategory": "spices",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Italian seasoning (1 oz)",
+    "subcategory": "spices",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cinnamon ground (1.7 oz)",
+    "subcategory": "spices",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Paprika (2.4 oz)",
+    "subcategory": "spices",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cumin ground (1.7 oz)",
+    "subcategory": "spices",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Chili powder (2.5 oz)",
+    "subcategory": "spices",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Oregano dried (0.5 oz)",
+    "subcategory": "spices",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Basil dried (0.5 oz)",
+    "subcategory": "spices",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Bay leaves (0.12 oz)",
+    "subcategory": "spices",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cayenne pepper (1.5 oz)",
+    "subcategory": "spices",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Red pepper flakes (1.5 oz)",
+    "subcategory": "spices",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Ranch seasoning packet (1 oz)",
+    "subcategory": "spices",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Taco seasoning packet (1 oz)",
+    "subcategory": "spices",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sloppy joe seasoning packet (1.5 oz)",
+    "subcategory": "spices",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Black beans (15 oz can)",
+    "subcategory": "canned",
+    "base_price": 1.29,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pinto beans (15 oz can)",
+    "subcategory": "canned",
+    "base_price": 1.29,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Kidney beans (15 oz can)",
+    "subcategory": "canned",
+    "base_price": 1.29,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Garbanzo beans chickpeas (15 oz can)",
+    "subcategory": "canned",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cannellini beans (15 oz can)",
+    "subcategory": "canned",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Great northern beans (15 oz can)",
+    "subcategory": "canned",
+    "base_price": 1.29,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Refried beans traditional (16 oz can)",
+    "subcategory": "canned",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Refried beans fat-free (16 oz can)",
+    "subcategory": "canned",
+    "base_price": 1.69,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Baked beans original (28 oz can)",
+    "subcategory": "canned",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Black beans organic (15 oz can)",
+    "subcategory": "canned",
+    "base_price": 1.99,
+    "is_organic": true,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Long-grain white rice (5 lb)",
+    "subcategory": "grains",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Jasmine rice (5 lb)",
+    "subcategory": "grains",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Basmati rice (5 lb)",
+    "subcategory": "grains",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Brown rice (5 lb)",
+    "subcategory": "grains",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Wild rice blend (16 oz)",
+    "subcategory": "grains",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Arborio rice (16 oz)",
+    "subcategory": "grains",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Quinoa (16 oz)",
+    "subcategory": "grains",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Couscous (10 oz)",
+    "subcategory": "grains",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Barley pearled (16 oz)",
+    "subcategory": "grains",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Steel-cut oats (30 oz)",
+    "subcategory": "grains",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Old-fashioned rolled oats (42 oz)",
+    "subcategory": "grains",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Quick oats (42 oz)",
+    "subcategory": "grains",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Instant oatmeal variety (10-count)",
+    "subcategory": "grains",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cornmeal yellow (5 lb)",
+    "subcategory": "grains",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Polenta instant (9.2 oz)",
+    "subcategory": "grains",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Tuna chunk light in water (5 oz can)",
+    "subcategory": "canned",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Tuna albacore in water (5 oz can)",
+    "subcategory": "canned",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Tuna in olive oil (5 oz can)",
+    "subcategory": "canned",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Salmon pink (14.75 oz can)",
+    "subcategory": "canned",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sardines in oil (3.75 oz can)",
+    "subcategory": "canned",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Chicken canned breast (12.5 oz can)",
+    "subcategory": "canned",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cream of mushroom soup (10.5 oz can)",
+    "subcategory": "canned",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cream of chicken soup (10.5 oz can)",
+    "subcategory": "canned",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Tomato soup (10.5 oz can)",
+    "subcategory": "canned",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Chicken noodle soup (10.5 oz can)",
+    "subcategory": "canned",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Vegetable soup (10.5 oz can)",
+    "subcategory": "canned",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Chicken broth (32 oz)",
+    "subcategory": "canned",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Beef broth (32 oz)",
+    "subcategory": "canned",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Vegetable broth (32 oz)",
+    "subcategory": "canned",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Chicken bouillon cubes (8-count)",
+    "subcategory": "canned",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Corn whole kernel (15 oz can)",
+    "subcategory": "canned",
+    "base_price": 0.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Corn cream-style (14.75 oz can)",
+    "subcategory": "canned",
+    "base_price": 0.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Green beans cut (14.5 oz can)",
+    "subcategory": "canned",
+    "base_price": 0.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Peas sweet (15 oz can)",
+    "subcategory": "canned",
+    "base_price": 0.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Mixed vegetables (15 oz can)",
+    "subcategory": "canned",
+    "base_price": 0.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Mandarin oranges (11 oz can)",
+    "subcategory": "canned",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pineapple chunks (20 oz can)",
+    "subcategory": "canned",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Peaches in juice (29 oz can)",
+    "subcategory": "canned",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pears in juice (29 oz can)",
+    "subcategory": "canned",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Applesauce unsweetened (24 oz)",
+    "subcategory": "canned",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Applesauce cinnamon (24 oz)",
+    "subcategory": "canned",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Olives black sliced (6 oz can)",
+    "subcategory": "canned",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Olives green stuffed (10 oz jar)",
+    "subcategory": "canned",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pickles dill spears (32 oz)",
+    "subcategory": "canned",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pickles bread and butter (16 oz)",
+    "subcategory": "canned",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Ketchup (32 oz)",
+    "subcategory": "condiments",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Yellow mustard (20 oz)",
+    "subcategory": "condiments",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Dijon mustard (12 oz)",
+    "subcategory": "condiments",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Honey mustard (12 oz)",
+    "subcategory": "condiments",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Mayonnaise (30 oz)",
+    "subcategory": "condiments",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Mayonnaise light (30 oz)",
+    "subcategory": "condiments",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Mayonnaise olive oil (30 oz)",
+    "subcategory": "condiments",
+    "base_price": 5.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "BBQ sauce original (18 oz)",
+    "subcategory": "condiments",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "BBQ sauce honey (18 oz)",
+    "subcategory": "condiments",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "BBQ sauce hickory (18 oz)",
+    "subcategory": "condiments",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Hot sauce (5 oz)",
+    "subcategory": "condiments",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sriracha (17 oz)",
+    "subcategory": "condiments",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Soy sauce (10 oz)",
+    "subcategory": "condiments",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Soy sauce low-sodium (10 oz)",
+    "subcategory": "condiments",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Teriyaki sauce (10 oz)",
+    "subcategory": "condiments",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Worcestershire sauce (10 oz)",
+    "subcategory": "condiments",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Salsa medium (16 oz)",
+    "subcategory": "condiments",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Salsa mild (16 oz)",
+    "subcategory": "condiments",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Salsa hot (16 oz)",
+    "subcategory": "condiments",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Salsa verde (16 oz)",
+    "subcategory": "condiments",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Guacamole single serve (8-count)",
+    "subcategory": "condiments",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Hummus original (10 oz)",
+    "subcategory": "condiments",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Hummus roasted red pepper (10 oz)",
+    "subcategory": "condiments",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Ranch dressing (16 oz)",
+    "subcategory": "condiments",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Italian dressing (16 oz)",
+    "subcategory": "condiments",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Caesar dressing (16 oz)",
+    "subcategory": "condiments",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Balsamic vinaigrette (16 oz)",
+    "subcategory": "condiments",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Blue cheese dressing (16 oz)",
+    "subcategory": "condiments",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Peanut butter creamy (16 oz)",
+    "subcategory": "condiments",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Peanut butter crunchy (16 oz)",
+    "subcategory": "condiments",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Peanut butter natural (16 oz)",
+    "subcategory": "condiments",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Almond butter (16 oz)",
+    "subcategory": "condiments",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Strawberry jam (16 oz)",
+    "subcategory": "condiments",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Grape jelly (32 oz)",
+    "subcategory": "condiments",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Apple butter (17 oz)",
+    "subcategory": "condiments",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Nutella hazelnut spread (13 oz)",
+    "subcategory": "condiments",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cheerios cereal (18 oz)",
+    "subcategory": "cereals",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Honey Nut Cheerios (18 oz)",
+    "subcategory": "cereals",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frosted Flakes cereal (19 oz)",
+    "subcategory": "cereals",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Corn Flakes cereal (18 oz)",
+    "subcategory": "cereals",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Lucky Charms cereal (18 oz)",
+    "subcategory": "cereals",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cinnamon Toast Crunch (18 oz)",
+    "subcategory": "cereals",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frosted Mini-Wheats (18 oz)",
+    "subcategory": "cereals",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Raisin Bran cereal (18.7 oz)",
+    "subcategory": "cereals",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Special K original (12 oz)",
+    "subcategory": "cereals",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Rice Krispies (12 oz)",
+    "subcategory": "cereals",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cocoa Puffs cereal (18 oz)",
+    "subcategory": "cereals",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Trix cereal (10.7 oz)",
+    "subcategory": "cereals",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Granola almond (12 oz)",
+    "subcategory": "cereals",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Granola honey oat (12 oz)",
+    "subcategory": "cereals",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Muesli (16 oz)",
+    "subcategory": "cereals",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Grits instant (12-count)",
+    "subcategory": "cereals",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cream of Wheat (28 oz)",
+    "subcategory": "cereals",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  }
+]

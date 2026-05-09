@@ -1,0 +1,555 @@
+[
+  {
+    "name": "Paper towels (6 mega rolls)",
+    "subcategory": "paper",
+    "base_price": 13.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Paper towels (12 mega rolls)",
+    "subcategory": "paper",
+    "base_price": 24.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Paper towels select-a-size (6 mega rolls)",
+    "subcategory": "paper",
+    "base_price": 14.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Bounty paper towels (8 rolls)",
+    "subcategory": "paper",
+    "base_price": 17.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Toilet paper (12 mega rolls)",
+    "subcategory": "paper",
+    "base_price": 14.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Toilet paper (24 mega rolls)",
+    "subcategory": "paper",
+    "base_price": 26.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Charmin toilet paper ultra soft (12 mega rolls)",
+    "subcategory": "paper",
+    "base_price": 17.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Cottonelle toilet paper (12 mega rolls)",
+    "subcategory": "paper",
+    "base_price": 16.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Tissues (8-pack 144-count boxes)",
+    "subcategory": "paper",
+    "base_price": 12.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Kleenex tissues (4-pack 160-count)",
+    "subcategory": "paper",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Napkins everyday (200-count)",
+    "subcategory": "paper",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Napkins dinner (100-count)",
+    "subcategory": "paper",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Paper plates (100-count)",
+    "subcategory": "paper",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Paper plates heavy duty (50-count)",
+    "subcategory": "paper",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Plastic cups red (50-count)",
+    "subcategory": "paper",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Plastic forks (48-count)",
+    "subcategory": "paper",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Plastic spoons (48-count)",
+    "subcategory": "paper",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Plastic knives (48-count)",
+    "subcategory": "paper",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dish soap original (32 oz)",
+    "subcategory": "cleaning",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dawn dish soap original (21.6 oz)",
+    "subcategory": "cleaning",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dawn dish soap lemon (21.6 oz)",
+    "subcategory": "cleaning",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dishwasher detergent pods (60-count)",
+    "subcategory": "cleaning",
+    "base_price": 13.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Cascade dishwasher pods (62-count)",
+    "subcategory": "cleaning",
+    "base_price": 16.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dishwasher rinse aid (8.45 oz)",
+    "subcategory": "cleaning",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "All-purpose cleaner (32 oz)",
+    "subcategory": "cleaning",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Lysol all-purpose cleaner (32 oz)",
+    "subcategory": "cleaning",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Lysol disinfecting wipes (75-count)",
+    "subcategory": "cleaning",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Lysol disinfectant spray (19 oz)",
+    "subcategory": "cleaning",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Clorox bleach (121 oz)",
+    "subcategory": "cleaning",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Clorox wipes (75-count)",
+    "subcategory": "cleaning",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Glass cleaner Windex (26 oz)",
+    "subcategory": "cleaning",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Bathroom cleaner Scrubbing Bubbles (25 oz)",
+    "subcategory": "cleaning",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Toilet bowl cleaner (24 oz)",
+    "subcategory": "cleaning",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Drano clog remover (32 oz)",
+    "subcategory": "cleaning",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Furniture polish Pledge (9.7 oz)",
+    "subcategory": "cleaning",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Air freshener spray (8.8 oz)",
+    "subcategory": "cleaning",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Plug-in air freshener (2-count)",
+    "subcategory": "cleaning",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Sponges (9-count)",
+    "subcategory": "cleaning",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Scrub brushes (2-count)",
+    "subcategory": "cleaning",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Mop refill (ea)",
+    "subcategory": "cleaning",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Swiffer Sweeper refills (32-count)",
+    "subcategory": "cleaning",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Magic Eraser (8-count)",
+    "subcategory": "cleaning",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Tide laundry detergent original (100 oz)",
+    "subcategory": "laundry",
+    "base_price": 12.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Tide laundry detergent free (100 oz)",
+    "subcategory": "laundry",
+    "base_price": 12.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Tide pods (57-count)",
+    "subcategory": "laundry",
+    "base_price": 17.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Tide pods spring meadow (57-count)",
+    "subcategory": "laundry",
+    "base_price": 17.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Gain laundry detergent original (100 oz)",
+    "subcategory": "laundry",
+    "base_price": 11.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Persil laundry detergent (100 oz)",
+    "subcategory": "laundry",
+    "base_price": 14.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "All free clear detergent (94.5 oz)",
+    "subcategory": "laundry",
+    "base_price": 11.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Arm & Hammer detergent (144 oz)",
+    "subcategory": "laundry",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Downy fabric softener (111 oz)",
+    "subcategory": "laundry",
+    "base_price": 11.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Bounce dryer sheets (240-count)",
+    "subcategory": "laundry",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "OxiClean stain remover (5 lb)",
+    "subcategory": "laundry",
+    "base_price": 14.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Shout stain remover spray (22 oz)",
+    "subcategory": "laundry",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Color-safe bleach (60 oz)",
+    "subcategory": "laundry",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Stain stick (ea)",
+    "subcategory": "laundry",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Aluminum foil (200 sq ft)",
+    "subcategory": "kitchen",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Plastic wrap (200 sq ft)",
+    "subcategory": "kitchen",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Wax paper (75 sq ft)",
+    "subcategory": "kitchen",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Parchment paper (45 sq ft)",
+    "subcategory": "kitchen",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Sandwich bags (150-count)",
+    "subcategory": "kitchen",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Quart freezer bags (75-count)",
+    "subcategory": "kitchen",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Gallon freezer bags (60-count)",
+    "subcategory": "kitchen",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Trash bags 13 gallon (80-count)",
+    "subcategory": "kitchen",
+    "base_price": 14.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Trash bags 13 gallon drawstring (60-count)",
+    "subcategory": "kitchen",
+    "base_price": 13.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Trash bags 39 gallon (32-count)",
+    "subcategory": "kitchen",
+    "base_price": 12.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Trash bags 8 gallon small (60-count)",
+    "subcategory": "kitchen",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Lawn bags 39 gallon (20-count)",
+    "subcategory": "kitchen",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Light bulbs LED 60W equivalent (4-count)",
+    "subcategory": "kitchen",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Light bulbs LED daylight (4-count)",
+    "subcategory": "kitchen",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "AA batteries (16-count)",
+    "subcategory": "batteries",
+    "base_price": 11.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "AAA batteries (16-count)",
+    "subcategory": "batteries",
+    "base_price": 11.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "9V batteries (4-count)",
+    "subcategory": "batteries",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "D batteries (8-count)",
+    "subcategory": "batteries",
+    "base_price": 13.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "C batteries (8-count)",
+    "subcategory": "batteries",
+    "base_price": 11.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Matches box (32-pack)",
+    "subcategory": "kitchen",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Lighter (ea)",
+    "subcategory": "kitchen",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Charcoal briquettes (16 lb)",
+    "subcategory": "kitchen",
+    "base_price": 14.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Lighter fluid (32 oz)",
+    "subcategory": "kitchen",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  }
+]

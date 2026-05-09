@@ -1,0 +1,464 @@
+[
+  {
+    "name": "White sandwich bread (20 oz)",
+    "subcategory": "bread",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Whole wheat bread (20 oz)",
+    "subcategory": "bread",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Honey wheat bread (20 oz)",
+    "subcategory": "bread",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Multigrain bread (24 oz)",
+    "subcategory": "bread",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "12-grain bread (24 oz)",
+    "subcategory": "bread",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Rye bread (16 oz)",
+    "subcategory": "bread",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pumpernickel bread (16 oz)",
+    "subcategory": "bread",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sourdough boule (ea)",
+    "subcategory": "bread",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sourdough sliced loaf (24 oz)",
+    "subcategory": "bread",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Italian loaf (16 oz)",
+    "subcategory": "bread",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "French baguette (ea)",
+    "subcategory": "bread",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Brioche loaf (16 oz)",
+    "subcategory": "bread",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Ciabatta loaf (ea)",
+    "subcategory": "bread",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Texas toast bread (20 oz)",
+    "subcategory": "bread",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cinnamon raisin bread (20 oz)",
+    "subcategory": "bread",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Gluten-free white bread (16 oz)",
+    "subcategory": "bread",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sprouted grain bread (24 oz)",
+    "subcategory": "bread",
+    "base_price": 5.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Organic whole wheat bread (24 oz)",
+    "subcategory": "bread",
+    "base_price": 5.99,
+    "is_organic": true,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Hamburger buns (8-count)",
+    "subcategory": "rolls",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Brioche hamburger buns (8-count)",
+    "subcategory": "rolls",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Hot dog buns (8-count)",
+    "subcategory": "rolls",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Slider rolls (12-count)",
+    "subcategory": "rolls",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Dinner rolls (12-count)",
+    "subcategory": "rolls",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Hawaiian rolls (12-count)",
+    "subcategory": "rolls",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pretzel rolls (6-count)",
+    "subcategory": "rolls",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sub rolls (6-count)",
+    "subcategory": "rolls",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Kaiser rolls (6-count)",
+    "subcategory": "rolls",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Plain bagels (6-count)",
+    "subcategory": "bagels",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Everything bagels (6-count)",
+    "subcategory": "bagels",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cinnamon raisin bagels (6-count)",
+    "subcategory": "bagels",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sesame bagels (6-count)",
+    "subcategory": "bagels",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Asiago cheese bagels (6-count)",
+    "subcategory": "bagels",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Mini bagels variety (10-count)",
+    "subcategory": "bagels",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "English muffins (6-count)",
+    "subcategory": "bagels",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Whole wheat English muffins (6-count)",
+    "subcategory": "bagels",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cinnamon raisin English muffins (6-count)",
+    "subcategory": "bagels",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Flour tortillas burrito size (10-count)",
+    "subcategory": "tortillas",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Flour tortillas taco size (10-count)",
+    "subcategory": "tortillas",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Whole wheat flour tortillas (10-count)",
+    "subcategory": "tortillas",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Corn tortillas (30-count)",
+    "subcategory": "tortillas",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Yellow corn tortillas (12-count)",
+    "subcategory": "tortillas",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Spinach wraps (8-count)",
+    "subcategory": "tortillas",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Tomato basil wraps (8-count)",
+    "subcategory": "tortillas",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pita bread (6-count)",
+    "subcategory": "tortillas",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Naan bread (4-count)",
+    "subcategory": "tortillas",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Lavash flatbread (ea)",
+    "subcategory": "tortillas",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Glazed donuts (12-count)",
+    "subcategory": "pastries",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Chocolate donuts (12-count)",
+    "subcategory": "pastries",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Donut holes (20-count)",
+    "subcategory": "pastries",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cinnamon rolls (6-count)",
+    "subcategory": "pastries",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Croissants butter (4-count)",
+    "subcategory": "pastries",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Chocolate croissants (4-count)",
+    "subcategory": "pastries",
+    "base_price": 5.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Danish pastries (4-count)",
+    "subcategory": "pastries",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Muffins blueberry (4-count)",
+    "subcategory": "pastries",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Muffins chocolate chip (4-count)",
+    "subcategory": "pastries",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pound cake (ea)",
+    "subcategory": "pastries",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Coffee cake (ea)",
+    "subcategory": "pastries",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Crumb cake (ea)",
+    "subcategory": "pastries",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Brownies (9-count)",
+    "subcategory": "pastries",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sugar cookies (12-count)",
+    "subcategory": "pastries",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Chocolate chip cookies (12-count)",
+    "subcategory": "pastries",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Hot rotisserie chicken (ea)",
+    "subcategory": "prepared",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Fresh deli sandwich (ea)",
+    "subcategory": "prepared",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Hot pizza slice (ea)",
+    "subcategory": "prepared",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Fresh-baked pretzel (ea)",
+    "subcategory": "prepared",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Hot soup container (16 oz)",
+    "subcategory": "prepared",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  }
+]
