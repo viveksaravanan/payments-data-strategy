@@ -412,41 +412,84 @@ table that drives line-item discounts at generation time. Add the per-line
 ### Phase 4 — Transaction-field expansion + EBT removal
 
 **Goal.** Drop EBT entirely; add `terminal_id`, `connectivity_type`,
-`subtotal`, `tax_total`. (Schema landed in Phase 3 already; this phase is
-the generator code change.) Encode the per-category quantity distributions
-and per-customer active-weeks variance once Q3/Q4/Q6 are unblocked.
+`subtotal`, `tax_total`. Replace v2's flat day/hour shaping with the
+generator flow specified in `V2_5_DATA_DESIGN.md` Layer 4 (Steps 4a–4l).
+Schema landed in Phase 3; this phase is the generator code rewrite.
 
 **Files (code).**
-- `src/generate/parameters.py` — drop EBT from all `payment_mix`; add
-  `CONNECTIVITY_TYPE` distribution (per Q6); add per-category quantity
-  distribution table (per Q3); add active-weeks variance parameters
-  (per Q4).
-- `src/generate/base.py` — drop the EBT-eligible filter logic and the
-  category renormalization branch; sample `connectivity_type` per
-  transaction; sample `terminal_id` deterministically per store
-  (`<store_id>-T<NN>`); apply per-category qty distribution; apply
-  per-customer active-weeks variance alongside pay-cycle bumps.
-- `src/generate/run_all.py` — anomaly injection moved out (Phase 6).
+- `src/generate/parameters.py` — drop EBT from all `payment_mix`. Encode
+  the constants from the design doc:
+  - `CONNECTIVITY_DISTRIBUTION` per [Step 4l](../V2_5_DATA_DESIGN.md#step-4l-payment-generation):
+    65% wifi / 25% cellular_4g / 8% cellular_5g / 2% ethernet, uniform
+    across merchants.
+  - `QTY_DISTRIBUTION_BY_CATEGORY` per [Step 4k](../V2_5_DATA_DESIGN.md#step-4k-per-line-generation)
+    and the per-category quantity distributions table — 19 rows from
+    PRODUCE through ACCESSORY (TJ Maxx).
+  - `BASKET_ARCHETYPE_SHARES` per [Step 4i](../V2_5_DATA_DESIGN.md#step-4i-basket-archetype):
+    stockup 40% / fill-in 45% / themed 15%, with per-archetype category
+    bias overrides.
+  - `BASKET_SIZE_BY_ARCHETYPE` per [Step 4j](../V2_5_DATA_DESIGN.md#step-4j-basket-size):
+    eight rows keyed by merchant + behavioral_segment + archetype.
+  - `ACTIVE_WEEKS_RANGE = (9, 12)` per [Step 4b](../V2_5_DATA_DESIGN.md#step-4b-per-customer-week-level-variance).
+  - Per-payment_type entry-mode and card-network distributions
+    per [Step 4l](../V2_5_DATA_DESIGN.md#step-4l-payment-generation).
+- `src/generate/base.py` — rewrite the trip-distribution and basket loop:
+  - **Trip distribution** ([Step 4b](../V2_5_DATA_DESIGN.md#step-4b-per-customer-week-level-variance)):
+    sample per-customer active-weeks (9–12 of 13), distribute trips with
+    week-level variance, apply pay-cycle bumps on top of that signal —
+    both mechanisms apply.
+  - **Per-trip merchant choice** ([Step 4d](../V2_5_DATA_DESIGN.md#step-4d-day-of-week-patterns-by-chain-choice)
+    + [Step 4e](../V2_5_DATA_DESIGN.md#step-4e-per-trip-merchant-choice)):
+    weight by primary/secondary grocer + day-of-week (weekend bias to
+    primary, weekday afternoon bias to secondary).
+  - **Per-trip store choice** ([Step 4f](../V2_5_DATA_DESIGN.md#step-4f-per-trip-store-choice-within-chain)):
+    70% closest / 25% second-closest / 5% long-tail.
+  - **Terminal assignment** ([Step 4h](../V2_5_DATA_DESIGN.md#step-4h-terminal-assignment)):
+    sample uniformly from the store's 4–8 terminal slots.
+  - **Basket archetype + size** (Steps 4i / 4j): sample archetype for
+    grocery transactions; basket size driven by merchant + segment +
+    archetype.
+  - **Per-line generation** ([Step 4k](../V2_5_DATA_DESIGN.md#step-4k-per-line-generation)):
+    category sample (archetype-overridden), demand-weighted SKU within
+    category, no-duplicate-SKU rule, per-category qty distribution,
+    `unit_price = product.base_price` (no ±10% noise — that v2 behavior
+    is dropped), 85%-application discount when an active promo covers
+    the SKU, `tax = line_total × tax_rate(category)`.
+  - **Connectivity** (Step 4l): sample per the constant.
+- `src/generate/run_all.py` — orchestration cleanup; anomaly injection
+  is removed here and moves to Phase 6.
 
 **Files (spec docs).**
 - `DATA.md` — final field-level pass: confirm tenant tables in DATA.md
-  match `schema.sql` exactly. Add the qty-distribution and active-weeks
-  spec excerpts here so the doc is self-contained.
+  match `schema.sql` exactly post-Phase 3, and reference (don't
+  duplicate) the Layer 4 sections of `V2_5_DATA_DESIGN.md` for
+  generation logic. The design doc is the source of truth for
+  generator behavior; `DATA.md` describes outputs.
 
 **Files (tests).**
-- `tests/test_generation.py` — drop EBT-only-at-Kroger test; add
-  "no transaction has `payment_type='ebt'`" test; assert `terminal_id` per
-  txn falls in the store's terminal pool; assert qty distribution per
-  category falls in the spec'd band.
+- `tests/test_generation.py` —
+  - Drop EBT-only-at-Kroger test; add "no transaction has
+    `payment_type='ebt'`" test.
+  - Assert `terminal_id` per txn falls in `<store_id>-T01`..`-T08`.
+  - Assert connectivity mix within ±2pp of (65, 25, 8, 2).
+  - Assert per-category qty distribution within ±3pp per row of the
+    Step 4k table for categories with ≥1,000 sampled lines.
+  - Assert avg basket size per (merchant, segment, archetype) within
+    the Step 4j range for categories with ≥500 sampled baskets.
+  - Assert avg qty per line ∈ [1.4, 1.6] (Step 6 validation).
+  - Assert active-weeks distribution: per-customer active-week count
+    distribution falls in [9, 12] for ≥95% of customers.
 
-**Validation.**
-- Zero EBT rows.
+**Validation (matches Step 6 sanity checks in the design doc).**
+- Volume: 180,000–250,000 transactions, 2.0–3.0M line items.
+- Zero EBT rows, zero cash rows, zero declines.
 - All transactions have non-null `terminal_id` and `connectivity_type`.
-- Per-txn `subtotal == sum(line_total)` and `txn_total == subtotal + tax_total`.
-- Connectivity mix matches the spec (Q6) within ±2pp.
-- Quantity-by-category distribution matches the spec (Q3).
+- Per-txn `subtotal == sum(line_total)` and `txn_total == subtotal + tax_total` (atomic, no drift).
+- Discount line-item share within Step 6 targets:
+  ~15% grocery / ~5% QSR / ~3% retail (±3pp).
+- Top store gets ~70% of trips per chain (within-chain distribution).
 
-**Dependencies.** Phase 3 + resolution of Q3, Q4, Q6.
+**Dependencies.** Phase 3.
 
 ---
 
@@ -664,24 +707,5 @@ rather than as decisions on top of the doc.
 
 The reconciliation table previously read `is_lapser → REMOVE (or fold into the new "Lapsed/light" affinity bucket)`. Corrected: **REMOVE entirely.** The lapsed cohort is represented by `grocer_affinity_type = 'lapsed_light'`, not a parallel flag.
 
-### Notes for Phase 4 from the new Layer 4
-
-Worth folding into the Phase 4 plan during implementation (not blockers
-right now, but easy to miss):
-
-- **Basket archetypes** (Step 4i): grocery transactions sample one of
-  `stockup` (40%) / `fill-in` (45%) / `themed` (15%); each archetype
-  overrides the base category-share weighting. QSR and retail are
-  archetype-less.
-- **Basket sizing** (Step 4j): driven by merchant × behavioral_segment ×
-  archetype, e.g. grocery + filler + fill-in ≈ 6 items, grocery +
-  stocker + stockup ≈ 28 items. The current bimodal sampler in
-  `base.py` is close in spirit but will need to be re-keyed to this
-  three-axis lookup.
-- **Per-line discount probability** (Step 4k step 6): when a line's SKU
-  has an active promo on that date, apply the discount with **85%**
-  probability (the remaining 15% represents loyalty-card non-use or
-  ineligible variants). Currently v2 always applies discounts.
-- **Day-of-week patterns by chain choice** (Step 4d): primary-grocer
-  visits skew weekend (stockup); secondary-grocer visits skew weekday
-  evening (fill-in). Replaces v2's flat `peak_days` config.
+All Step 4a–4l requirements are folded into Phase 4's file list above
+(see Phase 4 in §2). The reconciliation now has no open items.

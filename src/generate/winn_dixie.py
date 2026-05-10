@@ -1,28 +1,20 @@
-"""Kroger merchant data provider.
-
-Phase 4: per-merchant modules expose `build(rng)` returning a
-`MerchantData` bundle. Transaction generation is unified in
-`src/generate/transactions.py`.
-
-Kroger forces stores in 28205 (Plaza Midwood) and 28213 (University City)
-so the Phase 6 anomaly anchors have local foot traffic.
-"""
+"""Winn-Dixie merchant data provider. Charlotte stores; grocery overlay catalog."""
 from datetime import timedelta
 
 import numpy as np
 import pandas as pd
 
-from . import catalog_grocery, metro, parameters as P, promotions
+from . import catalog_winn_dixie, metro, parameters as P, promotions
 from .anomalies import pinned_pasta_promo
 from .transactions import MerchantData
 
-KROGER_REQUIRED_ZIPS = ("28205", "28213")
+WINN_DIXIE_REQUIRED_ZIPS = ("28213",)
 
 
 def build_stores(rng: np.random.Generator) -> pd.DataFrame:
-    n = P.MERCHANT_CONFIGS["kroger"]["n_stores"]
+    n = P.MERCHANT_CONFIGS["winn_dixie"]["n_stores"]
     zips = metro.assign_store_zips(
-        "grocery", n, rng, require_zips=KROGER_REQUIRED_ZIPS
+        "grocery", n, rng, require_zips=WINN_DIXIE_REQUIRED_ZIPS
     )
     rows = []
     for i, zip5 in enumerate(zips, start=1):
@@ -30,8 +22,8 @@ def build_stores(rng: np.random.Generator) -> pd.DataFrame:
         lat, lon = metro.store_coords(zip5, rng)
         open_offset_days = int(rng.integers(365, 365 * 10))
         rows.append({
-            "store_id":     f"KRG-NC-{i:04d}",
-            "merchant_id":  "KRG",
+            "store_id":     f"WDX-NC-{i:04d}",
+            "merchant_id":  "WDX",
             "store_zip5":   zip5,
             "neighborhood": neighborhood,
             "metro_region": region,
@@ -43,18 +35,17 @@ def build_stores(rng: np.random.Generator) -> pd.DataFrame:
 
 
 def build(rng: np.random.Generator) -> MerchantData:
-    catalog = catalog_grocery.build_catalog("kroger")
+    catalog = catalog_winn_dixie.build_catalog()
     stores = build_stores(rng)
-    # Reserve one slot for the pinned pasta promo (Phase 6 anomaly).
-    target = P.MERCHANT_CONFIGS["kroger"].get("n_promos") or promotions.PROMO_COUNT_TARGETS["KRG"]
+    target = promotions.PROMO_COUNT_TARGETS["WDX"]
     random_promos = promotions.generate_for_merchant(
-        catalog, "KRG", "grocery", rng, n_promos=target - 1
+        catalog, "WDX", "grocery", rng, n_promos=target - 1
     )
-    pinned = pinned_pasta_promo(catalog, "KRG", promo_id=f"KRG-PROMO-{target:04d}")
+    pinned = pinned_pasta_promo(catalog, "WDX", promo_id=f"WDX-PROMO-{target:04d}")
     promos = pd.concat([random_promos, pinned], ignore_index=True) if not pinned.empty else random_promos
-    affinity_fn = catalog_grocery.make_apply_affinity(catalog)
+    affinity_fn = catalog_winn_dixie.make_apply_affinity(catalog)
     return MerchantData(
-        merchant_id="KRG",
+        merchant_id="WDX",
         segment="grocery",
         catalog=catalog,
         stores=stores,

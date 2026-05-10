@@ -1,8 +1,10 @@
-"""DB tests. See PLAN.md §12.
+"""DB tests.
 
-Validates schema applies cleanly, indexes/FKs are present, both layers seeded
-with matching row counts, and the cross-merchant lake query (count of
-customers active at >=2 merchants) returns a non-zero result.
+Validates schema applies cleanly, indexes/FKs are present, and tenant
+tables are seeded with row counts that match their source CSVs. The
+lake is virtual in v2.5 (computed at query time from tenant tables —
+see ``tests/test_lake_views.py``); this file no longer asserts on
+physical lake_* tables.
 """
 from __future__ import annotations
 
@@ -14,8 +16,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 DB_PATH = ROOT / "data" / "payments.db"
 SCHEMA_PATH = ROOT / "src" / "db" / "schema.sql"
-TENANT = ROOT / "data" / "anon" / "tenant"
-LAKE = ROOT / "data" / "anon" / "lake"
+RAW = ROOT / "data" / "raw"
 
 
 @pytest.fixture(scope="module")
@@ -45,11 +46,23 @@ def test_schema_applies_cleanly(tmp_path: Path) -> None:
     expected_tables = {
         "merchants",
         "tenant_customers", "tenant_stores", "tenant_products",
+        "tenant_promotions",
         "tenant_transactions", "tenant_transaction_items",
-        "lake_customers", "lake_transactions", "lake_transaction_items",
     }
-    assert expected_tables.issubset(tables)
+    assert expected_tables == tables, (
+        f"unexpected schema tables: missing={expected_tables - tables} "
+        f"extra={tables - expected_tables}"
+    )
     c.close()
+
+
+def test_no_physical_lake_tables(conn: sqlite3.Connection) -> None:
+    """v2.5 holds no physical lake_* tables — the lake is virtual."""
+    rows = conn.execute(
+        "SELECT name FROM sqlite_master "
+        "WHERE type='table' AND name LIKE 'lake_%'"
+    ).fetchall()
+    assert rows == [], f"unexpected physical lake_* tables: {rows}"
 
 
 def test_indexes_present(conn: sqlite3.Connection) -> None:
@@ -60,8 +73,6 @@ def test_indexes_present(conn: sqlite3.Connection) -> None:
     expected = {
         "ix_t_txn_customer", "ix_t_txn_merchant", "ix_t_txn_store",
         "ix_t_txn_ts", "ix_t_items_sku", "ix_t_items_txn",
-        "ix_l_txn_customer", "ix_l_txn_merchant", "ix_l_txn_ts",
-        "ix_l_items_txn",
     }
     assert expected.issubset(names)
 
@@ -73,8 +84,6 @@ def test_foreign_keys_declared(conn: sqlite3.Connection) -> None:
         "tenant_products":           "merchants",
         "tenant_transactions":       "tenant_customers",
         "tenant_transaction_items":  "tenant_transactions",
-        "lake_transactions":         "lake_customers",
-        "lake_transaction_items":    "lake_transactions",
     }
     for child, parent in fk_targets.items():
         fks = conn.execute(f"PRAGMA foreign_key_list('{child}')").fetchall()
@@ -93,14 +102,12 @@ def test_foreign_key_enforcement_active(conn: sqlite3.Connection) -> None:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("table,csv", [
-    ("tenant_customers",          TENANT / "customers.csv"),
-    ("tenant_stores",             TENANT / "stores.csv"),
-    ("tenant_products",           TENANT / "products.csv"),
-    ("tenant_transactions",       TENANT / "transactions.csv"),
-    ("tenant_transaction_items",  TENANT / "transaction_items.csv"),
-    ("lake_customers",            LAKE / "customers.csv"),
-    ("lake_transactions",         LAKE / "transactions.csv"),
-    ("lake_transaction_items",    LAKE / "transaction_items.csv"),
+    ("tenant_customers",          RAW / "customers.csv"),
+    ("tenant_stores",             RAW / "stores.csv"),
+    ("tenant_products",           RAW / "products.csv"),
+    ("tenant_promotions",         RAW / "promotions.csv"),
+    ("tenant_transactions",       RAW / "transactions.csv"),
+    ("tenant_transaction_items",  RAW / "transaction_items.csv"),
 ])
 def test_table_row_counts_match_csvs(
     conn: sqlite3.Connection, table: str, csv: Path
@@ -110,29 +117,16 @@ def test_table_row_counts_match_csvs(
     assert n_db == n_csv, f"{table}: db={n_db} csv={n_csv}"
 
 
-# ---------------------------------------------------------------------------
-# Cross-merchant lake query — the demo's punchline
-# ---------------------------------------------------------------------------
-
-def test_cross_merchant_lake_query_returns_nonzero(conn: sqlite3.Connection) -> None:
-    n = conn.execute("""
-        SELECT COUNT(*) FROM (
-            SELECT customer_id
-            FROM lake_transactions
-            GROUP BY customer_id
-            HAVING COUNT(DISTINCT merchant_id) >= 2
-        )
-    """).fetchone()[0]
-    assert n > 0
-
-
-def test_no_pii_in_db(conn: sqlite3.Connection) -> None:
-    """Belt-and-suspenders: no `customer_name`/`customer_email`/`customer_pan`
-    column anywhere in the schema."""
-    bad = {"customer_name", "customer_email", "customer_pan"}
+def test_no_pii_or_v2_demographics_in_db(conn: sqlite3.Connection) -> None:
+    """Belt-and-suspenders: no PII or deferred-demographic columns
+    anywhere in the schema."""
+    bad = {
+        "customer_name", "customer_email", "customer_pan",
+        "age_band", "income_band", "is_lapser", "is_organic",
+    }
     tables = [r[0] for r in conn.execute(
         "SELECT name FROM sqlite_master WHERE type='table'"
     )]
     for t in tables:
         cols = {r[1] for r in conn.execute(f"PRAGMA table_info('{t}')")}
-        assert not (cols & bad), f"PII column found in {t}: {cols & bad}"
+        assert not (cols & bad), f"forbidden column found in {t}: {cols & bad}"

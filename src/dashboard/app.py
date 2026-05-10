@@ -21,59 +21,83 @@ import pandas as pd
 import streamlit as st
 
 from src.agents.advisor import MAX_TURNS, MerchantAdvisor
-from src.agents.analyst import NetworkAnalyst
 
 ROOT = Path(__file__).resolve().parents[2]
 DB_PATH = ROOT / "data" / "payments.db"
 
-ROLES = ["Kroger", "Taco Bell", "TJ Maxx", "Network Analyst"]
-ROLE_TO_MERCHANT_ID = {"Kroger": "KRG", "Taco Bell": "TBL", "TJ Maxx": "TJX"}
+ROLE_TO_MERCHANT_ID = {
+    "Kroger":     "KRG",
+    "Acme":       "ACM",
+    "Winn-Dixie": "WDX",
+    "Taco Bell":  "TBL",
+    "TJ Maxx":    "TJX",
+}
+ROLES = list(ROLE_TO_MERCHANT_ID.keys())
 
 CANNED_QUESTIONS: dict[str, list[str]] = {
     "Kroger": [
         "What are my top categories by revenue last week, and which subcategories drove each?",
-        "Which products are most often bought together with milk in my stores?",
-        "Have any of my stores seen a drop in transaction count recently?",
-        "How does my average basket size compare to other merchants in the panel?",
-        "What share of my customers also shop at QSRs, and how does that affect their behavior at my stores?",
+        "Which products are most often bought together with whole milk in my stores?",
+        "Have any of my stores seen a drop in transaction count week-over-week?",
+        "How does my average basket size compare to peer grocers in the panel?",
+        "How does my dairy unit pricing compare to peer grocers?",
+    ],
+    "Acme": [
+        "What are my top categories by revenue last week, and which subcategories drove each?",
+        "Which products are most often bought together with whole milk in my stores?",
+        "Have any of my stores seen a drop in transaction count week-over-week?",
+        "How does my average basket size compare to peer grocers in the panel?",
+        "How does my produce pricing compare to peer grocers?",
+    ],
+    "Winn-Dixie": [
+        "What are my top categories by revenue last week, and which subcategories drove each?",
+        "Which products are most often bought together with bread in my stores?",
+        "Have any of my stores seen a drop in transaction count week-over-week?",
+        "How does my average basket size compare to peer grocers in the panel?",
+        "How does my bakery pricing compare to peer grocers?",
     ],
     "Taco Bell": [
         "What are my top menu items by revenue last week, and which categories drove the volume?",
         "Which items are most often ordered together with a Crunchwrap Supreme?",
-        "Have any of my stores seen a drop in transaction count recently?",
-        "How does my average ticket size compare to other merchants in the panel?",
-        "What share of my customers also shop at grocery stores, and what does their cross-merchant behavior look like?",
+        "Have any of my stores seen a drop in transaction count week-over-week?",
+        "How does my average ticket size compare to QSR peers in the panel?",
+        "What payment-mix or entry-mode patterns differ between my stores and QSR peers?",
     ],
     "TJ Maxx": [
         "What are my top categories by revenue last week, and which subcategories drove each?",
         "Which categories are most often purchased together (e.g., apparel + accessories)?",
-        "Have any of my stores seen a drop in transaction count recently?",
-        "How does my average basket size compare to other merchants in the panel?",
-        "What share of my customers also shop at QSRs, and how does that affect their behavior at my stores?",
-    ],
-    "Network Analyst": [
-        "How many customers are active across all three merchants in the last 30 days, and what is their average spend at each?",
-        "How do pay-cycle effects (1st-3rd, 15th-17th, vs other days) differ across grocery, QSR, and retail?",
-        "Which customer segments have shown emerging cross-merchant behavior in the last month?",
+        "Have any of my stores seen a drop in transaction count week-over-week?",
+        "How does my average ticket size compare to off-price retail peers in the panel?",
+        "What payment-mix or entry-mode patterns differ between my stores and retail peers?",
     ],
 }
 
 CONTEXT_BLURBS: dict[str, str] = {
     "Kroger":
-        "You are acting as **Kroger's** ops team. Your queries see your own "
-        "granular tenant data plus the anonymized cross-merchant aggregate in "
-        "the lake.",
+        "You are acting as **Kroger's** ops team (one of three grocers in the "
+        "5-merchant Charlotte panel). Your tenant queries see Kroger's full "
+        "granularity. Lake queries return the other four merchants pseudonymized "
+        "as `peer_a`..`peer_d`; Kroger's own rows are excluded automatically.",
+    "Acme":
+        "You are acting as **Acme's** ops team (one of three grocers in the "
+        "5-merchant Charlotte panel). Your tenant queries see Acme's full "
+        "granularity. Lake queries return the other four merchants pseudonymized "
+        "as `peer_a`..`peer_d`; Acme's own rows are excluded automatically.",
+    "Winn-Dixie":
+        "You are acting as **Winn-Dixie's** ops team (one of three grocers in "
+        "the 5-merchant Charlotte panel). Your tenant queries see Winn-Dixie's "
+        "full granularity. Lake queries return the other four merchants "
+        "pseudonymized as `peer_a`..`peer_d`; Winn-Dixie's own rows are excluded.",
     "Taco Bell":
-        "You are acting as **Taco Bell's** ops team. Your queries see your own "
-        "granular tenant data plus the anonymized cross-merchant aggregate in "
-        "the lake.",
+        "You are acting as **Taco Bell's** ops team (the QSR in the 5-merchant "
+        "Charlotte panel). Your tenant queries see Taco Bell's full granularity. "
+        "Lake queries return the other four merchants pseudonymized as "
+        "`peer_a`..`peer_d`; Taco Bell's own rows are excluded automatically.",
     "TJ Maxx":
-        "You are acting as **TJ Maxx's** ops team. Your queries see your own "
-        "granular tenant data plus the anonymized cross-merchant aggregate in "
-        "the lake.",
-    "Network Analyst":
-        "You are a **payments-network analyst**. Your queries see only the "
-        "cross-merchant lake — no individual merchant's tenant data.",
+        "You are acting as **TJ Maxx's** ops team (the off-price retailer in "
+        "the 5-merchant Charlotte panel). Your tenant queries see TJ Maxx's "
+        "full granularity. Lake queries return the other four merchants "
+        "pseudonymized as `peer_a`..`peer_d`; TJ Maxx's own rows are excluded.",
 }
 
 
@@ -95,7 +119,10 @@ if not DB_PATH.exists() or DB_PATH.stat().st_size == 0:
 title_col, mock_col = st.columns([4, 1])
 with title_col:
     st.title("Payments Data Strategy Demo")
-    st.caption("Cross-merchant analytics on a synthetic 5,000-customer panel · Kroger · Taco Bell · TJ Maxx")
+    st.caption(
+        "Cross-merchant analytics on a synthetic 10,000-customer Charlotte "
+        "panel · Kroger · Acme · Winn-Dixie · Taco Bell · TJ Maxx"
+    )
 with mock_col:
     st.write("")  # vertical alignment with the title
     mock = st.checkbox(
@@ -135,9 +162,7 @@ with st.form("ask_form", clear_on_submit=False):
 # ---------------------------------------------------------------------------
 
 @st.cache_resource
-def _get_agent(role: str, mock: bool):
-    if role == "Network Analyst":
-        return NetworkAnalyst(mock=mock)
+def _get_agent(role: str, mock: bool) -> MerchantAdvisor:
     return MerchantAdvisor(current_merchant_id=ROLE_TO_MERCHANT_ID[role], mock=mock)
 
 

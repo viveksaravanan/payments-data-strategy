@@ -1,7 +1,9 @@
-"""Load tenant + lake CSVs into ``data/payments.db``.
+"""Load tenant CSVs into ``data/payments.db``.
 
 The DB file is rebuilt from scratch on every run so the seed is idempotent.
 Foreign-key enforcement is set per-connection (PRAGMA is not persisted).
+The lake is not a physical layer in v2.5 — it's computed at query time
+from the tenant tables (see ``src/lake/views.py``).
 
     uv run python -m src.db.seed
 """
@@ -16,36 +18,36 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[2]
 DB_PATH = ROOT / "data" / "payments.db"
 SCHEMA_PATH = ROOT / "src" / "db" / "schema.sql"
-TENANT = ROOT / "data" / "anon" / "tenant"
-LAKE = ROOT / "data" / "anon" / "lake"
+RAW = ROOT / "data" / "raw"
 
-# Schema column lists — CSVs may carry generation-only extras (e.g. ebt_eligible
-# on Kroger products); we project to schema columns at insert time.
+# Schema column lists. CSVs are projected to these columns at insert
+# time so generation-only fields (if any are added in future phases)
+# don't reach the DB.
 TENANT_CUST_COLS = [
-    "customer_id", "age_band", "income_band", "home_zip5", "signup_date",
-    "primary_card_type", "has_mobile_wallet",
+    "customer_id", "home_zip5", "behavioral_segment", "grocer_affinity_type",
+    "primary_grocer", "secondary_grocer", "primary_card_type",
+    "has_mobile_wallet", "signup_date",
 ]
-TENANT_STORE_COLS = ["store_id", "merchant_id", "store_zip5", "region", "open_date"]
+TENANT_STORE_COLS = [
+    "store_id", "merchant_id", "store_zip5", "neighborhood", "metro_region",
+    "latitude", "longitude", "open_date",
+]
 TENANT_PROD_COLS = [
-    "sku", "merchant_id", "name", "category", "subcategory", "is_organic", "base_price",
+    "sku", "merchant_id", "name", "category", "subcategory", "base_price",
 ]
 TENANT_TXN_COLS = [
-    "txn_id", "merchant_id", "customer_id", "store_id", "txn_ts",
-    "payment_type", "card_network", "entry_mode", "wallet_type", "txn_total",
+    "txn_id", "merchant_id", "customer_id", "store_id", "terminal_id",
+    "txn_ts", "payment_type", "card_network", "entry_mode", "wallet_type",
+    "connectivity_type", "subtotal", "tax_total", "txn_total",
 ]
 TENANT_ITEM_COLS = [
-    "txn_id", "line_id", "sku", "qty", "unit_price", "discount", "line_total",
+    "txn_id", "line_id", "sku", "qty", "unit_price", "discount", "tax",
+    "line_total", "promo_id",
 ]
-LAKE_CUST_COLS = [
-    "customer_id", "age_band", "income_band", "home_zip3", "signup_date",
-    "primary_card_type", "has_mobile_wallet",
+TENANT_PROMOTION_COLS = [
+    "promo_id", "merchant_id", "sku", "start_date", "end_date",
+    "discount_pct", "promo_name", "promo_type",
 ]
-LAKE_TXN_COLS = [
-    "txn_id", "merchant_id", "customer_id", "store_zip3", "region",
-    "txn_ts", "txn_hour_bucket", "payment_type", "card_network",
-    "entry_mode", "wallet_type", "txn_total",
-]
-LAKE_ITEM_COLS = ["txn_id", "line_id", "sku_category", "qty", "unit_price", "line_total"]
 
 MERCHANT_COLS = ["merchant_id", "name", "segment", "mcc"]
 
@@ -67,41 +69,40 @@ def main() -> None:
     print(f"[seed] applied schema to {DB_PATH}")
 
     # Parents first.
-    merchants = pd.read_csv(TENANT / "merchants.csv")
+    merchants = pd.read_csv(RAW / "merchants.csv")
     _load(conn, merchants, MERCHANT_COLS, "merchants")
 
-    # Tenant layer.
-    tcust = pd.read_csv(TENANT / "customers.csv",
+    tcust = pd.read_csv(RAW / "customers.csv",
                         dtype={"customer_id": str, "home_zip5": str})
     _load(conn, tcust, TENANT_CUST_COLS, "tenant_customers")
 
-    tstores = pd.read_csv(TENANT / "stores.csv",
+    tstores = pd.read_csv(RAW / "stores.csv",
                           dtype={"store_id": str, "store_zip5": str})
     _load(conn, tstores, TENANT_STORE_COLS, "tenant_stores")
 
-    tprods = pd.read_csv(TENANT / "products.csv")
+    tprods = pd.read_csv(RAW / "products.csv")
     _load(conn, tprods, TENANT_PROD_COLS, "tenant_products")
 
-    ttxns = pd.read_csv(TENANT / "transactions.csv",
-                        dtype={"customer_id": str, "txn_id": str, "store_id": str})
+    # tenant_promotions must be loaded BEFORE tenant_transaction_items so the
+    # promo_id FK on items resolves on insert.
+    tpromos = pd.read_csv(RAW / "promotions.csv",
+                          dtype={"promo_id": str, "sku": str})
+    _load(conn, tpromos, TENANT_PROMOTION_COLS, "tenant_promotions")
+
+    ttxns = pd.read_csv(
+        RAW / "transactions.csv",
+        dtype={
+            "customer_id": str, "txn_id": str, "store_id": str,
+            "terminal_id": str,
+        },
+    )
     _load(conn, ttxns, TENANT_TXN_COLS, "tenant_transactions")
 
-    titems = pd.read_csv(TENANT / "transaction_items.csv",
-                         dtype={"txn_id": str, "sku": str})
+    titems = pd.read_csv(
+        RAW / "transaction_items.csv",
+        dtype={"txn_id": str, "sku": str, "promo_id": str},
+    )
     _load(conn, titems, TENANT_ITEM_COLS, "tenant_transaction_items")
-
-    # Lake layer.
-    lcust = pd.read_csv(LAKE / "customers.csv",
-                        dtype={"customer_id": str, "home_zip3": str})
-    _load(conn, lcust, LAKE_CUST_COLS, "lake_customers")
-
-    ltxns = pd.read_csv(LAKE / "transactions.csv",
-                        dtype={"customer_id": str, "txn_id": str, "store_zip3": str})
-    _load(conn, ltxns, LAKE_TXN_COLS, "lake_transactions")
-
-    litems = pd.read_csv(LAKE / "transaction_items.csv",
-                         dtype={"txn_id": str})
-    _load(conn, litems, LAKE_ITEM_COLS, "lake_transaction_items")
 
     conn.commit()
     conn.close()

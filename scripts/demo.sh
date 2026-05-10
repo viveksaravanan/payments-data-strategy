@@ -12,7 +12,7 @@ cd "$(dirname "$0")/.."
 echo "==> [1/3] make clean — wiping data/ and the SQLite database"
 make clean
 
-echo "==> [2/3] make seed — generate raw, anonymize (tenant + lake), load SQLite"
+echo "==> [2/3] make seed — generate raw and load SQLite"
 make seed
 
 echo "==> [3/3] make demo — launching Streamlit on http://localhost:8501 (Ctrl-C to stop)"
