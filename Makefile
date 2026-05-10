@@ -6,6 +6,7 @@ seed:
 
 report:
 	uv run python scripts/generate_report_data.py
+	uv run python scripts/build_report_html.py
 	@echo
 	@echo "Interactive report: file://$(PWD)/docs/report.html"
 
