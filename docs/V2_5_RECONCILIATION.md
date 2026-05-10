@@ -642,48 +642,46 @@ readthrough.
 
 ## 3. Open questions — status
 
-### Resolved (locked before Phase 0)
+All ten resolved. The design doc was extended (1,228 lines as of
+2026-05-09 20:50) with a full Layer 4 — Steps 4a through 4l plus per-
+category quantity distributions — so Q3/Q4/Q6 are now answered in-spec
+rather than as decisions on top of the doc.
 
-| ID | Resolution |
-|---|---|
-| **Q1** | **Generate `customer_id` directly** in `src/generate/customers.py` using the existing SHA-256 hash. PAN never written to disk. `src/anonymize/` collapses entirely (Phase 5c). |
-| **Q2** | **`off_price_retail`** (v2.5 spelling) is canonical. Global rename of `retail_offprice` everywhere it appears. |
-| **Q5** | Aim for all 7 agents long-term, but **defer agent persona design** for now. Phase 5b keeps the single Merchant Advisor (mapped to persona #7). Specialist agents are a separate workstream after the data refactor lands. |
-| **Q7** | Accept the broken-anomaly window during Phases 1–5. Anomalies are explicitly Phase 6 work. |
-| **Q8** | **No `tenant_terminals` table.** Terminal identity stays as a string field. |
-| **Q9** | Lake formula confirmed: `discount_pct_applied = discount / (unit_price * qty)`. |
-| **Q10** | Clean delete of `data/anon/` and `src/anonymize/` on Phase 5c. No empty dirs left behind. |
+| ID | Resolution | Source |
+|---|---|---|
+| **Q1** | Generate `customer_id` directly in `src/generate/customers.py` using the existing SHA-256 hash. PAN never written to disk. `src/anonymize/` collapses entirely (Phase 5c). | Locked decision |
+| **Q2** | **`off_price_retail`** (v2.5 spelling) is canonical. Global rename of `retail_offprice` everywhere it appears. | Locked decision |
+| **Q3** | **Per-category qty distributions, Step 4k table.** PRODUCE 55/25/12/5/3, DAIRY 65/25/8/2, BAKERY 85/13/2, … through APPAREL 92/7/1. Implemented as a category → categorical-distribution lookup in `parameters.py`; sampled per line in `base.py`. | `V2_5_DATA_DESIGN.md` Step 4k |
+| **Q4** | **Per-customer active-weeks variance, Step 4b.** Each customer has 9–12 active weeks of the 13 in the window; trips distributed across active weeks with realistic variance. **In addition to** pay-cycle bumps (kept). | `V2_5_DATA_DESIGN.md` Step 4b |
+| **Q5** | Aim for all 7 agents long-term, but **defer agent persona design** for now. Phase 5b keeps the single Merchant Advisor (mapped to persona #7). Specialist agents are a separate workstream after the data refactor lands. | Locked decision |
+| **Q6** | **Connectivity distribution, Step 4l: 65% wifi / 25% cellular_4g / 8% cellular_5g / 2% ethernet, uniform across merchants for v2.5.** | `V2_5_DATA_DESIGN.md` Step 4l |
+| **Q7** | Accept the broken-anomaly window during Phases 1–5. Anomalies are Phase 6 work. | Locked decision |
+| **Q8** | **No `tenant_terminals` table.** Terminal identity stays as a string field. | Locked decision |
+| **Q9** | Lake formula confirmed: `discount_pct_applied = discount / (unit_price * qty)`. | `V2_5_DATA_DESIGN.md` line 716 |
+| **Q10** | Clean delete of `data/anon/` and `src/anonymize/` on Phase 5c. No empty dirs left behind. | Locked decision |
 
 ### §1.3 correction
 
 The reconciliation table previously read `is_lapser → REMOVE (or fold into the new "Lapsed/light" affinity bucket)`. Corrected: **REMOVE entirely.** The lapsed cohort is represented by `grocer_affinity_type = 'lapsed_light'`, not a parallel flag.
 
-### Awaiting design-doc input (blockers for the affected phase)
+### Notes for Phase 4 from the new Layer 4
 
-The locked `V2_5_DATA_DESIGN.md` in this repo has a 5-line stub for Layer 4
-that says *"See earlier doc state for full detail; preserved here for
-reference."* The three items below were flagged as "in the design doc" but
-their content is not present in the file. Resolution paths: paste the
-relevant excerpts, point me at the earlier doc state, or treat them as
-explicit decisions and add them to `V2_5_DATA_DESIGN.md` so it's
-self-contained.
+Worth folding into the Phase 4 plan during implementation (not blockers
+right now, but easy to miss):
 
-### Q3 — Per-category quantity distributions
-**Said to be in Layer 3e.** Layer 3e in the file currently has only
-`qty | INTEGER | Number of units, ≥ 1` and a tax-rate-by-category table. No
-per-category quantity-distribution table is present.
-**Affects:** Phase 4 (transaction generation).
-
-### Q4 — Per-customer active-weeks variance
-**Said to be in Layer 4 Step 4b.** Layer 4 in the file is a stub with no
-numbered steps. Decision recorded: keep pay-cycle bumps **and** add the
-per-customer active-weeks variance from Step 4b — but I need the spec to
-implement it.
-**Affects:** Phase 4 (transaction generation).
-
-### Q6 — Connectivity-type distribution
-**Said to be in Layer 4 Step 4l: "65% wifi, 25% cellular_4g, 8%
-cellular_5g, 2% ethernet (uniform across merchants for v2.5)."** This
-string is not in `V2_5_DATA_DESIGN.md`. If the numbers are correct, I'll
-encode them as the default once you confirm the source.
-**Affects:** Phase 4 (transaction generation).
+- **Basket archetypes** (Step 4i): grocery transactions sample one of
+  `stockup` (40%) / `fill-in` (45%) / `themed` (15%); each archetype
+  overrides the base category-share weighting. QSR and retail are
+  archetype-less.
+- **Basket sizing** (Step 4j): driven by merchant × behavioral_segment ×
+  archetype, e.g. grocery + filler + fill-in ≈ 6 items, grocery +
+  stocker + stockup ≈ 28 items. The current bimodal sampler in
+  `base.py` is close in spirit but will need to be re-keyed to this
+  three-axis lookup.
+- **Per-line discount probability** (Step 4k step 6): when a line's SKU
+  has an active promo on that date, apply the discount with **85%**
+  probability (the remaining 15% represents loyalty-card non-use or
+  ineligible variants). Currently v2 always applies discounts.
+- **Day-of-week patterns by chain choice** (Step 4d): primary-grocer
+  visits skew weekend (stockup); secondary-grocer visits skew weekday
+  evening (fill-in). Replaces v2's flat `peak_days` config.

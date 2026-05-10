@@ -458,24 +458,403 @@ on `lake_transactions`, not via direct access to peer promo schedules.
 
 # LAYER 4: GENERATION LOGIC — LOCKED
 
-(Six-step generator flow. Implementation rules for trip frequency,
-per-customer week-level variance, day-of-week patterns, basket archetypes,
-payment correlations, planted anomalies. See earlier doc state for full
-detail; preserved here for reference.)
+How the generator simulates 90 days of reality to produce the Phase 1
+data tables. The generator runs in a deterministic order, with a fixed
+seed for reproducibility.
 
-90-day window: **March 1, 2026 through May 29, 2026**.
+The 90-day window: **March 1, 2026 through May 29, 2026**.
 
-Three planted anomalies:
+## High-level flow
 
-1. **University City decline** — All three grocers in University City
-   neighborhood see traffic drops late April / May (4-stage ramp).
-   Cross-merchant enrichment shows market-wide pattern.
-2. **Plaza Midwood Kroger avocado spike** — One Kroger store sees
-   elevated avocado purchases April 21–24 (4-day pattern, peak April 22).
-3. **Acme failed pasta promo** — Acme's pasta promo April 19–25 fails
-   while Kroger's competing promo April 15–21 succeeds. Demonstrates
-   competitive market dynamics, detected via discount-pattern observation
-   in the lake.
+The generator runs in six steps:
+
+1. Generate static reference data (merchants, stores, customers, base
+   catalog)
+2. Generate per-merchant catalogs (apply overlays)
+3. Generate promotions (with cross-merchant coordination)
+4. Generate transactions and line items (volume emerges from per-customer
+   behavior)
+5. Compute rollup fields (subtotal, tax_total, txn_total)
+6. Validate the output
+
+### Determinism
+
+All sampling uses a seeded random number generator. Same seed produces
+the same data. The seed is captured in DATA.md for reproducibility.
+
+### Performance targets
+
+- Static data: ~5 seconds
+- Promotions: ~5 seconds
+- Transactions and line items: ~30–60 seconds
+- Validation: ~5 seconds
+
+Total: under 90 seconds end-to-end.
+
+---
+
+## Step 1: Static reference data
+
+### Customers
+
+Generate 10,000 rows:
+
+1. Sample home_zip5 weighted by population density (urban 30%, inner
+   suburbs 40%, outer suburbs 30%)
+2. Sample behavioral_segment: 70% filler, 30% stocker
+3. Sample grocer_affinity_type: 55% loyalist, 30% splitter, 12%
+   three-chain, 3% lapsed
+4. Sample primary_grocer:
+   - For 90% of customers: weighted by store-count proportion of the
+     geographically closest grocer chain (40% KRG, 33% ACM, 27% WDX
+     overall)
+   - For 10% of customers: assigned to a non-closest chain (brand
+     affinity / non-geographic preference)
+5. For splitters and three-chain shoppers: assign secondary_grocer as
+   the closest non-primary grocer chain
+6. Sample primary_card_type: 60% credit, 30% debit, 10% mixed
+7. Sample has_mobile_wallet: 40% have a mobile wallet
+8. Generate signup_date: most customers 1–3 years before window start
+   (~10% are new in the last 90 days)
+9. Generate customer_id as 16-char SHA-256 hash directly
+
+### Stores
+
+For each merchant: allocate stores across regions per the documented
+distribution; sample ZIP within region; map ZIP to neighborhood; place
+store at ZIP centroid + uniform ±0.02° jitter; sample open_date (Beta(2,5)
+skewing older).
+
+---
+
+## Step 4: Transactions and line items
+
+### Step 4a: Trip frequency per 90 days
+
+Sample within range based on segment + affinity:
+
+| Segment + affinity | Grocery trips per 90 days |
+|---|---|
+| Filler + Loyalist | 18–24 |
+| Filler + Splitter | 20–28 |
+| Filler + Three-chain | 22–30 |
+| Stocker + Loyalist | 8–14 |
+| Stocker + Splitter | 10–16 |
+| Stocker + Three-chain | 12–18 |
+| Lapsed (any) | varies (see below) |
+
+Lapsed customers are not homogeneous:
+
+- 50% have 0 grocery trips (truly inactive)
+- 30% have 1–2 trips clustered in one week (visited family, brief activity)
+- 20% have 1–2 trips spread out (occasional)
+
+QSR trip frequency: 50% of customers have 6–15 Taco Bell trips, 50% have
+0–3 trips. Independent of grocer affinity.
+
+Retail trip frequency: 30% of customers have 2–6 TJ Maxx trips, 70% have
+0–1 trips.
+
+### Step 4b: Per-customer week-level variance
+
+Real customers don't shop at constant frequency. Some weeks they're heavy,
+some weeks zero.
+
+For each customer, distribute their N trips across the 90 days as follows:
+
+1. Determine "active weeks" — typically 9–12 of the 13 weeks in the window
+   (some customers active most weeks, some skip weeks for travel/illness)
+2. Sample which weeks are active (varies per customer)
+3. Distribute N trips across active weeks with realistic variance — some
+   weeks 3+ trips, some weeks 1, some weeks 0
+4. Within active weeks, sample specific dates
+
+This produces bursty per-customer patterns. Pay-cycle bumps (slight spike
+on the 1st and 15th) layer on top of this — both mechanisms apply.
+
+### Step 4c: Trip date conditional on signup_date
+
+For customers with signup_date inside the window: trips can only occur on
+or after signup_date. Trip dates are sampled from the effective window
+(signup_date through end of window), not the full 90-day span.
+
+This is a correctness rule, not a realism choice.
+
+### Step 4d: Day-of-week patterns by chain choice
+
+For splitter customers, weight per-trip chain choice by day-of-week:
+
+- **Weekend trips** (Saturday/Sunday): bias toward primary grocer
+  (stockup pattern). For a splitter with 65/30 primary/secondary split,
+  weekend bias makes it 80/20.
+- **Weekday afternoon trips** (Tuesday–Thursday): bias toward secondary
+  grocer (fill-in pattern on the way home). 50/50 split rather than 65/30.
+- **Other times**: standard distribution
+
+### Step 4e: Per-trip merchant choice
+
+For loyalist customers: 90% primary, 8% closer of the two non-primaries,
+2% the third.
+
+For splitters: per Step 4d above plus 5% to the third grocer.
+
+For three-chain shoppers: 50% primary, 30% second-closest, 20% third,
+ranked by distance from home.
+
+For lapsed: scattered across grocers based on proximity.
+
+### Step 4f: Per-trip store choice (within chain)
+
+Within the chosen grocer chain:
+
+- ~70% of trips at the closest store
+- ~25% at the second-closest
+- ~5% at long-tail stores
+
+### Step 4g: Per-trip time
+
+Sample timestamp from merchant-specific patterns:
+
+**Day-of-week:**
+- Grocery: heaviest Saturday and Sunday
+- QSR: heaviest Friday and Saturday
+- Retail: heaviest Saturday and Sunday
+
+**Time-of-day:**
+- Grocery: peaks 10am–2pm and 5pm–7pm
+- QSR: peaks 12pm–1pm and 7pm–9pm
+- Retail: peaks 11am–3pm and 4pm–7pm
+
+**Calendar effects:**
+- Slight spike on the 1st and 15th of each month (paydays)
+- Promo-day spikes on dates with active weekly_ad promos starting
+
+### Step 4h: Terminal assignment
+
+Each store has 4–8 implicit terminal slots. For each transaction, sample
+uniformly from the store's slots. The terminal_id format is
+`<store_id>-T<NN>`.
+
+### Step 4i: Basket archetype
+
+For each grocery transaction, sample basket archetype:
+
+- **Stockup** (40% of grocery trips): heavy on pantry, household, dairy,
+  meat. Larger basket (especially for stockers).
+- **Fill-in** (45% of grocery trips): heavy on perishables — produce,
+  dairy, bakery. Smaller basket.
+- **Themed** (15% of grocery trips): event-driven. Could be BBQ
+  (meat/snacks/beverages), party (snacks/beverages/bakery), special meal
+  (specific category cluster). Medium-large basket with category bias.
+
+Each archetype has a different category-share weighting that overrides
+the merchant's baseline.
+
+QSR baskets are mostly homogeneous (no archetypes).
+Retail baskets are mostly homogeneous (no archetypes).
+
+### Step 4j: Basket size
+
+Sampled per merchant + segment + archetype:
+
+| Merchant + segment | Avg lines per basket | Range |
+|---|---|---|
+| Grocery + filler + fill-in | ~6 | 3–10 |
+| Grocery + filler + stockup | ~14 | 8–18 |
+| Grocery + filler + themed | ~10 | 5–14 |
+| Grocery + stocker + fill-in | ~10 | 5–14 |
+| Grocery + stocker + stockup | ~28 | 18–40 |
+| Grocery + stocker + themed | ~18 | 10–25 |
+| Taco Bell | ~3 | 2–5 |
+| TJ Maxx | ~5 | 1–12 |
+
+### Step 4k: Per-line generation
+
+For each line (1 to basket size):
+
+1. Sample category from merchant's category-share weights (modified by
+   archetype if applicable)
+2. Sample SKU within category, weighted by demand (popular SKUs more
+   likely to appear)
+3. Avoid duplicate SKUs within a basket (same SKU not sampled twice)
+4. Sample qty per category-specific distribution (table below)
+5. Set unit_price = product.base_price (no noise)
+6. Check if any active promotion covers this SKU on this date for this
+   merchant. If yes:
+   - 85% probability: apply discount = unit_price × qty × promo.discount_pct,
+     set promo_id
+   - 15% probability: skip discount (loyalty card not used, ineligible
+     variant, etc.)
+7. Compute line_total = (unit_price × qty) - discount
+8. Compute tax = line_total × tax_rate(category)
+
+### Per-category quantity distributions
+
+| Category | Qty distribution |
+|---|---|
+| PRODUCE | qty 1: 55%, 2: 25%, 3: 12%, 4: 5%, 5: 3% |
+| DAIRY | qty 1: 65%, 2: 25%, 3: 8%, 4: 2% |
+| BAKERY | qty 1: 85%, 2: 13%, 3: 2% |
+| MEAT | qty 1: 70%, 2: 20%, 3: 8%, 4: 2% |
+| FROZEN | qty 1: 78%, 2: 16%, 3: 5%, 4: 1% |
+| PANTRY | qty 1: 50%, 2: 25%, 3: 13%, 4: 7%, 6: 5% |
+| SNACKS | qty 1: 65%, 2: 22%, 3: 10%, 4: 3% |
+| BEVERAGES | qty 1: 72%, 2: 20%, 3: 6%, 4: 2% |
+| HOUSEHOLD | qty 1: 85%, 2: 13%, 3: 2% |
+| PERSONAL | qty 1: 88%, 2: 10%, 3: 2% |
+| BABY | qty 1: 75%, 2: 20%, 3: 4%, 4: 1% |
+| PET | qty 1: 92%, 2: 7%, 3: 1% |
+| MAIN (Taco Bell) | qty 1: 85%, 2: 13%, 3: 2% |
+| SIDE (Taco Bell) | qty 1: 75%, 2: 20%, 3: 5% |
+| DRINK (Taco Bell) | qty 1: 65%, 2: 30%, 3: 5% |
+| COMBO (Taco Bell) | qty 1: 90%, 2: 9%, 3: 1% |
+| APPAREL (TJ Maxx) | qty 1: 92%, 2: 7%, 3: 1% |
+| HOME (TJ Maxx) | qty 1: 85%, 2: 13%, 3: 2% |
+| ACCESSORY (TJ Maxx) | qty 1: 88%, 2: 10%, 3: 2% |
+
+Result: average qty per line ~1.4–1.6, producing realistic basket sizes.
+
+### Step 4l: Payment generation
+
+For each transaction:
+
+**Sample payment_type** per merchant payment_mix.
+
+**Sample card_network** per payment_type:
+
+- If credit: 50% Visa, 30% MC, 12% Amex, 8% Discover
+- If debit: 60% Visa, 38% MC, 1% Discover, 1% Amex
+
+**Sample entry_mode** per merchant:
+
+- Taco Bell: 70% contactless, 22% chip, 5% swipe, 3% manual
+- Grocery: 55% contactless, 35% chip, 9% swipe, 1% manual
+- TJ Maxx: 45% contactless, 45% chip, 9% swipe, 1% manual
+
+**Sample wallet_type:**
+
+- If entry_mode != 'contactless': NULL
+- If entry_mode = 'contactless':
+  - If has_mobile_wallet = 0: NULL
+  - If has_mobile_wallet = 1: 70% chance of wallet (then 50% Apple, 30%
+    Google, 20% Samsung), 30% NULL
+
+**Sample connectivity_type:** 65% wifi, 25% cellular_4g, 8% cellular_5g,
+2% ethernet (uniform across merchants for v2.5).
+
+---
+
+## Step 6: Validation
+
+After generation completes, run sanity checks:
+
+1. **Volume in expected ranges:**
+   - 180,000–250,000 transactions
+   - 2.0–3.0M line items
+   - 10,000 customers, 123 stores, ~3,240 SKUs, ~73 distinct promos exact
+
+2. **Realism checks:**
+   - Avg basket size matches expectations per merchant + archetype
+   - Avg qty per line ~1.4–1.6
+   - Payment mix per merchant within target ranges
+   - Discount line items: ~15% grocery / ~5% QSR / ~3% retail (target range
+     ±3pp)
+   - Cross-merchant cohort sizes per documented model
+   - Customer-store proximity: top store gets ~70% of trips per chain
+
+3. **Internal consistency:**
+   - subtotal = sum of line_totals per txn (atomic, no drift)
+   - txn_total = subtotal + tax_total
+   - All foreign keys resolve (no orphan rows)
+   - No EBT, no cash, no declined transactions
+   - All transactions occur on or after customer's signup_date
+
+4. **Planted patterns visible** (after Phase 6):
+   - University City decline visible across all three grocers
+   - Plaza Midwood Kroger avocado pattern visible (4-day shape)
+   - Acme pasta promo failure visible alongside Kroger pasta success
+
+---
+
+## Planted Anomalies
+
+Three anomalies are planted to give the anomaly detection agent realistic
+patterns to discover.
+
+### Anomaly 1: University City sustained traffic decline
+
+**Planted pattern:** All three grocers in University City see traffic
+declines starting mid-April. Kroger is hit hardest, Acme moderately,
+Winn-Dixie least.
+
+Implementation as a ramp (not a step function):
+
+- April 12–18: 1.10× normal (finals stress shopping)
+- April 19–25: 0.85× (mixed during move-out)
+- April 26–May 2: 0.55× (full crash)
+- May 3–29: 0.65× (summer stable)
+
+Per-grocer multiplier on the above:
+
+- Kroger University City stores: full magnitude (~0.55× at peak)
+- Acme University City stores: ~80% magnitude (~0.65× at peak)
+- Winn-Dixie University City store: ~70% magnitude (~0.70× at peak)
+
+**Backstory:** UNC Charlotte spring semester ends late April / early May.
+Student population leaves, area-wide grocery traffic crashes.
+
+### Anomaly 2: Plaza Midwood Kroger avocado spike
+
+**Planted pattern:** Kroger's Plaza Midwood store has elevated avocado
+purchases April 21–24, peaking April 22.
+
+Implementation as a 4-day pattern:
+
+- April 21: 1.5× normal avocado probability
+- April 22: 5× normal (peak)
+- April 23: 3× normal
+- April 24: 1.5× normal
+
+Implementation: when generating baskets at the Plaza Midwood Kroger store
+on these dates, increase probability of `AVOCADO-HASS-EACH` (or similar
+SKU) being in the basket from ~3% baseline to the multiplier above.
+
+Plant **only at Kroger Plaza Midwood**. No spike at Acme or Winn-Dixie
+Plaza Midwood stores.
+
+**Backstory:** A local food blogger or social media post drove unusual
+demand for one neighborhood's Kroger location.
+
+### Anomaly 3: Acme failed pasta promo
+
+**Planted pattern:** Three coordinated pasta promos with different
+outcomes:
+
+- **Kroger pasta promo**: April 15–21 (Wed–Tue), 25% off, 25 pasta SKUs
+- **Acme pasta promo**: April 19–25 (Sun–Sat), 20% off, 20 pasta SKUs
+  ("Spring Pasta Sale")
+- **Winn-Dixie pasta promo**: April 22–28 (Wed–Tue), 15% off, 12 pasta
+  SKUs
+
+Implementation:
+
+- During promo generation, ensure these three exist with the documented
+  windows and depths
+- During basket generation in the relevant window:
+  - At Kroger: pasta SKUs elevated ~2.2× baseline during their promo
+  - At Acme: pasta SKUs *suppressed* to ~0.8× baseline during their promo
+    (the failure)
+  - At Winn-Dixie: pasta SKUs elevated ~1.4× baseline during their promo
+    (modest success)
+
+Note the realistic timing: chains have different weekly ad cycles.
+Kroger's Wed–Tue cycle starts April 15. Acme's Sun–Sat cycle starts April
+19 — a 4-day gap, not a 1-day gap.
+
+**Backstory:** Competitive market dynamics. Acme's promo was beaten by
+Kroger's deeper, earlier promo on the same category. Customers who shop
+multiple grocers got their pasta needs met at Kroger before Acme's promo
+started.
 
 ---
 
