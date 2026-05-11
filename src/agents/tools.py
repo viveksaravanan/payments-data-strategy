@@ -39,6 +39,17 @@ SCHEMA_PATH = ROOT / "src" / "db" / "schema.sql"
 
 MAX_ROWS = 200
 
+# Phase 2A.5 — payload economy. Even when the query returns more, we
+# only serialize this many rows back to the LLM (top-N, with a "showing
+# top X of N rows" note). Cuts input-token growth on subsequent turns
+# by 50-70% on broad queries. The LLM can refine its query if it needs
+# more.
+LLM_ROW_BUDGET = 20
+
+# Round floating-point values to this precision when serializing to
+# the LLM. The underlying data is unchanged; this just trims tokens.
+LLM_FLOAT_PRECISION = 2
+
 # Lake table names the agent is allowed to reference. The runner wraps
 # the agent's SQL in CTEs of these names that compute the v2.5 virtual
 # lake from the tenant tables.
@@ -136,11 +147,70 @@ CHART_SPEC_TOOL = {
     },
 }
 
+# Phase 2 — structured chart spec. The LLM passes a richer description
+# (kind + title + x labels + named series with values + y format), and
+# the specialist builds a Plotly Figure server-side. The figure is
+# stored on the specialist for inclusion in the final response; the
+# LLM gets back a small acknowledgment dict.
+MAKE_CHART_TOOL = {
+    "name": "make_chart",
+    "description": (
+        "Build a comparative Plotly chart for the final response. Call "
+        "this AFTER you have the data you want to visualize, and at most "
+        "ONCE per response. Pick `kind` based on the data shape: "
+        "`grouped_bar` for own-vs-peer comparison across N categories; "
+        "`horizontal_bar` for a single ranked list; `line` for time "
+        "series; `donut` for category composition. Values must come "
+        "from your query results — do not invent numbers."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "kind":  {"type": "string",
+                       "enum": ["grouped_bar", "horizontal_bar", "line", "donut"]},
+            "title": {"type": "string"},
+            "x":     {"type": "array", "items": {"type": "string"},
+                       "description": "Category / x-axis labels."},
+            "series": {
+                "type": "array",
+                "description": "One or more named series. For grouped_bar "
+                                 "use multiple series; for horizontal_bar / "
+                                 "donut use a single series.",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name":   {"type": "string"},
+                        "values": {"type": "array", "items": {"type": "number"}},
+                    },
+                    "required": ["name", "values"],
+                },
+            },
+            "y_format": {
+                "type": "string",
+                "enum":    ["currency", "count", "pct", "float"],
+                "description": "Tick / hover formatting. Default float.",
+            },
+            "x_axis_title": {"type": "string"},
+            "y_axis_title": {"type": "string"},
+        },
+        "required": ["kind", "title", "x", "series"],
+    },
+}
+
 TOOLS_MERCHANT = [
     SCHEMA_INFO_TOOL,
     QUERY_TENANT_TOOL,
     QUERY_LAKE_TOOL,
     CHART_SPEC_TOOL,
+]
+
+# Phase 2 specialist tools — adds make_chart, drops the legacy
+# chart_spec (specialists use the richer tool).
+TOOLS_SPECIALIST = [
+    SCHEMA_INFO_TOOL,
+    QUERY_TENANT_TOOL,
+    QUERY_LAKE_TOOL,
+    MAKE_CHART_TOOL,
 ]
 
 
@@ -219,6 +289,12 @@ def _exec_select(
     params: dict[str, Any] | tuple | None = None,
     register_lake: bool = False,
 ) -> dict[str, Any]:
+    """Execute a SELECT and return all rows up to MAX_ROWS. Returns
+    `{columns, rows, row_count, truncated}` with full-precision values
+    (no LLM-payload optimization applied — that happens in
+    `trim_for_llm` separately so the specialist's `_last_table` keeps
+    full data for the final response.)
+    """
     conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
     try:
         conn.execute("PRAGMA foreign_keys = ON")
@@ -237,6 +313,66 @@ def _exec_select(
         }
     finally:
         conn.close()
+
+
+def trim_for_llm(result: dict[str, Any]) -> dict[str, Any]:
+    """Phase 2A.5: prepare a tool result for the LLM tool_result payload.
+
+    - Cap rows at LLM_ROW_BUDGET (default 20); add a "note" field so
+      the model knows there's more if it refines.
+    - Round float values to LLM_FLOAT_PRECISION decimals.
+    - Drop columns whose values are entirely None / empty (uncommon but
+      pure noise when it happens).
+
+    The specialist keeps the full-precision result internally for
+    rendering the final table; this trim only affects what the LLM
+    sees on the next turn.
+    """
+    columns = list(result.get("columns") or [])
+    rows = result.get("rows") or []
+    if not columns or not rows:
+        return result
+
+    # Identify columns where every value is None or "" (skip).
+    keep_idx = [
+        i for i, _ in enumerate(columns)
+        if any(r[i] is not None and r[i] != "" for r in rows)
+    ]
+    if len(keep_idx) < len(columns):
+        columns = [columns[i] for i in keep_idx]
+        rows = [[r[i] for i in keep_idx] for r in rows]
+
+    # Round floats. Booleans are a subtype of int — keep them as-is.
+    rounded_rows: list[list[Any]] = []
+    for r in rows:
+        out: list[Any] = []
+        for v in r:
+            if isinstance(v, float):
+                out.append(round(v, LLM_FLOAT_PRECISION))
+            else:
+                out.append(v)
+        rounded_rows.append(out)
+
+    total = len(rounded_rows)
+    note = None
+    if total > LLM_ROW_BUDGET:
+        rounded_rows = rounded_rows[:LLM_ROW_BUDGET]
+        note = (
+            f"showing top {LLM_ROW_BUDGET} of {total} rows; "
+            "refine your query (add ORDER BY / LIMIT / WHERE) for "
+            "more specific results"
+        )
+
+    trimmed: dict[str, Any] = {
+        "columns":   columns,
+        "rows":      rounded_rows,
+        "row_count": len(rounded_rows),
+    }
+    if note:
+        trimmed["note"] = note
+    if result.get("truncated"):
+        trimmed["truncated_at_max"] = True
+    return trimmed
 
 
 # ---------------------------------------------------------------------------
@@ -299,3 +435,161 @@ def query_lake(
 
 def chart_spec(type: str, x: str, y: str, title: str) -> dict[str, Any]:
     return {"type": type, "x": x, "y": y, "title": title}
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: make_chart
+# ---------------------------------------------------------------------------
+
+# Editorial palette — same as docs/report.html and the dashboard.
+_CHART_PALETTE = [
+    "#0F4C81",  # accent
+    "#3A6FA5",
+    "#6F8FB8",
+    "#C0563F",
+    "#5B7B58",
+    "#B7791F",
+    "#9A8BB5",
+    "#3F8B92",
+]
+
+_TICK_FORMAT = {
+    "currency": {"tickprefix": "$", "tickformat": ",.2f"},
+    "count":    {"tickformat": ",.0f"},
+    "pct":      {"tickformat": ".1f", "ticksuffix": "%"},
+    "float":    {"tickformat": ",.2f"},
+}
+
+
+def make_chart(spec: dict[str, Any]) -> "Any":
+    """Build a Plotly Figure from a structured spec. Returns the actual
+    `go.Figure` (not a dict); the specialist stores it on the response.
+
+    Spec shape:
+        {
+            "kind":   "grouped_bar" | "horizontal_bar" | "line" | "donut",
+            "title":  str,
+            "x":      list[str],
+            "series": [{"name": str, "values": list[float]}, ...],
+            "y_format":     "currency" | "count" | "pct" | "float",
+            "x_axis_title": str,
+            "y_axis_title": str,
+        }
+    """
+    import plotly.graph_objects as go  # lazy import — keeps non-dashboard CLI paths light
+
+    kind   = spec["kind"]
+    title  = spec.get("title", "")
+    x      = list(spec["x"])
+    series = spec["series"]
+    yfmt   = spec.get("y_format", "float")
+    tickfmt = _TICK_FORMAT.get(yfmt, _TICK_FORMAT["float"])
+
+    base_layout = {
+        "title": {"text": title, "x": 0, "xanchor": "left",
+                   "font": {"size": 13, "color": "#1A1F2E"}},
+        "font": {"family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif",
+                  "size": 12, "color": "#4A5161"},
+        "paper_bgcolor": "rgba(0,0,0,0)",
+        "plot_bgcolor": "rgba(0,0,0,0)",
+        "margin": {"l": 60, "r": 24, "t": 36, "b": 56},
+        "hoverlabel": {"bgcolor": "#1A1F2E",
+                        "font": {"color": "#fff", "size": 11}},
+        "showlegend": len(series) > 1,
+        "legend": {"orientation": "h", "y": -0.22, "x": 0,
+                    "xanchor": "left", "font": {"size": 11}},
+        "height": 300,
+    }
+
+    if kind == "donut":
+        s = series[0]
+        fig = go.Figure(go.Pie(
+            labels=x, values=s["values"], hole=0.55,
+            marker={"colors": _CHART_PALETTE * 3},
+            hovertemplate="<b>%{label}</b><br>%{value:,.2f}<br>%{percent}<extra></extra>",
+            textinfo="label+percent",
+            textfont={"size": 11},
+        ))
+        fig.update_layout(**base_layout)
+        return fig
+
+    if kind == "line":
+        fig = go.Figure()
+        for i, s in enumerate(series):
+            color = _CHART_PALETTE[i % len(_CHART_PALETTE)]
+            fig.add_trace(go.Scatter(
+                x=x, y=s["values"], mode="lines+markers",
+                name=s["name"],
+                line={"color": color, "width": 1.8},
+                marker={"size": 6, "color": color},
+                hovertemplate=f"<b>{s['name']}</b><br>%{{x}}<br>%{{y:,.2f}}<extra></extra>",
+            ))
+        fig.update_layout(
+            **base_layout,
+            xaxis={"title": spec.get("x_axis_title", ""),
+                    "gridcolor": "#E2E5EA", "linecolor": "#E2E5EA",
+                    "ticks": "outside", "tickcolor": "#E2E5EA"},
+            yaxis={"title": spec.get("y_axis_title", ""),
+                    "gridcolor": "#E2E5EA", "linecolor": "#E2E5EA",
+                    "ticks": "outside", "tickcolor": "#E2E5EA",
+                    "rangemode": "tozero", **tickfmt},
+        )
+        return fig
+
+    # Bar variants
+    if kind == "horizontal_bar":
+        s = series[0]
+        color = _CHART_PALETTE[0]
+        fig = go.Figure(go.Bar(
+            x=list(reversed(s["values"])),
+            y=list(reversed(x)),
+            orientation="h",
+            marker={"color": color},
+            hovertemplate="<b>%{y}</b><br>%{x:,.2f}<extra></extra>",
+        ))
+        fig.update_layout(
+            **base_layout,
+            xaxis={"title": spec.get("x_axis_title", ""),
+                    "gridcolor": "#E2E5EA", "linecolor": "#E2E5EA",
+                    "ticks": "outside", "tickcolor": "#E2E5EA", **tickfmt},
+            yaxis={"title": spec.get("y_axis_title", ""),
+                    "showgrid": False, "linecolor": "#E2E5EA",
+                    "tickfont": {"size": 11}, "automargin": True},
+        )
+        return fig
+
+    # grouped_bar (default)
+    fig = go.Figure()
+    for i, s in enumerate(series):
+        color = _CHART_PALETTE[i % len(_CHART_PALETTE)]
+        fig.add_trace(go.Bar(
+            x=x, y=s["values"],
+            name=s["name"],
+            marker={"color": color},
+            hovertemplate=f"<b>{s['name']}</b><br>%{{x}}<br>%{{y:,.2f}}<extra></extra>",
+        ))
+    fig.update_layout(
+        **{**base_layout, "barmode": "group"},
+        xaxis={"title": spec.get("x_axis_title", ""),
+                "linecolor": "#E2E5EA", "ticks": "outside",
+                "tickcolor": "#E2E5EA", "showgrid": False,
+                "tickfont": {"size": 10}},
+        yaxis={"title": spec.get("y_axis_title", ""),
+                "gridcolor": "#E2E5EA", "linecolor": "#E2E5EA",
+                "ticks": "outside", "tickcolor": "#E2E5EA",
+                "rangemode": "tozero", **tickfmt},
+    )
+    return fig
+
+
+def make_chart_ack(spec: dict[str, Any]) -> dict[str, Any]:
+    """Lightweight acknowledgment returned to the LLM after a successful
+    make_chart call. The actual Figure stays with the specialist; this
+    dict is what gets serialized into the tool_result the model sees."""
+    return {
+        "chart_registered": True,
+        "kind":   spec.get("kind"),
+        "title":  spec.get("title"),
+        "series_count": len(spec.get("series", [])),
+        "point_count":  len(spec.get("x", [])),
+    }

@@ -5,10 +5,13 @@ requires-python = ">=3.11"
 dependencies = [
     "anthropic>=0.40",
     "faker>=30",
+    "folium>=0.16",
     "numpy>=2",
     "pandas>=2",
+    "plotly>=5",
     "python-dotenv>=1",
     "streamlit>=1.39",
+    "streamlit-folium>=0.20",
 ]
 
 [build-system]
@@ -27,4 +30,7 @@ target-version = "py311"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-v --tb=short"
+addopts = "-v --tb=short -m 'not llm'"
+markers = [
+    "llm: tests that hit the Anthropic API (opt-in via `-m llm`); requires ANTHROPIC_API_KEY",
+]

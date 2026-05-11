@@ -1,0 +1,250 @@
+"""Anthropic client wrapper for Phase 2 specialist agents.
+
+Single shared client with:
+  - is_available() check (key present)
+  - Retry on transient errors (429 / 503 / connection)
+  - Timeout
+  - Per-session token + cost telemetry (module-global counter, the
+    dashboard footer reads from it)
+  - Model constants per the Phase 2 decision:
+      MODEL_SPECIALIST = "claude-sonnet-4-6"
+      MODEL_ROUTER     = "claude-haiku-4-5-20251001"
+"""
+from __future__ import annotations
+
+import os
+import time
+from dataclasses import dataclass
+from typing import Any, Callable
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+# Model strings. Phase 2A.6: specialist switched from Sonnet 4.6 to
+# Haiku 4.5 — 3× cheaper, 2-3× faster per turn, hits the demo's
+# latency/cost targets (<15s, <$0.06/q).
+MODEL_SPECIALIST = "claude-haiku-4-5-20251001"
+MODEL_ROUTER     = "claude-haiku-4-5-20251001"
+
+# Anthropic pricing (per Mtoken) as of plan-write time. Sonnet 4.6:
+# $3 input / $15 output. Haiku 4.5: $1 input / $5 output. These are
+# used only for the in-dashboard cost footer — not billing.
+_PRICING = {
+    MODEL_SPECIALIST: (3.0, 15.0),
+    MODEL_ROUTER:     (1.0,  5.0),
+}
+
+MAX_TIMEOUT_SEC = 60
+MAX_RETRIES     = 3
+RETRY_BASE_DELAY_SEC = 1.0
+
+
+# ---------------------------------------------------------------------------
+# Telemetry
+# ---------------------------------------------------------------------------
+
+@dataclass
+class CallTelemetry:
+    """Per-call accounting."""
+    model:         str
+    input_tokens:  int
+    output_tokens: int
+    elapsed_sec:   float
+
+    @property
+    def cost_usd(self) -> float:
+        rate_in, rate_out = _PRICING.get(self.model, (0.0, 0.0))
+        return (
+            self.input_tokens  / 1_000_000 * rate_in +
+            self.output_tokens / 1_000_000 * rate_out
+        )
+
+
+# Module-global session totals. Reset via `reset_session_totals()`.
+_SESSION_INPUT_TOKENS  = 0
+_SESSION_OUTPUT_TOKENS = 0
+_SESSION_COST_USD      = 0.0
+_SESSION_CALL_COUNT    = 0
+
+
+def session_totals() -> dict[str, Any]:
+    return {
+        "calls":         _SESSION_CALL_COUNT,
+        "input_tokens":  _SESSION_INPUT_TOKENS,
+        "output_tokens": _SESSION_OUTPUT_TOKENS,
+        "cost_usd":      round(_SESSION_COST_USD, 4),
+    }
+
+
+def reset_session_totals() -> None:
+    global _SESSION_INPUT_TOKENS, _SESSION_OUTPUT_TOKENS, _SESSION_COST_USD, _SESSION_CALL_COUNT
+    _SESSION_INPUT_TOKENS = 0
+    _SESSION_OUTPUT_TOKENS = 0
+    _SESSION_COST_USD = 0.0
+    _SESSION_CALL_COUNT = 0
+
+
+def _record(t: CallTelemetry) -> None:
+    global _SESSION_INPUT_TOKENS, _SESSION_OUTPUT_TOKENS, _SESSION_COST_USD, _SESSION_CALL_COUNT
+    _SESSION_INPUT_TOKENS  += t.input_tokens
+    _SESSION_OUTPUT_TOKENS += t.output_tokens
+    _SESSION_COST_USD      += t.cost_usd
+    _SESSION_CALL_COUNT    += 1
+
+
+# ---------------------------------------------------------------------------
+# Client
+# ---------------------------------------------------------------------------
+
+class LLMNotConfigured(RuntimeError):
+    """Raised when ANTHROPIC_API_KEY is missing. The dashboard catches
+    this and falls back to hardcoded handlers silently (no error banner)."""
+
+
+def is_available() -> bool:
+    """True iff an API key is present. The dashboard uses this to
+    decide whether to attempt LLM dispatch."""
+    return bool(os.environ.get("ANTHROPIC_API_KEY"))
+
+
+_CLIENT = None
+
+
+def _client() -> "Any":
+    """Lazy singleton. Importing anthropic at module load time would
+    require the SDK even in test environments that don't use it."""
+    global _CLIENT
+    if _CLIENT is not None:
+        return _CLIENT
+    key = os.environ.get("ANTHROPIC_API_KEY")
+    if not key:
+        raise LLMNotConfigured(
+            "ANTHROPIC_API_KEY not set. Add it to .env or unset features "
+            "that depend on the LLM."
+        )
+    import anthropic  # noqa: PLC0415  — lazy
+    _CLIENT = anthropic.Anthropic(api_key=key, timeout=MAX_TIMEOUT_SEC)
+    return _CLIENT
+
+
+# ---------------------------------------------------------------------------
+# Call
+# ---------------------------------------------------------------------------
+
+def call_with_tools(
+    model: str,
+    system: str,
+    messages: list[dict[str, Any]],
+    tools: list[dict[str, Any]],
+    max_tokens: int = 2048,
+) -> tuple[Any, CallTelemetry]:
+    """Wrap `client.messages.create` with retry + telemetry.
+
+    Returns `(response, telemetry)`. The caller drives the tool loop;
+    this function is one model invocation. Retries on transient errors
+    (rate limit, transient connection) up to MAX_RETRIES.
+    """
+    c = _client()
+    last_err: Exception | None = None
+    for attempt in range(MAX_RETRIES):
+        t0 = time.monotonic()
+        try:
+            resp = c.messages.create(
+                model=model, system=system, tools=tools,
+                messages=messages, max_tokens=max_tokens,
+            )
+            elapsed = time.monotonic() - t0
+            usage = getattr(resp, "usage", None)
+            tel = CallTelemetry(
+                model=model,
+                input_tokens=getattr(usage, "input_tokens", 0)  if usage else 0,
+                output_tokens=getattr(usage, "output_tokens", 0) if usage else 0,
+                elapsed_sec=elapsed,
+            )
+            _record(tel)
+            return resp, tel
+        except Exception as exc:  # noqa: BLE001 — retry envelope
+            last_err = exc
+            # Detect transient: rate-limit, transient server, or
+            # connection-y errors. Class names cover the Anthropic SDK
+            # surface without taking a runtime dependency on its types.
+            name = type(exc).__name__.lower()
+            transient = (
+                "ratelimit" in name or
+                "503"       in str(exc).lower() or
+                "overload"  in name or
+                "timeout"   in name or
+                "connection" in name
+            )
+            if not transient or attempt == MAX_RETRIES - 1:
+                raise
+            time.sleep(RETRY_BASE_DELAY_SEC * (2 ** attempt))
+    # Unreachable, but keep mypy happy.
+    raise last_err if last_err else RuntimeError("LLM call failed")
+
+
+def call_with_tools_streaming(
+    model: str,
+    system: str,
+    messages: list[dict[str, Any]],
+    tools: list[dict[str, Any]],
+    max_tokens: int = 2048,
+    on_text_delta: "Callable[[str], None] | None" = None,
+) -> tuple[Any, CallTelemetry]:
+    """Streaming variant of `call_with_tools`. Fires `on_text_delta`
+    for each text chunk as it arrives, then returns the assembled
+    final message (same shape as the non-streaming response).
+
+    The assembled message exposes `.content`, `.stop_reason`, and
+    `.usage` exactly like `messages.create`. Telemetry is recorded
+    from `final.usage`.
+
+    Tool-use blocks stream too but we don't emit them — only text
+    deltas are user-facing during streaming. The final message
+    carries the complete tool_use block for the loop to dispatch.
+    """
+    c = _client()
+    last_err: Exception | None = None
+    for attempt in range(MAX_RETRIES):
+        t0 = time.monotonic()
+        try:
+            with c.messages.stream(
+                model=model, system=system, tools=tools,
+                messages=messages, max_tokens=max_tokens,
+            ) as stream:
+                if on_text_delta is not None:
+                    for text in stream.text_stream:
+                        if text:
+                            on_text_delta(text)
+                else:
+                    # Drain without callback; final message still
+                    # assembles correctly.
+                    for _ in stream.text_stream:
+                        pass
+                final = stream.get_final_message()
+            elapsed = time.monotonic() - t0
+            usage = getattr(final, "usage", None)
+            tel = CallTelemetry(
+                model=model,
+                input_tokens=getattr(usage, "input_tokens", 0)  if usage else 0,
+                output_tokens=getattr(usage, "output_tokens", 0) if usage else 0,
+                elapsed_sec=elapsed,
+            )
+            _record(tel)
+            return final, tel
+        except Exception as exc:  # noqa: BLE001
+            last_err = exc
+            name = type(exc).__name__.lower()
+            transient = (
+                "ratelimit" in name or
+                "503"       in str(exc).lower() or
+                "overload"  in name or
+                "timeout"   in name or
+                "connection" in name
+            )
+            if not transient or attempt == MAX_RETRIES - 1:
+                raise
+            time.sleep(RETRY_BASE_DELAY_SEC * (2 ** attempt))
+    raise last_err if last_err else RuntimeError("LLM streaming call failed")

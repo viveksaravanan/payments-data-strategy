@@ -1,111 +1,48 @@
-"""Role-based Streamlit dashboard for the Payments Data Strategy demo.
+"""Merchant dashboard — executive-grade BI dashboard with a persistent
+specialist-agent chat panel.
 
-Top: title + role selectbox + MOCK MODE toggle. Below: a context paragraph
-explaining what the current role can see, a canned-question dropdown, a
-free-text input, and a Run button. The agent's response is rendered with the
-headline, the SQL it ran (in an expander, labeled by tool), the last result as
-a dataframe, and an optional chart.
+Layout:
+  - Top: brand + merchant selectbox + filter row (date range, stores,
+    categories).
+  - Left col (70%):
+      KPI row (4 cards; Active customers is clickable) →
+      Map + insights panel (60/40 split) →
+      Category mix + store performance (2-up) →
+      Customer Insights expander.
+  - Right col (30%):
+      4 specialist-agent suggestion cards + chronological chat history.
+      No free-form input in Phase 1.
+
+Phase 2 will replace `placeholders.dispatch` with real LLM agent calls
+(plus a free-form text input) without changing the rest of the layout.
 """
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 
-# Load `.env` BEFORE importing the agents — they read ANTHROPIC_API_KEY at
-# construction time. (They also call `load_dotenv()` themselves; doing it here
-# too is harmless and makes the dashboard's dependency on `.env` explicit.)
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv()  # tolerated even though Phase 1 doesn't call any LLM APIs
 
-import pandas as pd
 import streamlit as st
 
-from src.agents.advisor import MAX_TURNS, MerchantAdvisor
+from src.dashboard import chat, data as D, styling, views
 
 ROOT = Path(__file__).resolve().parents[2]
 DB_PATH = ROOT / "data" / "payments.db"
 
-ROLE_TO_MERCHANT_ID = {
-    "Kroger":     "KRG",
-    "Acme":       "ACM",
-    "Winn-Dixie": "WDX",
-    "Taco Bell":  "TBL",
-    "TJ Maxx":    "TJX",
-}
-ROLES = list(ROLE_TO_MERCHANT_ID.keys())
-
-CANNED_QUESTIONS: dict[str, list[str]] = {
-    "Kroger": [
-        "What are my top categories by revenue last week, and which subcategories drove each?",
-        "Which products are most often bought together with whole milk in my stores?",
-        "Have any of my stores seen a drop in transaction count week-over-week?",
-        "How does my average basket size compare to peer grocers in the panel?",
-        "How does my dairy unit pricing compare to peer grocers?",
-    ],
-    "Acme": [
-        "What are my top categories by revenue last week, and which subcategories drove each?",
-        "Which products are most often bought together with whole milk in my stores?",
-        "Have any of my stores seen a drop in transaction count week-over-week?",
-        "How does my average basket size compare to peer grocers in the panel?",
-        "How does my produce pricing compare to peer grocers?",
-    ],
-    "Winn-Dixie": [
-        "What are my top categories by revenue last week, and which subcategories drove each?",
-        "Which products are most often bought together with bread in my stores?",
-        "Have any of my stores seen a drop in transaction count week-over-week?",
-        "How does my average basket size compare to peer grocers in the panel?",
-        "How does my bakery pricing compare to peer grocers?",
-    ],
-    "Taco Bell": [
-        "What are my top menu items by revenue last week, and which categories drove the volume?",
-        "Which items are most often ordered together with a Crunchwrap Supreme?",
-        "Have any of my stores seen a drop in transaction count week-over-week?",
-        "How does my average ticket size compare to QSR peers in the panel?",
-        "What payment-mix or entry-mode patterns differ between my stores and QSR peers?",
-    ],
-    "TJ Maxx": [
-        "What are my top categories by revenue last week, and which subcategories drove each?",
-        "Which categories are most often purchased together (e.g., apparel + accessories)?",
-        "Have any of my stores seen a drop in transaction count week-over-week?",
-        "How does my average ticket size compare to off-price retail peers in the panel?",
-        "What payment-mix or entry-mode patterns differ between my stores and retail peers?",
-    ],
-}
-
-CONTEXT_BLURBS: dict[str, str] = {
-    "Kroger":
-        "You are acting as **Kroger's** ops team (one of three grocers in the "
-        "5-merchant Charlotte panel). Your tenant queries see Kroger's full "
-        "granularity. Lake queries return the other four merchants pseudonymized "
-        "as `peer_a`..`peer_d`; Kroger's own rows are excluded automatically.",
-    "Acme":
-        "You are acting as **Acme's** ops team (one of three grocers in the "
-        "5-merchant Charlotte panel). Your tenant queries see Acme's full "
-        "granularity. Lake queries return the other four merchants pseudonymized "
-        "as `peer_a`..`peer_d`; Acme's own rows are excluded automatically.",
-    "Winn-Dixie":
-        "You are acting as **Winn-Dixie's** ops team (one of three grocers in "
-        "the 5-merchant Charlotte panel). Your tenant queries see Winn-Dixie's "
-        "full granularity. Lake queries return the other four merchants "
-        "pseudonymized as `peer_a`..`peer_d`; Winn-Dixie's own rows are excluded.",
-    "Taco Bell":
-        "You are acting as **Taco Bell's** ops team (the QSR in the 5-merchant "
-        "Charlotte panel). Your tenant queries see Taco Bell's full granularity. "
-        "Lake queries return the other four merchants pseudonymized as "
-        "`peer_a`..`peer_d`; Taco Bell's own rows are excluded automatically.",
-    "TJ Maxx":
-        "You are acting as **TJ Maxx's** ops team (the off-price retailer in "
-        "the 5-merchant Charlotte panel). Your tenant queries see TJ Maxx's "
-        "full granularity. Lake queries return the other four merchants "
-        "pseudonymized as `peer_a`..`peer_d`; TJ Maxx's own rows are excluded.",
-}
-
 
 # ---------------------------------------------------------------------------
-# Page setup + DB sanity check
+# Page setup
 # ---------------------------------------------------------------------------
 
-st.set_page_config(page_title="Payments Data Strategy Demo", layout="wide")
+st.set_page_config(
+    page_title="Payments Data Strategy — Merchant Dashboard",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
+styling.inject()
 
 if not DB_PATH.exists() or DB_PATH.stat().st_size == 0:
     st.error("Database not found or empty. Run `make seed` first.")
@@ -113,117 +50,167 @@ if not DB_PATH.exists() or DB_PATH.stat().st_size == 0:
 
 
 # ---------------------------------------------------------------------------
-# Header: title + MOCK MODE toggle
+# Session-state initialization
 # ---------------------------------------------------------------------------
 
-title_col, mock_col = st.columns([4, 1])
-with title_col:
-    st.title("Payments Data Strategy Demo")
-    st.caption(
-        "Cross-merchant analytics on a synthetic 10,000-customer Charlotte "
-        "panel · Kroger · Acme · Winn-Dixie · Taco Bell · TJ Maxx"
+state = st.session_state
+state.setdefault("merchant_id", "KRG")
+state.setdefault("filters_by_merchant", {})
+state.setdefault("chat_history", {})
+state.setdefault("active_agent", "pricing")
+
+
+def _default_filters(merchant_id: str) -> dict:
+    return {
+        "date_start": D.PANEL_START,
+        "date_end":   D.PANEL_END,
+        "stores":     [],
+        "categories": [],
+    }
+
+
+def _filters() -> dict:
+    """Return (and lazy-initialize) the filter dict for the active merchant."""
+    mid = state.merchant_id
+    if mid not in state.filters_by_merchant:
+        state.filters_by_merchant[mid] = _default_filters(mid)
+    return state.filters_by_merchant[mid]
+
+
+def _on_merchant_change() -> None:
+    """Called by the merchant selectbox. Resets per-merchant state."""
+    # Chat history per spec resets when merchant changes
+    chat.reset_history(state.merchant_id)
+
+
+# ---------------------------------------------------------------------------
+# Header — title + merchant selectbox + filter row
+# ---------------------------------------------------------------------------
+
+header_col1, header_col2 = st.columns([5, 2])
+with header_col1:
+    st.markdown(
+        '<h1 style="margin-top: -4px;">Merchant dashboard</h1>'
+        '<div style="font-size:13px;color:var(--text-muted);margin-top:-4px;">'
+        'Cross-merchant analytics on a synthetic 10,000-customer Charlotte panel.'
+        '</div>',
+        unsafe_allow_html=True,
     )
-with mock_col:
-    st.write("")  # vertical alignment with the title
-    mock = st.checkbox(
-        "MOCK MODE",
-        value=False,
-        help="Skip the LLM API and return canned responses (offline demo safety net).",
+with header_col2:
+    merchant_labels = [f"{D.MERCHANT_NAME[m]}" for m in
+                        ("KRG", "ACM", "WDX", "TBL", "TJX")]
+    merchant_ids = ["KRG", "ACM", "WDX", "TBL", "TJX"]
+    chosen = st.selectbox(
+        "Acting as",
+        options=merchant_ids,
+        format_func=lambda mid: D.MERCHANT_NAME[mid],
+        index=merchant_ids.index(state.merchant_id),
+        key="merchant_select",
     )
+    if chosen != state.merchant_id:
+        state.merchant_id = chosen
+        _on_merchant_change()
+        st.rerun()
 
 
-# ---------------------------------------------------------------------------
-# Role selector + context blurb
-# ---------------------------------------------------------------------------
+# Filter row -------------------------------------------------------------
+filters = _filters()
+mid = state.merchant_id
 
-role = st.selectbox("Acting as", ROLES, key="role")
-st.info(CONTEXT_BLURBS[role])
-
-
-# ---------------------------------------------------------------------------
-# Question form
-# ---------------------------------------------------------------------------
-
-with st.form("ask_form", clear_on_submit=False):
-    canned = st.selectbox(
-        f"Canned questions for {role}",
-        CANNED_QUESTIONS[role],
-        key=f"canned__{role}",
+f_col1, f_col2, f_col3 = st.columns([1.2, 1.6, 1.6])
+with f_col1:
+    date_range = st.date_input(
+        "Date range",
+        value=(filters["date_start"], filters["date_end"]),
+        min_value=D.PANEL_START,
+        max_value=D.PANEL_END,
+        key=f"date_{mid}",
     )
-    free_text = st.text_input(
-        "Or type your own (overrides the dropdown when non-empty):",
-        key=f"free__{role}",
+    if isinstance(date_range, tuple) and len(date_range) == 2:
+        filters["date_start"], filters["date_end"] = date_range
+with f_col2:
+    own_stores_df = D.stores_for(mid)
+    chosen_stores = st.multiselect(
+        f"Stores ({len(own_stores_df)})",
+        options=own_stores_df["store_id"].tolist(),
+        default=filters["stores"] if filters["stores"] else [],
+        placeholder="All stores",
+        key=f"stores_{mid}",
     )
-    submit = st.form_submit_button("Run", type="primary")
+    filters["stores"] = chosen_stores
+with f_col3:
+    cats = D.categories_for(mid)
+    chosen_cats = st.multiselect(
+        f"Categories ({len(cats)})",
+        options=cats,
+        default=filters["categories"] if filters["categories"] else [],
+        placeholder="All categories",
+        key=f"cats_{mid}",
+    )
+    filters["categories"] = chosen_cats
+
+
+st.markdown("<hr style='margin: 8px 0 12px;'/>", unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------------------
-# Agent factory — cached so toggling mock toggles the cached instance
+# Two-column layout (dashboard left 70% / chat right 30%)
 # ---------------------------------------------------------------------------
 
-@st.cache_resource
-def _get_agent(role: str, mock: bool) -> MerchantAdvisor:
-    return MerchantAdvisor(current_merchant_id=ROLE_TO_MERCHANT_ID[role], mock=mock)
+dash_col, chat_col = st.columns([7, 3], gap="medium")
 
+with dash_col:
+    # KPI row
+    views.render_kpi_row(mid, filters)
 
-# ---------------------------------------------------------------------------
-# Run
-# ---------------------------------------------------------------------------
+    # Map + insights panel (60/40 split)
+    map_col, ins_col = st.columns([6, 4], gap="small")
+    with map_col:
+        views.render_map(mid, filters)
+    with ins_col:
+        views.render_insights_panel(mid, filters)
 
-def _render_response(resp) -> None:
-    st.divider()
+    # Detail charts row
+    cat_col, store_col = st.columns([1, 1], gap="small")
+    with cat_col:
+        views.render_category_mix(mid, filters)
+    with store_col:
+        views.render_store_performance(mid, filters)
 
-    if not getattr(resp, "converged", True) or (not resp.answer and resp.turns >= MAX_TURNS):
-        st.warning(
-            "The agent reached its turn limit before producing a final answer. "
-            "Showing best-effort partial result."
-        )
+    # NEW: Payment Intelligence (4-up)
+    views.render_payment_intelligence(mid, filters)
 
-    st.markdown(resp.answer or "_(no answer text)_")
+    # NEW: Time Patterns (hour × day-of-week heatmap)
+    views.render_time_patterns(mid, filters)
 
-    if resp.sql:
-        n = len(resp.sql)
-        with st.expander(f"Show the SQL the agent ran ({n} {'query' if n == 1 else 'queries'})"):
-            for i, s in enumerate(resp.sql, start=1):
-                label = "Tenant query" if s["tool"] == "tenant" else "Lake query"
-                st.markdown(f"**{i}. {label}**")
-                st.code(s["query"], language="sql")
+    # Customer Engagement expander (observable metrics only)
+    views.render_customer_engagement(mid, filters)
 
-    last = resp.last_table
-    if last and last.get("rows"):
-        st.subheader("Last result")
-        df = pd.DataFrame(last["rows"], columns=last["columns"])
-        if last.get("truncated"):
-            st.caption(f"Truncated to {len(df)} rows.")
-        st.dataframe(df, use_container_width=True)
+with chat_col:
+    st.markdown(
+        '<div style="font-size:13px;letter-spacing:0.06em;text-transform:uppercase;'
+        'color:var(--accent);font-weight:600;margin:0 0 8px;">Specialist agents</div>',
+        unsafe_allow_html=True,
+    )
+    chat.render_chat_panel(mid)
 
-        spec = resp.chart
-        if spec and spec.get("x") in df.columns and spec.get("y") in df.columns:
-            st.subheader(spec.get("title") or "Chart")
-            try:
-                chart_df = df[[spec["x"], spec["y"]]].set_index(spec["x"])
-                if spec["type"] == "bar":
-                    st.bar_chart(chart_df)
-                elif spec["type"] == "line":
-                    st.line_chart(chart_df)
-            except Exception as e:  # noqa: BLE001 - cosmetic fallback
-                st.caption(f"(could not render chart: {e})")
-
-
-if submit:
-    question = free_text.strip() if free_text and free_text.strip() else canned
-
+    # ---- Cost / token telemetry footer (Phase 2A) ----
     try:
-        agent = _get_agent(role, mock)
-    except RuntimeError as e:
-        st.error(str(e))
-        st.stop()
-
-    with st.spinner(f"Asking the {role} agent..."):
-        try:
-            resp = agent.ask(question)
-        except Exception as e:  # noqa: BLE001 - surface any runtime error to the user
-            st.error(f"Agent run failed: {e}")
-            st.stop()
-
-    _render_response(resp)
+        from src.agents import llm as _llm
+        totals = _llm.session_totals()
+    except Exception:  # noqa: BLE001
+        totals = None
+    if totals and totals.get("calls", 0) > 0:
+        st.markdown(
+            '<hr style="margin: 14px 0 6px; border-color: var(--border);"/>'
+            '<div style="font-size:11px;color:var(--text-muted);'
+            'letter-spacing:0.05em;text-transform:uppercase;font-weight:600;'
+            'margin:0 0 4px;">Session telemetry</div>'
+            f'<div style="font-size:12px;color:var(--text-2);">'
+            f'{totals["calls"]} LLM calls · '
+            f'{totals["input_tokens"]:,} in · '
+            f'{totals["output_tokens"]:,} out · '
+            f'~${totals["cost_usd"]:.4f}'
+            '</div>',
+            unsafe_allow_html=True,
+        )
