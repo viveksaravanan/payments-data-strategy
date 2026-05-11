@@ -1,8 +1,15 @@
 # Payments Data Strategy Demo — Build Plan
 
-A 3.5-hour vertical slice of the Core Data Strategy & Solutions architecture. Demonstrates how a payments company can deliver merchants two complementary views — their own granular data and privacy-preserved cross-merchant insights — through a **dual-path data architecture** (per strategy doc §8.3) and AI agents.
+A 3.5-hour vertical slice of the Core Data Strategy & Solutions architecture. Demonstrates how a payments company can deliver merchants two complementary views — their own granular data and privacy-preserved cross-merchant insights — through AI agents.
 
-> **Status:** planning artifact. Drop into the repo root as `PLAN.md`. Update or delete after the build.
+> **Status (post-v2.5 refactor):** the original v2 build plan is preserved below for historical context. The codebase has since shipped the v2.5 refactor described in [`V2_5_DATA_DESIGN.md`](./V2_5_DATA_DESIGN.md) and tracked in [`docs/V2_5_RECONCILIATION.md`](./docs/V2_5_RECONCILIATION.md). When PLAN.md and the v2.5 docs disagree, **the v2.5 docs are authoritative**:
+>
+> - **Panel:** five merchants (Kroger, Acme, Winn-Dixie, Taco Bell, TJ Maxx), 10,000 customers, single Charlotte metro. Network Analyst was retired in Phase 5d.
+> - **Architecture:** the lake is virtual — parameterized views in `src/lake/views.py` over the tenant tables. There is no separate `src/anonymize/` stage and no physical `lake_*` tables.
+> - **Privacy:** generator emits `customer_id` directly; no PII at any stage; credit + debit only (no EBT, cash, or declines).
+> - **Anomalies:** University City decline, Plaza Midwood Kroger avocado spike, coordinated pasta promos. Spec in `DATA.md` §9; demo script in §15 below.
+>
+> Reading order for current contributors: `README.md` → `ARCHITECTURE.md` → `DATA.md` → `V2_5_DATA_DESIGN.md`. Use this PLAN.md for the demo script (§15) and for git-archaeology context.
 
 ---
 
@@ -680,15 +687,15 @@ already-captured at the start of the pipeline.
 
 ## 15. Demo script (3-minute walkthrough at 5:00 PM)
 
-Practice once at 4:55.
+Practice once at 4:55. The script anchors on the three v2.5 planted anomalies — see `DATA.md` §9 for the locked specifications.
 
-1. **Open `data/raw/customers.csv`.** "What gets generated at the terminal level — names, emails, full ZIPs."
-2. **Open SQLite and `SELECT * FROM tenant_customers LIMIT 3`.** "Tenant view. PII gone. Card number hashed. Full ZIP and timestamp retained — this is what the merchant sees."
-3. **`SELECT * FROM lake_customers LIMIT 3`.** "Lake view. Same hashed IDs but ZIP3 only and some nulled. Aggregate analytics safe."
-4. **Show that the same `customer_id` appears in `tenant_transactions` for all three merchants.** "Same person, same hashed ID at Kroger, Taco Bell, and TJ Maxx. The cross-merchant join key. Card networks see the payment but not the basket. POS vendors see the basket but only their merchant. We see both — and we see the join."
-5. **Open the dashboard. Role: Kroger.** Run question 1 (top categories by revenue). Show chart and the SQL — labeled "tenant query."
-6. **Run question 4** ("how does my basket compare to peers?"). Show two SQL blocks in the expander — one tenant, one lake. "The agent decided to query both layers. The lake gives anonymized peer comparison."
-7. **Switch role to Network Analyst.** Run question 1 (customers active at all three). "Only the payments network can answer this — and the lake's anonymization means we answer it without exposing anyone."
+1. **Open `data/raw/customers.csv`.** "What `customer_id` looks like in the panel — 16-char SHA-256, no PII at any stage. The same id appears for the same physical customer at every merchant they shop at; that's the cross-merchant join key."
+2. **Open SQLite and `SELECT * FROM tenant_customers LIMIT 3`.** "Tenant view: full granularity — full ZIP5, behavioral segment, primary/secondary grocer affinity. This is what the merchant sees of their own customers."
+3. **Show the lake is virtual.** Run a tiny `query_lake` from the dashboard's Kroger role. "There's no physical lake table — the runner computes peer-pseudonymized rows from the tenant tables on every query. ZIP3, hour bucket, txn_total bin, no `customer_id`."
+4. **Open the dashboard. Role: Kroger.** Run "Have any of my stores seen a drop in transaction count week-over-week?" — the agent surfaces the **University City decline**. Stage 3 (Apr 26 – May 2) is the deepest at Kroger; Acme and Winn-Dixie also drop but less. *"All three grocers' University City stores hit. The pattern is sharper at Kroger because Kroger has the most foot traffic to lose."*
+5. **Switch to "How does my dairy pricing compare to peers?"** Two SQL blocks in the expander — one tenant, one lake. "The agent decided to query both layers. The lake answer comes back peer-pseudonymized; we never see the underlying merchant_ids."
+6. **Switch role to Acme.** Ask "How is my pasta promo performing?" The agent finds Acme's Apr 19–25 promo lifted spend per pasta basket because of the discount, but **pasta sales count is *down* during the window** — the planted failure. Compare with Kroger (same window-overlap) where pasta sales lift 2.2× during their Apr 15–21 promo.
+7. **(Optional, if time)** Switch role to Kroger and ask "Anything strange in Plaza Midwood produce in late April?" The agent surfaces the **avocado spike** — Apr 22 is the peak (5× design multiplier). No comparable spike at Acme or Winn-Dixie Plaza Midwood. *"This is the kind of granular signal the lake hides on purpose — only the merchant viewing their own tenant data can drill into it."*
 
 ---
 

@@ -1,0 +1,695 @@
+[
+  {
+    "name": "Lay's classic potato chips (8 oz)",
+    "subcategory": "chips",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Lay's sour cream and onion (8 oz)",
+    "subcategory": "chips",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Lay's barbecue chips (8 oz)",
+    "subcategory": "chips",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Lay's salt and vinegar (8 oz)",
+    "subcategory": "chips",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Ruffles original (8.5 oz)",
+    "subcategory": "chips",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Ruffles cheddar and sour cream (8.5 oz)",
+    "subcategory": "chips",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pringles original (5.5 oz)",
+    "subcategory": "chips",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pringles sour cream and onion (5.5 oz)",
+    "subcategory": "chips",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Doritos nacho cheese (9.25 oz)",
+    "subcategory": "chips",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Doritos cool ranch (9.25 oz)",
+    "subcategory": "chips",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Doritos spicy sweet chili (9.25 oz)",
+    "subcategory": "chips",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Tostitos scoops (10 oz)",
+    "subcategory": "chips",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Tostitos hint of lime (11 oz)",
+    "subcategory": "chips",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Tortilla chips white corn (13 oz)",
+    "subcategory": "chips",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cheetos crunchy (8.5 oz)",
+    "subcategory": "chips",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cheetos puffs (8 oz)",
+    "subcategory": "chips",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Funyuns onion rings (6 oz)",
+    "subcategory": "chips",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "SunChips harvest cheddar (7 oz)",
+    "subcategory": "chips",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Kettle chips sea salt (8.5 oz)",
+    "subcategory": "chips",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Veggie straws original (7 oz)",
+    "subcategory": "chips",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pita chips sea salt (7.3 oz)",
+    "subcategory": "chips",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Ritz crackers original (13.7 oz)",
+    "subcategory": "crackers",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Ritz whole wheat crackers (12.9 oz)",
+    "subcategory": "crackers",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Saltines original (16 oz)",
+    "subcategory": "crackers",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Triscuit original (8.5 oz)",
+    "subcategory": "crackers",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Triscuit reduced fat (7.5 oz)",
+    "subcategory": "crackers",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cheez-Its original (12.4 oz)",
+    "subcategory": "crackers",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cheez-Its white cheddar (12.4 oz)",
+    "subcategory": "crackers",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Goldfish cheddar (11 oz)",
+    "subcategory": "crackers",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Wheat Thins original (9.1 oz)",
+    "subcategory": "crackers",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Club crackers (13.7 oz)",
+    "subcategory": "crackers",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Graham crackers (14.4 oz)",
+    "subcategory": "crackers",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Animal crackers (13 oz)",
+    "subcategory": "crackers",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Water crackers (4.4 oz)",
+    "subcategory": "crackers",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Rice cakes plain (4.9 oz)",
+    "subcategory": "crackers",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Rice cakes caramel (6.5 oz)",
+    "subcategory": "crackers",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Oreo cookies original (14.3 oz)",
+    "subcategory": "cookies",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Oreo double stuf (14.3 oz)",
+    "subcategory": "cookies",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Oreo golden (14.3 oz)",
+    "subcategory": "cookies",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Chips Ahoy original (13 oz)",
+    "subcategory": "cookies",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Chips Ahoy chewy (13 oz)",
+    "subcategory": "cookies",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Nutter Butter cookies (16 oz)",
+    "subcategory": "cookies",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Nilla Wafers (11 oz)",
+    "subcategory": "cookies",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Fig Newtons (10 oz)",
+    "subcategory": "cookies",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Lorna Doone shortbread (10 oz)",
+    "subcategory": "cookies",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pepperidge Farm Milano (6 oz)",
+    "subcategory": "cookies",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pepperidge Farm Mint Milano (7 oz)",
+    "subcategory": "cookies",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Famous Amos chocolate chip (12.4 oz)",
+    "subcategory": "cookies",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Animal cookies frosted (13 oz)",
+    "subcategory": "cookies",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "M&M's milk chocolate (10.7 oz)",
+    "subcategory": "candy",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "M&M's peanut (10.7 oz)",
+    "subcategory": "candy",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "M&M's peanut butter (9.6 oz)",
+    "subcategory": "candy",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Snickers fun size (11.18 oz)",
+    "subcategory": "candy",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Twix fun size (10.83 oz)",
+    "subcategory": "candy",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Hershey's milk chocolate bar (1.55 oz)",
+    "subcategory": "candy",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Reese's Peanut Butter Cups (1.5 oz)",
+    "subcategory": "candy",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Kit Kat (1.5 oz)",
+    "subcategory": "candy",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Skittles original (7.2 oz)",
+    "subcategory": "candy",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Starburst original (7.2 oz)",
+    "subcategory": "candy",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sour Patch Kids (8 oz)",
+    "subcategory": "candy",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Twizzlers strawberry (16 oz)",
+    "subcategory": "candy",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Gummy bears (9 oz)",
+    "subcategory": "candy",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Hershey's Kisses milk chocolate (10.8 oz)",
+    "subcategory": "candy",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Lindt truffles assorted (5.1 oz)",
+    "subcategory": "candy",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Ghirardelli squares dark chocolate (5.32 oz)",
+    "subcategory": "candy",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Nature Valley granola bars oats and honey (12-count)",
+    "subcategory": "granola_bars",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Nature Valley sweet and salty almond (12-count)",
+    "subcategory": "granola_bars",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Quaker chewy chocolate chip (12-count)",
+    "subcategory": "granola_bars",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Quaker chewy peanut butter (12-count)",
+    "subcategory": "granola_bars",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "KIND bars dark chocolate nuts (6-count)",
+    "subcategory": "granola_bars",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "KIND bars caramel almond (6-count)",
+    "subcategory": "granola_bars",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "CLIF bars chocolate chip (6-count)",
+    "subcategory": "granola_bars",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Larabar cashew cookie (5-count)",
+    "subcategory": "granola_bars",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "RX bar chocolate sea salt (5-count)",
+    "subcategory": "granola_bars",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Belvita breakfast biscuits (5-count)",
+    "subcategory": "granola_bars",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Fiber One brownies (6-count)",
+    "subcategory": "granola_bars",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Popcorn microwave butter (6-count)",
+    "subcategory": "popcorn",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Popcorn microwave kettle (6-count)",
+    "subcategory": "popcorn",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Popcorn microwave light butter (6-count)",
+    "subcategory": "popcorn",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Skinnypop original (4.4 oz)",
+    "subcategory": "popcorn",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Smartfood white cheddar popcorn (6.75 oz)",
+    "subcategory": "popcorn",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pretzels classic (16 oz)",
+    "subcategory": "popcorn",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pretzels mini twists (16 oz)",
+    "subcategory": "popcorn",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Snack mix Chex Mix (8.75 oz)",
+    "subcategory": "popcorn",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Mixed nuts roasted salted (10 oz)",
+    "subcategory": "nuts",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cashews roasted salted (9.25 oz)",
+    "subcategory": "nuts",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Almonds roasted salted (11.5 oz)",
+    "subcategory": "nuts",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Almonds raw (16 oz)",
+    "subcategory": "nuts",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Peanuts roasted salted (16 oz)",
+    "subcategory": "nuts",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pistachios shelled (8 oz)",
+    "subcategory": "nuts",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pistachios in shell (16 oz)",
+    "subcategory": "nuts",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Walnuts halves and pieces (16 oz)",
+    "subcategory": "nuts",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pecans halves (10 oz)",
+    "subcategory": "nuts",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Trail mix original (16 oz)",
+    "subcategory": "nuts",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Beef jerky original (3.25 oz)",
+    "subcategory": "jerky",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Beef jerky teriyaki (3.25 oz)",
+    "subcategory": "jerky",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Beef jerky peppered (3.25 oz)",
+    "subcategory": "jerky",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Turkey jerky (2.85 oz)",
+    "subcategory": "jerky",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Slim Jim original (12-count)",
+    "subcategory": "jerky",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  }
+]

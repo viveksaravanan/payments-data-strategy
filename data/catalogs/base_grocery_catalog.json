@@ -1,0 +1,7786 @@
+[
+  {
+    "canonical_sku": "PRODUCE-0001",
+    "name": "Bananas (lb)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 0.69
+  },
+  {
+    "canonical_sku": "PRODUCE-0002",
+    "name": "Organic bananas (lb)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 0.89
+  },
+  {
+    "canonical_sku": "PRODUCE-0003",
+    "name": "Honeycrisp apples (3 lb bag)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0004",
+    "name": "Gala apples (3 lb bag)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 5.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0005",
+    "name": "Granny Smith apples (3 lb bag)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0006",
+    "name": "Fuji apples (3 lb bag)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0007",
+    "name": "Organic Honeycrisp apples (3 lb bag)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0008",
+    "name": "Strawberries (1 lb clamshell)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0009",
+    "name": "Organic strawberries (1 lb)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 6.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0010",
+    "name": "Blueberries (6 oz)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0011",
+    "name": "Organic blueberries (6 oz)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0012",
+    "name": "Raspberries (6 oz)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0013",
+    "name": "Blackberries (6 oz)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0014",
+    "name": "Red seedless grapes (lb)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0015",
+    "name": "Green seedless grapes (lb)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0016",
+    "name": "Black seedless grapes (lb)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0017",
+    "name": "Avocados (4-pack)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0018",
+    "name": "Organic avocados (4-pack)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 6.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0019",
+    "name": "Hass avocado (ea)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0020",
+    "name": "Navel oranges (4 lb bag)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0021",
+    "name": "Cuties mandarins (3 lb bag)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0022",
+    "name": "Lemons (2 lb bag)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0023",
+    "name": "Limes (2 lb bag)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0024",
+    "name": "Pineapple (ea)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0025",
+    "name": "Cantaloupe (ea)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0026",
+    "name": "Honeydew melon (ea)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0027",
+    "name": "Watermelon (ea)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0028",
+    "name": "Mini seedless watermelon (ea)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0029",
+    "name": "Bartlett pears (lb)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0030",
+    "name": "Anjou pears (lb)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0031",
+    "name": "Peaches (lb)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0032",
+    "name": "Nectarines (lb)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0033",
+    "name": "Plums (lb)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0034",
+    "name": "Cherries (lb)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0035",
+    "name": "Mangos (ea)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0036",
+    "name": "Kiwi (1 lb bag)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0037",
+    "name": "Pomegranate (ea)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_fruit",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0038",
+    "name": "Romaine hearts (3-pack)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0039",
+    "name": "Organic romaine hearts (3-pack)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0040",
+    "name": "Iceberg lettuce (ea)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0041",
+    "name": "Butter lettuce (ea)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0042",
+    "name": "Spring mix salad (5 oz)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0043",
+    "name": "Organic spring mix (5 oz)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0044",
+    "name": "Baby spinach (5 oz)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0045",
+    "name": "Organic baby spinach (5 oz)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0046",
+    "name": "Baby carrots (1 lb bag)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0047",
+    "name": "Organic baby carrots (1 lb bag)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0048",
+    "name": "Whole carrots (2 lb bag)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0049",
+    "name": "Celery (stalk)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0050",
+    "name": "Broccoli crowns (lb)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0051",
+    "name": "Organic broccoli (lb)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0052",
+    "name": "Cauliflower (ea)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0053",
+    "name": "Brussels sprouts (lb)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0054",
+    "name": "Green beans (lb)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0055",
+    "name": "Asparagus (lb)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0056",
+    "name": "Red bell peppers (ea)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0057",
+    "name": "Green bell peppers (ea)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0058",
+    "name": "Yellow bell peppers (ea)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0059",
+    "name": "Mini sweet peppers (1 lb bag)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0060",
+    "name": "Roma tomatoes (lb)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0061",
+    "name": "Vine-ripened tomatoes (lb)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0062",
+    "name": "Cherry tomatoes (10.5 oz)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0063",
+    "name": "Grape tomatoes (1 pint)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0064",
+    "name": "English cucumber (ea)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0065",
+    "name": "Persian cucumbers (1 lb bag)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0066",
+    "name": "Yellow onions (3 lb bag)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0067",
+    "name": "Red onions (lb)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0068",
+    "name": "Sweet onions (lb)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0069",
+    "name": "Russet potatoes (5 lb bag)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0070",
+    "name": "Yukon gold potatoes (5 lb bag)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0071",
+    "name": "Red potatoes (5 lb bag)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 5.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0072",
+    "name": "Sweet potatoes (lb)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0073",
+    "name": "Garlic (3-pack)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0074",
+    "name": "Ginger root (lb)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0075",
+    "name": "White mushrooms (8 oz)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0076",
+    "name": "Baby bella mushrooms (8 oz)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0077",
+    "name": "Portobello caps (6 oz)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0078",
+    "name": "Zucchini (lb)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0079",
+    "name": "Yellow squash (lb)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0080",
+    "name": "Eggplant (ea)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0081",
+    "name": "Corn on the cob (ea)",
+    "category": "PRODUCE",
+    "subcategory": "fresh_vegetables",
+    "base_price": 0.79
+  },
+  {
+    "canonical_sku": "PRODUCE-0082",
+    "name": "Fresh basil (0.66 oz)",
+    "category": "PRODUCE",
+    "subcategory": "herbs_salads",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0083",
+    "name": "Fresh cilantro (bunch)",
+    "category": "PRODUCE",
+    "subcategory": "herbs_salads",
+    "base_price": 0.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0084",
+    "name": "Fresh parsley (bunch)",
+    "category": "PRODUCE",
+    "subcategory": "herbs_salads",
+    "base_price": 0.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0085",
+    "name": "Fresh rosemary (0.66 oz)",
+    "category": "PRODUCE",
+    "subcategory": "herbs_salads",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0086",
+    "name": "Fresh thyme (0.75 oz)",
+    "category": "PRODUCE",
+    "subcategory": "herbs_salads",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0087",
+    "name": "Fresh dill (0.66 oz)",
+    "category": "PRODUCE",
+    "subcategory": "herbs_salads",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0088",
+    "name": "Caesar salad kit (9.6 oz)",
+    "category": "PRODUCE",
+    "subcategory": "herbs_salads",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0089",
+    "name": "Cobb salad kit (12 oz)",
+    "category": "PRODUCE",
+    "subcategory": "herbs_salads",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "PRODUCE-0090",
+    "name": "Sweet kale salad kit (11 oz)",
+    "category": "PRODUCE",
+    "subcategory": "herbs_salads",
+    "base_price": 5.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0091",
+    "name": "Mediterranean salad kit (10 oz)",
+    "category": "PRODUCE",
+    "subcategory": "herbs_salads",
+    "base_price": 5.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0092",
+    "name": "Coleslaw mix (14 oz)",
+    "category": "PRODUCE",
+    "subcategory": "herbs_salads",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "PRODUCE-0093",
+    "name": "Stir-fry vegetable mix (12 oz)",
+    "category": "PRODUCE",
+    "subcategory": "herbs_salads",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "DAIRY-0001",
+    "name": "Whole milk (gallon)",
+    "category": "DAIRY",
+    "subcategory": "milk",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "DAIRY-0002",
+    "name": "Whole milk (half gallon)",
+    "category": "DAIRY",
+    "subcategory": "milk",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "DAIRY-0003",
+    "name": "Whole milk (quart)",
+    "category": "DAIRY",
+    "subcategory": "milk",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "DAIRY-0004",
+    "name": "Whole milk (pint)",
+    "category": "DAIRY",
+    "subcategory": "milk",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "DAIRY-0005",
+    "name": "2% milk (gallon)",
+    "category": "DAIRY",
+    "subcategory": "milk",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "DAIRY-0006",
+    "name": "2% milk (half gallon)",
+    "category": "DAIRY",
+    "subcategory": "milk",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "DAIRY-0007",
+    "name": "2% milk (quart)",
+    "category": "DAIRY",
+    "subcategory": "milk",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "DAIRY-0008",
+    "name": "1% milk (gallon)",
+    "category": "DAIRY",
+    "subcategory": "milk",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "DAIRY-0009",
+    "name": "1% milk (half gallon)",
+    "category": "DAIRY",
+    "subcategory": "milk",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "DAIRY-0010",
+    "name": "Skim milk (gallon)",
+    "category": "DAIRY",
+    "subcategory": "milk",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "DAIRY-0011",
+    "name": "Skim milk (half gallon)",
+    "category": "DAIRY",
+    "subcategory": "milk",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "DAIRY-0012",
+    "name": "Organic whole milk (half gallon)",
+    "category": "DAIRY",
+    "subcategory": "milk",
+    "base_price": 5.49
+  },
+  {
+    "canonical_sku": "DAIRY-0013",
+    "name": "Organic 2% milk (half gallon)",
+    "category": "DAIRY",
+    "subcategory": "milk",
+    "base_price": 5.49
+  },
+  {
+    "canonical_sku": "DAIRY-0014",
+    "name": "Lactose-free 2% milk (half gallon)",
+    "category": "DAIRY",
+    "subcategory": "milk",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "DAIRY-0015",
+    "name": "Chocolate milk (half gallon)",
+    "category": "DAIRY",
+    "subcategory": "milk",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "DAIRY-0016",
+    "name": "Strawberry milk (half gallon)",
+    "category": "DAIRY",
+    "subcategory": "milk",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "DAIRY-0017",
+    "name": "Buttermilk (quart)",
+    "category": "DAIRY",
+    "subcategory": "milk",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "DAIRY-0018",
+    "name": "Almond milk unsweetened (half gallon)",
+    "category": "DAIRY",
+    "subcategory": "milk",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "DAIRY-0019",
+    "name": "Almond milk vanilla (half gallon)",
+    "category": "DAIRY",
+    "subcategory": "milk",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "DAIRY-0020",
+    "name": "Oat milk (half gallon)",
+    "category": "DAIRY",
+    "subcategory": "milk",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "DAIRY-0021",
+    "name": "Oat milk barista (32 oz)",
+    "category": "DAIRY",
+    "subcategory": "milk",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "DAIRY-0022",
+    "name": "Soy milk (half gallon)",
+    "category": "DAIRY",
+    "subcategory": "milk",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "DAIRY-0023",
+    "name": "Coconut milk (half gallon)",
+    "category": "DAIRY",
+    "subcategory": "milk",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "DAIRY-0024",
+    "name": "Greek yogurt plain (32 oz)",
+    "category": "DAIRY",
+    "subcategory": "yogurt",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "DAIRY-0025",
+    "name": "Greek yogurt vanilla (32 oz)",
+    "category": "DAIRY",
+    "subcategory": "yogurt",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "DAIRY-0026",
+    "name": "Greek yogurt strawberry (5.3 oz)",
+    "category": "DAIRY",
+    "subcategory": "yogurt",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "DAIRY-0027",
+    "name": "Greek yogurt blueberry (5.3 oz)",
+    "category": "DAIRY",
+    "subcategory": "yogurt",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "DAIRY-0028",
+    "name": "Greek yogurt honey (5.3 oz)",
+    "category": "DAIRY",
+    "subcategory": "yogurt",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "DAIRY-0029",
+    "name": "Greek yogurt peach (5.3 oz)",
+    "category": "DAIRY",
+    "subcategory": "yogurt",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "DAIRY-0030",
+    "name": "Whole milk yogurt plain (32 oz)",
+    "category": "DAIRY",
+    "subcategory": "yogurt",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "DAIRY-0031",
+    "name": "Low-fat yogurt vanilla (32 oz)",
+    "category": "DAIRY",
+    "subcategory": "yogurt",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "DAIRY-0032",
+    "name": "Yogurt cup variety pack (8-count)",
+    "category": "DAIRY",
+    "subcategory": "yogurt",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "DAIRY-0033",
+    "name": "Kids yogurt tubes (8-count)",
+    "category": "DAIRY",
+    "subcategory": "yogurt",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "DAIRY-0034",
+    "name": "Skyr Icelandic yogurt (5.3 oz)",
+    "category": "DAIRY",
+    "subcategory": "yogurt",
+    "base_price": 1.79
+  },
+  {
+    "canonical_sku": "DAIRY-0035",
+    "name": "Coconut yogurt vanilla (5.3 oz)",
+    "category": "DAIRY",
+    "subcategory": "yogurt",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "DAIRY-0036",
+    "name": "Almond yogurt strawberry (5.3 oz)",
+    "category": "DAIRY",
+    "subcategory": "yogurt",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "DAIRY-0037",
+    "name": "Organic Greek yogurt (32 oz)",
+    "category": "DAIRY",
+    "subcategory": "yogurt",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "DAIRY-0038",
+    "name": "Drinkable yogurt smoothie (7 oz)",
+    "category": "DAIRY",
+    "subcategory": "yogurt",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "DAIRY-0039",
+    "name": "Sharp cheddar block (8 oz)",
+    "category": "DAIRY",
+    "subcategory": "cheese",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "DAIRY-0040",
+    "name": "Mild cheddar block (8 oz)",
+    "category": "DAIRY",
+    "subcategory": "cheese",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "DAIRY-0041",
+    "name": "Sharp cheddar shredded (8 oz)",
+    "category": "DAIRY",
+    "subcategory": "cheese",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "DAIRY-0042",
+    "name": "Mexican blend shredded (8 oz)",
+    "category": "DAIRY",
+    "subcategory": "cheese",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "DAIRY-0043",
+    "name": "Mozzarella shredded (8 oz)",
+    "category": "DAIRY",
+    "subcategory": "cheese",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "DAIRY-0044",
+    "name": "Mozzarella whole milk (8 oz)",
+    "category": "DAIRY",
+    "subcategory": "cheese",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "DAIRY-0045",
+    "name": "Parmesan grated (5 oz)",
+    "category": "DAIRY",
+    "subcategory": "cheese",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "DAIRY-0046",
+    "name": "Parmesan shredded (5 oz)",
+    "category": "DAIRY",
+    "subcategory": "cheese",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "DAIRY-0047",
+    "name": "Pepper jack shredded (8 oz)",
+    "category": "DAIRY",
+    "subcategory": "cheese",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "DAIRY-0048",
+    "name": "Colby jack block (8 oz)",
+    "category": "DAIRY",
+    "subcategory": "cheese",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "DAIRY-0049",
+    "name": "Provolone slices (8 oz)",
+    "category": "DAIRY",
+    "subcategory": "cheese",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "DAIRY-0050",
+    "name": "Swiss slices (8 oz)",
+    "category": "DAIRY",
+    "subcategory": "cheese",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "DAIRY-0051",
+    "name": "American cheese slices (12 oz)",
+    "category": "DAIRY",
+    "subcategory": "cheese",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "DAIRY-0052",
+    "name": "Cream cheese (8 oz)",
+    "category": "DAIRY",
+    "subcategory": "cheese",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "DAIRY-0053",
+    "name": "Cream cheese whipped (8 oz)",
+    "category": "DAIRY",
+    "subcategory": "cheese",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "DAIRY-0054",
+    "name": "Cottage cheese small curd (16 oz)",
+    "category": "DAIRY",
+    "subcategory": "cheese",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "DAIRY-0055",
+    "name": "Cottage cheese low-fat (16 oz)",
+    "category": "DAIRY",
+    "subcategory": "cheese",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "DAIRY-0056",
+    "name": "Ricotta cheese (15 oz)",
+    "category": "DAIRY",
+    "subcategory": "cheese",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "DAIRY-0057",
+    "name": "Feta crumbles (6 oz)",
+    "category": "DAIRY",
+    "subcategory": "cheese",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "DAIRY-0058",
+    "name": "Goat cheese log (4 oz)",
+    "category": "DAIRY",
+    "subcategory": "cheese",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "DAIRY-0059",
+    "name": "Brie wedge (8 oz)",
+    "category": "DAIRY",
+    "subcategory": "cheese",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "DAIRY-0060",
+    "name": "Blue cheese crumbles (5 oz)",
+    "category": "DAIRY",
+    "subcategory": "cheese",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "DAIRY-0061",
+    "name": "Mascarpone (8 oz)",
+    "category": "DAIRY",
+    "subcategory": "cheese",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "DAIRY-0062",
+    "name": "String cheese mozzarella (12-count)",
+    "category": "DAIRY",
+    "subcategory": "cheese",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "DAIRY-0063",
+    "name": "Babybel mini cheese wheels (12-count)",
+    "category": "DAIRY",
+    "subcategory": "cheese",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "DAIRY-0064",
+    "name": "Organic cheddar block (8 oz)",
+    "category": "DAIRY",
+    "subcategory": "cheese",
+    "base_price": 5.49
+  },
+  {
+    "canonical_sku": "DAIRY-0065",
+    "name": "Salted butter sticks (1 lb)",
+    "category": "DAIRY",
+    "subcategory": "butter_eggs",
+    "base_price": 5.49
+  },
+  {
+    "canonical_sku": "DAIRY-0066",
+    "name": "Unsalted butter sticks (1 lb)",
+    "category": "DAIRY",
+    "subcategory": "butter_eggs",
+    "base_price": 5.49
+  },
+  {
+    "canonical_sku": "DAIRY-0067",
+    "name": "European-style butter (8 oz)",
+    "category": "DAIRY",
+    "subcategory": "butter_eggs",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "DAIRY-0068",
+    "name": "Butter spread tub (15 oz)",
+    "category": "DAIRY",
+    "subcategory": "butter_eggs",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "DAIRY-0069",
+    "name": "Margarine sticks (1 lb)",
+    "category": "DAIRY",
+    "subcategory": "butter_eggs",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "DAIRY-0070",
+    "name": "Eggs large grade A (dozen)",
+    "category": "DAIRY",
+    "subcategory": "butter_eggs",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "DAIRY-0071",
+    "name": "Eggs large grade A (18-count)",
+    "category": "DAIRY",
+    "subcategory": "butter_eggs",
+    "base_price": 5.49
+  },
+  {
+    "canonical_sku": "DAIRY-0072",
+    "name": "Eggs jumbo (dozen)",
+    "category": "DAIRY",
+    "subcategory": "butter_eggs",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "DAIRY-0073",
+    "name": "Cage-free eggs large (dozen)",
+    "category": "DAIRY",
+    "subcategory": "butter_eggs",
+    "base_price": 5.49
+  },
+  {
+    "canonical_sku": "DAIRY-0074",
+    "name": "Organic eggs large (dozen)",
+    "category": "DAIRY",
+    "subcategory": "butter_eggs",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "DAIRY-0075",
+    "name": "Egg whites liquid (16 oz)",
+    "category": "DAIRY",
+    "subcategory": "butter_eggs",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "DAIRY-0076",
+    "name": "Heavy whipping cream (pint)",
+    "category": "DAIRY",
+    "subcategory": "cream_refrigerated",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "DAIRY-0077",
+    "name": "Half and half (quart)",
+    "category": "DAIRY",
+    "subcategory": "cream_refrigerated",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "DAIRY-0078",
+    "name": "Half and half (pint)",
+    "category": "DAIRY",
+    "subcategory": "cream_refrigerated",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "DAIRY-0079",
+    "name": "Sour cream (16 oz)",
+    "category": "DAIRY",
+    "subcategory": "cream_refrigerated",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "DAIRY-0080",
+    "name": "Sour cream light (16 oz)",
+    "category": "DAIRY",
+    "subcategory": "cream_refrigerated",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "DAIRY-0081",
+    "name": "French onion dip (16 oz)",
+    "category": "DAIRY",
+    "subcategory": "cream_refrigerated",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "DAIRY-0082",
+    "name": "Whipped cream aerosol (7 oz)",
+    "category": "DAIRY",
+    "subcategory": "cream_refrigerated",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "DAIRY-0083",
+    "name": "Coffee creamer hazelnut (32 oz)",
+    "category": "DAIRY",
+    "subcategory": "cream_refrigerated",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "DAIRY-0084",
+    "name": "Coffee creamer vanilla (32 oz)",
+    "category": "DAIRY",
+    "subcategory": "cream_refrigerated",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "DAIRY-0085",
+    "name": "Coffee creamer plain (32 oz)",
+    "category": "DAIRY",
+    "subcategory": "cream_refrigerated",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "DAIRY-0086",
+    "name": "Refrigerated biscuit dough (16.3 oz)",
+    "category": "DAIRY",
+    "subcategory": "cream_refrigerated",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "DAIRY-0087",
+    "name": "Crescent roll dough (8 oz)",
+    "category": "DAIRY",
+    "subcategory": "cream_refrigerated",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "DAIRY-0088",
+    "name": "Pizza crust dough (13.8 oz)",
+    "category": "DAIRY",
+    "subcategory": "cream_refrigerated",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "DAIRY-0089",
+    "name": "Tortilla wraps refrigerated (10-count)",
+    "category": "DAIRY",
+    "subcategory": "cream_refrigerated",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BAKERY-0001",
+    "name": "White sandwich bread (20 oz)",
+    "category": "BAKERY",
+    "subcategory": "bread",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "BAKERY-0002",
+    "name": "Whole wheat bread (20 oz)",
+    "category": "BAKERY",
+    "subcategory": "bread",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BAKERY-0003",
+    "name": "Honey wheat bread (20 oz)",
+    "category": "BAKERY",
+    "subcategory": "bread",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BAKERY-0004",
+    "name": "Multigrain bread (24 oz)",
+    "category": "BAKERY",
+    "subcategory": "bread",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "BAKERY-0005",
+    "name": "12-grain bread (24 oz)",
+    "category": "BAKERY",
+    "subcategory": "bread",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "BAKERY-0006",
+    "name": "Rye bread (16 oz)",
+    "category": "BAKERY",
+    "subcategory": "bread",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BAKERY-0007",
+    "name": "Pumpernickel bread (16 oz)",
+    "category": "BAKERY",
+    "subcategory": "bread",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "BAKERY-0008",
+    "name": "Sourdough boule (ea)",
+    "category": "BAKERY",
+    "subcategory": "bread",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BAKERY-0009",
+    "name": "Sourdough sliced loaf (24 oz)",
+    "category": "BAKERY",
+    "subcategory": "bread",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BAKERY-0010",
+    "name": "Italian loaf (16 oz)",
+    "category": "BAKERY",
+    "subcategory": "bread",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "BAKERY-0011",
+    "name": "French baguette (ea)",
+    "category": "BAKERY",
+    "subcategory": "bread",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "BAKERY-0012",
+    "name": "Brioche loaf (16 oz)",
+    "category": "BAKERY",
+    "subcategory": "bread",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BAKERY-0013",
+    "name": "Ciabatta loaf (ea)",
+    "category": "BAKERY",
+    "subcategory": "bread",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BAKERY-0014",
+    "name": "Texas toast bread (20 oz)",
+    "category": "BAKERY",
+    "subcategory": "bread",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BAKERY-0015",
+    "name": "Cinnamon raisin bread (20 oz)",
+    "category": "BAKERY",
+    "subcategory": "bread",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "BAKERY-0016",
+    "name": "Gluten-free white bread (16 oz)",
+    "category": "BAKERY",
+    "subcategory": "bread",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "BAKERY-0017",
+    "name": "Sprouted grain bread (24 oz)",
+    "category": "BAKERY",
+    "subcategory": "bread",
+    "base_price": 5.49
+  },
+  {
+    "canonical_sku": "BAKERY-0018",
+    "name": "Organic whole wheat bread (24 oz)",
+    "category": "BAKERY",
+    "subcategory": "bread",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "BAKERY-0019",
+    "name": "Hamburger buns (8-count)",
+    "category": "BAKERY",
+    "subcategory": "rolls",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "BAKERY-0020",
+    "name": "Brioche hamburger buns (8-count)",
+    "category": "BAKERY",
+    "subcategory": "rolls",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BAKERY-0021",
+    "name": "Hot dog buns (8-count)",
+    "category": "BAKERY",
+    "subcategory": "rolls",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "BAKERY-0022",
+    "name": "Slider rolls (12-count)",
+    "category": "BAKERY",
+    "subcategory": "rolls",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "BAKERY-0023",
+    "name": "Dinner rolls (12-count)",
+    "category": "BAKERY",
+    "subcategory": "rolls",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BAKERY-0024",
+    "name": "Hawaiian rolls (12-count)",
+    "category": "BAKERY",
+    "subcategory": "rolls",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "BAKERY-0025",
+    "name": "Pretzel rolls (6-count)",
+    "category": "BAKERY",
+    "subcategory": "rolls",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BAKERY-0026",
+    "name": "Sub rolls (6-count)",
+    "category": "BAKERY",
+    "subcategory": "rolls",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BAKERY-0027",
+    "name": "Kaiser rolls (6-count)",
+    "category": "BAKERY",
+    "subcategory": "rolls",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BAKERY-0028",
+    "name": "Plain bagels (6-count)",
+    "category": "BAKERY",
+    "subcategory": "bagels",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BAKERY-0029",
+    "name": "Everything bagels (6-count)",
+    "category": "BAKERY",
+    "subcategory": "bagels",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BAKERY-0030",
+    "name": "Cinnamon raisin bagels (6-count)",
+    "category": "BAKERY",
+    "subcategory": "bagels",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BAKERY-0031",
+    "name": "Sesame bagels (6-count)",
+    "category": "BAKERY",
+    "subcategory": "bagels",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BAKERY-0032",
+    "name": "Asiago cheese bagels (6-count)",
+    "category": "BAKERY",
+    "subcategory": "bagels",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "BAKERY-0033",
+    "name": "Mini bagels variety (10-count)",
+    "category": "BAKERY",
+    "subcategory": "bagels",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BAKERY-0034",
+    "name": "English muffins (6-count)",
+    "category": "BAKERY",
+    "subcategory": "bagels",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "BAKERY-0035",
+    "name": "Whole wheat English muffins (6-count)",
+    "category": "BAKERY",
+    "subcategory": "bagels",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "BAKERY-0036",
+    "name": "Cinnamon raisin English muffins (6-count)",
+    "category": "BAKERY",
+    "subcategory": "bagels",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "BAKERY-0037",
+    "name": "Flour tortillas burrito size (10-count)",
+    "category": "BAKERY",
+    "subcategory": "tortillas",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "BAKERY-0038",
+    "name": "Flour tortillas taco size (10-count)",
+    "category": "BAKERY",
+    "subcategory": "tortillas",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "BAKERY-0039",
+    "name": "Whole wheat flour tortillas (10-count)",
+    "category": "BAKERY",
+    "subcategory": "tortillas",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "BAKERY-0040",
+    "name": "Corn tortillas (30-count)",
+    "category": "BAKERY",
+    "subcategory": "tortillas",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BAKERY-0041",
+    "name": "Yellow corn tortillas (12-count)",
+    "category": "BAKERY",
+    "subcategory": "tortillas",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "BAKERY-0042",
+    "name": "Spinach wraps (8-count)",
+    "category": "BAKERY",
+    "subcategory": "tortillas",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BAKERY-0043",
+    "name": "Tomato basil wraps (8-count)",
+    "category": "BAKERY",
+    "subcategory": "tortillas",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BAKERY-0044",
+    "name": "Pita bread (6-count)",
+    "category": "BAKERY",
+    "subcategory": "tortillas",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "BAKERY-0045",
+    "name": "Naan bread (4-count)",
+    "category": "BAKERY",
+    "subcategory": "tortillas",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BAKERY-0046",
+    "name": "Lavash flatbread (ea)",
+    "category": "BAKERY",
+    "subcategory": "tortillas",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "BAKERY-0047",
+    "name": "Glazed donuts (12-count)",
+    "category": "BAKERY",
+    "subcategory": "pastries",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BAKERY-0048",
+    "name": "Chocolate donuts (12-count)",
+    "category": "BAKERY",
+    "subcategory": "pastries",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BAKERY-0049",
+    "name": "Donut holes (20-count)",
+    "category": "BAKERY",
+    "subcategory": "pastries",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BAKERY-0050",
+    "name": "Cinnamon rolls (6-count)",
+    "category": "BAKERY",
+    "subcategory": "pastries",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BAKERY-0051",
+    "name": "Croissants butter (4-count)",
+    "category": "BAKERY",
+    "subcategory": "pastries",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BAKERY-0052",
+    "name": "Chocolate croissants (4-count)",
+    "category": "BAKERY",
+    "subcategory": "pastries",
+    "base_price": 5.49
+  },
+  {
+    "canonical_sku": "BAKERY-0053",
+    "name": "Danish pastries (4-count)",
+    "category": "BAKERY",
+    "subcategory": "pastries",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BAKERY-0054",
+    "name": "Muffins blueberry (4-count)",
+    "category": "BAKERY",
+    "subcategory": "pastries",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BAKERY-0055",
+    "name": "Muffins chocolate chip (4-count)",
+    "category": "BAKERY",
+    "subcategory": "pastries",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BAKERY-0056",
+    "name": "Pound cake (ea)",
+    "category": "BAKERY",
+    "subcategory": "pastries",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "BAKERY-0057",
+    "name": "Coffee cake (ea)",
+    "category": "BAKERY",
+    "subcategory": "pastries",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "BAKERY-0058",
+    "name": "Crumb cake (ea)",
+    "category": "BAKERY",
+    "subcategory": "pastries",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "BAKERY-0059",
+    "name": "Brownies (9-count)",
+    "category": "BAKERY",
+    "subcategory": "pastries",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "BAKERY-0060",
+    "name": "Sugar cookies (12-count)",
+    "category": "BAKERY",
+    "subcategory": "pastries",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BAKERY-0061",
+    "name": "Chocolate chip cookies (12-count)",
+    "category": "BAKERY",
+    "subcategory": "pastries",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BAKERY-0062",
+    "name": "Hot rotisserie chicken (ea)",
+    "category": "BAKERY",
+    "subcategory": "prepared",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "BAKERY-0063",
+    "name": "Fresh deli sandwich (ea)",
+    "category": "BAKERY",
+    "subcategory": "prepared",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "BAKERY-0064",
+    "name": "Hot pizza slice (ea)",
+    "category": "BAKERY",
+    "subcategory": "prepared",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BAKERY-0065",
+    "name": "Fresh-baked pretzel (ea)",
+    "category": "BAKERY",
+    "subcategory": "prepared",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "BAKERY-0066",
+    "name": "Hot soup container (16 oz)",
+    "category": "BAKERY",
+    "subcategory": "prepared",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "MEAT-0001",
+    "name": "Chicken breast boneless skinless (lb)",
+    "category": "MEAT",
+    "subcategory": "chicken",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "MEAT-0002",
+    "name": "Chicken breast bone-in (lb)",
+    "category": "MEAT",
+    "subcategory": "chicken",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "MEAT-0003",
+    "name": "Chicken thighs boneless skinless (lb)",
+    "category": "MEAT",
+    "subcategory": "chicken",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "MEAT-0004",
+    "name": "Chicken thighs bone-in (lb)",
+    "category": "MEAT",
+    "subcategory": "chicken",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "MEAT-0005",
+    "name": "Chicken drumsticks (lb)",
+    "category": "MEAT",
+    "subcategory": "chicken",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "MEAT-0006",
+    "name": "Chicken wings (lb)",
+    "category": "MEAT",
+    "subcategory": "chicken",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "MEAT-0007",
+    "name": "Chicken whole (lb)",
+    "category": "MEAT",
+    "subcategory": "chicken",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "MEAT-0008",
+    "name": "Ground chicken (lb)",
+    "category": "MEAT",
+    "subcategory": "chicken",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "MEAT-0009",
+    "name": "Chicken tenderloins (lb)",
+    "category": "MEAT",
+    "subcategory": "chicken",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "MEAT-0010",
+    "name": "Chicken livers (lb)",
+    "category": "MEAT",
+    "subcategory": "chicken",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "MEAT-0011",
+    "name": "Organic chicken breast (lb)",
+    "category": "MEAT",
+    "subcategory": "chicken",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "MEAT-0012",
+    "name": "Air-chilled chicken breast (lb)",
+    "category": "MEAT",
+    "subcategory": "chicken",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "MEAT-0013",
+    "name": "Marinated chicken breast lemon herb (lb)",
+    "category": "MEAT",
+    "subcategory": "chicken",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "MEAT-0014",
+    "name": "Marinated chicken breast teriyaki (lb)",
+    "category": "MEAT",
+    "subcategory": "chicken",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "MEAT-0015",
+    "name": "Pre-cooked grilled chicken strips (lb)",
+    "category": "MEAT",
+    "subcategory": "chicken",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "MEAT-0016",
+    "name": "80/20 ground beef (lb)",
+    "category": "MEAT",
+    "subcategory": "beef",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "MEAT-0017",
+    "name": "85/15 ground beef (lb)",
+    "category": "MEAT",
+    "subcategory": "beef",
+    "base_price": 6.49
+  },
+  {
+    "canonical_sku": "MEAT-0018",
+    "name": "93/7 ground beef (lb)",
+    "category": "MEAT",
+    "subcategory": "beef",
+    "base_price": 7.49
+  },
+  {
+    "canonical_sku": "MEAT-0019",
+    "name": "Ground chuck (lb)",
+    "category": "MEAT",
+    "subcategory": "beef",
+    "base_price": 6.49
+  },
+  {
+    "canonical_sku": "MEAT-0020",
+    "name": "Ribeye steak (lb)",
+    "category": "MEAT",
+    "subcategory": "beef",
+    "base_price": 16.99
+  },
+  {
+    "canonical_sku": "MEAT-0021",
+    "name": "New York strip steak (lb)",
+    "category": "MEAT",
+    "subcategory": "beef",
+    "base_price": 14.99
+  },
+  {
+    "canonical_sku": "MEAT-0022",
+    "name": "Filet mignon (lb)",
+    "category": "MEAT",
+    "subcategory": "beef",
+    "base_price": 22.99
+  },
+  {
+    "canonical_sku": "MEAT-0023",
+    "name": "T-bone steak (lb)",
+    "category": "MEAT",
+    "subcategory": "beef",
+    "base_price": 13.99
+  },
+  {
+    "canonical_sku": "MEAT-0024",
+    "name": "Top sirloin steak (lb)",
+    "category": "MEAT",
+    "subcategory": "beef",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "MEAT-0025",
+    "name": "Flank steak (lb)",
+    "category": "MEAT",
+    "subcategory": "beef",
+    "base_price": 11.99
+  },
+  {
+    "canonical_sku": "MEAT-0026",
+    "name": "Skirt steak (lb)",
+    "category": "MEAT",
+    "subcategory": "beef",
+    "base_price": 12.99
+  },
+  {
+    "canonical_sku": "MEAT-0027",
+    "name": "Chuck roast (lb)",
+    "category": "MEAT",
+    "subcategory": "beef",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "MEAT-0028",
+    "name": "Rump roast (lb)",
+    "category": "MEAT",
+    "subcategory": "beef",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "MEAT-0029",
+    "name": "Brisket flat (lb)",
+    "category": "MEAT",
+    "subcategory": "beef",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "MEAT-0030",
+    "name": "Beef stew meat (lb)",
+    "category": "MEAT",
+    "subcategory": "beef",
+    "base_price": 7.49
+  },
+  {
+    "canonical_sku": "MEAT-0031",
+    "name": "Beef short ribs (lb)",
+    "category": "MEAT",
+    "subcategory": "beef",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "MEAT-0032",
+    "name": "Corned beef brisket (lb)",
+    "category": "MEAT",
+    "subcategory": "beef",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "MEAT-0033",
+    "name": "Grass-fed ground beef (lb)",
+    "category": "MEAT",
+    "subcategory": "beef",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "MEAT-0034",
+    "name": "Organic ground beef (lb)",
+    "category": "MEAT",
+    "subcategory": "beef",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "MEAT-0035",
+    "name": "Pork chops bone-in (lb)",
+    "category": "MEAT",
+    "subcategory": "pork",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "MEAT-0036",
+    "name": "Pork chops boneless (lb)",
+    "category": "MEAT",
+    "subcategory": "pork",
+    "base_price": 5.49
+  },
+  {
+    "canonical_sku": "MEAT-0037",
+    "name": "Pork tenderloin (lb)",
+    "category": "MEAT",
+    "subcategory": "pork",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "MEAT-0038",
+    "name": "Pork loin roast (lb)",
+    "category": "MEAT",
+    "subcategory": "pork",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "MEAT-0039",
+    "name": "Baby back ribs (lb)",
+    "category": "MEAT",
+    "subcategory": "pork",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "MEAT-0040",
+    "name": "Spare ribs (lb)",
+    "category": "MEAT",
+    "subcategory": "pork",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "MEAT-0041",
+    "name": "Pork shoulder (lb)",
+    "category": "MEAT",
+    "subcategory": "pork",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "MEAT-0042",
+    "name": "Ground pork (lb)",
+    "category": "MEAT",
+    "subcategory": "pork",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "MEAT-0043",
+    "name": "Pork belly (lb)",
+    "category": "MEAT",
+    "subcategory": "pork",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "MEAT-0044",
+    "name": "Bacon thick-cut (12 oz)",
+    "category": "MEAT",
+    "subcategory": "pork",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "MEAT-0045",
+    "name": "Bacon regular (12 oz)",
+    "category": "MEAT",
+    "subcategory": "pork",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "MEAT-0046",
+    "name": "Bacon turkey (12 oz)",
+    "category": "MEAT",
+    "subcategory": "pork",
+    "base_price": 5.49
+  },
+  {
+    "canonical_sku": "MEAT-0047",
+    "name": "Applewood smoked bacon (12 oz)",
+    "category": "MEAT",
+    "subcategory": "pork",
+    "base_price": 7.49
+  },
+  {
+    "canonical_sku": "MEAT-0048",
+    "name": "Black forest ham sliced (8 oz)",
+    "category": "MEAT",
+    "subcategory": "pork",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "MEAT-0049",
+    "name": "Honey ham sliced (8 oz)",
+    "category": "MEAT",
+    "subcategory": "pork",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "MEAT-0050",
+    "name": "Ground turkey (lb)",
+    "category": "MEAT",
+    "subcategory": "turkey",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "MEAT-0051",
+    "name": "Ground turkey 93/7 (lb)",
+    "category": "MEAT",
+    "subcategory": "turkey",
+    "base_price": 5.49
+  },
+  {
+    "canonical_sku": "MEAT-0052",
+    "name": "Turkey breast bone-in (lb)",
+    "category": "MEAT",
+    "subcategory": "turkey",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "MEAT-0053",
+    "name": "Turkey cutlets (lb)",
+    "category": "MEAT",
+    "subcategory": "turkey",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "MEAT-0054",
+    "name": "Turkey drumsticks (lb)",
+    "category": "MEAT",
+    "subcategory": "turkey",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "MEAT-0055",
+    "name": "Whole turkey (lb)",
+    "category": "MEAT",
+    "subcategory": "turkey",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "MEAT-0056",
+    "name": "Turkey sausage links (12 oz)",
+    "category": "MEAT",
+    "subcategory": "turkey",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "MEAT-0057",
+    "name": "Lamb chops (lb)",
+    "category": "MEAT",
+    "subcategory": "lamb",
+    "base_price": 14.99
+  },
+  {
+    "canonical_sku": "MEAT-0058",
+    "name": "Lamb leg roast (lb)",
+    "category": "MEAT",
+    "subcategory": "lamb",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "MEAT-0059",
+    "name": "Ground lamb (lb)",
+    "category": "MEAT",
+    "subcategory": "lamb",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "MEAT-0060",
+    "name": "Italian sausage mild (lb)",
+    "category": "MEAT",
+    "subcategory": "sausage",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "MEAT-0061",
+    "name": "Italian sausage hot (lb)",
+    "category": "MEAT",
+    "subcategory": "sausage",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "MEAT-0062",
+    "name": "Bratwurst original (19 oz)",
+    "category": "MEAT",
+    "subcategory": "sausage",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "MEAT-0063",
+    "name": "Polish kielbasa (13 oz)",
+    "category": "MEAT",
+    "subcategory": "sausage",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "MEAT-0064",
+    "name": "Andouille sausage (12 oz)",
+    "category": "MEAT",
+    "subcategory": "sausage",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "MEAT-0065",
+    "name": "Chorizo Mexican-style (lb)",
+    "category": "MEAT",
+    "subcategory": "sausage",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "MEAT-0066",
+    "name": "Breakfast sausage links (12 oz)",
+    "category": "MEAT",
+    "subcategory": "sausage",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "MEAT-0067",
+    "name": "Breakfast sausage patties (12 oz)",
+    "category": "MEAT",
+    "subcategory": "sausage",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "MEAT-0068",
+    "name": "Maple breakfast sausage (12 oz)",
+    "category": "MEAT",
+    "subcategory": "sausage",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "MEAT-0069",
+    "name": "Hot dogs beef (16 oz)",
+    "category": "MEAT",
+    "subcategory": "sausage",
+    "base_price": 5.49
+  },
+  {
+    "canonical_sku": "MEAT-0070",
+    "name": "Hot dogs all-beef (8-count)",
+    "category": "MEAT",
+    "subcategory": "sausage",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "MEAT-0071",
+    "name": "Hot dogs turkey (16 oz)",
+    "category": "MEAT",
+    "subcategory": "sausage",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "MEAT-0072",
+    "name": "Smoked sausage rope (16 oz)",
+    "category": "MEAT",
+    "subcategory": "sausage",
+    "base_price": 5.49
+  },
+  {
+    "canonical_sku": "MEAT-0073",
+    "name": "Sliced turkey breast oven roasted (9 oz)",
+    "category": "MEAT",
+    "subcategory": "deli",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "MEAT-0074",
+    "name": "Sliced turkey honey (9 oz)",
+    "category": "MEAT",
+    "subcategory": "deli",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "MEAT-0075",
+    "name": "Sliced ham black forest (9 oz)",
+    "category": "MEAT",
+    "subcategory": "deli",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "MEAT-0076",
+    "name": "Sliced ham smoked (9 oz)",
+    "category": "MEAT",
+    "subcategory": "deli",
+    "base_price": 5.49
+  },
+  {
+    "canonical_sku": "MEAT-0077",
+    "name": "Sliced roast beef (8 oz)",
+    "category": "MEAT",
+    "subcategory": "deli",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "MEAT-0078",
+    "name": "Sliced salami Genoa (8 oz)",
+    "category": "MEAT",
+    "subcategory": "deli",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "MEAT-0079",
+    "name": "Sliced pepperoni (6 oz)",
+    "category": "MEAT",
+    "subcategory": "deli",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "MEAT-0080",
+    "name": "Sliced bologna (12 oz)",
+    "category": "MEAT",
+    "subcategory": "deli",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "MEAT-0081",
+    "name": "Sliced pastrami (8 oz)",
+    "category": "MEAT",
+    "subcategory": "deli",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "MEAT-0082",
+    "name": "Prosciutto (4 oz)",
+    "category": "MEAT",
+    "subcategory": "deli",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "MEAT-0083",
+    "name": "Atlantic salmon fillet (lb)",
+    "category": "MEAT",
+    "subcategory": "seafood",
+    "base_price": 14.99
+  },
+  {
+    "canonical_sku": "MEAT-0084",
+    "name": "Wild sockeye salmon fillet (lb)",
+    "category": "MEAT",
+    "subcategory": "seafood",
+    "base_price": 19.99
+  },
+  {
+    "canonical_sku": "MEAT-0085",
+    "name": "Tilapia fillet (lb)",
+    "category": "MEAT",
+    "subcategory": "seafood",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "MEAT-0086",
+    "name": "Cod fillet (lb)",
+    "category": "MEAT",
+    "subcategory": "seafood",
+    "base_price": 11.99
+  },
+  {
+    "canonical_sku": "MEAT-0087",
+    "name": "Mahi mahi fillet (lb)",
+    "category": "MEAT",
+    "subcategory": "seafood",
+    "base_price": 13.99
+  },
+  {
+    "canonical_sku": "MEAT-0088",
+    "name": "Catfish fillet (lb)",
+    "category": "MEAT",
+    "subcategory": "seafood",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "MEAT-0089",
+    "name": "Trout fillet (lb)",
+    "category": "MEAT",
+    "subcategory": "seafood",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "MEAT-0090",
+    "name": "Tuna steak (lb)",
+    "category": "MEAT",
+    "subcategory": "seafood",
+    "base_price": 14.99
+  },
+  {
+    "canonical_sku": "MEAT-0091",
+    "name": "Shrimp raw 16/20 (lb)",
+    "category": "MEAT",
+    "subcategory": "seafood",
+    "base_price": 11.99
+  },
+  {
+    "canonical_sku": "MEAT-0092",
+    "name": "Shrimp cooked tail-on (lb)",
+    "category": "MEAT",
+    "subcategory": "seafood",
+    "base_price": 13.99
+  },
+  {
+    "canonical_sku": "MEAT-0093",
+    "name": "Frozen shrimp 31/40 (12 oz)",
+    "category": "MEAT",
+    "subcategory": "seafood",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "MEAT-0094",
+    "name": "Scallops sea (lb)",
+    "category": "MEAT",
+    "subcategory": "seafood",
+    "base_price": 19.99
+  },
+  {
+    "canonical_sku": "MEAT-0095",
+    "name": "Crab legs snow (lb)",
+    "category": "MEAT",
+    "subcategory": "seafood",
+    "base_price": 19.99
+  },
+  {
+    "canonical_sku": "MEAT-0096",
+    "name": "Lobster tails (ea)",
+    "category": "MEAT",
+    "subcategory": "seafood",
+    "base_price": 14.99
+  },
+  {
+    "canonical_sku": "MEAT-0097",
+    "name": "Mussels (lb)",
+    "category": "MEAT",
+    "subcategory": "seafood",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "MEAT-0098",
+    "name": "Clams (lb)",
+    "category": "MEAT",
+    "subcategory": "seafood",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "FROZEN-0001",
+    "name": "Frozen pepperoni pizza (12-inch)",
+    "category": "FROZEN",
+    "subcategory": "pizza",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "FROZEN-0002",
+    "name": "Frozen cheese pizza (12-inch)",
+    "category": "FROZEN",
+    "subcategory": "pizza",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "FROZEN-0003",
+    "name": "Frozen sausage pizza (12-inch)",
+    "category": "FROZEN",
+    "subcategory": "pizza",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "FROZEN-0004",
+    "name": "Frozen supreme pizza (12-inch)",
+    "category": "FROZEN",
+    "subcategory": "pizza",
+    "base_price": 6.49
+  },
+  {
+    "canonical_sku": "FROZEN-0005",
+    "name": "Frozen veggie pizza (12-inch)",
+    "category": "FROZEN",
+    "subcategory": "pizza",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "FROZEN-0006",
+    "name": "Frozen meat lovers pizza (12-inch)",
+    "category": "FROZEN",
+    "subcategory": "pizza",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "FROZEN-0007",
+    "name": "Frozen Hawaiian pizza (12-inch)",
+    "category": "FROZEN",
+    "subcategory": "pizza",
+    "base_price": 6.49
+  },
+  {
+    "canonical_sku": "FROZEN-0008",
+    "name": "Frozen four cheese pizza (12-inch)",
+    "category": "FROZEN",
+    "subcategory": "pizza",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "FROZEN-0009",
+    "name": "Frozen thin crust pepperoni (13-inch)",
+    "category": "FROZEN",
+    "subcategory": "pizza",
+    "base_price": 6.49
+  },
+  {
+    "canonical_sku": "FROZEN-0010",
+    "name": "Frozen rising crust pepperoni (29 oz)",
+    "category": "FROZEN",
+    "subcategory": "pizza",
+    "base_price": 8.49
+  },
+  {
+    "canonical_sku": "FROZEN-0011",
+    "name": "Frozen French bread pizza (10 oz)",
+    "category": "FROZEN",
+    "subcategory": "pizza",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "FROZEN-0012",
+    "name": "Frozen pizza rolls (40-count)",
+    "category": "FROZEN",
+    "subcategory": "pizza",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "FROZEN-0013",
+    "name": "Frozen mini pizza bagels (9-count)",
+    "category": "FROZEN",
+    "subcategory": "pizza",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "FROZEN-0014",
+    "name": "Frozen cauliflower crust pizza (12-inch)",
+    "category": "FROZEN",
+    "subcategory": "pizza",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "FROZEN-0015",
+    "name": "Frozen lasagna meat sauce (21 oz)",
+    "category": "FROZEN",
+    "subcategory": "meals",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "FROZEN-0016",
+    "name": "Frozen chicken pot pie (10 oz)",
+    "category": "FROZEN",
+    "subcategory": "meals",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "FROZEN-0017",
+    "name": "Frozen beef pot pie (10 oz)",
+    "category": "FROZEN",
+    "subcategory": "meals",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "FROZEN-0018",
+    "name": "Frozen mac and cheese (12 oz)",
+    "category": "FROZEN",
+    "subcategory": "meals",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "FROZEN-0019",
+    "name": "Frozen chicken alfredo (10 oz)",
+    "category": "FROZEN",
+    "subcategory": "meals",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "FROZEN-0020",
+    "name": "Frozen beef stroganoff (10 oz)",
+    "category": "FROZEN",
+    "subcategory": "meals",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "FROZEN-0021",
+    "name": "Frozen Salisbury steak (9 oz)",
+    "category": "FROZEN",
+    "subcategory": "meals",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "FROZEN-0022",
+    "name": "Frozen meatloaf dinner (16 oz)",
+    "category": "FROZEN",
+    "subcategory": "meals",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "FROZEN-0023",
+    "name": "Frozen orange chicken (22 oz)",
+    "category": "FROZEN",
+    "subcategory": "meals",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "FROZEN-0024",
+    "name": "Frozen general Tso's chicken (22 oz)",
+    "category": "FROZEN",
+    "subcategory": "meals",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "FROZEN-0025",
+    "name": "Frozen pad thai (10 oz)",
+    "category": "FROZEN",
+    "subcategory": "meals",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "FROZEN-0026",
+    "name": "Frozen burrito bowl (10 oz)",
+    "category": "FROZEN",
+    "subcategory": "meals",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "FROZEN-0027",
+    "name": "Frozen enchilada dinner (16 oz)",
+    "category": "FROZEN",
+    "subcategory": "meals",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "FROZEN-0028",
+    "name": "Frozen chicken parmesan (10.5 oz)",
+    "category": "FROZEN",
+    "subcategory": "meals",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "FROZEN-0029",
+    "name": "Frozen vegetable lo mein (10 oz)",
+    "category": "FROZEN",
+    "subcategory": "meals",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "FROZEN-0030",
+    "name": "Frozen lean cuisine glazed chicken (8 oz)",
+    "category": "FROZEN",
+    "subcategory": "meals",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "FROZEN-0031",
+    "name": "Frozen Stouffer's lasagna (37 oz)",
+    "category": "FROZEN",
+    "subcategory": "meals",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "FROZEN-0032",
+    "name": "Frozen Healthy Choice steamer (9 oz)",
+    "category": "FROZEN",
+    "subcategory": "meals",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "FROZEN-0033",
+    "name": "Frozen broccoli florets (12 oz)",
+    "category": "FROZEN",
+    "subcategory": "vegetables",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "FROZEN-0034",
+    "name": "Frozen mixed vegetables (12 oz)",
+    "category": "FROZEN",
+    "subcategory": "vegetables",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "FROZEN-0035",
+    "name": "Frozen peas (12 oz)",
+    "category": "FROZEN",
+    "subcategory": "vegetables",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "FROZEN-0036",
+    "name": "Frozen corn (12 oz)",
+    "category": "FROZEN",
+    "subcategory": "vegetables",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "FROZEN-0037",
+    "name": "Frozen cauliflower rice (12 oz)",
+    "category": "FROZEN",
+    "subcategory": "vegetables",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "FROZEN-0038",
+    "name": "Frozen riced cauliflower seasoned (10 oz)",
+    "category": "FROZEN",
+    "subcategory": "vegetables",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "FROZEN-0039",
+    "name": "Frozen spinach chopped (10 oz)",
+    "category": "FROZEN",
+    "subcategory": "vegetables",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "FROZEN-0040",
+    "name": "Frozen green beans (12 oz)",
+    "category": "FROZEN",
+    "subcategory": "vegetables",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "FROZEN-0041",
+    "name": "Frozen brussels sprouts (12 oz)",
+    "category": "FROZEN",
+    "subcategory": "vegetables",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "FROZEN-0042",
+    "name": "Frozen butternut squash cubed (12 oz)",
+    "category": "FROZEN",
+    "subcategory": "vegetables",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "FROZEN-0043",
+    "name": "Frozen edamame in pod (12 oz)",
+    "category": "FROZEN",
+    "subcategory": "vegetables",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "FROZEN-0044",
+    "name": "Frozen edamame shelled (12 oz)",
+    "category": "FROZEN",
+    "subcategory": "vegetables",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "FROZEN-0045",
+    "name": "Frozen stir-fry vegetables (12 oz)",
+    "category": "FROZEN",
+    "subcategory": "vegetables",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "FROZEN-0046",
+    "name": "Frozen french fries (32 oz)",
+    "category": "FROZEN",
+    "subcategory": "vegetables",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "FROZEN-0047",
+    "name": "Frozen tater tots (32 oz)",
+    "category": "FROZEN",
+    "subcategory": "vegetables",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "FROZEN-0048",
+    "name": "Frozen sweet potato fries (20 oz)",
+    "category": "FROZEN",
+    "subcategory": "vegetables",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "FROZEN-0049",
+    "name": "Frozen onion rings (16 oz)",
+    "category": "FROZEN",
+    "subcategory": "vegetables",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "FROZEN-0050",
+    "name": "Frozen strawberries (16 oz)",
+    "category": "FROZEN",
+    "subcategory": "fruit",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "FROZEN-0051",
+    "name": "Frozen mixed berries (12 oz)",
+    "category": "FROZEN",
+    "subcategory": "fruit",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "FROZEN-0052",
+    "name": "Frozen blueberries (12 oz)",
+    "category": "FROZEN",
+    "subcategory": "fruit",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "FROZEN-0053",
+    "name": "Frozen mango chunks (16 oz)",
+    "category": "FROZEN",
+    "subcategory": "fruit",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "FROZEN-0054",
+    "name": "Frozen pineapple chunks (16 oz)",
+    "category": "FROZEN",
+    "subcategory": "fruit",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "FROZEN-0055",
+    "name": "Frozen tropical fruit blend (12 oz)",
+    "category": "FROZEN",
+    "subcategory": "fruit",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "FROZEN-0056",
+    "name": "Frozen acai puree packets (4-count)",
+    "category": "FROZEN",
+    "subcategory": "fruit",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "FROZEN-0057",
+    "name": "Frozen smoothie blend (8 oz)",
+    "category": "FROZEN",
+    "subcategory": "fruit",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "FROZEN-0058",
+    "name": "Frozen waffles plain (10-count)",
+    "category": "FROZEN",
+    "subcategory": "breakfast",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "FROZEN-0059",
+    "name": "Frozen blueberry waffles (10-count)",
+    "category": "FROZEN",
+    "subcategory": "breakfast",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "FROZEN-0060",
+    "name": "Frozen Belgian waffles (8-count)",
+    "category": "FROZEN",
+    "subcategory": "breakfast",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "FROZEN-0061",
+    "name": "Frozen pancakes (12-count)",
+    "category": "FROZEN",
+    "subcategory": "breakfast",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "FROZEN-0062",
+    "name": "Frozen French toast sticks (16-count)",
+    "category": "FROZEN",
+    "subcategory": "breakfast",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "FROZEN-0063",
+    "name": "Frozen breakfast sandwich sausage (8-count)",
+    "category": "FROZEN",
+    "subcategory": "breakfast",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "FROZEN-0064",
+    "name": "Frozen breakfast burrito (12 oz)",
+    "category": "FROZEN",
+    "subcategory": "breakfast",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "FROZEN-0065",
+    "name": "Frozen hash browns shredded (30 oz)",
+    "category": "FROZEN",
+    "subcategory": "breakfast",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "FROZEN-0066",
+    "name": "Frozen hash brown patties (10-count)",
+    "category": "FROZEN",
+    "subcategory": "breakfast",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "FROZEN-0067",
+    "name": "Frozen breakfast sausage biscuit (6-count)",
+    "category": "FROZEN",
+    "subcategory": "breakfast",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "FROZEN-0068",
+    "name": "Vanilla ice cream (1.5 qt)",
+    "category": "FROZEN",
+    "subcategory": "ice_cream",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "FROZEN-0069",
+    "name": "Chocolate ice cream (1.5 qt)",
+    "category": "FROZEN",
+    "subcategory": "ice_cream",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "FROZEN-0070",
+    "name": "Strawberry ice cream (1.5 qt)",
+    "category": "FROZEN",
+    "subcategory": "ice_cream",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "FROZEN-0071",
+    "name": "Cookies and cream ice cream (1.5 qt)",
+    "category": "FROZEN",
+    "subcategory": "ice_cream",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "FROZEN-0072",
+    "name": "Mint chocolate chip ice cream (1.5 qt)",
+    "category": "FROZEN",
+    "subcategory": "ice_cream",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "FROZEN-0073",
+    "name": "Rocky road ice cream (1.5 qt)",
+    "category": "FROZEN",
+    "subcategory": "ice_cream",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "FROZEN-0074",
+    "name": "Neapolitan ice cream (1.5 qt)",
+    "category": "FROZEN",
+    "subcategory": "ice_cream",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "FROZEN-0075",
+    "name": "Ben & Jerry's pint (16 oz)",
+    "category": "FROZEN",
+    "subcategory": "ice_cream",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "FROZEN-0076",
+    "name": "Haagen-Dazs vanilla pint (14 oz)",
+    "category": "FROZEN",
+    "subcategory": "ice_cream",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "FROZEN-0077",
+    "name": "Frozen yogurt vanilla (1.5 qt)",
+    "category": "FROZEN",
+    "subcategory": "ice_cream",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "FROZEN-0078",
+    "name": "Sorbet raspberry (16 oz)",
+    "category": "FROZEN",
+    "subcategory": "ice_cream",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "FROZEN-0079",
+    "name": "Ice cream sandwiches (12-count)",
+    "category": "FROZEN",
+    "subcategory": "ice_cream",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "FROZEN-0080",
+    "name": "Drumstick cones variety (8-count)",
+    "category": "FROZEN",
+    "subcategory": "ice_cream",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "FROZEN-0081",
+    "name": "Klondike bars (6-count)",
+    "category": "FROZEN",
+    "subcategory": "ice_cream",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "FROZEN-0082",
+    "name": "Popsicles variety (20-count)",
+    "category": "FROZEN",
+    "subcategory": "ice_cream",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "FROZEN-0083",
+    "name": "Fudge bars (12-count)",
+    "category": "FROZEN",
+    "subcategory": "ice_cream",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "FROZEN-0084",
+    "name": "Frozen breaded fish fillets (20 oz)",
+    "category": "FROZEN",
+    "subcategory": "seafood",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "FROZEN-0085",
+    "name": "Frozen fish sticks (44-count)",
+    "category": "FROZEN",
+    "subcategory": "seafood",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "FROZEN-0086",
+    "name": "Frozen popcorn shrimp (16 oz)",
+    "category": "FROZEN",
+    "subcategory": "seafood",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "FROZEN-0087",
+    "name": "Frozen battered cod (16 oz)",
+    "category": "FROZEN",
+    "subcategory": "seafood",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "FROZEN-0088",
+    "name": "Frozen calamari rings (10 oz)",
+    "category": "FROZEN",
+    "subcategory": "seafood",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "FROZEN-0089",
+    "name": "Frozen mozzarella sticks (20-count)",
+    "category": "FROZEN",
+    "subcategory": "appetizers",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "FROZEN-0090",
+    "name": "Frozen jalapeno poppers (20-count)",
+    "category": "FROZEN",
+    "subcategory": "appetizers",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "FROZEN-0091",
+    "name": "Frozen chicken nuggets (32 oz)",
+    "category": "FROZEN",
+    "subcategory": "appetizers",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "FROZEN-0092",
+    "name": "Frozen chicken tenders (24 oz)",
+    "category": "FROZEN",
+    "subcategory": "appetizers",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "FROZEN-0093",
+    "name": "Frozen chicken wings (24 oz)",
+    "category": "FROZEN",
+    "subcategory": "appetizers",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "FROZEN-0094",
+    "name": "Frozen meatballs Italian (24 oz)",
+    "category": "FROZEN",
+    "subcategory": "appetizers",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "FROZEN-0095",
+    "name": "Frozen mini quiche assorted (12-count)",
+    "category": "FROZEN",
+    "subcategory": "appetizers",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "FROZEN-0096",
+    "name": "Frozen pierogi potato (16 oz)",
+    "category": "FROZEN",
+    "subcategory": "appetizers",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "FROZEN-0097",
+    "name": "Frozen pot stickers chicken (24-count)",
+    "category": "FROZEN",
+    "subcategory": "appetizers",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "FROZEN-0098",
+    "name": "Frozen egg rolls vegetable (12-count)",
+    "category": "FROZEN",
+    "subcategory": "appetizers",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "FROZEN-0099",
+    "name": "Frozen taquitos beef (20-count)",
+    "category": "FROZEN",
+    "subcategory": "appetizers",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "PANTRY-0001",
+    "name": "Spaghetti (1 lb box)",
+    "category": "PANTRY",
+    "subcategory": "pasta",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PANTRY-0002",
+    "name": "Penne pasta (1 lb box)",
+    "category": "PANTRY",
+    "subcategory": "pasta",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PANTRY-0003",
+    "name": "Rigatoni pasta (1 lb box)",
+    "category": "PANTRY",
+    "subcategory": "pasta",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PANTRY-0004",
+    "name": "Rotini pasta (1 lb box)",
+    "category": "PANTRY",
+    "subcategory": "pasta",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PANTRY-0005",
+    "name": "Elbow macaroni (1 lb box)",
+    "category": "PANTRY",
+    "subcategory": "pasta",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PANTRY-0006",
+    "name": "Fettuccine pasta (1 lb box)",
+    "category": "PANTRY",
+    "subcategory": "pasta",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PANTRY-0007",
+    "name": "Linguine pasta (1 lb box)",
+    "category": "PANTRY",
+    "subcategory": "pasta",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PANTRY-0008",
+    "name": "Angel hair pasta (1 lb box)",
+    "category": "PANTRY",
+    "subcategory": "pasta",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PANTRY-0009",
+    "name": "Lasagna noodles (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "pasta",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0010",
+    "name": "Bow tie pasta (1 lb box)",
+    "category": "PANTRY",
+    "subcategory": "pasta",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "PANTRY-0011",
+    "name": "Whole wheat spaghetti (1 lb box)",
+    "category": "PANTRY",
+    "subcategory": "pasta",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "PANTRY-0012",
+    "name": "Whole wheat penne (1 lb box)",
+    "category": "PANTRY",
+    "subcategory": "pasta",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "PANTRY-0013",
+    "name": "Gluten-free spaghetti (12 oz)",
+    "category": "PANTRY",
+    "subcategory": "pasta",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PANTRY-0014",
+    "name": "Gluten-free penne (12 oz)",
+    "category": "PANTRY",
+    "subcategory": "pasta",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PANTRY-0015",
+    "name": "Egg noodles (12 oz)",
+    "category": "PANTRY",
+    "subcategory": "pasta",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0016",
+    "name": "Marinara sauce traditional (24 oz)",
+    "category": "PANTRY",
+    "subcategory": "sauces",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0017",
+    "name": "Marinara sauce four cheese (24 oz)",
+    "category": "PANTRY",
+    "subcategory": "sauces",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0018",
+    "name": "Marinara sauce garlic (24 oz)",
+    "category": "PANTRY",
+    "subcategory": "sauces",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0019",
+    "name": "Vodka sauce (24 oz)",
+    "category": "PANTRY",
+    "subcategory": "sauces",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "PANTRY-0020",
+    "name": "Alfredo sauce (15 oz)",
+    "category": "PANTRY",
+    "subcategory": "sauces",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0021",
+    "name": "Pesto basil (6.7 oz)",
+    "category": "PANTRY",
+    "subcategory": "sauces",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0022",
+    "name": "Arrabbiata sauce (24 oz)",
+    "category": "PANTRY",
+    "subcategory": "sauces",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PANTRY-0023",
+    "name": "Pizza sauce (14 oz)",
+    "category": "PANTRY",
+    "subcategory": "sauces",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0024",
+    "name": "Tomato sauce (8 oz can)",
+    "category": "PANTRY",
+    "subcategory": "sauces",
+    "base_price": 0.79
+  },
+  {
+    "canonical_sku": "PANTRY-0025",
+    "name": "Tomato paste (6 oz can)",
+    "category": "PANTRY",
+    "subcategory": "sauces",
+    "base_price": 0.99
+  },
+  {
+    "canonical_sku": "PANTRY-0026",
+    "name": "Crushed tomatoes (28 oz can)",
+    "category": "PANTRY",
+    "subcategory": "sauces",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "PANTRY-0027",
+    "name": "Diced tomatoes (14.5 oz can)",
+    "category": "PANTRY",
+    "subcategory": "sauces",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "PANTRY-0028",
+    "name": "Diced tomatoes with chiles (10 oz can)",
+    "category": "PANTRY",
+    "subcategory": "sauces",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "PANTRY-0029",
+    "name": "Whole peeled tomatoes (28 oz can)",
+    "category": "PANTRY",
+    "subcategory": "sauces",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "PANTRY-0030",
+    "name": "Marinara sauce organic (24 oz)",
+    "category": "PANTRY",
+    "subcategory": "sauces",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0031",
+    "name": "Olive oil extra virgin (17 oz)",
+    "category": "PANTRY",
+    "subcategory": "oils",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "PANTRY-0032",
+    "name": "Olive oil extra virgin (33.8 oz)",
+    "category": "PANTRY",
+    "subcategory": "oils",
+    "base_price": 14.99
+  },
+  {
+    "canonical_sku": "PANTRY-0033",
+    "name": "Vegetable oil (48 oz)",
+    "category": "PANTRY",
+    "subcategory": "oils",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "PANTRY-0034",
+    "name": "Canola oil (48 oz)",
+    "category": "PANTRY",
+    "subcategory": "oils",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "PANTRY-0035",
+    "name": "Avocado oil (17 oz)",
+    "category": "PANTRY",
+    "subcategory": "oils",
+    "base_price": 11.99
+  },
+  {
+    "canonical_sku": "PANTRY-0036",
+    "name": "Coconut oil (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "oils",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "PANTRY-0037",
+    "name": "Sesame oil (10 oz)",
+    "category": "PANTRY",
+    "subcategory": "oils",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "PANTRY-0038",
+    "name": "Cooking spray olive oil (5 oz)",
+    "category": "PANTRY",
+    "subcategory": "oils",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PANTRY-0039",
+    "name": "Cooking spray canola (5 oz)",
+    "category": "PANTRY",
+    "subcategory": "oils",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0040",
+    "name": "Balsamic vinegar (16.9 oz)",
+    "category": "PANTRY",
+    "subcategory": "oils",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0041",
+    "name": "Red wine vinegar (12 oz)",
+    "category": "PANTRY",
+    "subcategory": "oils",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0042",
+    "name": "Apple cider vinegar (32 oz)",
+    "category": "PANTRY",
+    "subcategory": "oils",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PANTRY-0043",
+    "name": "White vinegar (32 oz)",
+    "category": "PANTRY",
+    "subcategory": "oils",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PANTRY-0044",
+    "name": "Rice vinegar (12 oz)",
+    "category": "PANTRY",
+    "subcategory": "oils",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0045",
+    "name": "All-purpose flour (5 lb)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PANTRY-0046",
+    "name": "Bread flour (5 lb)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "PANTRY-0047",
+    "name": "Whole wheat flour (5 lb)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0048",
+    "name": "Self-rising flour (5 lb)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PANTRY-0049",
+    "name": "Almond flour (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "PANTRY-0050",
+    "name": "Granulated sugar (4 lb)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PANTRY-0051",
+    "name": "Powdered sugar (2 lb)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0052",
+    "name": "Brown sugar light (2 lb)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0053",
+    "name": "Brown sugar dark (2 lb)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0054",
+    "name": "Cane sugar organic (2 lb)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0055",
+    "name": "Honey (12 oz)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "PANTRY-0056",
+    "name": "Honey organic (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "PANTRY-0057",
+    "name": "Maple syrup pure (12 oz)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "PANTRY-0058",
+    "name": "Pancake syrup (24 oz)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PANTRY-0059",
+    "name": "Vanilla extract (2 oz)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "PANTRY-0060",
+    "name": "Vanilla extract pure (4 oz)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 12.99
+  },
+  {
+    "canonical_sku": "PANTRY-0061",
+    "name": "Baking soda (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "PANTRY-0062",
+    "name": "Baking powder (8.1 oz)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0063",
+    "name": "Cornstarch (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PANTRY-0064",
+    "name": "Yeast packets (3-count)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PANTRY-0065",
+    "name": "Cocoa powder unsweetened (8 oz)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PANTRY-0066",
+    "name": "Chocolate chips semi-sweet (12 oz)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0067",
+    "name": "Chocolate chips milk (12 oz)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0068",
+    "name": "Chocolate chips white (12 oz)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0069",
+    "name": "Cake mix yellow (15 oz)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PANTRY-0070",
+    "name": "Cake mix chocolate (15 oz)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PANTRY-0071",
+    "name": "Brownie mix (18 oz)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0072",
+    "name": "Cookie mix (17.5 oz)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0073",
+    "name": "Pancake mix complete (32 oz)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PANTRY-0074",
+    "name": "Frosting vanilla (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "PANTRY-0075",
+    "name": "Frosting chocolate (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "baking",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "PANTRY-0076",
+    "name": "Black pepper ground (3 oz)",
+    "category": "PANTRY",
+    "subcategory": "spices",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PANTRY-0077",
+    "name": "Salt iodized (26 oz)",
+    "category": "PANTRY",
+    "subcategory": "spices",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "PANTRY-0078",
+    "name": "Kosher salt (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "spices",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0079",
+    "name": "Sea salt fine (26 oz)",
+    "category": "PANTRY",
+    "subcategory": "spices",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0080",
+    "name": "Garlic powder (3 oz)",
+    "category": "PANTRY",
+    "subcategory": "spices",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0081",
+    "name": "Onion powder (3 oz)",
+    "category": "PANTRY",
+    "subcategory": "spices",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0082",
+    "name": "Italian seasoning (1 oz)",
+    "category": "PANTRY",
+    "subcategory": "spices",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0083",
+    "name": "Cinnamon ground (1.7 oz)",
+    "category": "PANTRY",
+    "subcategory": "spices",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0084",
+    "name": "Paprika (2.4 oz)",
+    "category": "PANTRY",
+    "subcategory": "spices",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0085",
+    "name": "Cumin ground (1.7 oz)",
+    "category": "PANTRY",
+    "subcategory": "spices",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0086",
+    "name": "Chili powder (2.5 oz)",
+    "category": "PANTRY",
+    "subcategory": "spices",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0087",
+    "name": "Oregano dried (0.5 oz)",
+    "category": "PANTRY",
+    "subcategory": "spices",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0088",
+    "name": "Basil dried (0.5 oz)",
+    "category": "PANTRY",
+    "subcategory": "spices",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0089",
+    "name": "Bay leaves (0.12 oz)",
+    "category": "PANTRY",
+    "subcategory": "spices",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0090",
+    "name": "Cayenne pepper (1.5 oz)",
+    "category": "PANTRY",
+    "subcategory": "spices",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0091",
+    "name": "Red pepper flakes (1.5 oz)",
+    "category": "PANTRY",
+    "subcategory": "spices",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0092",
+    "name": "Ranch seasoning packet (1 oz)",
+    "category": "PANTRY",
+    "subcategory": "spices",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "PANTRY-0093",
+    "name": "Taco seasoning packet (1 oz)",
+    "category": "PANTRY",
+    "subcategory": "spices",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "PANTRY-0094",
+    "name": "Sloppy joe seasoning packet (1.5 oz)",
+    "category": "PANTRY",
+    "subcategory": "spices",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "PANTRY-0095",
+    "name": "Black beans (15 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 1.29
+  },
+  {
+    "canonical_sku": "PANTRY-0096",
+    "name": "Pinto beans (15 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 1.29
+  },
+  {
+    "canonical_sku": "PANTRY-0097",
+    "name": "Kidney beans (15 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 1.29
+  },
+  {
+    "canonical_sku": "PANTRY-0098",
+    "name": "Garbanzo beans chickpeas (15 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "PANTRY-0099",
+    "name": "Cannellini beans (15 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "PANTRY-0100",
+    "name": "Great northern beans (15 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 1.29
+  },
+  {
+    "canonical_sku": "PANTRY-0101",
+    "name": "Refried beans traditional (16 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "PANTRY-0102",
+    "name": "Refried beans fat-free (16 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 1.69
+  },
+  {
+    "canonical_sku": "PANTRY-0103",
+    "name": "Baked beans original (28 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0104",
+    "name": "Black beans organic (15 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PANTRY-0105",
+    "name": "Long-grain white rice (5 lb)",
+    "category": "PANTRY",
+    "subcategory": "grains",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "PANTRY-0106",
+    "name": "Jasmine rice (5 lb)",
+    "category": "PANTRY",
+    "subcategory": "grains",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "PANTRY-0107",
+    "name": "Basmati rice (5 lb)",
+    "category": "PANTRY",
+    "subcategory": "grains",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "PANTRY-0108",
+    "name": "Brown rice (5 lb)",
+    "category": "PANTRY",
+    "subcategory": "grains",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "PANTRY-0109",
+    "name": "Wild rice blend (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "grains",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0110",
+    "name": "Arborio rice (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "grains",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0111",
+    "name": "Quinoa (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "grains",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "PANTRY-0112",
+    "name": "Couscous (10 oz)",
+    "category": "PANTRY",
+    "subcategory": "grains",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0113",
+    "name": "Barley pearled (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "grains",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0114",
+    "name": "Steel-cut oats (30 oz)",
+    "category": "PANTRY",
+    "subcategory": "grains",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "PANTRY-0115",
+    "name": "Old-fashioned rolled oats (42 oz)",
+    "category": "PANTRY",
+    "subcategory": "grains",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "PANTRY-0116",
+    "name": "Quick oats (42 oz)",
+    "category": "PANTRY",
+    "subcategory": "grains",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "PANTRY-0117",
+    "name": "Instant oatmeal variety (10-count)",
+    "category": "PANTRY",
+    "subcategory": "grains",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PANTRY-0118",
+    "name": "Cornmeal yellow (5 lb)",
+    "category": "PANTRY",
+    "subcategory": "grains",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0119",
+    "name": "Polenta instant (9.2 oz)",
+    "category": "PANTRY",
+    "subcategory": "grains",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PANTRY-0120",
+    "name": "Tuna chunk light in water (5 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "PANTRY-0121",
+    "name": "Tuna albacore in water (5 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "PANTRY-0122",
+    "name": "Tuna in olive oil (5 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0123",
+    "name": "Salmon pink (14.75 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0124",
+    "name": "Sardines in oil (3.75 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PANTRY-0125",
+    "name": "Chicken canned breast (12.5 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0126",
+    "name": "Cream of mushroom soup (10.5 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PANTRY-0127",
+    "name": "Cream of chicken soup (10.5 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PANTRY-0128",
+    "name": "Tomato soup (10.5 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "PANTRY-0129",
+    "name": "Chicken noodle soup (10.5 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PANTRY-0130",
+    "name": "Vegetable soup (10.5 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PANTRY-0131",
+    "name": "Chicken broth (32 oz)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0132",
+    "name": "Beef broth (32 oz)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0133",
+    "name": "Vegetable broth (32 oz)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0134",
+    "name": "Chicken bouillon cubes (8-count)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "PANTRY-0135",
+    "name": "Corn whole kernel (15 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 0.99
+  },
+  {
+    "canonical_sku": "PANTRY-0136",
+    "name": "Corn cream-style (14.75 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 0.99
+  },
+  {
+    "canonical_sku": "PANTRY-0137",
+    "name": "Green beans cut (14.5 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 0.99
+  },
+  {
+    "canonical_sku": "PANTRY-0138",
+    "name": "Peas sweet (15 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 0.99
+  },
+  {
+    "canonical_sku": "PANTRY-0139",
+    "name": "Mixed vegetables (15 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 0.99
+  },
+  {
+    "canonical_sku": "PANTRY-0140",
+    "name": "Mandarin oranges (11 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "PANTRY-0141",
+    "name": "Pineapple chunks (20 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PANTRY-0142",
+    "name": "Peaches in juice (29 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0143",
+    "name": "Pears in juice (29 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0144",
+    "name": "Applesauce unsweetened (24 oz)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0145",
+    "name": "Applesauce cinnamon (24 oz)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0146",
+    "name": "Olives black sliced (6 oz can)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "PANTRY-0147",
+    "name": "Olives green stuffed (10 oz jar)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PANTRY-0148",
+    "name": "Pickles dill spears (32 oz)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PANTRY-0149",
+    "name": "Pickles bread and butter (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "canned",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0150",
+    "name": "Ketchup (32 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0151",
+    "name": "Yellow mustard (20 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "PANTRY-0152",
+    "name": "Dijon mustard (12 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0153",
+    "name": "Honey mustard (12 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0154",
+    "name": "Mayonnaise (30 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0155",
+    "name": "Mayonnaise light (30 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0156",
+    "name": "Mayonnaise olive oil (30 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 5.49
+  },
+  {
+    "canonical_sku": "PANTRY-0157",
+    "name": "BBQ sauce original (18 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0158",
+    "name": "BBQ sauce honey (18 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0159",
+    "name": "BBQ sauce hickory (18 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0160",
+    "name": "Hot sauce (5 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0161",
+    "name": "Sriracha (17 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0162",
+    "name": "Soy sauce (10 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0163",
+    "name": "Soy sauce low-sodium (10 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0164",
+    "name": "Teriyaki sauce (10 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0165",
+    "name": "Worcestershire sauce (10 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0166",
+    "name": "Salsa medium (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0167",
+    "name": "Salsa mild (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0168",
+    "name": "Salsa hot (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0169",
+    "name": "Salsa verde (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0170",
+    "name": "Guacamole single serve (8-count)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "PANTRY-0171",
+    "name": "Hummus original (10 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PANTRY-0172",
+    "name": "Hummus roasted red pepper (10 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PANTRY-0173",
+    "name": "Ranch dressing (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0174",
+    "name": "Italian dressing (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PANTRY-0175",
+    "name": "Caesar dressing (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0176",
+    "name": "Balsamic vinaigrette (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0177",
+    "name": "Blue cheese dressing (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0178",
+    "name": "Peanut butter creamy (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PANTRY-0179",
+    "name": "Peanut butter crunchy (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PANTRY-0180",
+    "name": "Peanut butter natural (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0181",
+    "name": "Almond butter (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "PANTRY-0182",
+    "name": "Strawberry jam (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0183",
+    "name": "Grape jelly (32 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0184",
+    "name": "Apple butter (17 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PANTRY-0185",
+    "name": "Nutella hazelnut spread (13 oz)",
+    "category": "PANTRY",
+    "subcategory": "condiments",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0186",
+    "name": "Cheerios cereal (18 oz)",
+    "category": "PANTRY",
+    "subcategory": "cereals",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0187",
+    "name": "Honey Nut Cheerios (18 oz)",
+    "category": "PANTRY",
+    "subcategory": "cereals",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0188",
+    "name": "Frosted Flakes cereal (19 oz)",
+    "category": "PANTRY",
+    "subcategory": "cereals",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0189",
+    "name": "Corn Flakes cereal (18 oz)",
+    "category": "PANTRY",
+    "subcategory": "cereals",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "PANTRY-0190",
+    "name": "Lucky Charms cereal (18 oz)",
+    "category": "PANTRY",
+    "subcategory": "cereals",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0191",
+    "name": "Cinnamon Toast Crunch (18 oz)",
+    "category": "PANTRY",
+    "subcategory": "cereals",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0192",
+    "name": "Frosted Mini-Wheats (18 oz)",
+    "category": "PANTRY",
+    "subcategory": "cereals",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0193",
+    "name": "Raisin Bran cereal (18.7 oz)",
+    "category": "PANTRY",
+    "subcategory": "cereals",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0194",
+    "name": "Special K original (12 oz)",
+    "category": "PANTRY",
+    "subcategory": "cereals",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0195",
+    "name": "Rice Krispies (12 oz)",
+    "category": "PANTRY",
+    "subcategory": "cereals",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "PANTRY-0196",
+    "name": "Cocoa Puffs cereal (18 oz)",
+    "category": "PANTRY",
+    "subcategory": "cereals",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0197",
+    "name": "Trix cereal (10.7 oz)",
+    "category": "PANTRY",
+    "subcategory": "cereals",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0198",
+    "name": "Granola almond (12 oz)",
+    "category": "PANTRY",
+    "subcategory": "cereals",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0199",
+    "name": "Granola honey oat (12 oz)",
+    "category": "PANTRY",
+    "subcategory": "cereals",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PANTRY-0200",
+    "name": "Muesli (16 oz)",
+    "category": "PANTRY",
+    "subcategory": "cereals",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "PANTRY-0201",
+    "name": "Grits instant (12-count)",
+    "category": "PANTRY",
+    "subcategory": "cereals",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PANTRY-0202",
+    "name": "Cream of Wheat (28 oz)",
+    "category": "PANTRY",
+    "subcategory": "cereals",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "SNACKS-0001",
+    "name": "Lay's classic potato chips (8 oz)",
+    "category": "SNACKS",
+    "subcategory": "chips",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "SNACKS-0002",
+    "name": "Lay's sour cream and onion (8 oz)",
+    "category": "SNACKS",
+    "subcategory": "chips",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "SNACKS-0003",
+    "name": "Lay's barbecue chips (8 oz)",
+    "category": "SNACKS",
+    "subcategory": "chips",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "SNACKS-0004",
+    "name": "Lay's salt and vinegar (8 oz)",
+    "category": "SNACKS",
+    "subcategory": "chips",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "SNACKS-0005",
+    "name": "Ruffles original (8.5 oz)",
+    "category": "SNACKS",
+    "subcategory": "chips",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "SNACKS-0006",
+    "name": "Ruffles cheddar and sour cream (8.5 oz)",
+    "category": "SNACKS",
+    "subcategory": "chips",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "SNACKS-0007",
+    "name": "Pringles original (5.5 oz)",
+    "category": "SNACKS",
+    "subcategory": "chips",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "SNACKS-0008",
+    "name": "Pringles sour cream and onion (5.5 oz)",
+    "category": "SNACKS",
+    "subcategory": "chips",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "SNACKS-0009",
+    "name": "Doritos nacho cheese (9.25 oz)",
+    "category": "SNACKS",
+    "subcategory": "chips",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "SNACKS-0010",
+    "name": "Doritos cool ranch (9.25 oz)",
+    "category": "SNACKS",
+    "subcategory": "chips",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "SNACKS-0011",
+    "name": "Doritos spicy sweet chili (9.25 oz)",
+    "category": "SNACKS",
+    "subcategory": "chips",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "SNACKS-0012",
+    "name": "Tostitos scoops (10 oz)",
+    "category": "SNACKS",
+    "subcategory": "chips",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "SNACKS-0013",
+    "name": "Tostitos hint of lime (11 oz)",
+    "category": "SNACKS",
+    "subcategory": "chips",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "SNACKS-0014",
+    "name": "Tortilla chips white corn (13 oz)",
+    "category": "SNACKS",
+    "subcategory": "chips",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "SNACKS-0015",
+    "name": "Cheetos crunchy (8.5 oz)",
+    "category": "SNACKS",
+    "subcategory": "chips",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "SNACKS-0016",
+    "name": "Cheetos puffs (8 oz)",
+    "category": "SNACKS",
+    "subcategory": "chips",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "SNACKS-0017",
+    "name": "Funyuns onion rings (6 oz)",
+    "category": "SNACKS",
+    "subcategory": "chips",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "SNACKS-0018",
+    "name": "SunChips harvest cheddar (7 oz)",
+    "category": "SNACKS",
+    "subcategory": "chips",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "SNACKS-0019",
+    "name": "Kettle chips sea salt (8.5 oz)",
+    "category": "SNACKS",
+    "subcategory": "chips",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "SNACKS-0020",
+    "name": "Veggie straws original (7 oz)",
+    "category": "SNACKS",
+    "subcategory": "chips",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "SNACKS-0021",
+    "name": "Pita chips sea salt (7.3 oz)",
+    "category": "SNACKS",
+    "subcategory": "chips",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "SNACKS-0022",
+    "name": "Ritz crackers original (13.7 oz)",
+    "category": "SNACKS",
+    "subcategory": "crackers",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "SNACKS-0023",
+    "name": "Ritz whole wheat crackers (12.9 oz)",
+    "category": "SNACKS",
+    "subcategory": "crackers",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "SNACKS-0024",
+    "name": "Saltines original (16 oz)",
+    "category": "SNACKS",
+    "subcategory": "crackers",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "SNACKS-0025",
+    "name": "Triscuit original (8.5 oz)",
+    "category": "SNACKS",
+    "subcategory": "crackers",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "SNACKS-0026",
+    "name": "Triscuit reduced fat (7.5 oz)",
+    "category": "SNACKS",
+    "subcategory": "crackers",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "SNACKS-0027",
+    "name": "Cheez-Its original (12.4 oz)",
+    "category": "SNACKS",
+    "subcategory": "crackers",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "SNACKS-0028",
+    "name": "Cheez-Its white cheddar (12.4 oz)",
+    "category": "SNACKS",
+    "subcategory": "crackers",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "SNACKS-0029",
+    "name": "Goldfish cheddar (11 oz)",
+    "category": "SNACKS",
+    "subcategory": "crackers",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "SNACKS-0030",
+    "name": "Wheat Thins original (9.1 oz)",
+    "category": "SNACKS",
+    "subcategory": "crackers",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "SNACKS-0031",
+    "name": "Club crackers (13.7 oz)",
+    "category": "SNACKS",
+    "subcategory": "crackers",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "SNACKS-0032",
+    "name": "Graham crackers (14.4 oz)",
+    "category": "SNACKS",
+    "subcategory": "crackers",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "SNACKS-0033",
+    "name": "Animal crackers (13 oz)",
+    "category": "SNACKS",
+    "subcategory": "crackers",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "SNACKS-0034",
+    "name": "Water crackers (4.4 oz)",
+    "category": "SNACKS",
+    "subcategory": "crackers",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "SNACKS-0035",
+    "name": "Rice cakes plain (4.9 oz)",
+    "category": "SNACKS",
+    "subcategory": "crackers",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "SNACKS-0036",
+    "name": "Rice cakes caramel (6.5 oz)",
+    "category": "SNACKS",
+    "subcategory": "crackers",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "SNACKS-0037",
+    "name": "Oreo cookies original (14.3 oz)",
+    "category": "SNACKS",
+    "subcategory": "cookies",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "SNACKS-0038",
+    "name": "Oreo double stuf (14.3 oz)",
+    "category": "SNACKS",
+    "subcategory": "cookies",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "SNACKS-0039",
+    "name": "Oreo golden (14.3 oz)",
+    "category": "SNACKS",
+    "subcategory": "cookies",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "SNACKS-0040",
+    "name": "Chips Ahoy original (13 oz)",
+    "category": "SNACKS",
+    "subcategory": "cookies",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "SNACKS-0041",
+    "name": "Chips Ahoy chewy (13 oz)",
+    "category": "SNACKS",
+    "subcategory": "cookies",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "SNACKS-0042",
+    "name": "Nutter Butter cookies (16 oz)",
+    "category": "SNACKS",
+    "subcategory": "cookies",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "SNACKS-0043",
+    "name": "Nilla Wafers (11 oz)",
+    "category": "SNACKS",
+    "subcategory": "cookies",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "SNACKS-0044",
+    "name": "Fig Newtons (10 oz)",
+    "category": "SNACKS",
+    "subcategory": "cookies",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "SNACKS-0045",
+    "name": "Lorna Doone shortbread (10 oz)",
+    "category": "SNACKS",
+    "subcategory": "cookies",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "SNACKS-0046",
+    "name": "Pepperidge Farm Milano (6 oz)",
+    "category": "SNACKS",
+    "subcategory": "cookies",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "SNACKS-0047",
+    "name": "Pepperidge Farm Mint Milano (7 oz)",
+    "category": "SNACKS",
+    "subcategory": "cookies",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "SNACKS-0048",
+    "name": "Famous Amos chocolate chip (12.4 oz)",
+    "category": "SNACKS",
+    "subcategory": "cookies",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "SNACKS-0049",
+    "name": "Animal cookies frosted (13 oz)",
+    "category": "SNACKS",
+    "subcategory": "cookies",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "SNACKS-0050",
+    "name": "M&M's milk chocolate (10.7 oz)",
+    "category": "SNACKS",
+    "subcategory": "candy",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "SNACKS-0051",
+    "name": "M&M's peanut (10.7 oz)",
+    "category": "SNACKS",
+    "subcategory": "candy",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "SNACKS-0052",
+    "name": "M&M's peanut butter (9.6 oz)",
+    "category": "SNACKS",
+    "subcategory": "candy",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "SNACKS-0053",
+    "name": "Snickers fun size (11.18 oz)",
+    "category": "SNACKS",
+    "subcategory": "candy",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "SNACKS-0054",
+    "name": "Twix fun size (10.83 oz)",
+    "category": "SNACKS",
+    "subcategory": "candy",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "SNACKS-0055",
+    "name": "Hershey's milk chocolate bar (1.55 oz)",
+    "category": "SNACKS",
+    "subcategory": "candy",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "SNACKS-0056",
+    "name": "Reese's Peanut Butter Cups (1.5 oz)",
+    "category": "SNACKS",
+    "subcategory": "candy",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "SNACKS-0057",
+    "name": "Kit Kat (1.5 oz)",
+    "category": "SNACKS",
+    "subcategory": "candy",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "SNACKS-0058",
+    "name": "Skittles original (7.2 oz)",
+    "category": "SNACKS",
+    "subcategory": "candy",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "SNACKS-0059",
+    "name": "Starburst original (7.2 oz)",
+    "category": "SNACKS",
+    "subcategory": "candy",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "SNACKS-0060",
+    "name": "Sour Patch Kids (8 oz)",
+    "category": "SNACKS",
+    "subcategory": "candy",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "SNACKS-0061",
+    "name": "Twizzlers strawberry (16 oz)",
+    "category": "SNACKS",
+    "subcategory": "candy",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "SNACKS-0062",
+    "name": "Gummy bears (9 oz)",
+    "category": "SNACKS",
+    "subcategory": "candy",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "SNACKS-0063",
+    "name": "Hershey's Kisses milk chocolate (10.8 oz)",
+    "category": "SNACKS",
+    "subcategory": "candy",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "SNACKS-0064",
+    "name": "Lindt truffles assorted (5.1 oz)",
+    "category": "SNACKS",
+    "subcategory": "candy",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "SNACKS-0065",
+    "name": "Ghirardelli squares dark chocolate (5.32 oz)",
+    "category": "SNACKS",
+    "subcategory": "candy",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "SNACKS-0066",
+    "name": "Nature Valley granola bars oats and honey (12-count)",
+    "category": "SNACKS",
+    "subcategory": "granola_bars",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "SNACKS-0067",
+    "name": "Nature Valley sweet and salty almond (12-count)",
+    "category": "SNACKS",
+    "subcategory": "granola_bars",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "SNACKS-0068",
+    "name": "Quaker chewy chocolate chip (12-count)",
+    "category": "SNACKS",
+    "subcategory": "granola_bars",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "SNACKS-0069",
+    "name": "Quaker chewy peanut butter (12-count)",
+    "category": "SNACKS",
+    "subcategory": "granola_bars",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "SNACKS-0070",
+    "name": "KIND bars dark chocolate nuts (6-count)",
+    "category": "SNACKS",
+    "subcategory": "granola_bars",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "SNACKS-0071",
+    "name": "KIND bars caramel almond (6-count)",
+    "category": "SNACKS",
+    "subcategory": "granola_bars",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "SNACKS-0072",
+    "name": "CLIF bars chocolate chip (6-count)",
+    "category": "SNACKS",
+    "subcategory": "granola_bars",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "SNACKS-0073",
+    "name": "Larabar cashew cookie (5-count)",
+    "category": "SNACKS",
+    "subcategory": "granola_bars",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "SNACKS-0074",
+    "name": "RX bar chocolate sea salt (5-count)",
+    "category": "SNACKS",
+    "subcategory": "granola_bars",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "SNACKS-0075",
+    "name": "Belvita breakfast biscuits (5-count)",
+    "category": "SNACKS",
+    "subcategory": "granola_bars",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "SNACKS-0076",
+    "name": "Fiber One brownies (6-count)",
+    "category": "SNACKS",
+    "subcategory": "granola_bars",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "SNACKS-0077",
+    "name": "Popcorn microwave butter (6-count)",
+    "category": "SNACKS",
+    "subcategory": "popcorn",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "SNACKS-0078",
+    "name": "Popcorn microwave kettle (6-count)",
+    "category": "SNACKS",
+    "subcategory": "popcorn",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "SNACKS-0079",
+    "name": "Popcorn microwave light butter (6-count)",
+    "category": "SNACKS",
+    "subcategory": "popcorn",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "SNACKS-0080",
+    "name": "Skinnypop original (4.4 oz)",
+    "category": "SNACKS",
+    "subcategory": "popcorn",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "SNACKS-0081",
+    "name": "Smartfood white cheddar popcorn (6.75 oz)",
+    "category": "SNACKS",
+    "subcategory": "popcorn",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "SNACKS-0082",
+    "name": "Pretzels classic (16 oz)",
+    "category": "SNACKS",
+    "subcategory": "popcorn",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "SNACKS-0083",
+    "name": "Pretzels mini twists (16 oz)",
+    "category": "SNACKS",
+    "subcategory": "popcorn",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "SNACKS-0084",
+    "name": "Snack mix Chex Mix (8.75 oz)",
+    "category": "SNACKS",
+    "subcategory": "popcorn",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "SNACKS-0085",
+    "name": "Mixed nuts roasted salted (10 oz)",
+    "category": "SNACKS",
+    "subcategory": "nuts",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "SNACKS-0086",
+    "name": "Cashews roasted salted (9.25 oz)",
+    "category": "SNACKS",
+    "subcategory": "nuts",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "SNACKS-0087",
+    "name": "Almonds roasted salted (11.5 oz)",
+    "category": "SNACKS",
+    "subcategory": "nuts",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "SNACKS-0088",
+    "name": "Almonds raw (16 oz)",
+    "category": "SNACKS",
+    "subcategory": "nuts",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "SNACKS-0089",
+    "name": "Peanuts roasted salted (16 oz)",
+    "category": "SNACKS",
+    "subcategory": "nuts",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "SNACKS-0090",
+    "name": "Pistachios shelled (8 oz)",
+    "category": "SNACKS",
+    "subcategory": "nuts",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "SNACKS-0091",
+    "name": "Pistachios in shell (16 oz)",
+    "category": "SNACKS",
+    "subcategory": "nuts",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "SNACKS-0092",
+    "name": "Walnuts halves and pieces (16 oz)",
+    "category": "SNACKS",
+    "subcategory": "nuts",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "SNACKS-0093",
+    "name": "Pecans halves (10 oz)",
+    "category": "SNACKS",
+    "subcategory": "nuts",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "SNACKS-0094",
+    "name": "Trail mix original (16 oz)",
+    "category": "SNACKS",
+    "subcategory": "nuts",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "SNACKS-0095",
+    "name": "Beef jerky original (3.25 oz)",
+    "category": "SNACKS",
+    "subcategory": "jerky",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "SNACKS-0096",
+    "name": "Beef jerky teriyaki (3.25 oz)",
+    "category": "SNACKS",
+    "subcategory": "jerky",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "SNACKS-0097",
+    "name": "Beef jerky peppered (3.25 oz)",
+    "category": "SNACKS",
+    "subcategory": "jerky",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "SNACKS-0098",
+    "name": "Turkey jerky (2.85 oz)",
+    "category": "SNACKS",
+    "subcategory": "jerky",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "SNACKS-0099",
+    "name": "Slim Jim original (12-count)",
+    "category": "SNACKS",
+    "subcategory": "jerky",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0001",
+    "name": "Coca-Cola (12-pack 12 oz cans)",
+    "category": "BEVERAGES",
+    "subcategory": "soda",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0002",
+    "name": "Coca-Cola (2-liter)",
+    "category": "BEVERAGES",
+    "subcategory": "soda",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0003",
+    "name": "Coca-Cola (20 oz bottle)",
+    "category": "BEVERAGES",
+    "subcategory": "soda",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "BEVERAGES-0004",
+    "name": "Diet Coke (12-pack 12 oz cans)",
+    "category": "BEVERAGES",
+    "subcategory": "soda",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0005",
+    "name": "Diet Coke (2-liter)",
+    "category": "BEVERAGES",
+    "subcategory": "soda",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0006",
+    "name": "Coke Zero (12-pack 12 oz cans)",
+    "category": "BEVERAGES",
+    "subcategory": "soda",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0007",
+    "name": "Coke Zero (2-liter)",
+    "category": "BEVERAGES",
+    "subcategory": "soda",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0008",
+    "name": "Pepsi (12-pack 12 oz cans)",
+    "category": "BEVERAGES",
+    "subcategory": "soda",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0009",
+    "name": "Pepsi (2-liter)",
+    "category": "BEVERAGES",
+    "subcategory": "soda",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0010",
+    "name": "Diet Pepsi (12-pack 12 oz cans)",
+    "category": "BEVERAGES",
+    "subcategory": "soda",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0011",
+    "name": "Sprite (12-pack 12 oz cans)",
+    "category": "BEVERAGES",
+    "subcategory": "soda",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0012",
+    "name": "Sprite (2-liter)",
+    "category": "BEVERAGES",
+    "subcategory": "soda",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0013",
+    "name": "Dr Pepper (12-pack 12 oz cans)",
+    "category": "BEVERAGES",
+    "subcategory": "soda",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0014",
+    "name": "Dr Pepper (2-liter)",
+    "category": "BEVERAGES",
+    "subcategory": "soda",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0015",
+    "name": "Mountain Dew (12-pack 12 oz cans)",
+    "category": "BEVERAGES",
+    "subcategory": "soda",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0016",
+    "name": "Mountain Dew (2-liter)",
+    "category": "BEVERAGES",
+    "subcategory": "soda",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0017",
+    "name": "Fanta orange (12-pack 12 oz cans)",
+    "category": "BEVERAGES",
+    "subcategory": "soda",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0018",
+    "name": "Fanta grape (12-pack 12 oz cans)",
+    "category": "BEVERAGES",
+    "subcategory": "soda",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0019",
+    "name": "Root beer A&W (12-pack 12 oz cans)",
+    "category": "BEVERAGES",
+    "subcategory": "soda",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0020",
+    "name": "Ginger ale Canada Dry (12-pack 12 oz cans)",
+    "category": "BEVERAGES",
+    "subcategory": "soda",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0021",
+    "name": "Cream soda (12-pack 12 oz cans)",
+    "category": "BEVERAGES",
+    "subcategory": "soda",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0022",
+    "name": "La Croix lime (8-pack 12 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "sparkling_water",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0023",
+    "name": "La Croix grapefruit (8-pack 12 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "sparkling_water",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0024",
+    "name": "La Croix orange (8-pack 12 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "sparkling_water",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0025",
+    "name": "La Croix berry (8-pack 12 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "sparkling_water",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0026",
+    "name": "La Croix coconut (8-pack 12 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "sparkling_water",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0027",
+    "name": "Bubly lime (8-pack 12 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "sparkling_water",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0028",
+    "name": "Bubly cherry (8-pack 12 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "sparkling_water",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0029",
+    "name": "Topo Chico mineral water (12-pack)",
+    "category": "BEVERAGES",
+    "subcategory": "sparkling_water",
+    "base_price": 11.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0030",
+    "name": "Perrier mineral water (10-pack)",
+    "category": "BEVERAGES",
+    "subcategory": "sparkling_water",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0031",
+    "name": "Spindrift raspberry lime (8-pack)",
+    "category": "BEVERAGES",
+    "subcategory": "sparkling_water",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0032",
+    "name": "Polar lime seltzer (8-pack)",
+    "category": "BEVERAGES",
+    "subcategory": "sparkling_water",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0033",
+    "name": "Bottled water (24-pack 16.9 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "water",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0034",
+    "name": "Bottled water (32-pack 16.9 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "water",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0035",
+    "name": "Bottled water gallon (1 gallon)",
+    "category": "BEVERAGES",
+    "subcategory": "water",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "BEVERAGES-0036",
+    "name": "Aquafina water (24-pack)",
+    "category": "BEVERAGES",
+    "subcategory": "water",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0037",
+    "name": "Dasani water (24-pack)",
+    "category": "BEVERAGES",
+    "subcategory": "water",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0038",
+    "name": "Smartwater (6-pack 23.7 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "water",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0039",
+    "name": "Fiji water (6-pack 16.9 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "water",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0040",
+    "name": "Distilled water gallon (1 gallon)",
+    "category": "BEVERAGES",
+    "subcategory": "water",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "BEVERAGES-0041",
+    "name": "Spring water gallon (1 gallon)",
+    "category": "BEVERAGES",
+    "subcategory": "water",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "BEVERAGES-0042",
+    "name": "Sparkling water lemon (8-pack 12 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "water",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0043",
+    "name": "Flavored water mixed berry (6-pack)",
+    "category": "BEVERAGES",
+    "subcategory": "water",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0044",
+    "name": "Orange juice (89 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "juice",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0045",
+    "name": "Orange juice no pulp (89 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "juice",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0046",
+    "name": "Orange juice with calcium (89 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "juice",
+    "base_price": 6.49
+  },
+  {
+    "canonical_sku": "BEVERAGES-0047",
+    "name": "Apple juice (64 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "juice",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0048",
+    "name": "Cranberry juice (64 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "juice",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0049",
+    "name": "Grape juice (64 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "juice",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0050",
+    "name": "Pineapple juice (46 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "juice",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0051",
+    "name": "Lemonade (64 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "juice",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "BEVERAGES-0052",
+    "name": "Pink lemonade (64 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "juice",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "BEVERAGES-0053",
+    "name": "Tropicana orange juice (52 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "juice",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0054",
+    "name": "Simply orange juice (52 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "juice",
+    "base_price": 5.49
+  },
+  {
+    "canonical_sku": "BEVERAGES-0055",
+    "name": "Welch's grape juice (64 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "juice",
+    "base_price": 5.49
+  },
+  {
+    "canonical_sku": "BEVERAGES-0056",
+    "name": "Capri Sun fruit punch (10-pack)",
+    "category": "BEVERAGES",
+    "subcategory": "juice",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0057",
+    "name": "Capri Sun mixed berry (10-pack)",
+    "category": "BEVERAGES",
+    "subcategory": "juice",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0058",
+    "name": "Juicy Juice apple (64 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "juice",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0059",
+    "name": "V8 vegetable juice (46 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "juice",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0060",
+    "name": "Tomato juice (46 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "juice",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0061",
+    "name": "Coconut water (33.8 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "juice",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0062",
+    "name": "Apple cider (64 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "juice",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0063",
+    "name": "Organic orange juice (59 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "juice",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0064",
+    "name": "Folgers ground coffee classic roast (30.5 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "coffee",
+    "base_price": 11.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0065",
+    "name": "Maxwell House ground coffee (30.5 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "coffee",
+    "base_price": 10.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0066",
+    "name": "Starbucks Pike Place ground (12 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "coffee",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0067",
+    "name": "Dunkin' ground coffee original (12 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "coffee",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0068",
+    "name": "Cafe Bustelo espresso ground (10 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "coffee",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0069",
+    "name": "Folgers instant coffee (8 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "coffee",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0070",
+    "name": "K-Cup pods Folgers classic (12-count)",
+    "category": "BEVERAGES",
+    "subcategory": "coffee",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0071",
+    "name": "K-Cup pods Starbucks Pike Place (10-count)",
+    "category": "BEVERAGES",
+    "subcategory": "coffee",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0072",
+    "name": "K-Cup pods Dunkin' original (10-count)",
+    "category": "BEVERAGES",
+    "subcategory": "coffee",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0073",
+    "name": "K-Cup pods Green Mountain breakfast blend (12-count)",
+    "category": "BEVERAGES",
+    "subcategory": "coffee",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0074",
+    "name": "Cold brew concentrate (32 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "coffee",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0075",
+    "name": "Iced coffee bottle (59 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "coffee",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0076",
+    "name": "Frappuccino bottle (9.5 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "coffee",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0077",
+    "name": "Lipton black tea bags (100-count)",
+    "category": "BEVERAGES",
+    "subcategory": "tea",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0078",
+    "name": "Lipton green tea bags (40-count)",
+    "category": "BEVERAGES",
+    "subcategory": "tea",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0079",
+    "name": "Bigelow English breakfast (20-count)",
+    "category": "BEVERAGES",
+    "subcategory": "tea",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0080",
+    "name": "Bigelow chamomile (20-count)",
+    "category": "BEVERAGES",
+    "subcategory": "tea",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0081",
+    "name": "Celestial Seasonings sleepytime (20-count)",
+    "category": "BEVERAGES",
+    "subcategory": "tea",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0082",
+    "name": "Tazo passion herbal tea (20-count)",
+    "category": "BEVERAGES",
+    "subcategory": "tea",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0083",
+    "name": "Iced tea bottled lemon (64 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "tea",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0084",
+    "name": "Iced tea unsweetened bottled (64 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "tea",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0085",
+    "name": "Pure Leaf iced tea sweet (18.5 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "tea",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "BEVERAGES-0086",
+    "name": "Snapple lemon tea (16 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "tea",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0087",
+    "name": "Arizona green tea (23 oz can)",
+    "category": "BEVERAGES",
+    "subcategory": "tea",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "BEVERAGES-0088",
+    "name": "Gatorade fruit punch (32 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "sports_drinks",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0089",
+    "name": "Gatorade lemon-lime (32 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "sports_drinks",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0090",
+    "name": "Gatorade orange (32 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "sports_drinks",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0091",
+    "name": "Gatorade glacier freeze (32 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "sports_drinks",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0092",
+    "name": "Gatorade Zero variety pack (12-count)",
+    "category": "BEVERAGES",
+    "subcategory": "sports_drinks",
+    "base_price": 11.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0093",
+    "name": "Powerade mountain berry (32 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "sports_drinks",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "BEVERAGES-0094",
+    "name": "Powerade fruit punch (32 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "sports_drinks",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "BEVERAGES-0095",
+    "name": "BodyArmor strawberry banana (16 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "sports_drinks",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "BEVERAGES-0096",
+    "name": "Vitaminwater XXX (20 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "sports_drinks",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0097",
+    "name": "Pedialyte unflavored (33.8 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "sports_drinks",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0098",
+    "name": "Liquid IV hydration multiplier (10-count)",
+    "category": "BEVERAGES",
+    "subcategory": "sports_drinks",
+    "base_price": 19.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0099",
+    "name": "Red Bull original (8.4 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "energy",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0100",
+    "name": "Red Bull sugar-free (8.4 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "energy",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0101",
+    "name": "Monster Energy original (16 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "energy",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0102",
+    "name": "Monster Energy zero ultra (16 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "energy",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "BEVERAGES-0103",
+    "name": "Rockstar Energy original (16 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "energy",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "BEVERAGES-0104",
+    "name": "Celsius arctic vibe (12 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "energy",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "BEVERAGES-0105",
+    "name": "Bang energy drink rainbow unicorn (16 oz)",
+    "category": "BEVERAGES",
+    "subcategory": "energy",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0001",
+    "name": "Paper towels (6 mega rolls)",
+    "category": "HOUSEHOLD",
+    "subcategory": "paper",
+    "base_price": 13.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0002",
+    "name": "Paper towels (12 mega rolls)",
+    "category": "HOUSEHOLD",
+    "subcategory": "paper",
+    "base_price": 24.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0003",
+    "name": "Paper towels select-a-size (6 mega rolls)",
+    "category": "HOUSEHOLD",
+    "subcategory": "paper",
+    "base_price": 14.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0004",
+    "name": "Bounty paper towels (8 rolls)",
+    "category": "HOUSEHOLD",
+    "subcategory": "paper",
+    "base_price": 17.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0005",
+    "name": "Toilet paper (12 mega rolls)",
+    "category": "HOUSEHOLD",
+    "subcategory": "paper",
+    "base_price": 14.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0006",
+    "name": "Toilet paper (24 mega rolls)",
+    "category": "HOUSEHOLD",
+    "subcategory": "paper",
+    "base_price": 26.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0007",
+    "name": "Charmin toilet paper ultra soft (12 mega rolls)",
+    "category": "HOUSEHOLD",
+    "subcategory": "paper",
+    "base_price": 17.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0008",
+    "name": "Cottonelle toilet paper (12 mega rolls)",
+    "category": "HOUSEHOLD",
+    "subcategory": "paper",
+    "base_price": 16.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0009",
+    "name": "Tissues (8-pack 144-count boxes)",
+    "category": "HOUSEHOLD",
+    "subcategory": "paper",
+    "base_price": 12.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0010",
+    "name": "Kleenex tissues (4-pack 160-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "paper",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0011",
+    "name": "Napkins everyday (200-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "paper",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0012",
+    "name": "Napkins dinner (100-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "paper",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0013",
+    "name": "Paper plates (100-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "paper",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0014",
+    "name": "Paper plates heavy duty (50-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "paper",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0015",
+    "name": "Plastic cups red (50-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "paper",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0016",
+    "name": "Plastic forks (48-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "paper",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0017",
+    "name": "Plastic spoons (48-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "paper",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0018",
+    "name": "Plastic knives (48-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "paper",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0019",
+    "name": "Dish soap original (32 oz)",
+    "category": "HOUSEHOLD",
+    "subcategory": "cleaning",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0020",
+    "name": "Dawn dish soap original (21.6 oz)",
+    "category": "HOUSEHOLD",
+    "subcategory": "cleaning",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0021",
+    "name": "Dawn dish soap lemon (21.6 oz)",
+    "category": "HOUSEHOLD",
+    "subcategory": "cleaning",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0022",
+    "name": "Dishwasher detergent pods (60-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "cleaning",
+    "base_price": 13.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0023",
+    "name": "Cascade dishwasher pods (62-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "cleaning",
+    "base_price": 16.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0024",
+    "name": "Dishwasher rinse aid (8.45 oz)",
+    "category": "HOUSEHOLD",
+    "subcategory": "cleaning",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0025",
+    "name": "All-purpose cleaner (32 oz)",
+    "category": "HOUSEHOLD",
+    "subcategory": "cleaning",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0026",
+    "name": "Lysol all-purpose cleaner (32 oz)",
+    "category": "HOUSEHOLD",
+    "subcategory": "cleaning",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0027",
+    "name": "Lysol disinfecting wipes (75-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "cleaning",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0028",
+    "name": "Lysol disinfectant spray (19 oz)",
+    "category": "HOUSEHOLD",
+    "subcategory": "cleaning",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0029",
+    "name": "Clorox bleach (121 oz)",
+    "category": "HOUSEHOLD",
+    "subcategory": "cleaning",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0030",
+    "name": "Clorox wipes (75-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "cleaning",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0031",
+    "name": "Glass cleaner Windex (26 oz)",
+    "category": "HOUSEHOLD",
+    "subcategory": "cleaning",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0032",
+    "name": "Bathroom cleaner Scrubbing Bubbles (25 oz)",
+    "category": "HOUSEHOLD",
+    "subcategory": "cleaning",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0033",
+    "name": "Toilet bowl cleaner (24 oz)",
+    "category": "HOUSEHOLD",
+    "subcategory": "cleaning",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0034",
+    "name": "Drano clog remover (32 oz)",
+    "category": "HOUSEHOLD",
+    "subcategory": "cleaning",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0035",
+    "name": "Furniture polish Pledge (9.7 oz)",
+    "category": "HOUSEHOLD",
+    "subcategory": "cleaning",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0036",
+    "name": "Air freshener spray (8.8 oz)",
+    "category": "HOUSEHOLD",
+    "subcategory": "cleaning",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0037",
+    "name": "Plug-in air freshener (2-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "cleaning",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0038",
+    "name": "Sponges (9-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "cleaning",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0039",
+    "name": "Scrub brushes (2-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "cleaning",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0040",
+    "name": "Mop refill (ea)",
+    "category": "HOUSEHOLD",
+    "subcategory": "cleaning",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0041",
+    "name": "Swiffer Sweeper refills (32-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "cleaning",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0042",
+    "name": "Magic Eraser (8-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "cleaning",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0043",
+    "name": "Tide laundry detergent original (100 oz)",
+    "category": "HOUSEHOLD",
+    "subcategory": "laundry",
+    "base_price": 12.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0044",
+    "name": "Tide laundry detergent free (100 oz)",
+    "category": "HOUSEHOLD",
+    "subcategory": "laundry",
+    "base_price": 12.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0045",
+    "name": "Tide pods (57-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "laundry",
+    "base_price": 17.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0046",
+    "name": "Tide pods spring meadow (57-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "laundry",
+    "base_price": 17.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0047",
+    "name": "Gain laundry detergent original (100 oz)",
+    "category": "HOUSEHOLD",
+    "subcategory": "laundry",
+    "base_price": 11.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0048",
+    "name": "Persil laundry detergent (100 oz)",
+    "category": "HOUSEHOLD",
+    "subcategory": "laundry",
+    "base_price": 14.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0049",
+    "name": "All free clear detergent (94.5 oz)",
+    "category": "HOUSEHOLD",
+    "subcategory": "laundry",
+    "base_price": 11.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0050",
+    "name": "Arm & Hammer detergent (144 oz)",
+    "category": "HOUSEHOLD",
+    "subcategory": "laundry",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0051",
+    "name": "Downy fabric softener (111 oz)",
+    "category": "HOUSEHOLD",
+    "subcategory": "laundry",
+    "base_price": 11.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0052",
+    "name": "Bounce dryer sheets (240-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "laundry",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0053",
+    "name": "OxiClean stain remover (5 lb)",
+    "category": "HOUSEHOLD",
+    "subcategory": "laundry",
+    "base_price": 14.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0054",
+    "name": "Shout stain remover spray (22 oz)",
+    "category": "HOUSEHOLD",
+    "subcategory": "laundry",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0055",
+    "name": "Color-safe bleach (60 oz)",
+    "category": "HOUSEHOLD",
+    "subcategory": "laundry",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0056",
+    "name": "Stain stick (ea)",
+    "category": "HOUSEHOLD",
+    "subcategory": "laundry",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0057",
+    "name": "Aluminum foil (200 sq ft)",
+    "category": "HOUSEHOLD",
+    "subcategory": "kitchen",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0058",
+    "name": "Plastic wrap (200 sq ft)",
+    "category": "HOUSEHOLD",
+    "subcategory": "kitchen",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0059",
+    "name": "Wax paper (75 sq ft)",
+    "category": "HOUSEHOLD",
+    "subcategory": "kitchen",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0060",
+    "name": "Parchment paper (45 sq ft)",
+    "category": "HOUSEHOLD",
+    "subcategory": "kitchen",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0061",
+    "name": "Sandwich bags (150-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "kitchen",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0062",
+    "name": "Quart freezer bags (75-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "kitchen",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0063",
+    "name": "Gallon freezer bags (60-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "kitchen",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0064",
+    "name": "Trash bags 13 gallon (80-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "kitchen",
+    "base_price": 14.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0065",
+    "name": "Trash bags 13 gallon drawstring (60-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "kitchen",
+    "base_price": 13.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0066",
+    "name": "Trash bags 39 gallon (32-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "kitchen",
+    "base_price": 12.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0067",
+    "name": "Trash bags 8 gallon small (60-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "kitchen",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0068",
+    "name": "Lawn bags 39 gallon (20-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "kitchen",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0069",
+    "name": "Light bulbs LED 60W equivalent (4-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "kitchen",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0070",
+    "name": "Light bulbs LED daylight (4-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "kitchen",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0071",
+    "name": "AA batteries (16-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "batteries",
+    "base_price": 11.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0072",
+    "name": "AAA batteries (16-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "batteries",
+    "base_price": 11.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0073",
+    "name": "9V batteries (4-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "batteries",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0074",
+    "name": "D batteries (8-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "batteries",
+    "base_price": 13.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0075",
+    "name": "C batteries (8-count)",
+    "category": "HOUSEHOLD",
+    "subcategory": "batteries",
+    "base_price": 11.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0076",
+    "name": "Matches box (32-pack)",
+    "category": "HOUSEHOLD",
+    "subcategory": "kitchen",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0077",
+    "name": "Lighter (ea)",
+    "category": "HOUSEHOLD",
+    "subcategory": "kitchen",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0078",
+    "name": "Charcoal briquettes (16 lb)",
+    "category": "HOUSEHOLD",
+    "subcategory": "kitchen",
+    "base_price": 14.99
+  },
+  {
+    "canonical_sku": "HOUSEHOLD-0079",
+    "name": "Lighter fluid (32 oz)",
+    "category": "HOUSEHOLD",
+    "subcategory": "kitchen",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0001",
+    "name": "Toothpaste Crest cavity protection (6.4 oz)",
+    "category": "PERSONAL",
+    "subcategory": "oral_care",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0002",
+    "name": "Toothpaste Crest 3D white (5.4 oz)",
+    "category": "PERSONAL",
+    "subcategory": "oral_care",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0003",
+    "name": "Toothpaste Colgate total (6 oz)",
+    "category": "PERSONAL",
+    "subcategory": "oral_care",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0004",
+    "name": "Toothpaste Sensodyne (6.4 oz)",
+    "category": "PERSONAL",
+    "subcategory": "oral_care",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0005",
+    "name": "Toothpaste Tom's of Maine (5.5 oz)",
+    "category": "PERSONAL",
+    "subcategory": "oral_care",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0006",
+    "name": "Toothbrush soft (4-pack)",
+    "category": "PERSONAL",
+    "subcategory": "oral_care",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0007",
+    "name": "Toothbrush electric Oral-B (ea)",
+    "category": "PERSONAL",
+    "subcategory": "oral_care",
+    "base_price": 49.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0008",
+    "name": "Toothbrush replacement heads (3-pack)",
+    "category": "PERSONAL",
+    "subcategory": "oral_care",
+    "base_price": 14.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0009",
+    "name": "Mouthwash Listerine cool mint (1 liter)",
+    "category": "PERSONAL",
+    "subcategory": "oral_care",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0010",
+    "name": "Mouthwash Crest pro-health (1 liter)",
+    "category": "PERSONAL",
+    "subcategory": "oral_care",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0011",
+    "name": "Mouthwash alcohol-free (1 liter)",
+    "category": "PERSONAL",
+    "subcategory": "oral_care",
+    "base_price": 6.49
+  },
+  {
+    "canonical_sku": "PERSONAL-0012",
+    "name": "Dental floss waxed (55 yd)",
+    "category": "PERSONAL",
+    "subcategory": "oral_care",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0013",
+    "name": "Floss picks (75-count)",
+    "category": "PERSONAL",
+    "subcategory": "oral_care",
+    "base_price": 4.49
+  },
+  {
+    "canonical_sku": "PERSONAL-0014",
+    "name": "Whitening strips Crest (20-count)",
+    "category": "PERSONAL",
+    "subcategory": "oral_care",
+    "base_price": 19.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0015",
+    "name": "Shampoo Pantene Pro-V (20 oz)",
+    "category": "PERSONAL",
+    "subcategory": "hair",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0016",
+    "name": "Shampoo Head and Shoulders classic (23.7 oz)",
+    "category": "PERSONAL",
+    "subcategory": "hair",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0017",
+    "name": "Shampoo Dove daily moisture (20.4 oz)",
+    "category": "PERSONAL",
+    "subcategory": "hair",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0018",
+    "name": "Shampoo OGX coconut milk (13 oz)",
+    "category": "PERSONAL",
+    "subcategory": "hair",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0019",
+    "name": "Shampoo Suave naturals (30 oz)",
+    "category": "PERSONAL",
+    "subcategory": "hair",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0020",
+    "name": "Conditioner Pantene Pro-V (20 oz)",
+    "category": "PERSONAL",
+    "subcategory": "hair",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0021",
+    "name": "Conditioner Dove daily moisture (20.4 oz)",
+    "category": "PERSONAL",
+    "subcategory": "hair",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0022",
+    "name": "Conditioner OGX argan oil (13 oz)",
+    "category": "PERSONAL",
+    "subcategory": "hair",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0023",
+    "name": "Hairspray Aqua Net (11 oz)",
+    "category": "PERSONAL",
+    "subcategory": "hair",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0024",
+    "name": "Dry shampoo Batiste (6.73 oz)",
+    "category": "PERSONAL",
+    "subcategory": "hair",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0025",
+    "name": "Hair gel Got2b glued (6 oz)",
+    "category": "PERSONAL",
+    "subcategory": "hair",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0026",
+    "name": "Hair color L'Oreal Preference (ea)",
+    "category": "PERSONAL",
+    "subcategory": "hair",
+    "base_price": 11.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0027",
+    "name": "Curl cream (10 oz)",
+    "category": "PERSONAL",
+    "subcategory": "hair",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0028",
+    "name": "Hair oil argan (3.4 oz)",
+    "category": "PERSONAL",
+    "subcategory": "hair",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0029",
+    "name": "Body wash Dove (22 oz)",
+    "category": "PERSONAL",
+    "subcategory": "body",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0030",
+    "name": "Body wash Olay (22 oz)",
+    "category": "PERSONAL",
+    "subcategory": "body",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0031",
+    "name": "Body wash Old Spice (21 oz)",
+    "category": "PERSONAL",
+    "subcategory": "body",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0032",
+    "name": "Body wash Native coconut (18 oz)",
+    "category": "PERSONAL",
+    "subcategory": "body",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0033",
+    "name": "Bar soap Dove white (8-pack)",
+    "category": "PERSONAL",
+    "subcategory": "body",
+    "base_price": 11.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0034",
+    "name": "Bar soap Irish Spring original (8-pack)",
+    "category": "PERSONAL",
+    "subcategory": "body",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0035",
+    "name": "Bar soap Dial gold (8-pack)",
+    "category": "PERSONAL",
+    "subcategory": "body",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0036",
+    "name": "Hand soap liquid (11.25 oz)",
+    "category": "PERSONAL",
+    "subcategory": "body",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "PERSONAL-0037",
+    "name": "Hand sanitizer Purell (8 oz)",
+    "category": "PERSONAL",
+    "subcategory": "body",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0038",
+    "name": "Lotion Lubriderm daily (16 oz)",
+    "category": "PERSONAL",
+    "subcategory": "body",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0039",
+    "name": "Lotion CeraVe moisturizing (19 oz)",
+    "category": "PERSONAL",
+    "subcategory": "body",
+    "base_price": 14.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0040",
+    "name": "Lotion Aveeno daily (12 oz)",
+    "category": "PERSONAL",
+    "subcategory": "body",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0041",
+    "name": "Lotion Eucerin advanced repair (16.9 oz)",
+    "category": "PERSONAL",
+    "subcategory": "body",
+    "base_price": 11.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0042",
+    "name": "Hand cream (2.5 oz)",
+    "category": "PERSONAL",
+    "subcategory": "body",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0043",
+    "name": "Deodorant men's Old Spice (3 oz)",
+    "category": "PERSONAL",
+    "subcategory": "body",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0044",
+    "name": "Deodorant men's Degree (2.7 oz)",
+    "category": "PERSONAL",
+    "subcategory": "body",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0045",
+    "name": "Deodorant women's Secret (2.6 oz)",
+    "category": "PERSONAL",
+    "subcategory": "body",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0046",
+    "name": "Deodorant women's Dove (2.6 oz)",
+    "category": "PERSONAL",
+    "subcategory": "body",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0047",
+    "name": "Antiperspirant clinical strength (1.7 oz)",
+    "category": "PERSONAL",
+    "subcategory": "body",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0048",
+    "name": "Razor men's Gillette Mach3 (ea)",
+    "category": "PERSONAL",
+    "subcategory": "body",
+    "base_price": 11.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0049",
+    "name": "Razor blade refills men's (8-count)",
+    "category": "PERSONAL",
+    "subcategory": "body",
+    "base_price": 24.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0050",
+    "name": "Razor women's Venus (ea)",
+    "category": "PERSONAL",
+    "subcategory": "body",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0051",
+    "name": "Razor blade refills women's (8-count)",
+    "category": "PERSONAL",
+    "subcategory": "body",
+    "base_price": 22.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0052",
+    "name": "Disposable razors (10-count)",
+    "category": "PERSONAL",
+    "subcategory": "body",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0053",
+    "name": "Shaving cream (11 oz)",
+    "category": "PERSONAL",
+    "subcategory": "body",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0054",
+    "name": "Sunscreen SPF 50 Banana Boat (8 oz)",
+    "category": "PERSONAL",
+    "subcategory": "skin",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0055",
+    "name": "Sunscreen SPF 30 Coppertone (8 oz)",
+    "category": "PERSONAL",
+    "subcategory": "skin",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0056",
+    "name": "Sunscreen kids SPF 50 (8 oz)",
+    "category": "PERSONAL",
+    "subcategory": "skin",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0057",
+    "name": "Face moisturizer CeraVe (3 oz)",
+    "category": "PERSONAL",
+    "subcategory": "skin",
+    "base_price": 14.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0058",
+    "name": "Face wash Cetaphil gentle (16 oz)",
+    "category": "PERSONAL",
+    "subcategory": "skin",
+    "base_price": 13.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0059",
+    "name": "Face mask sheet (ea)",
+    "category": "PERSONAL",
+    "subcategory": "skin",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0060",
+    "name": "Eye cream (0.5 oz)",
+    "category": "PERSONAL",
+    "subcategory": "skin",
+    "base_price": 12.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0061",
+    "name": "Lip balm Chapstick (3-pack)",
+    "category": "PERSONAL",
+    "subcategory": "skin",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0062",
+    "name": "Lip balm Burt's Bees (ea)",
+    "category": "PERSONAL",
+    "subcategory": "skin",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0063",
+    "name": "Acne wash Neutrogena (9.1 oz)",
+    "category": "PERSONAL",
+    "subcategory": "skin",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0064",
+    "name": "Pads Always (36-count)",
+    "category": "PERSONAL",
+    "subcategory": "feminine",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0065",
+    "name": "Tampons Tampax (36-count)",
+    "category": "PERSONAL",
+    "subcategory": "feminine",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0066",
+    "name": "Pantiliners (100-count)",
+    "category": "PERSONAL",
+    "subcategory": "feminine",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0067",
+    "name": "Multivitamin women's (60-count)",
+    "category": "PERSONAL",
+    "subcategory": "vitamins",
+    "base_price": 11.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0068",
+    "name": "Multivitamin men's (60-count)",
+    "category": "PERSONAL",
+    "subcategory": "vitamins",
+    "base_price": 11.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0069",
+    "name": "Vitamin D 2000 IU (100-count)",
+    "category": "PERSONAL",
+    "subcategory": "vitamins",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0070",
+    "name": "Vitamin C 1000 mg (100-count)",
+    "category": "PERSONAL",
+    "subcategory": "vitamins",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0071",
+    "name": "Fish oil omega-3 (100-count)",
+    "category": "PERSONAL",
+    "subcategory": "vitamins",
+    "base_price": 14.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0072",
+    "name": "Probiotic capsules (30-count)",
+    "category": "PERSONAL",
+    "subcategory": "vitamins",
+    "base_price": 19.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0073",
+    "name": "Pain reliever Tylenol (100-count)",
+    "category": "PERSONAL",
+    "subcategory": "vitamins",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0074",
+    "name": "Pain reliever Advil ibuprofen (100-count)",
+    "category": "PERSONAL",
+    "subcategory": "vitamins",
+    "base_price": 12.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0075",
+    "name": "Pain reliever Aleve (100-count)",
+    "category": "PERSONAL",
+    "subcategory": "vitamins",
+    "base_price": 14.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0076",
+    "name": "Allergy medicine Claritin (30-count)",
+    "category": "PERSONAL",
+    "subcategory": "vitamins",
+    "base_price": 19.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0077",
+    "name": "Cold and flu DayQuil/NyQuil combo (ea)",
+    "category": "PERSONAL",
+    "subcategory": "vitamins",
+    "base_price": 14.99
+  },
+  {
+    "canonical_sku": "PERSONAL-0078",
+    "name": "Cough drops Halls cherry (30-count)",
+    "category": "PERSONAL",
+    "subcategory": "vitamins",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "BABY-0001",
+    "name": "Diapers size 1 Pampers Swaddlers (84-count)",
+    "category": "BABY",
+    "subcategory": "diapers",
+    "base_price": 24.99
+  },
+  {
+    "canonical_sku": "BABY-0002",
+    "name": "Diapers size 2 Pampers Swaddlers (76-count)",
+    "category": "BABY",
+    "subcategory": "diapers",
+    "base_price": 24.99
+  },
+  {
+    "canonical_sku": "BABY-0003",
+    "name": "Diapers size 3 Pampers Swaddlers (62-count)",
+    "category": "BABY",
+    "subcategory": "diapers",
+    "base_price": 24.99
+  },
+  {
+    "canonical_sku": "BABY-0004",
+    "name": "Diapers size 4 Pampers Swaddlers (54-count)",
+    "category": "BABY",
+    "subcategory": "diapers",
+    "base_price": 24.99
+  },
+  {
+    "canonical_sku": "BABY-0005",
+    "name": "Diapers size 5 Pampers Cruisers (46-count)",
+    "category": "BABY",
+    "subcategory": "diapers",
+    "base_price": 24.99
+  },
+  {
+    "canonical_sku": "BABY-0006",
+    "name": "Diapers size 6 Pampers Cruisers (38-count)",
+    "category": "BABY",
+    "subcategory": "diapers",
+    "base_price": 24.99
+  },
+  {
+    "canonical_sku": "BABY-0007",
+    "name": "Diapers size 1 Huggies Little Snugglers (84-count)",
+    "category": "BABY",
+    "subcategory": "diapers",
+    "base_price": 23.99
+  },
+  {
+    "canonical_sku": "BABY-0008",
+    "name": "Diapers size 2 Huggies (76-count)",
+    "category": "BABY",
+    "subcategory": "diapers",
+    "base_price": 23.99
+  },
+  {
+    "canonical_sku": "BABY-0009",
+    "name": "Diapers size 3 Huggies (62-count)",
+    "category": "BABY",
+    "subcategory": "diapers",
+    "base_price": 23.99
+  },
+  {
+    "canonical_sku": "BABY-0010",
+    "name": "Diapers size 4 Huggies (54-count)",
+    "category": "BABY",
+    "subcategory": "diapers",
+    "base_price": 23.99
+  },
+  {
+    "canonical_sku": "BABY-0011",
+    "name": "Diapers Honest Company size 3 (35-count)",
+    "category": "BABY",
+    "subcategory": "diapers",
+    "base_price": 14.99
+  },
+  {
+    "canonical_sku": "BABY-0012",
+    "name": "Diapers store brand size 3 (84-count)",
+    "category": "BABY",
+    "subcategory": "diapers",
+    "base_price": 17.99
+  },
+  {
+    "canonical_sku": "BABY-0013",
+    "name": "Pull-Ups training pants 2T-3T (38-count)",
+    "category": "BABY",
+    "subcategory": "diapers",
+    "base_price": 23.99
+  },
+  {
+    "canonical_sku": "BABY-0014",
+    "name": "Pull-Ups training pants 3T-4T (34-count)",
+    "category": "BABY",
+    "subcategory": "diapers",
+    "base_price": 23.99
+  },
+  {
+    "canonical_sku": "BABY-0015",
+    "name": "Goodnites bedwetting underwear S/M (44-count)",
+    "category": "BABY",
+    "subcategory": "diapers",
+    "base_price": 26.99
+  },
+  {
+    "canonical_sku": "BABY-0016",
+    "name": "Baby wipes Pampers sensitive (672-count)",
+    "category": "BABY",
+    "subcategory": "wipes",
+    "base_price": 19.99
+  },
+  {
+    "canonical_sku": "BABY-0017",
+    "name": "Baby wipes Huggies natural care (624-count)",
+    "category": "BABY",
+    "subcategory": "wipes",
+    "base_price": 19.99
+  },
+  {
+    "canonical_sku": "BABY-0018",
+    "name": "Baby wipes water wipes (540-count)",
+    "category": "BABY",
+    "subcategory": "wipes",
+    "base_price": 24.99
+  },
+  {
+    "canonical_sku": "BABY-0019",
+    "name": "Baby wipes store brand sensitive (720-count)",
+    "category": "BABY",
+    "subcategory": "wipes",
+    "base_price": 14.99
+  },
+  {
+    "canonical_sku": "BABY-0020",
+    "name": "Infant formula Similac Advance (23.2 oz)",
+    "category": "BABY",
+    "subcategory": "formula",
+    "base_price": 39.99
+  },
+  {
+    "canonical_sku": "BABY-0021",
+    "name": "Infant formula Similac Pro-Advance (23.2 oz)",
+    "category": "BABY",
+    "subcategory": "formula",
+    "base_price": 41.99
+  },
+  {
+    "canonical_sku": "BABY-0022",
+    "name": "Infant formula Similac Sensitive (20 oz)",
+    "category": "BABY",
+    "subcategory": "formula",
+    "base_price": 39.99
+  },
+  {
+    "canonical_sku": "BABY-0023",
+    "name": "Infant formula Enfamil NeuroPro (20.7 oz)",
+    "category": "BABY",
+    "subcategory": "formula",
+    "base_price": 39.99
+  },
+  {
+    "canonical_sku": "BABY-0024",
+    "name": "Infant formula Enfamil Gentlease (19.5 oz)",
+    "category": "BABY",
+    "subcategory": "formula",
+    "base_price": 39.99
+  },
+  {
+    "canonical_sku": "BABY-0025",
+    "name": "Infant formula Gerber Good Start (32 oz)",
+    "category": "BABY",
+    "subcategory": "formula",
+    "base_price": 32.99
+  },
+  {
+    "canonical_sku": "BABY-0026",
+    "name": "Toddler formula Similac Go & Grow (24 oz)",
+    "category": "BABY",
+    "subcategory": "formula",
+    "base_price": 24.99
+  },
+  {
+    "canonical_sku": "BABY-0027",
+    "name": "Toddler formula Enfamil NeuroPro (20 oz)",
+    "category": "BABY",
+    "subcategory": "formula",
+    "base_price": 24.99
+  },
+  {
+    "canonical_sku": "BABY-0028",
+    "name": "Organic infant formula (21 oz)",
+    "category": "BABY",
+    "subcategory": "formula",
+    "base_price": 32.99
+  },
+  {
+    "canonical_sku": "BABY-0029",
+    "name": "Soy-based infant formula (23.2 oz)",
+    "category": "BABY",
+    "subcategory": "formula",
+    "base_price": 39.99
+  },
+  {
+    "canonical_sku": "BABY-0030",
+    "name": "Hypoallergenic formula (14.1 oz)",
+    "category": "BABY",
+    "subcategory": "formula",
+    "base_price": 49.99
+  },
+  {
+    "canonical_sku": "BABY-0031",
+    "name": "Ready-to-feed formula 2 fl oz (48-count)",
+    "category": "BABY",
+    "subcategory": "formula",
+    "base_price": 49.99
+  },
+  {
+    "canonical_sku": "BABY-0032",
+    "name": "Baby food stage 1 sweet potato (4 oz pouch)",
+    "category": "BABY",
+    "subcategory": "food",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "BABY-0033",
+    "name": "Baby food stage 1 banana (4 oz pouch)",
+    "category": "BABY",
+    "subcategory": "food",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "BABY-0034",
+    "name": "Baby food stage 2 apple oatmeal (4 oz pouch)",
+    "category": "BABY",
+    "subcategory": "food",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "BABY-0035",
+    "name": "Baby food stage 2 chicken vegetable (4 oz pouch)",
+    "category": "BABY",
+    "subcategory": "food",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "BABY-0036",
+    "name": "Baby food stage 3 toddler meal (4 oz pouch)",
+    "category": "BABY",
+    "subcategory": "food",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "BABY-0037",
+    "name": "Gerber rice cereal (8 oz)",
+    "category": "BABY",
+    "subcategory": "food",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BABY-0038",
+    "name": "Gerber oatmeal cereal (8 oz)",
+    "category": "BABY",
+    "subcategory": "food",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BABY-0039",
+    "name": "Gerber Puffs banana (1.48 oz)",
+    "category": "BABY",
+    "subcategory": "food",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "BABY-0040",
+    "name": "Gerber Puffs sweet potato (1.48 oz)",
+    "category": "BABY",
+    "subcategory": "food",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "BABY-0041",
+    "name": "Yogurt Melts mixed berries (1 oz)",
+    "category": "BABY",
+    "subcategory": "food",
+    "base_price": 3.49
+  },
+  {
+    "canonical_sku": "BABY-0042",
+    "name": "Toddler crackers (5 oz)",
+    "category": "BABY",
+    "subcategory": "food",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BABY-0043",
+    "name": "Plum Organics pouch variety (6-pack)",
+    "category": "BABY",
+    "subcategory": "food",
+    "base_price": 11.99
+  },
+  {
+    "canonical_sku": "BABY-0044",
+    "name": "Earth's Best organic baby food (4 oz)",
+    "category": "BABY",
+    "subcategory": "food",
+    "base_price": 1.99
+  },
+  {
+    "canonical_sku": "BABY-0045",
+    "name": "Happy Baby organic teething wafers (2.86 oz)",
+    "category": "BABY",
+    "subcategory": "food",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "BABY-0046",
+    "name": "Toddler milk drink (8-pack)",
+    "category": "BABY",
+    "subcategory": "food",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "BABY-0047",
+    "name": "Diaper rash cream Desitin (4 oz)",
+    "category": "BABY",
+    "subcategory": "care",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "BABY-0048",
+    "name": "Diaper rash cream Aquaphor (3 oz)",
+    "category": "BABY",
+    "subcategory": "care",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "BABY-0049",
+    "name": "Baby lotion Johnson's (16.9 oz)",
+    "category": "BABY",
+    "subcategory": "care",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "BABY-0050",
+    "name": "Baby shampoo Johnson's (20.3 oz)",
+    "category": "BABY",
+    "subcategory": "care",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "BABY-0051",
+    "name": "Baby wash 2-in-1 (16.9 oz)",
+    "category": "BABY",
+    "subcategory": "care",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "BABY-0052",
+    "name": "Baby powder Johnson's (9 oz)",
+    "category": "BABY",
+    "subcategory": "care",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BABY-0053",
+    "name": "Baby sunscreen (3 oz)",
+    "category": "BABY",
+    "subcategory": "care",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "BABY-0054",
+    "name": "Baby Tylenol acetaminophen (1 oz)",
+    "category": "BABY",
+    "subcategory": "care",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "BABY-0055",
+    "name": "Children's Motrin ibuprofen (4 oz)",
+    "category": "BABY",
+    "subcategory": "care",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "BABY-0056",
+    "name": "Pacifiers (2-pack)",
+    "category": "BABY",
+    "subcategory": "care",
+    "base_price": 4.99
+  },
+  {
+    "canonical_sku": "BABY-0057",
+    "name": "Baby bottles (3-pack)",
+    "category": "BABY",
+    "subcategory": "care",
+    "base_price": 14.99
+  },
+  {
+    "canonical_sku": "BABY-0058",
+    "name": "Bottle nipples slow flow (2-pack)",
+    "category": "BABY",
+    "subcategory": "care",
+    "base_price": 5.99
+  },
+  {
+    "canonical_sku": "BABY-0059",
+    "name": "Burp cloths (5-pack)",
+    "category": "BABY",
+    "subcategory": "care",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "BABY-0060",
+    "name": "Bibs (5-pack)",
+    "category": "BABY",
+    "subcategory": "care",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "PET-0001",
+    "name": "Dry dog food Purina Pro Plan adult (30 lb)",
+    "category": "PET",
+    "subcategory": "dog_food",
+    "base_price": 64.99
+  },
+  {
+    "canonical_sku": "PET-0002",
+    "name": "Dry dog food Blue Buffalo Life Protection (30 lb)",
+    "category": "PET",
+    "subcategory": "dog_food",
+    "base_price": 69.99
+  },
+  {
+    "canonical_sku": "PET-0003",
+    "name": "Dry dog food Purina ONE (16.5 lb)",
+    "category": "PET",
+    "subcategory": "dog_food",
+    "base_price": 32.99
+  },
+  {
+    "canonical_sku": "PET-0004",
+    "name": "Dry dog food Pedigree adult (30 lb)",
+    "category": "PET",
+    "subcategory": "dog_food",
+    "base_price": 26.99
+  },
+  {
+    "canonical_sku": "PET-0005",
+    "name": "Dry dog food puppy formula (20 lb)",
+    "category": "PET",
+    "subcategory": "dog_food",
+    "base_price": 38.99
+  },
+  {
+    "canonical_sku": "PET-0006",
+    "name": "Dry dog food senior formula (30 lb)",
+    "category": "PET",
+    "subcategory": "dog_food",
+    "base_price": 39.99
+  },
+  {
+    "canonical_sku": "PET-0007",
+    "name": "Dry dog food small breed (15 lb)",
+    "category": "PET",
+    "subcategory": "dog_food",
+    "base_price": 24.99
+  },
+  {
+    "canonical_sku": "PET-0008",
+    "name": "Dry dog food large breed (30 lb)",
+    "category": "PET",
+    "subcategory": "dog_food",
+    "base_price": 44.99
+  },
+  {
+    "canonical_sku": "PET-0009",
+    "name": "Wet dog food Purina Pro Plan (13 oz can)",
+    "category": "PET",
+    "subcategory": "dog_food",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PET-0010",
+    "name": "Wet dog food Pedigree variety pack (12-count)",
+    "category": "PET",
+    "subcategory": "dog_food",
+    "base_price": 12.99
+  },
+  {
+    "canonical_sku": "PET-0011",
+    "name": "Wet dog food chunky chicken (13 oz can)",
+    "category": "PET",
+    "subcategory": "dog_food",
+    "base_price": 2.49
+  },
+  {
+    "canonical_sku": "PET-0012",
+    "name": "Grain-free dry dog food (24 lb)",
+    "category": "PET",
+    "subcategory": "dog_food",
+    "base_price": 54.99
+  },
+  {
+    "canonical_sku": "PET-0013",
+    "name": "Limited ingredient dog food salmon (24 lb)",
+    "category": "PET",
+    "subcategory": "dog_food",
+    "base_price": 59.99
+  },
+  {
+    "canonical_sku": "PET-0014",
+    "name": "Dry cat food Purina Cat Chow (16 lb)",
+    "category": "PET",
+    "subcategory": "cat_food",
+    "base_price": 19.99
+  },
+  {
+    "canonical_sku": "PET-0015",
+    "name": "Dry cat food Friskies indoor (16 lb)",
+    "category": "PET",
+    "subcategory": "cat_food",
+    "base_price": 18.99
+  },
+  {
+    "canonical_sku": "PET-0016",
+    "name": "Dry cat food Iams Proactive Health (16 lb)",
+    "category": "PET",
+    "subcategory": "cat_food",
+    "base_price": 24.99
+  },
+  {
+    "canonical_sku": "PET-0017",
+    "name": "Dry cat food Blue Buffalo indoor (15 lb)",
+    "category": "PET",
+    "subcategory": "cat_food",
+    "base_price": 39.99
+  },
+  {
+    "canonical_sku": "PET-0018",
+    "name": "Dry cat food kitten formula (7 lb)",
+    "category": "PET",
+    "subcategory": "cat_food",
+    "base_price": 17.99
+  },
+  {
+    "canonical_sku": "PET-0019",
+    "name": "Dry cat food senior formula (16 lb)",
+    "category": "PET",
+    "subcategory": "cat_food",
+    "base_price": 26.99
+  },
+  {
+    "canonical_sku": "PET-0020",
+    "name": "Wet cat food Friskies pate (5.5 oz can)",
+    "category": "PET",
+    "subcategory": "cat_food",
+    "base_price": 0.79
+  },
+  {
+    "canonical_sku": "PET-0021",
+    "name": "Wet cat food Fancy Feast variety (24-count)",
+    "category": "PET",
+    "subcategory": "cat_food",
+    "base_price": 17.99
+  },
+  {
+    "canonical_sku": "PET-0022",
+    "name": "Wet cat food Sheba pat\u00e9 (12-count)",
+    "category": "PET",
+    "subcategory": "cat_food",
+    "base_price": 13.99
+  },
+  {
+    "canonical_sku": "PET-0023",
+    "name": "Wet cat food gourmet seafood (5.5 oz can)",
+    "category": "PET",
+    "subcategory": "cat_food",
+    "base_price": 1.49
+  },
+  {
+    "canonical_sku": "PET-0024",
+    "name": "Grain-free dry cat food (11 lb)",
+    "category": "PET",
+    "subcategory": "cat_food",
+    "base_price": 39.99
+  },
+  {
+    "canonical_sku": "PET-0025",
+    "name": "Cat food urinary tract health (16 lb)",
+    "category": "PET",
+    "subcategory": "cat_food",
+    "base_price": 32.99
+  },
+  {
+    "canonical_sku": "PET-0026",
+    "name": "Dog treats Milk-Bone biscuits (24 oz)",
+    "category": "PET",
+    "subcategory": "treats",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "PET-0027",
+    "name": "Dog treats Greenies dental chews (12-count)",
+    "category": "PET",
+    "subcategory": "treats",
+    "base_price": 14.99
+  },
+  {
+    "canonical_sku": "PET-0028",
+    "name": "Dog treats jerky strips (8 oz)",
+    "category": "PET",
+    "subcategory": "treats",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "PET-0029",
+    "name": "Dog treats training bites (10 oz)",
+    "category": "PET",
+    "subcategory": "treats",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "PET-0030",
+    "name": "Dog rawhide bones (5-count)",
+    "category": "PET",
+    "subcategory": "treats",
+    "base_price": 12.99
+  },
+  {
+    "canonical_sku": "PET-0031",
+    "name": "Dog bully sticks (5-count)",
+    "category": "PET",
+    "subcategory": "treats",
+    "base_price": 19.99
+  },
+  {
+    "canonical_sku": "PET-0032",
+    "name": "Cat treats Temptations chicken (16 oz)",
+    "category": "PET",
+    "subcategory": "treats",
+    "base_price": 8.99
+  },
+  {
+    "canonical_sku": "PET-0033",
+    "name": "Cat treats salmon flavor (3 oz)",
+    "category": "PET",
+    "subcategory": "treats",
+    "base_price": 2.99
+  },
+  {
+    "canonical_sku": "PET-0034",
+    "name": "Cat treats dental (2.5 oz)",
+    "category": "PET",
+    "subcategory": "treats",
+    "base_price": 3.99
+  },
+  {
+    "canonical_sku": "PET-0035",
+    "name": "Cat litter Tidy Cats clumping (35 lb)",
+    "category": "PET",
+    "subcategory": "supplies",
+    "base_price": 16.99
+  },
+  {
+    "canonical_sku": "PET-0036",
+    "name": "Cat litter Arm & Hammer (20 lb)",
+    "category": "PET",
+    "subcategory": "supplies",
+    "base_price": 11.99
+  },
+  {
+    "canonical_sku": "PET-0037",
+    "name": "Cat litter natural pine (20 lb)",
+    "category": "PET",
+    "subcategory": "supplies",
+    "base_price": 14.99
+  },
+  {
+    "canonical_sku": "PET-0038",
+    "name": "Cat litter Fresh Step scoop (25 lb)",
+    "category": "PET",
+    "subcategory": "supplies",
+    "base_price": 17.99
+  },
+  {
+    "canonical_sku": "PET-0039",
+    "name": "Pet pee pads (100-count)",
+    "category": "PET",
+    "subcategory": "supplies",
+    "base_price": 24.99
+  },
+  {
+    "canonical_sku": "PET-0040",
+    "name": "Dog poop bags (300-count)",
+    "category": "PET",
+    "subcategory": "supplies",
+    "base_price": 9.99
+  },
+  {
+    "canonical_sku": "PET-0041",
+    "name": "Pet shampoo (16 oz)",
+    "category": "PET",
+    "subcategory": "supplies",
+    "base_price": 7.99
+  },
+  {
+    "canonical_sku": "PET-0042",
+    "name": "Flea and tick collar (ea)",
+    "category": "PET",
+    "subcategory": "supplies",
+    "base_price": 19.99
+  },
+  {
+    "canonical_sku": "PET-0043",
+    "name": "Pet odor eliminator spray (32 oz)",
+    "category": "PET",
+    "subcategory": "supplies",
+    "base_price": 6.99
+  },
+  {
+    "canonical_sku": "PET-0044",
+    "name": "Pet brush (ea)",
+    "category": "PET",
+    "subcategory": "supplies",
+    "base_price": 7.99
+  }
+]

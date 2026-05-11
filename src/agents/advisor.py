@@ -96,7 +96,12 @@ class MerchantAdvisor:
         if name == "query_tenant":
             return T.query_tenant(args["query"], current_merchant=self.merchant_id)
         if name == "query_lake":
-            return T.query_lake(args["query"])
+            # Phase 5b: pass viewing_merchant_id so the runner CTE-wraps
+            # the agent's SQL into the v2.5 virtual lake views and
+            # excludes the viewing merchant's own data.
+            return T.query_lake(
+                args["query"], viewing_merchant_id=self.merchant_id
+            )
         if name == "chart_spec":
             return T.chart_spec(**args)
         raise ValueError(f"Unknown tool: {name}")
@@ -167,22 +172,65 @@ class MerchantAdvisor:
     # ---- Mock mode (used when ANTHROPIC_API_KEY is missing or for demo safety) ----
 
     def _mock_response(self, question: str) -> AgentResponse:
-        sample_sql = (
-            f"SELECT COUNT(*) AS n FROM tenant_transactions "
-            f"WHERE merchant_id = '{self.merchant_id}'"
+        """Canned end-to-end mock: one tenant query (own DAIRY revenue),
+        one lake query (peer DAIRY line counts via the v2.5 view-builder).
+        Demonstrates the merchant advisor's full tool surface."""
+        tenant_sql = (
+            "SELECT p.category, COUNT(*) AS lines, "
+            "ROUND(SUM(i.line_total), 2) AS revenue "
+            "FROM tenant_transaction_items i "
+            "JOIN tenant_transactions t ON t.txn_id = i.txn_id "
+            "JOIN tenant_products p ON p.sku = i.sku "
+            f"WHERE t.merchant_id = '{self.merchant_id}' "
+            "AND p.category = 'DAIRY' "
+            "GROUP BY p.category"
         )
-        try:
-            rows = T.query_tenant(sample_sql, current_merchant=self.merchant_id)
-        except Exception:
-            rows = {"columns": ["n"], "rows": [[0]], "row_count": 1, "truncated": False}
+        lake_sql = (
+            "SELECT peer_id, peer_segment, COUNT(*) AS lines, "
+            "ROUND(AVG(unit_price), 2) AS avg_unit_price "
+            "FROM lake_transactions "
+            "WHERE category = 'DAIRY' "
+            "GROUP BY peer_id, peer_segment "
+            "ORDER BY peer_id"
+        )
 
+        sql_log: list[dict[str, Any]] = []
+        last_table: dict[str, Any] | None = None
+        own_revenue: float | None = None
+
+        try:
+            tenant_rows = T.query_tenant(tenant_sql, current_merchant=self.merchant_id)
+            sql_log.append(
+                {"tool": "tenant", "query": tenant_sql, "rows": tenant_rows}
+            )
+            last_table = tenant_rows
+            if tenant_rows.get("rows"):
+                own_revenue = tenant_rows["rows"][0][2]
+        except Exception:  # noqa: BLE001 — mock falls back to placeholder
+            tenant_rows = {
+                "columns": ["category", "lines", "revenue"],
+                "rows": [], "row_count": 0, "truncated": False,
+            }
+
+        try:
+            lake_rows = T.query_lake(
+                lake_sql, viewing_merchant_id=self.merchant_id
+            )
+            sql_log.append({"tool": "lake", "query": lake_sql, "rows": lake_rows})
+            last_table = lake_rows
+        except Exception:  # noqa: BLE001
+            pass
+
+        rev_str = f"${own_revenue:,.2f}" if own_revenue is not None else "n/a"
         return AgentResponse(
             answer=(
                 f"[mock] {self.merchant_name} answer for: {question!r}. "
-                f"Total transactions in panel: {rows['rows'][0][0] if rows['rows'] else 0}."
+                f"Own DAIRY revenue over the window: {rev_str}. "
+                f"Peer DAIRY line counts and average unit prices from the "
+                f"lake (see SQL)."
             ),
-            sql=[{"tool": "tenant", "query": sample_sql, "rows": rows}],
+            sql=sql_log,
             chart=None,
-            last_table=rows,
+            last_table=last_table,
             turns=1,
         )

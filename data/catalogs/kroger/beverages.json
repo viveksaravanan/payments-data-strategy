@@ -1,0 +1,737 @@
+[
+  {
+    "name": "Coca-Cola (12-pack 12 oz cans)",
+    "subcategory": "soda",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Coca-Cola (2-liter)",
+    "subcategory": "soda",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Coca-Cola (20 oz bottle)",
+    "subcategory": "soda",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Diet Coke (12-pack 12 oz cans)",
+    "subcategory": "soda",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Diet Coke (2-liter)",
+    "subcategory": "soda",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Coke Zero (12-pack 12 oz cans)",
+    "subcategory": "soda",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Coke Zero (2-liter)",
+    "subcategory": "soda",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pepsi (12-pack 12 oz cans)",
+    "subcategory": "soda",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pepsi (2-liter)",
+    "subcategory": "soda",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Diet Pepsi (12-pack 12 oz cans)",
+    "subcategory": "soda",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sprite (12-pack 12 oz cans)",
+    "subcategory": "soda",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sprite (2-liter)",
+    "subcategory": "soda",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Dr Pepper (12-pack 12 oz cans)",
+    "subcategory": "soda",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Dr Pepper (2-liter)",
+    "subcategory": "soda",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Mountain Dew (12-pack 12 oz cans)",
+    "subcategory": "soda",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Mountain Dew (2-liter)",
+    "subcategory": "soda",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Fanta orange (12-pack 12 oz cans)",
+    "subcategory": "soda",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Fanta grape (12-pack 12 oz cans)",
+    "subcategory": "soda",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Root beer A&W (12-pack 12 oz cans)",
+    "subcategory": "soda",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Ginger ale Canada Dry (12-pack 12 oz cans)",
+    "subcategory": "soda",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cream soda (12-pack 12 oz cans)",
+    "subcategory": "soda",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "La Croix lime (8-pack 12 oz)",
+    "subcategory": "sparkling_water",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "La Croix grapefruit (8-pack 12 oz)",
+    "subcategory": "sparkling_water",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "La Croix orange (8-pack 12 oz)",
+    "subcategory": "sparkling_water",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "La Croix berry (8-pack 12 oz)",
+    "subcategory": "sparkling_water",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "La Croix coconut (8-pack 12 oz)",
+    "subcategory": "sparkling_water",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Bubly lime (8-pack 12 oz)",
+    "subcategory": "sparkling_water",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Bubly cherry (8-pack 12 oz)",
+    "subcategory": "sparkling_water",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Topo Chico mineral water (12-pack)",
+    "subcategory": "sparkling_water",
+    "base_price": 11.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Perrier mineral water (10-pack)",
+    "subcategory": "sparkling_water",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Spindrift raspberry lime (8-pack)",
+    "subcategory": "sparkling_water",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Polar lime seltzer (8-pack)",
+    "subcategory": "sparkling_water",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Bottled water (24-pack 16.9 oz)",
+    "subcategory": "water",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Bottled water (32-pack 16.9 oz)",
+    "subcategory": "water",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Bottled water gallon (1 gallon)",
+    "subcategory": "water",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Aquafina water (24-pack)",
+    "subcategory": "water",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Dasani water (24-pack)",
+    "subcategory": "water",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Smartwater (6-pack 23.7 oz)",
+    "subcategory": "water",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Fiji water (6-pack 16.9 oz)",
+    "subcategory": "water",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Distilled water gallon (1 gallon)",
+    "subcategory": "water",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Spring water gallon (1 gallon)",
+    "subcategory": "water",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sparkling water lemon (8-pack 12 oz)",
+    "subcategory": "water",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Flavored water mixed berry (6-pack)",
+    "subcategory": "water",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Orange juice (89 oz)",
+    "subcategory": "juice",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Orange juice no pulp (89 oz)",
+    "subcategory": "juice",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Orange juice with calcium (89 oz)",
+    "subcategory": "juice",
+    "base_price": 6.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Apple juice (64 oz)",
+    "subcategory": "juice",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cranberry juice (64 oz)",
+    "subcategory": "juice",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Grape juice (64 oz)",
+    "subcategory": "juice",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pineapple juice (46 oz)",
+    "subcategory": "juice",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Lemonade (64 oz)",
+    "subcategory": "juice",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pink lemonade (64 oz)",
+    "subcategory": "juice",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Tropicana orange juice (52 oz)",
+    "subcategory": "juice",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Simply orange juice (52 oz)",
+    "subcategory": "juice",
+    "base_price": 5.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Welch's grape juice (64 oz)",
+    "subcategory": "juice",
+    "base_price": 5.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Capri Sun fruit punch (10-pack)",
+    "subcategory": "juice",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Capri Sun mixed berry (10-pack)",
+    "subcategory": "juice",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Juicy Juice apple (64 oz)",
+    "subcategory": "juice",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "V8 vegetable juice (46 oz)",
+    "subcategory": "juice",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Tomato juice (46 oz)",
+    "subcategory": "juice",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Coconut water (33.8 oz)",
+    "subcategory": "juice",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Apple cider (64 oz)",
+    "subcategory": "juice",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Organic orange juice (59 oz)",
+    "subcategory": "juice",
+    "base_price": 7.99,
+    "is_organic": true,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Folgers ground coffee classic roast (30.5 oz)",
+    "subcategory": "coffee",
+    "base_price": 11.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Maxwell House ground coffee (30.5 oz)",
+    "subcategory": "coffee",
+    "base_price": 10.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Starbucks Pike Place ground (12 oz)",
+    "subcategory": "coffee",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Dunkin' ground coffee original (12 oz)",
+    "subcategory": "coffee",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cafe Bustelo espresso ground (10 oz)",
+    "subcategory": "coffee",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Folgers instant coffee (8 oz)",
+    "subcategory": "coffee",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "K-Cup pods Folgers classic (12-count)",
+    "subcategory": "coffee",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "K-Cup pods Starbucks Pike Place (10-count)",
+    "subcategory": "coffee",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "K-Cup pods Dunkin' original (10-count)",
+    "subcategory": "coffee",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "K-Cup pods Green Mountain breakfast blend (12-count)",
+    "subcategory": "coffee",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cold brew concentrate (32 oz)",
+    "subcategory": "coffee",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Iced coffee bottle (59 oz)",
+    "subcategory": "coffee",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frappuccino bottle (9.5 oz)",
+    "subcategory": "coffee",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Lipton black tea bags (100-count)",
+    "subcategory": "tea",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Lipton green tea bags (40-count)",
+    "subcategory": "tea",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Bigelow English breakfast (20-count)",
+    "subcategory": "tea",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Bigelow chamomile (20-count)",
+    "subcategory": "tea",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Celestial Seasonings sleepytime (20-count)",
+    "subcategory": "tea",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Tazo passion herbal tea (20-count)",
+    "subcategory": "tea",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Iced tea bottled lemon (64 oz)",
+    "subcategory": "tea",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Iced tea unsweetened bottled (64 oz)",
+    "subcategory": "tea",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pure Leaf iced tea sweet (18.5 oz)",
+    "subcategory": "tea",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Snapple lemon tea (16 oz)",
+    "subcategory": "tea",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Arizona green tea (23 oz can)",
+    "subcategory": "tea",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Gatorade fruit punch (32 oz)",
+    "subcategory": "sports_drinks",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Gatorade lemon-lime (32 oz)",
+    "subcategory": "sports_drinks",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Gatorade orange (32 oz)",
+    "subcategory": "sports_drinks",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Gatorade glacier freeze (32 oz)",
+    "subcategory": "sports_drinks",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Gatorade Zero variety pack (12-count)",
+    "subcategory": "sports_drinks",
+    "base_price": 11.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Powerade mountain berry (32 oz)",
+    "subcategory": "sports_drinks",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Powerade fruit punch (32 oz)",
+    "subcategory": "sports_drinks",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "BodyArmor strawberry banana (16 oz)",
+    "subcategory": "sports_drinks",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Vitaminwater XXX (20 oz)",
+    "subcategory": "sports_drinks",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pedialyte unflavored (33.8 oz)",
+    "subcategory": "sports_drinks",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Liquid IV hydration multiplier (10-count)",
+    "subcategory": "sports_drinks",
+    "base_price": 19.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Red Bull original (8.4 oz)",
+    "subcategory": "energy",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Red Bull sugar-free (8.4 oz)",
+    "subcategory": "energy",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Monster Energy original (16 oz)",
+    "subcategory": "energy",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Monster Energy zero ultra (16 oz)",
+    "subcategory": "energy",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Rockstar Energy original (16 oz)",
+    "subcategory": "energy",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Celsius arctic vibe (12 oz)",
+    "subcategory": "energy",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Bang energy drink rainbow unicorn (16 oz)",
+    "subcategory": "energy",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  }
+]

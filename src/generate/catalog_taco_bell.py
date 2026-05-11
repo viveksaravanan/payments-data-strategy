@@ -55,7 +55,6 @@ def build_catalog() -> pd.DataFrame:
                 "name": name,
                 "category": ttype,
                 "subcategory": ttype.title(),
-                "is_organic": 0,
                 "base_price": base_price,
                 "type": ttype,
             })

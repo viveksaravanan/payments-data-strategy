@@ -2,25 +2,36 @@
 
 The full spec for synthetic data generation. This file is the source of truth for `src/generate/parameters.py` and the generation modules. If you change a parameter here, change it in code; if you change it in code, change it here.
 
+> **v2.5 transition note** — `V2_5_DATA_DESIGN.md` is the locked target for the data layer. The refactor lands in phases tracked by `docs/V2_5_RECONCILIATION.md`. This document is being updated incrementally:
+> - **Phase 1 (this update):** §1 (what gets generated), §3 (per-merchant configs at the panel-shape level), §11 (cross-merchant join key) reflect the v2.5 panel.
+> - **Phase 2:** §8 (catalog architecture).
+> - **Phase 3:** §3 transaction-field expansion + new `tenant_promotions` section + tax model.
+> - **Phase 4:** final field-level pass (Layer 4 generator flow).
+>
+> Sections not yet refreshed still describe the v2 implementation. When `V2_5_DATA_DESIGN.md` and this file disagree, the design doc wins.
+
 ---
 
 ## 1. What gets generated
 
-A 90-day shopping panel for 5,000 fictional customers across three merchants:
+A 90-day shopping panel for 10,000 fictional customers across five merchants in a single fictional metro modeled on Charlotte, NC:
 
-- **Kroger** — grocery, MCC 5411, ~25 stores
-- **Taco Bell** — QSR, MCC 5814, ~40 stores
-- **TJ Maxx** — off-price retail, MCC 5651, ~15 stores
+- **Kroger** — grocery, MCC 5411, 30 stores
+- **Acme** — grocery, MCC 5411, 25 stores
+- **Winn-Dixie** — grocery, MCC 5411, 20 stores
+- **Taco Bell** — QSR, MCC 5814, 40 stores
+- **TJ Maxx** — off-price retail, MCC 5651, 8 stores
 
 Outputs (CSVs in `data/raw/`):
-- `customers.csv` — shared 5,000-row customer panel (with PII)
-- `merchants.csv` — three-row dimension
-- `stores.csv` — 80 stores across all three merchants
-- `products.csv` — combined catalog (~1,760 SKUs across merchants)
-- `transactions.csv` — ~110,000 rows
-- `transaction_items.csv` — ~960,000 rows
+- `customers.csv` — shared 10,000-row customer panel. Contains `customer_id` (16-char SHA-256 hash, generated directly by the customer generator), `home_zip5` (Charlotte panel ZIP), `behavioral_segment`, `grocer_affinity_type`, `primary_grocer`, `secondary_grocer`, `primary_card_type`, `has_mobile_wallet`, `signup_date`. **No PII** — no names, emails, raw PANs, or demographic bands.
+- `merchants.csv` — five-row dimension.
+- `stores.csv` — 123 stores across all five merchants, all in the Charlotte metro. Each store has `neighborhood`, `metro_region` (`urban_core` / `inner_suburbs` / `outer_suburbs`), and `latitude`/`longitude` (ZIP centroid + ±0.02° jitter).
+- `products.csv` — combined catalog. KRG/ACM/WDX use a shared base catalog with per-grocer overlays and two-tier pricing.
+- `promotions.csv` — `tenant_promotions` rows, including the three pinned pasta-promo campaigns that drive the §9 anomaly.
+- `transactions.csv` — references `customer_id` directly (no PAN). Volume scales with the 10K panel × 5 merchants — see test bounds in `tests/test_generation.py`.
+- `transaction_items.csv` — line items.
 
-The generation runs in under 30 seconds at default settings. CSVs are intermediate workspace files; the anonymization pipeline reads them and produces tenant + lake CSVs that get loaded into SQLite.
+Generation runs end-to-end in ~80 seconds at default settings. The CSVs in `data/raw/` are loaded directly into SQLite by `src/db/seed.py`; there is no separate anonymization stage. The lake is virtual — computed at query time from the tenant tables by `src/lake/views.py`.
 
 ---
 
@@ -30,133 +41,83 @@ The generation runs in under 30 seconds at default settings. CSVs are intermedia
 # src/generate/parameters.py
 
 # Panel size and time window
-N_CUSTOMERS                 = 5_000
-DAYS                        = 90              # rolling window ending today
-
-# Promotional events (specific dates that lift transaction count)
-PROMO_DAYS                  = ["2026-04-15", "2026-04-22", "2026-05-01"]
-
-# Anomaly injection (Kroger only — see §9)
-ANOMALY_INJECT              = True
+N_CUSTOMERS = 10_000
+START_DATE  = date(2026, 3, 1)
+END_DATE    = date(2026, 5, 29)
+DAYS        = 90
 
 # Reproducibility
-RANDOM_SEED                 = 42
+RANDOM_SEED = 42
 
-# Anonymization
-HASH_SECRET                 = "demo-only-not-a-real-secret"   # rotate in prod
-K_ANONYMITY_THRESHOLD       = 5               # strategy doc spec is k≥50; demo uses 5
-ZIP_TRUNCATION              = 3
-TIME_BUCKET_HOURS           = 1
+# Hash secret — consumed by src/generate/customers.py to derive
+# customer_id from a never-persisted synthetic PAN.
+HASH_SECRET = "demo-only-not-a-real-secret"
 ```
+
+Layer 4 generation tables (trip frequency, active-weeks variance, basket archetypes, per-category quantity distributions, payment generation, etc.) live in `parameters.py` as well. See `V2_5_DATA_DESIGN.md` Steps 4a–4l for the spec — the design doc is the source of truth for generator behavior; this file describes outputs.
 
 ---
 
 ## 3. Per-merchant configs
 
-Each merchant config holds the segment-specific cadence, basket shape, payment mix, and catalog size.
+Phase 4 simplified the per-merchant config to the v2.5 essentials. The Layer 4 generator now owns trip frequency, day-of-week shaping, basket sizing, and category weighting — those are no longer per-merchant config knobs.
 
 ```python
 MERCHANT_CONFIGS = {
-    "kroger": {
-        "merchant_id":           "KRG",
-        "name":                  "Kroger",
-        "segment":                "grocery",
-        "mcc":                    "5411",
-        "n_stores":               25,
-        "participation_rate":     0.90,         # of N_CUSTOMERS who shop here
-        "txn_per_week":           1.2,          # mean; bimodal underneath
-        "avg_basket_size":        12,           # items per transaction
-        "avg_ticket":             65.00,        # USD
-        "promo_lift":             1.6,          # multiplier on promo days
-        "payment_mix":            {"credit": 0.55, "debit": 0.30, "ebt": 0.10, "cash": 0.05},
-        "wallet_share":           0.20,         # of card txns with mobile wallet
-        "n_skus":                 1500,
-        "organic_share":          0.18,
-        "peak_days":              [5, 6],        # Sat, Sun (Mon=0)
-        "peak_hours":             [10, 11, 17, 18, 19],
-    },
-    "taco_bell": {
-        "merchant_id":           "TBL",
-        "name":                   "Taco Bell",
-        "segment":                "qsr",
-        "mcc":                    "5814",
-        "n_stores":               40,
-        "participation_rate":     0.60,
-        "txn_per_week":           0.8,
-        "avg_basket_size":        3,
-        "avg_ticket":             9.00,
-        "promo_lift":             1.3,
-        "payment_mix":            {"credit": 0.50, "debit": 0.40, "cash": 0.10},
-        "wallet_share":           0.30,         # QSR over-indexes on contactless
-        "n_skus":                 60,
-        "organic_share":          0.0,
-        "peak_days":              [4, 5],        # Fri, Sat
-        "peak_hours":             [12, 13, 19, 20, 21],
-    },
-    "tjmaxx": {
-        "merchant_id":           "TJX",
-        "name":                   "TJ Maxx",
-        "segment":                "retail_offprice",
-        "mcc":                    "5651",
-        "n_stores":               15,
-        "participation_rate":     0.40,
-        "txn_per_week":           0.35,         # ~1 visit every 2-3 weeks
-        "avg_basket_size":        4,
-        "avg_ticket":             55.00,
-        "promo_lift":             1.2,
-        "payment_mix":            {"credit": 0.70, "debit": 0.25, "cash": 0.05},
-        "wallet_share":           0.15,
-        "n_skus":                 200,
-        "organic_share":          0.0,
-        "peak_days":              [5, 6],        # Sat, Sun
-        "peak_hours":              [11, 12, 13, 14, 15],
-    },
+    "kroger":     {"merchant_id": "KRG", "name": "Kroger",     "segment": "grocery",          "mcc": "5411", "n_stores": 30, "payment_mix": {"credit": 0.65, "debit": 0.35}},
+    "acme":       {"merchant_id": "ACM", "name": "Acme",       "segment": "grocery",          "mcc": "5411", "n_stores": 25, "payment_mix": {"credit": 0.65, "debit": 0.35}},
+    "winn_dixie": {"merchant_id": "WDX", "name": "Winn-Dixie", "segment": "grocery",          "mcc": "5411", "n_stores": 20, "payment_mix": {"credit": 0.65, "debit": 0.35}},
+    "taco_bell":  {"merchant_id": "TBL", "name": "Taco Bell",  "segment": "qsr",              "mcc": "5814", "n_stores": 40, "payment_mix": {"credit": 0.55, "debit": 0.45}},
+    "tjmaxx":     {"merchant_id": "TJX", "name": "TJ Maxx",    "segment": "off_price_retail", "mcc": "5651", "n_stores": 8,  "payment_mix": {"credit": 0.74, "debit": 0.26}},
 }
 ```
 
-**Hard rules baked into these configs:**
-
-- **EBT only at Kroger.** SNAP rules generally exclude QSR and apparel retail. Taco Bell and TJ Maxx have no EBT key in `payment_mix`. Generation must respect this — the test suite checks for it.
-- **Wallet share varies by segment.** QSR (30%) > grocery (20%) > retail (15%), reflecting real industry contactless adoption.
-- **Peak hours differ.** Grocery peaks evenings + weekend mornings; QSR peaks lunch + dinner; retail peaks weekend afternoons.
-- **Catalog size scales with segment.** Real Kroger has ~40k SKUs; we use 1,500. Real Taco Bell has ~60 menu items; we use 60. TJ Maxx products are one-off; we use 200 generic categorical SKUs.
+`payment_mix` is **credit + debit only** (Layer 1: "captured rails: credit and debit only" — no EBT, no cash, no declines).
 
 ---
 
 ## 4. Volume math
 
-At default settings, expected output:
+Phase 4 Layer 4 generator targets per `V2_5_DATA_DESIGN.md` Step 6 sanity checks:
 
-| Merchant | Customers active | Txn/week | Total txns (90d) | Items/txn | Total line items |
-|---|---|---|---|---|---|
-| Kroger | 4,500 (90% × 5k) | 1.2 | ~69,400 | 12 | ~833,000 |
-| Taco Bell | 3,000 (60% × 5k) | 0.8 | ~30,900 | 3 | ~93,000 |
-| TJ Maxx | 2,000 (40% × 5k) | 0.35 | ~9,000 | 4 | ~36,000 |
-| **Totals** | **5,000 unique** | — | **~109,300** | — | **~962,000** |
+| Quantity | Target | Notes |
+|---|---|---|
+| Transactions | 180,000–250,000 | Drives 90-day volume |
+| Line items | 2.0M–3.0M | Avg qty per line ~1.4–1.6 |
+| Customers in panel | 10,000 | Exact |
+| Stores in panel | 123 | Exact (KRG 30 + ACM 25 + WDX 20 + TBL 40 + TJX 8) |
+| Distinct promotions | ~73 | KRG 25 / ACM 20 / WDX 18 / TBL 6 / TJX 4 |
+| SKUs in catalog | ~3,240 | KRG 1,112 + ACM 1,000 + WDX 877 + TBL 60 + TJX 200 |
 
-Customer overlap (controlled by participation rates):
-- All three merchants: ~1,080 customers (90% × 60% × 40% × 5,000)
-- Exactly two merchants: ~1,860 customers
-- Exactly one merchant: ~1,860 customers
-- Zero merchants: ~200 customers (in the panel but never transact in the window — realistic)
+Trip frequency is per-customer, driven by Step 4a:
 
-**Storage:** SQLite `payments.db` ≈ 200 MB. **Generation runtime target:** under 30 seconds. **DB seeding target:** under 15 seconds.
+| Segment + affinity | Grocery trips per 90 days |
+|---|---|
+| Filler + Loyalist | 18–24 |
+| Filler + Splitter | 20–28 |
+| Filler + Three-chain | 22–30 |
+| Stocker + Loyalist | 8–14 |
+| Stocker + Splitter | 10–16 |
+| Stocker + Three-chain | 12–18 |
+| Lapsed (any) | 50% have 0 trips; 30% have 1–2 clustered; 20% have 1–2 spread out |
 
-If iteration speed becomes a concern: set `N_CUSTOMERS = 1000` and `DAYS = 30`. Volume drops ~10×. Use the full-size run for the actual demo.
+QSR: 50% of customers have 6–15 Taco Bell trips, 50% have 0–3 (independent of grocer affinity). Retail: 30% of customers have 2–6 TJ Maxx trips, 70% have 0–1. Trip counts are skewed toward the lower bound of each range (triangular with mode at lo) — this lands the panel total inside the 180k–250k target; uniform sampling overshoots ~5%.
+
+**Storage:** SQLite `payments.db` ≈ 350 MB. **Generation runtime:** ~100s end-to-end at default seed.
 
 ---
 
 ## 5. Time window and seasonality
 
-The window is **90 days ending on the run date** so the data always looks current. A run today (May 5, 2026) covers Feb 4 → May 5, 2026.
+The window is **90 days, March 1 → May 29, 2026** (Layer 2). It deliberately covers Easter (April 5) and Memorial Day (May 25).
 
 ### Captured patterns
 
-- **Day-of-week.** Saturday is biggest for grocery and retail; Friday/Saturday for QSR. Wired through `peak_days` multipliers: ~1.4× peak, ~0.7× trough.
-- **Time-of-day.** Wired through `peak_hours`. Sample timestamps from a multi-modal distribution.
-- **Pay-cycle bumps.** Apply ~1.15× transaction-count multiplier on the 1st–3rd and 15th–17th of each month (paychecks; SNAP/EBT lump). Three months captures this clearly. Used by demo questions.
-- **Promo days.** Three dates in `PROMO_DAYS`. Each merchant lifts its transaction count by its `promo_lift` multiplier on those days.
-- **Memorial Day weekend.** May 23–25, 2026, falls in the window. Visible as a long-weekend traffic shape.
+- **Day-of-week** (Layer 4 Step 4g). Grocery + retail peak Saturday/Sunday; QSR peaks Friday/Saturday.
+- **Time-of-day** (Step 4g). Grocery peaks 10am–2pm and 5–7pm; QSR peaks 12–1pm and 7–9pm; retail peaks 11am–3pm and 4–7pm.
+- **Per-customer active-weeks variance** (Step 4b). Each customer is active in 9–12 of the 13 weeks; trips are bursty across active weeks.
+- **Pay-cycle bumps** (Step 4g). ~1.15× multiplier on the 1st–3rd and 15th–17th of each month, layered on top of active-weeks variance.
+- **Promotional discounts** driven by the `tenant_promotions` table: 73 distinct campaigns across the panel, each covering multiple SKUs over a date range.
 
 ### NOT captured (document honestly in `ARCHITECTURE.md`)
 
@@ -170,35 +131,59 @@ The honest framing: the demo simulates **intra-week and intra-month rhythms** pl
 
 ## 6. Customer behavior model
 
-A single customer's intrinsic behavior is set once (in `customers.py`) and applied across all merchants they visit.
+A single customer's intrinsic behavior is set once (in `customers.py`) and applied across every merchant they visit.
 
 ### Behavioral segments
 
 | Segment | Share | Behavior |
 |---|---|---|
-| Filler | ~70% | Small frequent baskets at grocery; lunch/quick QSR visits. Weekday-evening skew. Lower ticket. |
-| Stocker | ~30% | Large biweekly grocery baskets; bigger but less frequent retail and QSR. Weekend-morning skew. Higher ticket. |
-| Lapser | ~5% (overlapping) | Transacts only 1–2 times across 90 days. Realistic long tail; useful for retention questions. |
+| Filler | ~70% | Smaller, more frequent baskets. More fill-in archetypes. Lower per-trip ticket. |
+| Stocker | ~30% | Larger, less frequent baskets. More stockup archetypes. Higher per-trip ticket. |
 
-### Within-merchant basket sizing (bimodal mixture)
+The lapsed-light cohort lives in `grocer_affinity_type = 'lapsed_light'` (not a separate behavioral segment) — those customers have very low overall trip counts per Step 4a.
 
-```python
-if rng.random() < 0.7:
-    basket_size = max(1, int(rng.normal(avg_basket * 0.6, avg_basket * 0.2)))   # filler-style basket
-else:
-    basket_size = max(2, int(rng.normal(avg_basket * 2.5, avg_basket * 0.5)))   # stocker-style basket
-```
+### Basket sizing (Layer 4 Step 4j)
 
-Customer-level traits set in `customers.py`:
-- `customer_pan` (16-digit synthetic, stable across all merchants — **the critical invariant**)
-- `customer_name`, `customer_email` (Faker; stripped during anonymization)
-- `age_band`: one of `18-24`, `25-34`, `35-44`, `45-54`, `55-64`, `65+`
-- `income_band`: one of `<35k`, `35-75k`, `75-125k`, `125-200k`, `200k+`
-- `home_zip5`: full 5-digit ZIP
-- `signup_date`: a date in the last 5 years
+Basket size is sampled per (segment, behavioral_segment, archetype). Triangular distribution; values from `V2_5_DATA_DESIGN.md` Step 4j:
+
+| Merchant + segment | Avg lines per basket | Range |
+|---|---|---|
+| Grocery + filler + fill-in | ~6 | 3–10 |
+| Grocery + filler + stockup | ~14 | 8–18 |
+| Grocery + filler + themed | ~10 | 5–14 |
+| Grocery + stocker + fill-in | ~10 | 5–14 |
+| Grocery + stocker + stockup | ~28 | 18–40 |
+| Grocery + stocker + themed | ~18 | 10–25 |
+| Taco Bell | ~3 | 2–5 |
+| TJ Maxx | ~5 | 1–12 |
+
+### Basket archetypes (grocery only — Layer 4 Step 4i)
+
+For each grocery transaction the generator samples one of three archetypes. Each archetype has a different category-share weighting.
+
+| Archetype | Share | Bias |
+|---|---|---|
+| Stockup | 40% | Pantry, household, dairy, meat — heavier replenishment baskets |
+| Fill-in | 45% | Perishables (produce, dairy, bakery) — smaller baskets |
+| Themed | 15% | BBQ / party / special-meal mix (snacks, beverages, meat) |
+
+QSR and retail baskets are mostly homogeneous (no archetypes).
+
+### Per-line quantity (Layer 4 Step 4k)
+
+Quantity per line is sampled from a per-category distribution from the design's Step 4k table. E.g. `DAIRY` is 65% qty=1, 25% qty=2, 8% qty=3, 2% qty=4. Average qty across all lines lands at ~1.4–1.6.
+
+### Customer-level traits set in `customers.py`
+
+- `customer_id`: 16-char SHA-256 hash (stable across all merchants — **the critical invariant**)
+- `home_zip5`: full 5-digit Charlotte panel ZIP
 - `behavioral_segment`: `filler` or `stocker`
-- `primary_card_type`: `credit`, `debit`, `ebt`, or `mixed`
+- `grocer_affinity_type`: `loyalist` / `splitter` / `three_chain` / `lapsed_light` (55 / 30 / 12 / 3)
+- `primary_grocer`: `KRG` / `ACM` / `WDX` (proportional to grocer store count)
+- `secondary_grocer`: nullable; only set for splitters and three-chain shoppers
+- `primary_card_type`: `credit` / `debit` / `mixed` (no EBT in v2.5)
 - `has_mobile_wallet`: 0/1
+- `signup_date`: a date in the last 5 years
 
 ---
 
@@ -233,28 +218,61 @@ Without these, "what's bought with X?" returns noise. Wire deliberate co-purchas
 
 ---
 
-## 8. Example SKUs
+## 8. Catalog architecture
 
-### Kroger (~1,500 SKUs)
+### Base + per-grocer overlay (Phase 2 onward)
 
-SKU format: `KRG-{CATEGORY3}-{NNNN}` (e.g. `KRG-DAIRY-0042`).
+Kroger, Acme, and Winn-Dixie share a **canonical base catalog** of ~1,112 SKUs and apply a per-grocer **overlay** specifying (a) which canonical SKUs the grocer carries and (b) per-tier price multipliers. This produces three sets of `tenant_products` rows whose `name`, `category`, and `subcategory` are identical for shared SKUs but whose `base_price` differs by tier.
 
-| Category | Approx count | Examples |
+Files:
+
+- `data/catalogs/base_grocery_catalog.json` — array of canonical SKU records (`canonical_sku`, `name`, `category`, `subcategory`, `base_price`).
+- `data/catalogs/overlays/{kroger,acme,winn_dixie}.json` — per-grocer `merchant_id`, `keep_fraction`, `tight_multiplier`, `loose_multiplier`, `tight_categories`, `loose_categories`, `included_canonical_skus`.
+- `scripts/build_v2_5_catalogs.py` — one-off generator that produces the above four files from the existing per-category JSONs in `data/catalogs/kroger/`. Re-run only when the canonical universe or per-grocer SKU shares change deliberately.
+
+The runtime catalog builder lives at `src/generate/catalog_grocery.py`. `catalog_acme.py` and `catalog_winn_dixie.py` are thin shims over it.
+
+### Two-tier pricing
+
+Per category, prices are scaled by a tier multiplier × per-SKU ±2% noise (applied at catalog-build time, not per-transaction).
+
+| Tier | Categories | Kroger | Acme | Winn-Dixie |
+|---|---|---|---|---|
+| **Tight** (staples + center-store) | DAIRY, BAKERY, PRODUCE, MEAT, PANTRY, SNACKS, BEVERAGES, FROZEN | 1.00× | 1.03× | 0.97× |
+| **Loose** (non-food) | HOUSEHOLD, PERSONAL, BABY, PET | 1.00× | 1.07× | 0.93× |
+
+So an Acme staple ends up at `kroger_canonical_price × 1.03 × (1 ± 2%)`; an Acme non-food at `× 1.07 × (1 ± 2%)`. Winn-Dixie inverts. The ±2% noise is deterministic per (merchant, canonical_sku) — the catalog is reproducible across runs.
+
+### Per-grocer SKU counts
+
+Grocers carry overlapping but not identical subsets of the canonical universe. The smaller a grocer's overlay, the more long-tail SKUs are missing.
+
+| Grocer | SKU count | `keep_fraction` |
 |---|---|---|
-| Produce | 120 | Bananas (lb), Honeycrisp apples (3 lb bag), Romaine hearts (3-pack), Strawberries (1 lb), Avocados (4-pack) |
-| Dairy | 140 | Whole milk (gallon), 2% milk (gallon), Greek yogurt (32 oz), Sharp cheddar (8 oz block), Eggs (dozen large), Half & half (quart) |
-| Bakery | 80 | Sourdough boule, Hamburger buns (8 ct), Bagels (6 ct), Croissants (4 ct), Tortillas flour (10 ct) |
-| Meat & Seafood | 150 | Chicken breast boneless (lb), 80/20 ground beef (lb), Atlantic salmon (lb), Bacon (12 oz), Pork chops (lb) |
-| Frozen | 140 | Frozen pizza pepperoni, Frozen broccoli (12 oz), Vanilla ice cream (pint), Frozen waffles (10 ct), Frozen french fries (32 oz) |
-| Pantry | 220 | Spaghetti (1 lb box), Marinara sauce (24 oz), Peanut butter (16 oz), Olive oil (17 oz), Long-grain rice (5 lb), Black beans (15 oz can), Flour (5 lb), Sugar (4 lb) |
-| Snacks | 140 | Potato chips classic (8 oz), Chocolate sandwich cookies, Granola bars (12 ct), Roasted almonds (16 oz), Pretzels (16 oz) |
-| Beverages | 160 | Cola (12-pk cans), Sparkling water lime (12-pk), Ground coffee (30 oz), Orange juice (89 oz), Bottled water (24-pk) |
-| Household | 120 | Paper towels (6 pk), Toilet paper (12 pk), Laundry detergent (50 oz), Dish soap (28 oz), Trash bags (13 gal, 80 ct) |
-| Personal Care | 100 | Toothpaste (6 oz), Body wash (16 oz), Shampoo (20 oz), Razor blade refills (8 ct), Deodorant |
-| Baby | 80 | Diapers size 3 (144 ct), Infant formula (23 oz), Baby wipes (720 ct), Baby food pouches (4 oz), Diaper rash cream |
-| Pet | 50 | Dry dog food (30 lb), Cat litter (35 lb), Wet cat food (5.5 oz can), Dog treats, Cat treats |
+| Kroger | 1,112 | 1.00 |
+| Acme | 1,000 | 0.90 |
+| Winn-Dixie | 877 | 0.79 |
 
-Base prices range $0.69 (single banana) to $89.99 (30-lb dog food). Most cluster $2–$15. Apply ±10% noise to `unit_price` per transaction; promotional days lower prices ~15% on a random subset of SKUs.
+SKU IDs are merchant-prefixed: `<MERCHANT_ID>-<CATEGORY>-<NNNN>`. The canonical number suffix (`PRODUCE-0042` → `KRG-PRODUCE-0042`, `ACM-PRODUCE-0042`, `WDX-PRODUCE-0042`) is preserved across grocers — useful when scanning data.
+
+### Example canonical SKUs
+
+| Category | Approx count | Examples (canonical names) |
+|---|---|---|
+| PRODUCE | 93 | Bananas (lb), Honeycrisp apples (3 lb bag), Romaine hearts (3-pack), Strawberries (1 lb), Avocados (4-pack) |
+| DAIRY | 89 | Whole milk (gallon), 2% milk (gallon), Greek yogurt (32 oz), Sharp cheddar (8 oz block), Eggs (dozen large), Half and half (quart) |
+| BAKERY | 66 | Sourdough boule, Hamburger buns (8 ct), Bagels (6 ct), Croissants (4 ct), Tortilla wraps |
+| MEAT | 98 | Chicken breast boneless (lb), 80/20 ground beef, Atlantic salmon (lb), Bacon (12 oz), Pork chops (lb) |
+| FROZEN | 99 | Frozen pizza pepperoni, Frozen broccoli (12 oz), Vanilla ice cream (pint), Frozen waffles (10 ct) |
+| PANTRY | 202 | Spaghetti (1 lb box), Marinara sauce traditional, Peanut butter (16 oz), Olive oil (17 oz), Black beans (15 oz can) |
+| SNACKS | 99 | Potato chips classic (8 oz), Chocolate sandwich cookies, Granola bars (12 ct), Roasted almonds (16 oz) |
+| BEVERAGES | 105 | Cola (12-pk cans), Sparkling water lime (12-pk), Folgers ground coffee, Orange juice (89 oz) |
+| HOUSEHOLD | 79 | Paper towels (6 pk), Toilet paper (12 pk), Laundry detergent (50 oz), Trash bags (13 gal, 80 ct) |
+| PERSONAL | 78 | Toothpaste (6 oz), Body wash (16 oz), Shampoo (20 oz), Razor blade refills (8 ct), Deodorant |
+| BABY | 60 | Diapers size 3 Pampers, Infant formula Similac Advance, Baby wipes (720 ct), Baby food pouches |
+| PET | 44 | Dry dog food (30 lb), Cat litter (35 lb), Wet cat food (5.5 oz can), Dog treats |
+
+Base prices range from < $1 (single banana) to ~$90 (30-lb dog food). Most cluster $2–$15.
 
 ### Taco Bell (60 SKUs)
 
@@ -291,36 +309,161 @@ Prices $4.99 (small accessory) to $199.99 (designer handbag). Most $15–$65.
 
 ---
 
+## 8.5 Promotions (Phase 3)
+
+`tenant_promotions` is the per-merchant campaign table used during data generation. Each campaign covers multiple SKUs → one row per (`promo_id`, `sku`). When the basket sampler builds a line for a SKU on a date covered by an active promo at that merchant, the line gets the promo's `discount_pct` and its `promo_id` is recorded on `tenant_transaction_items.promo_id`.
+
+### Schema
+
+| Column | Type | Notes |
+|---|---|---|
+| `promo_id` | TEXT | Format: `<merchant>-PROMO-<NNNN>` (campaign id; **not** unique alone) |
+| `merchant_id` | TEXT FK | References `merchants(merchant_id)` |
+| `sku` | TEXT FK | References `tenant_products(sku)` — one row per affected SKU |
+| `start_date` | DATE | First day promo is active (inclusive) |
+| `end_date` | DATE | Last day promo is active (inclusive) |
+| `discount_pct` | REAL | `0.15` = 15% off; applied as `unit_price × qty × discount_pct` |
+| `promo_name` | TEXT | Human-readable; used as campaign grouping key |
+| `promo_type` | TEXT | `weekly_ad` / `holiday` / `lto` / `clearance` |
+
+Primary key: `(promo_id, sku)`.
+
+### Volumes per merchant
+
+| Merchant | Promos / 90 days | Source |
+|---|---|---|
+| Kroger | ~25 | `V2_5_DATA_DESIGN.md` Layer 3f |
+| Acme | ~20 | |
+| Winn-Dixie | ~18 | |
+| Taco Bell | ~6 | |
+| TJ Maxx | ~4 | |
+
+Total ~73 distinct campaigns across the panel. Of those, three slots (one per grocer) are reserved for the pinned pasta-promo trio that drives the Phase 6 anomaly — see §9 for details.
+
+### Per-segment promo-type mix
+
+| Segment | weekly_ad | holiday | lto | clearance |
+|---|---|---|---|---|
+| Grocery | 55% | 15% | 20% | 10% |
+| QSR | 15% | 20% | 65% | — |
+| Off-price retail | — | 15% | 30% | 55% |
+
+Implementation: `src/generate/promotions.py`.
+
+### Lake exposure
+
+`tenant_promotions` is **tenant-only**. The lake never exposes campaign metadata — Verifone observes applied discounts at the line item level, not merchant promo schedules. Cross-merchant promotional analytics in the lake happen via discount-pattern observation on `lake_transactions`. (Phase 5 view-builders enforce this; Phase 3 lake CSVs already exclude promo metadata.)
+
+---
+
+## 8.6 Tax model (Phase 3)
+
+Per-line tax is computed at generation time as `tax = round(line_total × rate, 2)`, with `rate` looked up by category in `src/generate/tax.py`. Five-tier model per `V2_5_DATA_DESIGN.md` Layer 3e:
+
+| Tier | Categories | Rate |
+|---|---|---|
+| Tax-exempt grocery | DAIRY, BAKERY, PRODUCE, MEAT, FROZEN, PANTRY | **0%** |
+| Discretionary grocery | BEVERAGES, SNACKS | **4%** |
+| Non-food grocery | HOUSEHOLD, PERSONAL, BABY, PET | **7%** |
+| QSR food (Taco Bell vocabulary) | TACO, BURR, SPEC, COMBO, SIDE, DRINK, BFAST | **7%** |
+| Retail (TJ Maxx vocabulary) | WOM, MEN, KID, SHO, ACC, HOM, BTY, JEW | **7%** |
+
+A test in `tests/test_phase3_promos_and_tax.py` asserts that the tax-exempt grocery categories sum to $0 across the panel and that every line's tax matches `round(line_total × rate, 2)` exactly.
+
+---
+
+## 8.7 New transaction-level fields (Phase 3)
+
+`tenant_transactions` gained four columns; `tenant_transaction_items` gained two.
+
+| Table | Column | Type | Notes |
+|---|---|---|---|
+| `tenant_transactions` | `terminal_id` | TEXT | `<store_id>-T<NN>`. Phase 3 uses 4 terminals per store (`T01`..`T04`). No FK; design defers `tenant_terminals` to v3+. |
+| `tenant_transactions` | `connectivity_type` | TEXT | Sampled per `V2_5_DATA_DESIGN.md` Step 4l: 65% wifi, 25% cellular_4g, 8% cellular_5g, 2% ethernet (uniform across merchants for v2.5). |
+| `tenant_transactions` | `subtotal` | REAL | Sum of `line_total` across the transaction's line items. Atomic — `subtotal == sum(line_total)` per txn is asserted in tests. |
+| `tenant_transactions` | `tax_total` | REAL | Sum of `tax` across the transaction's line items. |
+| `tenant_transactions` | `txn_total` | REAL | Now defined as `subtotal + tax_total` (was previously sum of line totals; tax was implicit). |
+| `tenant_transaction_items` | `tax` | REAL | Per-line tax per the model above. |
+| `tenant_transaction_items` | `promo_id` | TEXT (nullable) | If a promo at this merchant covered this SKU on this date, the campaign id; otherwise NULL. |
+
+The rollup invariant `txn_total == round(subtotal + tax_total, 2)` is asserted per-transaction in `tests/test_phase3_promos_and_tax.py`.
+
+---
+
 ## 9. Planted anomalies
 
-Three deliberate signals the AI agent finds when asked. **All three are at Kroger** (highest data volume, easiest to find).
+Three deliberate signals the AI agent finds when asked. The locked specifications are in `V2_5_DATA_DESIGN.md` "Planted Anomalies"; the implementation lives in `src/generate/anomalies/`. Each anomaly hooks into transaction generation so the signal is intrinsic to the data — no post-hoc injection step.
 
-| # | Anomaly | Location | Window | How agent finds it |
-|---|---|---|---|---|
-| 1 | Price spike: SKU `KRG-PRODUCE-0042` (Avocados, 4-pack) at 5× base price | Kroger, all stores | One specific day in last 7 days | "Any unusual price moves recently?" |
-| 2 | Store dropout: store `KRG-OH-0011` transaction count cut by 30% | Single Kroger store | Last 7 days | "Have any of my stores seen a drop in transaction count recently?" |
-| 3 | Cohort surge: ~50 customers start buying baby SKUs they hadn't before | Kroger panel-wide | Last 21 days | "Any emerging customer segments this month?" / "What new patterns have you seen?" |
+### A. University City decline (`anomalies/university_city_decline.py`)
 
-Anomalies are gated by `ANOMALY_INJECT = True`. Set to False for clean data (useful when iterating on the agent).
+Four-stage ramp on the three grocers' University City stores (neighborhood `"University City"`, ZIPs 28213/28223). Per-grocer effective multipliers come from the design's "magnitude" parameter (KRG full, ACM 80%, WDX 70% of the swing).
+
+| Stage | Window           | Base multiplier | KRG effective | ACM effective | WDX effective |
+|-------|------------------|----------------:|--------------:|--------------:|--------------:|
+| 1     | Apr 12 – Apr 18  | 1.10            | 1.00          | 1.00          | 1.00          |
+| 2     | Apr 19 – Apr 25  | 0.85            | 0.85          | 0.88          | 0.90          |
+| 3     | Apr 26 – May 2   | 0.55 (peak)     | 0.55          | 0.64          | 0.69          |
+| 4     | May 3  – May 29  | 0.65            | 0.65          | 0.72          | 0.76          |
+
+Implementation: `uc_trip_keep_probability(merchant_id, neighborhood, txn_date)` returns the effective multiplier; the transaction generator drops a trip with probability `1 - keep_prob` after the store is selected. The boost stage (1.10×) caps to keep-prob 1.0 — no extra trips are injected; the dominant signal is the decline.
+
+### B. Plaza Midwood Kroger avocado spike (`anomalies/plaza_midwood_avocado.py`)
+
+Four-day pattern; Kroger Plaza Midwood (28205) only. Acme and Winn-Dixie Plaza Midwood stores show normal avocado levels.
+
+| Date         | Multiplier on avocado SKU selection inside PRODUCE |
+|--------------|---------------------------------------------------:|
+| Apr 21       | 1.5×                                               |
+| Apr 22       | 5.0× (peak)                                        |
+| Apr 23       | 3.0×                                               |
+| Apr 24       | 1.5×                                               |
+
+Avocado SKUs are the three PRODUCE products whose name contains "avocado" (4-pack, organic 4-pack, single Hass). The generator weight-multiplies these SKUs inside the PRODUCE category for the affected (merchant, neighborhood, date) tuples; volume of trips is unchanged.
+
+### C. Coordinated pasta promos (`anomalies/acme_pasta_promo.py`)
+
+Three pinned `tenant_promotions` rows (one per grocer) plus per-grocer basket-level multipliers active during each window:
+
+| Merchant   | Window           | Discount | SKU target | Basket lift |
+|------------|------------------|---------:|-----------:|------------:|
+| Kroger     | Apr 15 – Apr 21  | 25%      | up to 25   | 2.2× (lift) |
+| Acme       | Apr 19 – Apr 25  | 20%      | up to 20   | 0.8× (fail) |
+| Winn-Dixie | Apr 22 – Apr 28  | 15%      | up to 12   | 1.4× (lift) |
+
+The promo provides the price discount when a pasta SKU is purchased during its window. The basket multiplier biases SKU sampling within PANTRY so pasta is chosen at `multiplier × baseline` rate. **Acme's <1.0× is the planted failure** — the discount is in place but pasta sales lag, so the demo can answer "did the promo work?" with a number.
+
+Each grocer's `build()` reserves one slot from its random promo budget for the pinned pasta promo so per-merchant promo totals stay at the design target (KRG 25 / ACM 20 / WDX 18).
+
+### Detectability
+
+`tests/test_generation.py::test_university_city_decline_per_grocer`, `::test_plaza_midwood_kroger_avocado_spike`, and `::test_pasta_promo_lift_and_suppression` assert each anomaly's planted signal is empirically observable. The same numbers are surfaced in the report payload as `anomaly_callouts` so the static report shows the "before/after" without re-running the agent.
 
 ---
 
 ## 10. Payment instrument distributions
 
-Per `MERCHANT_CONFIGS[m]["payment_mix"]`. Sampled per transaction.
+Phase 4 cuts to credit + debit only per Layer 1 ("captured rails: credit and debit only"). No EBT, no cash, no declines.
 
-| Payment type | Kroger | Taco Bell | TJ Maxx | Notes |
+Per-transaction generation per `V2_5_DATA_DESIGN.md` Step 4l:
+
+| Payment type | Grocery (KRG/ACM/WDX) | Taco Bell | TJ Maxx |
+|---|---|---|---|
+| Credit | 65% | 55% | 74% |
+| Debit | 35% | 45% | 26% |
+
+**Card network** sub-distribution (Step 4l): credit → 50% Visa / 30% MC / 12% Amex / 8% Discover. Debit → 60% Visa / 38% MC / 1% each Discover / Amex.
+
+**Entry mode** per segment (Step 4l):
+
+| Segment | Contactless | Chip | Swipe | Manual |
 |---|---|---|---|---|
-| Credit | 55% | 50% | 70% | Visa/MC/Amex/Disc subdistribution applied (Visa 60%, MC 25%, Amex 10%, Disc 5%) |
-| Debit | 30% | 40% | 25% | Visa/MC subdistribution |
-| EBT | 10% | — | — | SNAP rules: Kroger only |
-| Cash | 5% | 10% | 5% | No `card_network` or `wallet_type` |
+| QSR | 70% | 22% | 5% | 3% |
+| Grocery | 55% | 35% | 9% | 1% |
+| Off-price retail | 45% | 45% | 9% | 1% |
 
-**Mobile wallet share** (of card transactions only): Kroger 20%, Taco Bell 30%, TJ Maxx 15%. When a wallet is used, sampled uniformly across `apple`, `google`, `samsung`.
+**Mobile wallet** (Step 4l): only sampled if `entry_mode == 'contactless'` and `has_mobile_wallet == 1`. Then 70% chance the wallet is used (50% Apple / 30% Google / 20% Samsung); 30% NULL.
 
-**Entry mode** (of card transactions): contactless 65%, chip 30%, swipe 5%. Reflects modern terminal capability with legacy fallback.
-
-**EBT-specific rule:** EBT transactions exclude prepared foods. Implemented by filtering the basket sampler — when payment_type is EBT, exclude SKUs with category `bakery` (some prepared) and explicitly mark certain SKUs as EBT-ineligible. This makes the data more credible and gives the agent a real pattern to find ("EBT customers have different basket composition").
+**Connectivity type** (Step 4l): 65% wifi / 25% cellular_4g / 8% cellular_5g / 2% ethernet, uniform across merchants for v2.5.
 
 ---
 
@@ -330,15 +473,15 @@ This is the single most important property of the data, and the property most li
 
 ### What the invariant says
 
-For any single physical customer in the panel, the value of `customer_pan` is **identical** across all transactions, regardless of merchant. The same `customer_pan` produces the same `customer_id` after hashing, which is what makes cross-merchant analysis possible in the lake.
+For any single physical customer in the panel, the value of `customer_id` is **identical** across all transactions, regardless of merchant. That stable hash is what makes cross-merchant analysis possible in the lake.
 
-### How it's enforced
+### How it's enforced (Phase 1, v2.5)
 
-`customers.py` runs **once** and produces the master 5,000-row customer panel including `customer_pan`. Each merchant generator (`kroger.py`, `taco_bell.py`, `tjmaxx.py`) reads from this panel and uses the existing `customer_pan` for every transaction it generates for that customer. No merchant generator creates `customer_pan` values.
+`customers.py` runs **once** and produces the master 10,000-row customer panel. The `customer_id` is generated directly there as a 16-char SHA-256 of `HASH_SECRET + synthetic_pan`, where `synthetic_pan` is internal and never written to disk. Each merchant generator (`kroger.py`, `acme.py`, `winn_dixie.py`, `taco_bell.py`, `tjmaxx.py`) reads from the master panel and uses the existing `customer_id` for every transaction. No merchant generator creates `customer_id` values.
 
 ### How it's tested
 
-`tests/test_generation.py` includes a check that for any `customer_pan` appearing in transactions from multiple merchants, all rows for that PAN share the same value. If the test fails, the invariant has been violated and cross-merchant analytics will silently produce wrong answers.
+`tests/test_generation.py::test_cross_merchant_customer_invariant` checks that every `customer_id` in transactions exists in the master panel and that real overlap exists (≥100 customers shop at ≥2 merchants). If the test fails, the invariant has been violated and cross-merchant analytics will silently produce wrong answers.
 
 ---
 
@@ -348,4 +491,38 @@ For any single physical customer in the panel, the value of `customer_pan` is **
 
 If you genuinely need to re-randomize for some reason: change the seed, re-run, expect to update the deterministic-hash test fixture. Don't change the seed for "variety" — a stable demo is more valuable than a varied one.
 
-When generating in `base.py`, take a `numpy.random.Generator` argument seeded once at the top level. Don't call `np.random.*` directly anywhere — that uses the global state and breaks reproducibility.
+When generating in `transactions.py` or any merchant module, take a `numpy.random.Generator` argument seeded once at the top level. Don't call `np.random.*` directly anywhere — that uses the global state and breaks reproducibility.
+
+---
+
+## 13. Strategy Doc §5.2 Field Mapping
+
+Comparison of fields specified in strategy doc §5.2 ("On-Device Data Capture: The Unified Transaction Record") against what the demo actually generates.
+
+| Strategy doc §5.2 field | Demo field | Status | Notes |
+|---|---|---|---|
+| Tokenized PAN | `customer_id` | Built | Generated as a 16-char SHA-256 of a synthetic PAN that is never written to disk. No raw PAN, no name, no email at any stage. |
+| Card type | `payment_type` | Built | Credit + debit only (Layer 1 "captured rails"); no EBT, cash, or declines in v2.5. |
+| Card network | `card_network` | Built | |
+| Issuer BIN | — | Missing | Skippable for analytics demo. |
+| Authorization code | — | Missing | Not relevant. |
+| Entry mode | `entry_mode` | Built | |
+| Mobile wallet | `wallet_type` | Built | Sampled when `entry_mode='contactless'` and `has_mobile_wallet=1`. |
+| Line items with SKU | `tenant_transaction_items` | Built | |
+| Quantity per line | `qty` | Built | Per-category distributions per Step 4k. |
+| Unit price | `unit_price` | Built | |
+| Line total | `line_total` | Built | |
+| Discount per line | `discount` | Built | Populated when an active `tenant_promotions` row covers the (sku, day) pair, with 85% application probability. |
+| Promo / coupon attribution | `promo_id` (FK on items) | Built | One row per (campaign, sku) in `tenant_promotions`. |
+| Tax | `tax` (per line) + `tax_total` (per txn) | Built | Five-tier rate by category (0%/4%/7%); rollup invariant `subtotal + tax_total = txn_total`. |
+| `merchant_id` | `merchant_id` | Built | |
+| MCC | `mcc` | Built | |
+| `store_id` | `store_id` | Built | |
+| Store ZIP | `store_zip5` (tenant) / `store_zip3` (lake) | Built | |
+| `terminal_id` | `terminal_id` (`<store_id>-T<NN>`) | Built | 4–8 terminals/store. |
+| Connectivity type | `connectivity_type` | Built | wifi / cellular_4g / cellular_5g / ethernet. |
+| Transaction timestamp | `txn_ts` (tenant) / `txn_date` + `txn_hour_bucket` (lake) | Built | Lake additionally bins `txn_total` into 10 dollar buckets. |
+| Loyalty ID | — | Missing | Optional merchant-side identifier. |
+| Device telemetry (firmware, etc.) | — | Missing | Not relevant for analytics demo. |
+
+The analytics-relevant fields are all built; missing fields are either device-telemetry (defer to real-time pipeline implementation) or merchant-side loyalty.

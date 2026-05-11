@@ -1,0 +1,653 @@
+[
+  {
+    "name": "Bananas (lb)",
+    "subcategory": "fresh_fruit",
+    "base_price": 0.69,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Organic bananas (lb)",
+    "subcategory": "fresh_fruit",
+    "base_price": 0.89,
+    "is_organic": true,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Honeycrisp apples (3 lb bag)",
+    "subcategory": "fresh_fruit",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Gala apples (3 lb bag)",
+    "subcategory": "fresh_fruit",
+    "base_price": 5.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Granny Smith apples (3 lb bag)",
+    "subcategory": "fresh_fruit",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Fuji apples (3 lb bag)",
+    "subcategory": "fresh_fruit",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Organic Honeycrisp apples (3 lb bag)",
+    "subcategory": "fresh_fruit",
+    "base_price": 8.99,
+    "is_organic": true,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Strawberries (1 lb clamshell)",
+    "subcategory": "fresh_fruit",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Organic strawberries (1 lb)",
+    "subcategory": "fresh_fruit",
+    "base_price": 6.49,
+    "is_organic": true,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Blueberries (6 oz)",
+    "subcategory": "fresh_fruit",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Organic blueberries (6 oz)",
+    "subcategory": "fresh_fruit",
+    "base_price": 4.99,
+    "is_organic": true,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Raspberries (6 oz)",
+    "subcategory": "fresh_fruit",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Blackberries (6 oz)",
+    "subcategory": "fresh_fruit",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Red seedless grapes (lb)",
+    "subcategory": "fresh_fruit",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Green seedless grapes (lb)",
+    "subcategory": "fresh_fruit",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Black seedless grapes (lb)",
+    "subcategory": "fresh_fruit",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Avocados (4-pack)",
+    "subcategory": "fresh_fruit",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Organic avocados (4-pack)",
+    "subcategory": "fresh_fruit",
+    "base_price": 6.49,
+    "is_organic": true,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Hass avocado (ea)",
+    "subcategory": "fresh_fruit",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Navel oranges (4 lb bag)",
+    "subcategory": "fresh_fruit",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cuties mandarins (3 lb bag)",
+    "subcategory": "fresh_fruit",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Lemons (2 lb bag)",
+    "subcategory": "fresh_fruit",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Limes (2 lb bag)",
+    "subcategory": "fresh_fruit",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pineapple (ea)",
+    "subcategory": "fresh_fruit",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cantaloupe (ea)",
+    "subcategory": "fresh_fruit",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Honeydew melon (ea)",
+    "subcategory": "fresh_fruit",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Watermelon (ea)",
+    "subcategory": "fresh_fruit",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Mini seedless watermelon (ea)",
+    "subcategory": "fresh_fruit",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Bartlett pears (lb)",
+    "subcategory": "fresh_fruit",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Anjou pears (lb)",
+    "subcategory": "fresh_fruit",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Peaches (lb)",
+    "subcategory": "fresh_fruit",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Nectarines (lb)",
+    "subcategory": "fresh_fruit",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Plums (lb)",
+    "subcategory": "fresh_fruit",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cherries (lb)",
+    "subcategory": "fresh_fruit",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Mangos (ea)",
+    "subcategory": "fresh_fruit",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Kiwi (1 lb bag)",
+    "subcategory": "fresh_fruit",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pomegranate (ea)",
+    "subcategory": "fresh_fruit",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Romaine hearts (3-pack)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Organic romaine hearts (3-pack)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 4.99,
+    "is_organic": true,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Iceberg lettuce (ea)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Butter lettuce (ea)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Spring mix salad (5 oz)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Organic spring mix (5 oz)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 4.99,
+    "is_organic": true,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Baby spinach (5 oz)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Organic baby spinach (5 oz)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 4.49,
+    "is_organic": true,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Baby carrots (1 lb bag)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Organic baby carrots (1 lb bag)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 2.49,
+    "is_organic": true,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Whole carrots (2 lb bag)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Celery (stalk)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Broccoli crowns (lb)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Organic broccoli (lb)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 3.49,
+    "is_organic": true,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cauliflower (ea)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Brussels sprouts (lb)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Green beans (lb)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Asparagus (lb)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Red bell peppers (ea)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Green bell peppers (ea)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Yellow bell peppers (ea)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Mini sweet peppers (1 lb bag)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Roma tomatoes (lb)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Vine-ripened tomatoes (lb)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cherry tomatoes (10.5 oz)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Grape tomatoes (1 pint)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "English cucumber (ea)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Persian cucumbers (1 lb bag)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Yellow onions (3 lb bag)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Red onions (lb)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sweet onions (lb)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Russet potatoes (5 lb bag)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Yukon gold potatoes (5 lb bag)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Red potatoes (5 lb bag)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 5.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sweet potatoes (lb)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Garlic (3-pack)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Ginger root (lb)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "White mushrooms (8 oz)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Baby bella mushrooms (8 oz)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Portobello caps (6 oz)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Zucchini (lb)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Yellow squash (lb)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Eggplant (ea)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Corn on the cob (ea)",
+    "subcategory": "fresh_vegetables",
+    "base_price": 0.79,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Fresh basil (0.66 oz)",
+    "subcategory": "herbs_salads",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Fresh cilantro (bunch)",
+    "subcategory": "herbs_salads",
+    "base_price": 0.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Fresh parsley (bunch)",
+    "subcategory": "herbs_salads",
+    "base_price": 0.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Fresh rosemary (0.66 oz)",
+    "subcategory": "herbs_salads",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Fresh thyme (0.75 oz)",
+    "subcategory": "herbs_salads",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Fresh dill (0.66 oz)",
+    "subcategory": "herbs_salads",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Caesar salad kit (9.6 oz)",
+    "subcategory": "herbs_salads",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cobb salad kit (12 oz)",
+    "subcategory": "herbs_salads",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sweet kale salad kit (11 oz)",
+    "subcategory": "herbs_salads",
+    "base_price": 5.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Mediterranean salad kit (10 oz)",
+    "subcategory": "herbs_salads",
+    "base_price": 5.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Coleslaw mix (14 oz)",
+    "subcategory": "herbs_salads",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Stir-fry vegetable mix (12 oz)",
+    "subcategory": "herbs_salads",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  }
+]

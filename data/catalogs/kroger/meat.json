@@ -1,0 +1,688 @@
+[
+  {
+    "name": "Chicken breast boneless skinless (lb)",
+    "subcategory": "chicken",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Chicken breast bone-in (lb)",
+    "subcategory": "chicken",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Chicken thighs boneless skinless (lb)",
+    "subcategory": "chicken",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Chicken thighs bone-in (lb)",
+    "subcategory": "chicken",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Chicken drumsticks (lb)",
+    "subcategory": "chicken",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Chicken wings (lb)",
+    "subcategory": "chicken",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Chicken whole (lb)",
+    "subcategory": "chicken",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Ground chicken (lb)",
+    "subcategory": "chicken",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Chicken tenderloins (lb)",
+    "subcategory": "chicken",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Chicken livers (lb)",
+    "subcategory": "chicken",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Organic chicken breast (lb)",
+    "subcategory": "chicken",
+    "base_price": 8.99,
+    "is_organic": true,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Air-chilled chicken breast (lb)",
+    "subcategory": "chicken",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Marinated chicken breast lemon herb (lb)",
+    "subcategory": "chicken",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Marinated chicken breast teriyaki (lb)",
+    "subcategory": "chicken",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pre-cooked grilled chicken strips (lb)",
+    "subcategory": "chicken",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "80/20 ground beef (lb)",
+    "subcategory": "beef",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "85/15 ground beef (lb)",
+    "subcategory": "beef",
+    "base_price": 6.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "93/7 ground beef (lb)",
+    "subcategory": "beef",
+    "base_price": 7.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Ground chuck (lb)",
+    "subcategory": "beef",
+    "base_price": 6.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Ribeye steak (lb)",
+    "subcategory": "beef",
+    "base_price": 16.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "New York strip steak (lb)",
+    "subcategory": "beef",
+    "base_price": 14.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Filet mignon (lb)",
+    "subcategory": "beef",
+    "base_price": 22.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "T-bone steak (lb)",
+    "subcategory": "beef",
+    "base_price": 13.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Top sirloin steak (lb)",
+    "subcategory": "beef",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Flank steak (lb)",
+    "subcategory": "beef",
+    "base_price": 11.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Skirt steak (lb)",
+    "subcategory": "beef",
+    "base_price": 12.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Chuck roast (lb)",
+    "subcategory": "beef",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Rump roast (lb)",
+    "subcategory": "beef",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Brisket flat (lb)",
+    "subcategory": "beef",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Beef stew meat (lb)",
+    "subcategory": "beef",
+    "base_price": 7.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Beef short ribs (lb)",
+    "subcategory": "beef",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Corned beef brisket (lb)",
+    "subcategory": "beef",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Grass-fed ground beef (lb)",
+    "subcategory": "beef",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Organic ground beef (lb)",
+    "subcategory": "beef",
+    "base_price": 9.99,
+    "is_organic": true,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pork chops bone-in (lb)",
+    "subcategory": "pork",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pork chops boneless (lb)",
+    "subcategory": "pork",
+    "base_price": 5.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pork tenderloin (lb)",
+    "subcategory": "pork",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pork loin roast (lb)",
+    "subcategory": "pork",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Baby back ribs (lb)",
+    "subcategory": "pork",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Spare ribs (lb)",
+    "subcategory": "pork",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pork shoulder (lb)",
+    "subcategory": "pork",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Ground pork (lb)",
+    "subcategory": "pork",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pork belly (lb)",
+    "subcategory": "pork",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Bacon thick-cut (12 oz)",
+    "subcategory": "pork",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Bacon regular (12 oz)",
+    "subcategory": "pork",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Bacon turkey (12 oz)",
+    "subcategory": "pork",
+    "base_price": 5.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Applewood smoked bacon (12 oz)",
+    "subcategory": "pork",
+    "base_price": 7.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Black forest ham sliced (8 oz)",
+    "subcategory": "pork",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Honey ham sliced (8 oz)",
+    "subcategory": "pork",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Ground turkey (lb)",
+    "subcategory": "turkey",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Ground turkey 93/7 (lb)",
+    "subcategory": "turkey",
+    "base_price": 5.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Turkey breast bone-in (lb)",
+    "subcategory": "turkey",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Turkey cutlets (lb)",
+    "subcategory": "turkey",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Turkey drumsticks (lb)",
+    "subcategory": "turkey",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Whole turkey (lb)",
+    "subcategory": "turkey",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Turkey sausage links (12 oz)",
+    "subcategory": "turkey",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Lamb chops (lb)",
+    "subcategory": "lamb",
+    "base_price": 14.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Lamb leg roast (lb)",
+    "subcategory": "lamb",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Ground lamb (lb)",
+    "subcategory": "lamb",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Italian sausage mild (lb)",
+    "subcategory": "sausage",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Italian sausage hot (lb)",
+    "subcategory": "sausage",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Bratwurst original (19 oz)",
+    "subcategory": "sausage",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Polish kielbasa (13 oz)",
+    "subcategory": "sausage",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Andouille sausage (12 oz)",
+    "subcategory": "sausage",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Chorizo Mexican-style (lb)",
+    "subcategory": "sausage",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Breakfast sausage links (12 oz)",
+    "subcategory": "sausage",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Breakfast sausage patties (12 oz)",
+    "subcategory": "sausage",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Maple breakfast sausage (12 oz)",
+    "subcategory": "sausage",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Hot dogs beef (16 oz)",
+    "subcategory": "sausage",
+    "base_price": 5.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Hot dogs all-beef (8-count)",
+    "subcategory": "sausage",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Hot dogs turkey (16 oz)",
+    "subcategory": "sausage",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Smoked sausage rope (16 oz)",
+    "subcategory": "sausage",
+    "base_price": 5.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sliced turkey breast oven roasted (9 oz)",
+    "subcategory": "deli",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sliced turkey honey (9 oz)",
+    "subcategory": "deli",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sliced ham black forest (9 oz)",
+    "subcategory": "deli",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sliced ham smoked (9 oz)",
+    "subcategory": "deli",
+    "base_price": 5.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sliced roast beef (8 oz)",
+    "subcategory": "deli",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sliced salami Genoa (8 oz)",
+    "subcategory": "deli",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sliced pepperoni (6 oz)",
+    "subcategory": "deli",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sliced bologna (12 oz)",
+    "subcategory": "deli",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sliced pastrami (8 oz)",
+    "subcategory": "deli",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Prosciutto (4 oz)",
+    "subcategory": "deli",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Atlantic salmon fillet (lb)",
+    "subcategory": "seafood",
+    "base_price": 14.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Wild sockeye salmon fillet (lb)",
+    "subcategory": "seafood",
+    "base_price": 19.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Tilapia fillet (lb)",
+    "subcategory": "seafood",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cod fillet (lb)",
+    "subcategory": "seafood",
+    "base_price": 11.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Mahi mahi fillet (lb)",
+    "subcategory": "seafood",
+    "base_price": 13.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Catfish fillet (lb)",
+    "subcategory": "seafood",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Trout fillet (lb)",
+    "subcategory": "seafood",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Tuna steak (lb)",
+    "subcategory": "seafood",
+    "base_price": 14.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Shrimp raw 16/20 (lb)",
+    "subcategory": "seafood",
+    "base_price": 11.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Shrimp cooked tail-on (lb)",
+    "subcategory": "seafood",
+    "base_price": 13.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen shrimp 31/40 (12 oz)",
+    "subcategory": "seafood",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Scallops sea (lb)",
+    "subcategory": "seafood",
+    "base_price": 19.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Crab legs snow (lb)",
+    "subcategory": "seafood",
+    "base_price": 19.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Lobster tails (ea)",
+    "subcategory": "seafood",
+    "base_price": 14.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Mussels (lb)",
+    "subcategory": "seafood",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Clams (lb)",
+    "subcategory": "seafood",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  }
+]

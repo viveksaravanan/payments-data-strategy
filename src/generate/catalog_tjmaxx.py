@@ -51,7 +51,6 @@ def build_catalog() -> pd.DataFrame:
                 "name": name,
                 "category": cat,
                 "subcategory": label,
-                "is_organic": 0,
                 "base_price": base_price,
             })
     df = pd.DataFrame(rows).sort_values("sku").reset_index(drop=True)

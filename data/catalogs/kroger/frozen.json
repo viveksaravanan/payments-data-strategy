@@ -1,0 +1,695 @@
+[
+  {
+    "name": "Frozen pepperoni pizza (12-inch)",
+    "subcategory": "pizza",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen cheese pizza (12-inch)",
+    "subcategory": "pizza",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen sausage pizza (12-inch)",
+    "subcategory": "pizza",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen supreme pizza (12-inch)",
+    "subcategory": "pizza",
+    "base_price": 6.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen veggie pizza (12-inch)",
+    "subcategory": "pizza",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen meat lovers pizza (12-inch)",
+    "subcategory": "pizza",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen Hawaiian pizza (12-inch)",
+    "subcategory": "pizza",
+    "base_price": 6.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen four cheese pizza (12-inch)",
+    "subcategory": "pizza",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen thin crust pepperoni (13-inch)",
+    "subcategory": "pizza",
+    "base_price": 6.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen rising crust pepperoni (29 oz)",
+    "subcategory": "pizza",
+    "base_price": 8.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen French bread pizza (10 oz)",
+    "subcategory": "pizza",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen pizza rolls (40-count)",
+    "subcategory": "pizza",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen mini pizza bagels (9-count)",
+    "subcategory": "pizza",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen cauliflower crust pizza (12-inch)",
+    "subcategory": "pizza",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen lasagna meat sauce (21 oz)",
+    "subcategory": "meals",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen chicken pot pie (10 oz)",
+    "subcategory": "meals",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen beef pot pie (10 oz)",
+    "subcategory": "meals",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen mac and cheese (12 oz)",
+    "subcategory": "meals",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen chicken alfredo (10 oz)",
+    "subcategory": "meals",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen beef stroganoff (10 oz)",
+    "subcategory": "meals",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen Salisbury steak (9 oz)",
+    "subcategory": "meals",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen meatloaf dinner (16 oz)",
+    "subcategory": "meals",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen orange chicken (22 oz)",
+    "subcategory": "meals",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen general Tso's chicken (22 oz)",
+    "subcategory": "meals",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen pad thai (10 oz)",
+    "subcategory": "meals",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen burrito bowl (10 oz)",
+    "subcategory": "meals",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen enchilada dinner (16 oz)",
+    "subcategory": "meals",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen chicken parmesan (10.5 oz)",
+    "subcategory": "meals",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen vegetable lo mein (10 oz)",
+    "subcategory": "meals",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen lean cuisine glazed chicken (8 oz)",
+    "subcategory": "meals",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen Stouffer's lasagna (37 oz)",
+    "subcategory": "meals",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen Healthy Choice steamer (9 oz)",
+    "subcategory": "meals",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen broccoli florets (12 oz)",
+    "subcategory": "vegetables",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen mixed vegetables (12 oz)",
+    "subcategory": "vegetables",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen peas (12 oz)",
+    "subcategory": "vegetables",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen corn (12 oz)",
+    "subcategory": "vegetables",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen cauliflower rice (12 oz)",
+    "subcategory": "vegetables",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen riced cauliflower seasoned (10 oz)",
+    "subcategory": "vegetables",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen spinach chopped (10 oz)",
+    "subcategory": "vegetables",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen green beans (12 oz)",
+    "subcategory": "vegetables",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen brussels sprouts (12 oz)",
+    "subcategory": "vegetables",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen butternut squash cubed (12 oz)",
+    "subcategory": "vegetables",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen edamame in pod (12 oz)",
+    "subcategory": "vegetables",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen edamame shelled (12 oz)",
+    "subcategory": "vegetables",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen stir-fry vegetables (12 oz)",
+    "subcategory": "vegetables",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen french fries (32 oz)",
+    "subcategory": "vegetables",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen tater tots (32 oz)",
+    "subcategory": "vegetables",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen sweet potato fries (20 oz)",
+    "subcategory": "vegetables",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen onion rings (16 oz)",
+    "subcategory": "vegetables",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen strawberries (16 oz)",
+    "subcategory": "fruit",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen mixed berries (12 oz)",
+    "subcategory": "fruit",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen blueberries (12 oz)",
+    "subcategory": "fruit",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen mango chunks (16 oz)",
+    "subcategory": "fruit",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen pineapple chunks (16 oz)",
+    "subcategory": "fruit",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen tropical fruit blend (12 oz)",
+    "subcategory": "fruit",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen acai puree packets (4-count)",
+    "subcategory": "fruit",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen smoothie blend (8 oz)",
+    "subcategory": "fruit",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen waffles plain (10-count)",
+    "subcategory": "breakfast",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen blueberry waffles (10-count)",
+    "subcategory": "breakfast",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen Belgian waffles (8-count)",
+    "subcategory": "breakfast",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen pancakes (12-count)",
+    "subcategory": "breakfast",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen French toast sticks (16-count)",
+    "subcategory": "breakfast",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen breakfast sandwich sausage (8-count)",
+    "subcategory": "breakfast",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen breakfast burrito (12 oz)",
+    "subcategory": "breakfast",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen hash browns shredded (30 oz)",
+    "subcategory": "breakfast",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen hash brown patties (10-count)",
+    "subcategory": "breakfast",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen breakfast sausage biscuit (6-count)",
+    "subcategory": "breakfast",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Vanilla ice cream (1.5 qt)",
+    "subcategory": "ice_cream",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Chocolate ice cream (1.5 qt)",
+    "subcategory": "ice_cream",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Strawberry ice cream (1.5 qt)",
+    "subcategory": "ice_cream",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cookies and cream ice cream (1.5 qt)",
+    "subcategory": "ice_cream",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Mint chocolate chip ice cream (1.5 qt)",
+    "subcategory": "ice_cream",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Rocky road ice cream (1.5 qt)",
+    "subcategory": "ice_cream",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Neapolitan ice cream (1.5 qt)",
+    "subcategory": "ice_cream",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Ben & Jerry's pint (16 oz)",
+    "subcategory": "ice_cream",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Haagen-Dazs vanilla pint (14 oz)",
+    "subcategory": "ice_cream",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen yogurt vanilla (1.5 qt)",
+    "subcategory": "ice_cream",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sorbet raspberry (16 oz)",
+    "subcategory": "ice_cream",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Ice cream sandwiches (12-count)",
+    "subcategory": "ice_cream",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Drumstick cones variety (8-count)",
+    "subcategory": "ice_cream",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Klondike bars (6-count)",
+    "subcategory": "ice_cream",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Popsicles variety (20-count)",
+    "subcategory": "ice_cream",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Fudge bars (12-count)",
+    "subcategory": "ice_cream",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen breaded fish fillets (20 oz)",
+    "subcategory": "seafood",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen fish sticks (44-count)",
+    "subcategory": "seafood",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen popcorn shrimp (16 oz)",
+    "subcategory": "seafood",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen battered cod (16 oz)",
+    "subcategory": "seafood",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen calamari rings (10 oz)",
+    "subcategory": "seafood",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen mozzarella sticks (20-count)",
+    "subcategory": "appetizers",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen jalapeno poppers (20-count)",
+    "subcategory": "appetizers",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen chicken nuggets (32 oz)",
+    "subcategory": "appetizers",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen chicken tenders (24 oz)",
+    "subcategory": "appetizers",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen chicken wings (24 oz)",
+    "subcategory": "appetizers",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen meatballs Italian (24 oz)",
+    "subcategory": "appetizers",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen mini quiche assorted (12-count)",
+    "subcategory": "appetizers",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen pierogi potato (16 oz)",
+    "subcategory": "appetizers",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen pot stickers chicken (24-count)",
+    "subcategory": "appetizers",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen egg rolls vegetable (12-count)",
+    "subcategory": "appetizers",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Frozen taquitos beef (20-count)",
+    "subcategory": "appetizers",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  }
+]

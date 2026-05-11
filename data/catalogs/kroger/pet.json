@@ -1,0 +1,310 @@
+[
+  {
+    "name": "Dry dog food Purina Pro Plan adult (30 lb)",
+    "subcategory": "dog_food",
+    "base_price": 64.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dry dog food Blue Buffalo Life Protection (30 lb)",
+    "subcategory": "dog_food",
+    "base_price": 69.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dry dog food Purina ONE (16.5 lb)",
+    "subcategory": "dog_food",
+    "base_price": 32.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dry dog food Pedigree adult (30 lb)",
+    "subcategory": "dog_food",
+    "base_price": 26.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dry dog food puppy formula (20 lb)",
+    "subcategory": "dog_food",
+    "base_price": 38.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dry dog food senior formula (30 lb)",
+    "subcategory": "dog_food",
+    "base_price": 39.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dry dog food small breed (15 lb)",
+    "subcategory": "dog_food",
+    "base_price": 24.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dry dog food large breed (30 lb)",
+    "subcategory": "dog_food",
+    "base_price": 44.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Wet dog food Purina Pro Plan (13 oz can)",
+    "subcategory": "dog_food",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Wet dog food Pedigree variety pack (12-count)",
+    "subcategory": "dog_food",
+    "base_price": 12.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Wet dog food chunky chicken (13 oz can)",
+    "subcategory": "dog_food",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Grain-free dry dog food (24 lb)",
+    "subcategory": "dog_food",
+    "base_price": 54.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Limited ingredient dog food salmon (24 lb)",
+    "subcategory": "dog_food",
+    "base_price": 59.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dry cat food Purina Cat Chow (16 lb)",
+    "subcategory": "cat_food",
+    "base_price": 19.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dry cat food Friskies indoor (16 lb)",
+    "subcategory": "cat_food",
+    "base_price": 18.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dry cat food Iams Proactive Health (16 lb)",
+    "subcategory": "cat_food",
+    "base_price": 24.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dry cat food Blue Buffalo indoor (15 lb)",
+    "subcategory": "cat_food",
+    "base_price": 39.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dry cat food kitten formula (7 lb)",
+    "subcategory": "cat_food",
+    "base_price": 17.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dry cat food senior formula (16 lb)",
+    "subcategory": "cat_food",
+    "base_price": 26.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Wet cat food Friskies pate (5.5 oz can)",
+    "subcategory": "cat_food",
+    "base_price": 0.79,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Wet cat food Fancy Feast variety (24-count)",
+    "subcategory": "cat_food",
+    "base_price": 17.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Wet cat food Sheba pat\u00e9 (12-count)",
+    "subcategory": "cat_food",
+    "base_price": 13.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Wet cat food gourmet seafood (5.5 oz can)",
+    "subcategory": "cat_food",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Grain-free dry cat food (11 lb)",
+    "subcategory": "cat_food",
+    "base_price": 39.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Cat food urinary tract health (16 lb)",
+    "subcategory": "cat_food",
+    "base_price": 32.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dog treats Milk-Bone biscuits (24 oz)",
+    "subcategory": "treats",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dog treats Greenies dental chews (12-count)",
+    "subcategory": "treats",
+    "base_price": 14.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dog treats jerky strips (8 oz)",
+    "subcategory": "treats",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dog treats training bites (10 oz)",
+    "subcategory": "treats",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dog rawhide bones (5-count)",
+    "subcategory": "treats",
+    "base_price": 12.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dog bully sticks (5-count)",
+    "subcategory": "treats",
+    "base_price": 19.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Cat treats Temptations chicken (16 oz)",
+    "subcategory": "treats",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Cat treats salmon flavor (3 oz)",
+    "subcategory": "treats",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Cat treats dental (2.5 oz)",
+    "subcategory": "treats",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Cat litter Tidy Cats clumping (35 lb)",
+    "subcategory": "supplies",
+    "base_price": 16.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Cat litter Arm & Hammer (20 lb)",
+    "subcategory": "supplies",
+    "base_price": 11.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Cat litter natural pine (20 lb)",
+    "subcategory": "supplies",
+    "base_price": 14.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Cat litter Fresh Step scoop (25 lb)",
+    "subcategory": "supplies",
+    "base_price": 17.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Pet pee pads (100-count)",
+    "subcategory": "supplies",
+    "base_price": 24.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dog poop bags (300-count)",
+    "subcategory": "supplies",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Pet shampoo (16 oz)",
+    "subcategory": "supplies",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Flea and tick collar (ea)",
+    "subcategory": "supplies",
+    "base_price": 19.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Pet odor eliminator spray (32 oz)",
+    "subcategory": "supplies",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Pet brush (ea)",
+    "subcategory": "supplies",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  }
+]

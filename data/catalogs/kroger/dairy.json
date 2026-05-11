@@ -1,0 +1,625 @@
+[
+  {
+    "name": "Whole milk (gallon)",
+    "subcategory": "milk",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Whole milk (half gallon)",
+    "subcategory": "milk",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Whole milk (quart)",
+    "subcategory": "milk",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Whole milk (pint)",
+    "subcategory": "milk",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "2% milk (gallon)",
+    "subcategory": "milk",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "2% milk (half gallon)",
+    "subcategory": "milk",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "2% milk (quart)",
+    "subcategory": "milk",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "1% milk (gallon)",
+    "subcategory": "milk",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "1% milk (half gallon)",
+    "subcategory": "milk",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Skim milk (gallon)",
+    "subcategory": "milk",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Skim milk (half gallon)",
+    "subcategory": "milk",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Organic whole milk (half gallon)",
+    "subcategory": "milk",
+    "base_price": 5.49,
+    "is_organic": true,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Organic 2% milk (half gallon)",
+    "subcategory": "milk",
+    "base_price": 5.49,
+    "is_organic": true,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Lactose-free 2% milk (half gallon)",
+    "subcategory": "milk",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Chocolate milk (half gallon)",
+    "subcategory": "milk",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Strawberry milk (half gallon)",
+    "subcategory": "milk",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Buttermilk (quart)",
+    "subcategory": "milk",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Almond milk unsweetened (half gallon)",
+    "subcategory": "milk",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Almond milk vanilla (half gallon)",
+    "subcategory": "milk",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Oat milk (half gallon)",
+    "subcategory": "milk",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Oat milk barista (32 oz)",
+    "subcategory": "milk",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Soy milk (half gallon)",
+    "subcategory": "milk",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Coconut milk (half gallon)",
+    "subcategory": "milk",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Greek yogurt plain (32 oz)",
+    "subcategory": "yogurt",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Greek yogurt vanilla (32 oz)",
+    "subcategory": "yogurt",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Greek yogurt strawberry (5.3 oz)",
+    "subcategory": "yogurt",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Greek yogurt blueberry (5.3 oz)",
+    "subcategory": "yogurt",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Greek yogurt honey (5.3 oz)",
+    "subcategory": "yogurt",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Greek yogurt peach (5.3 oz)",
+    "subcategory": "yogurt",
+    "base_price": 1.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Whole milk yogurt plain (32 oz)",
+    "subcategory": "yogurt",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Low-fat yogurt vanilla (32 oz)",
+    "subcategory": "yogurt",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Yogurt cup variety pack (8-count)",
+    "subcategory": "yogurt",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Kids yogurt tubes (8-count)",
+    "subcategory": "yogurt",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Skyr Icelandic yogurt (5.3 oz)",
+    "subcategory": "yogurt",
+    "base_price": 1.79,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Coconut yogurt vanilla (5.3 oz)",
+    "subcategory": "yogurt",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Almond yogurt strawberry (5.3 oz)",
+    "subcategory": "yogurt",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Organic Greek yogurt (32 oz)",
+    "subcategory": "yogurt",
+    "base_price": 6.99,
+    "is_organic": true,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Drinkable yogurt smoothie (7 oz)",
+    "subcategory": "yogurt",
+    "base_price": 1.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sharp cheddar block (8 oz)",
+    "subcategory": "cheese",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Mild cheddar block (8 oz)",
+    "subcategory": "cheese",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sharp cheddar shredded (8 oz)",
+    "subcategory": "cheese",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Mexican blend shredded (8 oz)",
+    "subcategory": "cheese",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Mozzarella shredded (8 oz)",
+    "subcategory": "cheese",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Mozzarella whole milk (8 oz)",
+    "subcategory": "cheese",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Parmesan grated (5 oz)",
+    "subcategory": "cheese",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Parmesan shredded (5 oz)",
+    "subcategory": "cheese",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pepper jack shredded (8 oz)",
+    "subcategory": "cheese",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Colby jack block (8 oz)",
+    "subcategory": "cheese",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Provolone slices (8 oz)",
+    "subcategory": "cheese",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Swiss slices (8 oz)",
+    "subcategory": "cheese",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "American cheese slices (12 oz)",
+    "subcategory": "cheese",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cream cheese (8 oz)",
+    "subcategory": "cheese",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cream cheese whipped (8 oz)",
+    "subcategory": "cheese",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cottage cheese small curd (16 oz)",
+    "subcategory": "cheese",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cottage cheese low-fat (16 oz)",
+    "subcategory": "cheese",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Ricotta cheese (15 oz)",
+    "subcategory": "cheese",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Feta crumbles (6 oz)",
+    "subcategory": "cheese",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Goat cheese log (4 oz)",
+    "subcategory": "cheese",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Brie wedge (8 oz)",
+    "subcategory": "cheese",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Blue cheese crumbles (5 oz)",
+    "subcategory": "cheese",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Mascarpone (8 oz)",
+    "subcategory": "cheese",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "String cheese mozzarella (12-count)",
+    "subcategory": "cheese",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Babybel mini cheese wheels (12-count)",
+    "subcategory": "cheese",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Organic cheddar block (8 oz)",
+    "subcategory": "cheese",
+    "base_price": 5.49,
+    "is_organic": true,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Salted butter sticks (1 lb)",
+    "subcategory": "butter_eggs",
+    "base_price": 5.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Unsalted butter sticks (1 lb)",
+    "subcategory": "butter_eggs",
+    "base_price": 5.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "European-style butter (8 oz)",
+    "subcategory": "butter_eggs",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Butter spread tub (15 oz)",
+    "subcategory": "butter_eggs",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Margarine sticks (1 lb)",
+    "subcategory": "butter_eggs",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Eggs large grade A (dozen)",
+    "subcategory": "butter_eggs",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Eggs large grade A (18-count)",
+    "subcategory": "butter_eggs",
+    "base_price": 5.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Eggs jumbo (dozen)",
+    "subcategory": "butter_eggs",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Cage-free eggs large (dozen)",
+    "subcategory": "butter_eggs",
+    "base_price": 5.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Organic eggs large (dozen)",
+    "subcategory": "butter_eggs",
+    "base_price": 6.99,
+    "is_organic": true,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Egg whites liquid (16 oz)",
+    "subcategory": "butter_eggs",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Heavy whipping cream (pint)",
+    "subcategory": "cream_refrigerated",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Half and half (quart)",
+    "subcategory": "cream_refrigerated",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Half and half (pint)",
+    "subcategory": "cream_refrigerated",
+    "base_price": 2.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sour cream (16 oz)",
+    "subcategory": "cream_refrigerated",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Sour cream light (16 oz)",
+    "subcategory": "cream_refrigerated",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "French onion dip (16 oz)",
+    "subcategory": "cream_refrigerated",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Whipped cream aerosol (7 oz)",
+    "subcategory": "cream_refrigerated",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Coffee creamer hazelnut (32 oz)",
+    "subcategory": "cream_refrigerated",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Coffee creamer vanilla (32 oz)",
+    "subcategory": "cream_refrigerated",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Coffee creamer plain (32 oz)",
+    "subcategory": "cream_refrigerated",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Refrigerated biscuit dough (16.3 oz)",
+    "subcategory": "cream_refrigerated",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Crescent roll dough (8 oz)",
+    "subcategory": "cream_refrigerated",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Pizza crust dough (13.8 oz)",
+    "subcategory": "cream_refrigerated",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": true
+  },
+  {
+    "name": "Tortilla wraps refrigerated (10-count)",
+    "subcategory": "cream_refrigerated",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": true
+  }
+]

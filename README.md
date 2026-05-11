@@ -1,25 +1,37 @@
 # Payments Data Strategy Demo
 
-A working demo of the **dual-path data architecture** described in the Core Data Strategy & Solutions document — synthetic cross-merchant transaction data, real anonymization, AI agents that answer natural-language questions about both a merchant's own data and privacy-preserved cross-merchant insights.
+A working demo of the data architecture described in the Core Data Strategy & Solutions document — synthetic cross-merchant transaction data, a privacy-engine that exposes the cross-merchant lake as parameterized views, and an AI agent that answers natural-language questions about both a merchant's own data and privacy-preserved peer aggregates.
 
 ## What it shows
 
 > A payments company sees a join no one else can: the basket, the payment instrument, and the same person across multiple merchants. This demo makes that join concrete.
 
-Three fictional merchants — **Kroger** (grocery), **Taco Bell** (QSR), **TJ Maxx** (off-price retail) — share a 5,000-customer panel over 90 days of synthetic transactions. The data flows through a four-stage pipeline:
+Five fictional merchants in a single Charlotte, NC metro:
+
+- **Kroger** (grocery, 30 stores)
+- **Acme** (grocery, 25 stores)
+- **Winn-Dixie** (grocery, 20 stores)
+- **Taco Bell** (QSR, 40 stores)
+- **TJ Maxx** (off-price retail, 8 stores)
+
+share a **10,000-customer panel** over a 90-day window (Mar 1 – May 29, 2026). The data flows through a four-stage pipeline:
 
 ```
-capture (synthetic) → anonymize (dual-path) → store (SQLite) → insight (AI agents)
+capture (synthetic)  →  store (SQLite, tenant_* tables only)
+        │                        │
+        │                        ▼
+        │              privacy engine (lake-as-views, computed per query)
+        │                        │
+        ▼                        ▼
+  no PII at any stage      Merchant Advisor agent  →  Streamlit dashboard
 ```
 
-The architecture has two parallel data layers:
+The architecture has one physical layer plus one virtual layer:
 
-- **Tenant layer** — each merchant's own data, hashed customer IDs but full granularity otherwise. Kroger sees Kroger.
-- **Lake layer** — cross-merchant aggregate, k-anonymized, ZIP3-truncated, hour-bucketed. Used for benchmarking and cross-merchant analytics. The same hashed customer ID joins across merchants.
+- **Tenant tables** — each merchant's own data at full granularity. Kroger sees Kroger; queries are gated by `WHERE merchant_id = '<current_merchant>'` at the agent tool layer.
+- **Lake (virtual)** — two logical tables (`lake_transactions`, `lake_stores`) computed at query time from the tenant tables by `src/lake/views.py`. The viewing merchant's own rows are excluded; the other four merchants are pseudonymized as `peer_a..peer_d`. Opaque IDs replace internal keys; ZIP5 → ZIP3; full timestamp → 10-bucket time-of-day; `txn_total` → 10-bin label; **`customer_id` is dropped** ("no consumer linkage" per strategy doc §5.2).
 
-A Streamlit dashboard lets you switch between four roles — Kroger, Taco Bell, TJ Maxx, or Network Analyst — and ask questions answered by AI agents that query the appropriate layer.
-
-![Dashboard screenshot](docs/screenshot.png)
+A Streamlit dashboard lets you switch between five merchant roles and ask questions answered by an AI agent that decides which layer (tenant, lake, or both) to query.
 
 ## How to run
 
@@ -37,66 +49,80 @@ cp .env.example .env
 make demo
 ```
 
-`make demo` generates synthetic data, runs the dual-path anonymization pipeline, loads SQLite, and launches the dashboard on `http://localhost:8501`. Total cold-start time: ~25 seconds (≈9s generate, ≈2s anonymize, ≈10s SQLite seed, plus Streamlit startup). `scripts/demo.sh` is the equivalent shell wrapper.
+`make demo` generates synthetic data, loads SQLite, and launches the dashboard on `http://localhost:8501`. `scripts/demo.sh` is the equivalent shell wrapper. Total cold-start time: ~2 minutes (~80s generation, ~25s SQLite seed, plus Streamlit startup).
 
 ## What's in the demo
 
-**As Kroger** (or Taco Bell, or TJ Maxx):
-1. Top categories by revenue last week, and which subcategories drove each
-2. Products most often bought together with milk *(Kroger; equivalent affinity questions for Taco Bell and TJ Maxx)*
-3. Stores with a recent transaction-count drop *(catches a planted anomaly)*
-4. How does my basket size compare to other merchants in the panel? *(combines tenant + lake)*
-5. What share of my customers also shop at QSRs, and how does that affect their behavior? *(the strategic punchline)*
+Each role's canned questions exercise tenant-only, lake-only, and combined-layer paths. A few examples:
 
-**As Network Analyst:**
-1. Customers active across all three merchants in the last 30 days, with average spend at each
-2. Pay-cycle effects (1st–3rd, 15th–17th vs other days) across grocery, QSR, and retail
-3. Emerging customer segments across merchants this month *(catches a planted cohort)*
+**As Kroger** (or Acme, or Winn-Dixie):
+1. Top categories by revenue last week, and which subcategories drove each *(tenant)*
+2. Which products are bought together with whole milk *(tenant)*
+3. Stores with a recent transaction-count drop *(tenant — surfaces the planted **University City decline**)*
+4. How does my basket size compare to peer grocers? *(tenant + lake)*
+5. How does my dairy unit pricing compare to peer grocers? *(tenant + lake)*
+
+**As Taco Bell:** menu-item revenue, basket combinations, store dropouts, ticket-size and entry-mode comparisons against QSR peers.
+
+**As TJ Maxx:** category revenue, multi-category baskets, store dropouts, ticket-size and entry-mode comparisons against retail peers.
+
+Three planted anomalies the agent can find when asked (full spec in [`DATA.md`](./DATA.md) §9):
+
+- **University City decline** — 4-stage traffic ramp on KRG/ACM/WDX University City stores; deepest at Kroger.
+- **Plaza Midwood Kroger avocado spike** — 4-day pattern peaking Apr 22; Kroger only.
+- **Coordinated pasta promos** — KRG lift, Acme failure, Winn-Dixie modest lift in their respective late-April windows.
 
 Each answer shows the SQL the agent ran in an expandable panel — the demo is auditable, not magic. There's also a **MOCK MODE** toggle in the page header for offline demos (skips the LLM API and returns canned responses).
 
 ## Architecture
 
 ```
-                ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-   capture      │   Kroger     │  │  Taco Bell   │  │   TJ Maxx    │
-                └──────┬───────┘  └──────┬───────┘  └──────┬───────┘
-                       │ raw CSVs (PII present, shared customer_pan)
-                       └──────────┬─────────┘
-                                  ▼
-                       ┌──────────────────┐
-   anonymize           │ tenant: hash PAN, drop PII (full granularity)
-   (two stages)        │ lake:   ZIP3, hour bucket, k=5 anonymity
-                       └─────────┬────────┘
-                                 ▼
-                       ┌──────────────────┐
-   store               │  SQLite (single file, two table layers)
-                       │  tenant_*  ·  lake_*
-                       └─────────┬────────┘
-                                 ▼
-                       ┌──────────────────┐
-   insight             │  Merchant Advisor (tenant + lake)
-                       │  Network Analyst (lake only)
-                       │            ↑
-                       │      Streamlit dashboard
-                       │      (role selector)
-                       └──────────────────┘
+   ┌──────┐ ┌──────┐ ┌─────────┐ ┌──────────┐ ┌─────────┐
+   │Kroger│ │ Acme │ │WinnDixie│ │ Taco Bell│ │ TJ Maxx │   capture
+   └──┬───┘ └──┬───┘ └────┬────┘ └────┬─────┘ └────┬────┘   (no PII at any stage)
+      └────────┴──────────┴───────────┴────────────┘
+                              │ raw CSVs (customer_id is a SHA-256
+                              │ of a never-persisted synthetic PAN)
+                              ▼
+                  ┌────────────────────────┐
+                  │  SQLite, tenant_*      │   store
+                  │  tables only           │
+                  └────────────┬───────────┘
+                               ▼
+                  ┌────────────────────────┐
+                  │  src/lake/views.py     │   privacy engine
+                  │  - exclude viewer      │   (computed at query time)
+                  │  - peer_a..peer_d      │
+                  │  - opaque IDs, ZIP3,   │
+                  │    hour buckets, bins  │
+                  │  - no customer_id      │
+                  └────────────┬───────────┘
+                               ▼
+                  ┌────────────────────────┐
+                  │  Merchant Advisor      │   insight
+                  │  Streamlit dashboard   │
+                  │  (5-merchant roles)    │
+                  └────────────────────────┘
 ```
 
-See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the mapping to the parent Core Data Strategy document and a list of what's deferred.
+See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the mapping to the parent Core Data Strategy document and the deferred roadmap.
 
 ## Important caveats
 
-- **All data is synthetic.** Generated by `src/generate/`. No real customers, real cards, or real merchants are involved. The merchant names are used as plausible-sounding stand-ins for grocery / QSR / off-price retail; this demo is not affiliated with Kroger, Taco Bell, or TJ Maxx.
-- **k = 5, not k ≥ 50.** Production-grade anonymization (per the strategy doc §8.2) calls for k ≥ 50. This demo uses k = 5 because the dataset is small; with 5,000 customers, k = 50 would suppress most of the data. The architecture supports any k; only the threshold differs.
-- **Two of seven agents.** The strategy doc specifies seven agents (§10.2). This demo builds the Conversational Business Advisor (as Merchant Advisor and Network Analyst). Roadmap for the others lives in `ARCHITECTURE.md`.
+- **All data is synthetic.** Generated by `src/generate/`. No real customers, real cards, or real merchants are involved. The merchant names are plausible-sounding stand-ins; this demo is not affiliated with Kroger, Acme, Winn-Dixie, Taco Bell, or TJ Maxx.
+- **No PII at any stage.** The generator emits `customer_id` directly as a 16-char SHA-256 of a never-persisted synthetic PAN. There is no separate anonymization stage and no raw PAN, name, email, or demographic band exists on disk or in the DB.
+- **k = 5, not k ≥ 50.** Production-grade aggregate-cell suppression (per the strategy doc §8.2) calls for k ≥ 50. This demo uses k = 5 because the panel is 10,000 customers; with 50 the suppression would eliminate most of the data. The architecture supports any k; only the threshold differs.
+- **One of seven agents.** The strategy doc specifies seven specialist personas (§10.2). This demo builds the Conversational Business Advisor as a Merchant Advisor; the other six follow the same architectural pattern and are roadmap.
 - **Batch, not streaming.** The strategy doc describes a real-time pipeline (Kafka, Flink, sub-second latency). This demo runs in batch.
 
 ## Files
 
 - [`PLAN.md`](./PLAN.md) — build plan with time-boxed blocks
-- [`DATA.md`](./DATA.md) — synthetic data specification
+- [`DATA.md`](./DATA.md) — synthetic data specification (panel, schema, generator, anomalies)
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md) — strategy-doc mapping and deferred items
+- [`V2_5_DATA_DESIGN.md`](./V2_5_DATA_DESIGN.md) — locked target spec for the data layer
+- [`docs/V2_5_RECONCILIATION.md`](./docs/V2_5_RECONCILIATION.md) — phased refactor plan from v2 to v2.5
+- [`docs/archive/v2_audit.md`](./docs/archive/v2_audit.md) — historical audit of the v2 implementation
 - [`CLAUDE.md`](./CLAUDE.md) — conventions and commands for working with Claude Code
 
 ## License

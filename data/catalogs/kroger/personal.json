@@ -1,0 +1,548 @@
+[
+  {
+    "name": "Toothpaste Crest cavity protection (6.4 oz)",
+    "subcategory": "oral_care",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Toothpaste Crest 3D white (5.4 oz)",
+    "subcategory": "oral_care",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Toothpaste Colgate total (6 oz)",
+    "subcategory": "oral_care",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Toothpaste Sensodyne (6.4 oz)",
+    "subcategory": "oral_care",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Toothpaste Tom's of Maine (5.5 oz)",
+    "subcategory": "oral_care",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Toothbrush soft (4-pack)",
+    "subcategory": "oral_care",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Toothbrush electric Oral-B (ea)",
+    "subcategory": "oral_care",
+    "base_price": 49.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Toothbrush replacement heads (3-pack)",
+    "subcategory": "oral_care",
+    "base_price": 14.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Mouthwash Listerine cool mint (1 liter)",
+    "subcategory": "oral_care",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Mouthwash Crest pro-health (1 liter)",
+    "subcategory": "oral_care",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Mouthwash alcohol-free (1 liter)",
+    "subcategory": "oral_care",
+    "base_price": 6.49,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dental floss waxed (55 yd)",
+    "subcategory": "oral_care",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Floss picks (75-count)",
+    "subcategory": "oral_care",
+    "base_price": 4.49,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Whitening strips Crest (20-count)",
+    "subcategory": "oral_care",
+    "base_price": 19.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Shampoo Pantene Pro-V (20 oz)",
+    "subcategory": "hair",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Shampoo Head and Shoulders classic (23.7 oz)",
+    "subcategory": "hair",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Shampoo Dove daily moisture (20.4 oz)",
+    "subcategory": "hair",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Shampoo OGX coconut milk (13 oz)",
+    "subcategory": "hair",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Shampoo Suave naturals (30 oz)",
+    "subcategory": "hair",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Conditioner Pantene Pro-V (20 oz)",
+    "subcategory": "hair",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Conditioner Dove daily moisture (20.4 oz)",
+    "subcategory": "hair",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Conditioner OGX argan oil (13 oz)",
+    "subcategory": "hair",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Hairspray Aqua Net (11 oz)",
+    "subcategory": "hair",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Dry shampoo Batiste (6.73 oz)",
+    "subcategory": "hair",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Hair gel Got2b glued (6 oz)",
+    "subcategory": "hair",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Hair color L'Oreal Preference (ea)",
+    "subcategory": "hair",
+    "base_price": 11.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Curl cream (10 oz)",
+    "subcategory": "hair",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Hair oil argan (3.4 oz)",
+    "subcategory": "hair",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Body wash Dove (22 oz)",
+    "subcategory": "body",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Body wash Olay (22 oz)",
+    "subcategory": "body",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Body wash Old Spice (21 oz)",
+    "subcategory": "body",
+    "base_price": 6.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Body wash Native coconut (18 oz)",
+    "subcategory": "body",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Bar soap Dove white (8-pack)",
+    "subcategory": "body",
+    "base_price": 11.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Bar soap Irish Spring original (8-pack)",
+    "subcategory": "body",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Bar soap Dial gold (8-pack)",
+    "subcategory": "body",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Hand soap liquid (11.25 oz)",
+    "subcategory": "body",
+    "base_price": 3.49,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Hand sanitizer Purell (8 oz)",
+    "subcategory": "body",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Lotion Lubriderm daily (16 oz)",
+    "subcategory": "body",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Lotion CeraVe moisturizing (19 oz)",
+    "subcategory": "body",
+    "base_price": 14.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Lotion Aveeno daily (12 oz)",
+    "subcategory": "body",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Lotion Eucerin advanced repair (16.9 oz)",
+    "subcategory": "body",
+    "base_price": 11.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Hand cream (2.5 oz)",
+    "subcategory": "body",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Deodorant men's Old Spice (3 oz)",
+    "subcategory": "body",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Deodorant men's Degree (2.7 oz)",
+    "subcategory": "body",
+    "base_price": 4.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Deodorant women's Secret (2.6 oz)",
+    "subcategory": "body",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Deodorant women's Dove (2.6 oz)",
+    "subcategory": "body",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Antiperspirant clinical strength (1.7 oz)",
+    "subcategory": "body",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Razor men's Gillette Mach3 (ea)",
+    "subcategory": "body",
+    "base_price": 11.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Razor blade refills men's (8-count)",
+    "subcategory": "body",
+    "base_price": 24.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Razor women's Venus (ea)",
+    "subcategory": "body",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Razor blade refills women's (8-count)",
+    "subcategory": "body",
+    "base_price": 22.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Disposable razors (10-count)",
+    "subcategory": "body",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Shaving cream (11 oz)",
+    "subcategory": "body",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Sunscreen SPF 50 Banana Boat (8 oz)",
+    "subcategory": "skin",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Sunscreen SPF 30 Coppertone (8 oz)",
+    "subcategory": "skin",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Sunscreen kids SPF 50 (8 oz)",
+    "subcategory": "skin",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Face moisturizer CeraVe (3 oz)",
+    "subcategory": "skin",
+    "base_price": 14.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Face wash Cetaphil gentle (16 oz)",
+    "subcategory": "skin",
+    "base_price": 13.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Face mask sheet (ea)",
+    "subcategory": "skin",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Eye cream (0.5 oz)",
+    "subcategory": "skin",
+    "base_price": 12.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Lip balm Chapstick (3-pack)",
+    "subcategory": "skin",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Lip balm Burt's Bees (ea)",
+    "subcategory": "skin",
+    "base_price": 3.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Acne wash Neutrogena (9.1 oz)",
+    "subcategory": "skin",
+    "base_price": 8.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Pads Always (36-count)",
+    "subcategory": "feminine",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Tampons Tampax (36-count)",
+    "subcategory": "feminine",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Pantiliners (100-count)",
+    "subcategory": "feminine",
+    "base_price": 5.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Multivitamin women's (60-count)",
+    "subcategory": "vitamins",
+    "base_price": 11.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Multivitamin men's (60-count)",
+    "subcategory": "vitamins",
+    "base_price": 11.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Vitamin D 2000 IU (100-count)",
+    "subcategory": "vitamins",
+    "base_price": 7.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Vitamin C 1000 mg (100-count)",
+    "subcategory": "vitamins",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Fish oil omega-3 (100-count)",
+    "subcategory": "vitamins",
+    "base_price": 14.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Probiotic capsules (30-count)",
+    "subcategory": "vitamins",
+    "base_price": 19.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Pain reliever Tylenol (100-count)",
+    "subcategory": "vitamins",
+    "base_price": 9.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Pain reliever Advil ibuprofen (100-count)",
+    "subcategory": "vitamins",
+    "base_price": 12.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Pain reliever Aleve (100-count)",
+    "subcategory": "vitamins",
+    "base_price": 14.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Allergy medicine Claritin (30-count)",
+    "subcategory": "vitamins",
+    "base_price": 19.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Cold and flu DayQuil/NyQuil combo (ea)",
+    "subcategory": "vitamins",
+    "base_price": 14.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  },
+  {
+    "name": "Cough drops Halls cherry (30-count)",
+    "subcategory": "vitamins",
+    "base_price": 2.99,
+    "is_organic": false,
+    "ebt_eligible": false
+  }
+]
