@@ -51,6 +51,17 @@ make demo
 
 `make demo` generates synthetic data, loads SQLite, and launches the dashboard on `http://localhost:8501`. `scripts/demo.sh` is the equivalent shell wrapper. Total cold-start time: ~2 minutes (~80s generation, ~25s SQLite seed, plus Streamlit startup).
 
+## Running on Streamlit Cloud
+
+The dashboard is deployed via Streamlit Community Cloud. The entry point at the repo root is [`streamlit_app.py`](./streamlit_app.py) — it sets up the import path, promotes `ANTHROPIC_API_KEY` from `st.secrets` into the environment, builds `data/payments.db` if missing (the 362 MB DB is gitignored, so cold starts regenerate it from committed catalogs), and then imports `src.dashboard.app` to render the page.
+
+- **Entry point:** `streamlit_app.py` (configure `Main file path` to this in share.streamlit.io)
+- **Required secret:** `ANTHROPIC_API_KEY` (configure under *Advanced settings → Secrets* on share.streamlit.io)
+- **Cold-start time:** ~3–4 minutes on Streamlit's shared CPU the first time after deploy or after the app sleeps (DB regeneration ≈ ~2 min locally, slower on shared hardware). Subsequent loads while the container is warm are instant.
+- **Live app:** _TBD — update with the public URL after deploy._
+
+Generation reads only from committed JSON catalogs under `data/catalogs/`; there are no external network dependencies, so the cold-start build is deterministic and reproducible from the seed.
+
 ## What's in the demo
 
 Each role's canned questions exercise tenant-only, lake-only, and combined-layer paths. A few examples:
