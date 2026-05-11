@@ -1600,6 +1600,67 @@ svg.leaflet-image-layer.leaflet-interactive path {
     }
 
 
+    /* ---------- Section 3 — agents ---------- */
+    .dataflow-svg {
+      display: block;
+      width: 100%;
+      max-width: 720px;
+      height: auto;
+      margin: 24px auto 0;
+    }
+
+    .agent-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin: 24px 0;
+    }
+    .agent-grid .agent-card { margin: 0; }
+    @media (max-width: 760px) {
+      .agent-grid { grid-template-columns: 1fr; }
+    }
+    .agent-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 22px 24px;
+    }
+    .agent-card .agent-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.005em;
+      margin: 0 0 4px;
+    }
+    .agent-card .agent-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.55;
+      margin: 0 0 14px;
+    }
+    .agent-card .agent-q {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: 0.01em;
+      margin: 0 0 8px;
+      border-left: 2px solid var(--accent);
+      padding-left: 10px;
+      line-height: 1.45;
+    }
+    .agent-card .agent-response {
+      font-size: 13px;
+      color: var(--text-2);
+      line-height: 1.6;
+      margin: 0;
+    }
+    .agent-card .agent-response .peer {
+      font-family: ui-monospace, 'SF Mono', monospace;
+      font-size: 12px;
+      color: var(--text);
+    }
+
+
     /* ---------- Responsive ---------- */
     @media (max-width: 720px) {
       .topnav { padding: 0 20px; }
@@ -1623,6 +1684,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
       <a href="#anomalies"     data-target="anomalies">Anomalies</a>
       <a href="#architecture"  data-target="architecture">Architecture</a>
       <a href="#mechanisms"    data-target="mechanisms">Mechanisms</a>
+      <a href="#agents"        data-target="agents">Agents</a>
     </div>
   </nav>
 
@@ -2294,6 +2356,222 @@ svg.leaflet-image-layer.leaflet-interactive path {
         <table class="peer-table" id="peer-table"></table>
       </div>
     </section>
+
+    <!-- =====================================================================
+         Section 3.1 — How the agents pull data
+         ===================================================================== -->
+    <section id="agents" class="section">
+      <h2>3.1 &middot; How the agents pull data</h2>
+      <h3>One viewer-scoped tool layer feeds every specialist</h3>
+
+      <p>
+        Each agent queries the viewing merchant&rsquo;s own tenant schema
+        for own-merchant data &mdash; stores, transactions, SKUs, and the
+        catalog. Scoping is enforced at the tool layer via
+        <code>MerchantContext</code>, which binds
+        <code>viewing_merchant_id</code> to every SQL call. Agents cannot
+        reach another merchant&rsquo;s tenant data; the SQL runner rejects
+        any tenant query that doesn&rsquo;t carry the viewer&rsquo;s
+        merchant predicate, and tenant tables are never exposed by name
+        to the lake side of the runner.
+      </p>
+
+      <p>
+        For peer comparisons, agents query the shared lake views, which
+        return peer data with pseudonymous labels (<code>peer_a</code>,
+        <code>peer_b</code>, <code>peer_c</code>, <code>peer_d</code>)
+        that invert based on the viewer. The viewing merchant&rsquo;s own
+        rows are filtered out of the lake at query time. Real merchant
+        names never appear in responses &mdash; the labels are the only
+        identifiers the model sees, and the model is instructed never to
+        echo specific merchant names from prompt-side knowledge into the
+        output.
+      </p>
+
+      <div class="viz-card">
+        <div class="viz-title">Data flow per agent turn</div>
+        <div class="viz-sub">
+          The user&rsquo;s viewing merchant is fixed at the top of the
+          call; both paths inherit it. The agent never sees a way to
+          override the binding.
+        </div>
+        <svg class="dataflow-svg" viewBox="0 0 720 320"
+             xmlns="http://www.w3.org/2000/svg"
+             role="img" aria-label="Data flow from user to agent to tenant and lake, and response back to user">
+          <defs>
+            <marker id="arr-accent" viewBox="0 0 10 10" refX="9" refY="5"
+                    markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#0F4C81"/>
+            </marker>
+            <marker id="arr-muted" viewBox="0 0 10 10" refX="9" refY="5"
+                    markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#7B8294"/>
+            </marker>
+          </defs>
+
+          <!-- User box -->
+          <rect x="20" y="125" width="140" height="70" rx="6"
+                fill="#fff" stroke="#E2E5EA" stroke-width="1.5"/>
+          <text x="90" y="158" text-anchor="middle"
+                font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif"
+                font-size="13" font-weight="600" fill="#1A1F2E">User</text>
+          <text x="90" y="178" text-anchor="middle"
+                font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif"
+                font-size="11" fill="#7B8294">question</text>
+
+          <!-- Agent box (accent border) -->
+          <rect x="260" y="125" width="160" height="70" rx="6"
+                fill="#fff" stroke="#0F4C81" stroke-width="1.5"/>
+          <text x="340" y="151" text-anchor="middle"
+                font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif"
+                font-size="13" font-weight="600" fill="#0F4C81">Agent</text>
+          <text x="340" y="170" text-anchor="middle"
+                font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif"
+                font-size="11" fill="#7B8294">pricing / anomaly /</text>
+          <text x="340" y="184" text-anchor="middle"
+                font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif"
+                font-size="11" fill="#7B8294">demand / trade</text>
+
+          <!-- Tenant data box (top right) -->
+          <rect x="500" y="20" width="200" height="86" rx="6"
+                fill="#F7F8FA" stroke="#E2E5EA" stroke-width="1.5"/>
+          <text x="600" y="48" text-anchor="middle"
+                font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif"
+                font-size="13" font-weight="600" fill="#1A1F2E">Tenant data</text>
+          <text x="600" y="68" text-anchor="middle"
+                font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif"
+                font-size="11" fill="#4A5161">own merchant only,</text>
+          <text x="600" y="83" text-anchor="middle"
+                font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif"
+                font-size="11" fill="#4A5161">scoped by</text>
+          <text x="600" y="98" text-anchor="middle"
+                font-family="ui-monospace, 'SF Mono', monospace"
+                font-size="11" fill="#0F4C81">MerchantContext</text>
+
+          <!-- Lake views box (bottom right) -->
+          <rect x="500" y="214" width="200" height="86" rx="6"
+                fill="#F7F8FA" stroke="#E2E5EA" stroke-width="1.5"/>
+          <text x="600" y="242" text-anchor="middle"
+                font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif"
+                font-size="13" font-weight="600" fill="#1A1F2E">Lake views</text>
+          <text x="600" y="262" text-anchor="middle"
+                font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif"
+                font-size="11" fill="#4A5161">peers, pseudonymous</text>
+          <text x="600" y="280" text-anchor="middle"
+                font-family="ui-monospace, 'SF Mono', monospace"
+                font-size="11" fill="#0F4C81">peer_a, peer_b, ...</text>
+
+          <!-- User -> Agent (forward, accent) -->
+          <line x1="160" y1="153" x2="256" y2="153"
+                stroke="#0F4C81" stroke-width="1.6" marker-end="url(#arr-accent)"/>
+          <!-- Agent -> User (response, dashed muted) -->
+          <line x1="256" y1="173" x2="160" y2="173"
+                stroke="#7B8294" stroke-width="1.4"
+                stroke-dasharray="4 3" marker-end="url(#arr-muted)"/>
+          <text x="208" y="200" text-anchor="middle"
+                font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif"
+                font-size="10.5" fill="#7B8294" font-style="italic">response</text>
+
+          <!-- Agent -> Tenant (up-right) -->
+          <line x1="420" y1="140" x2="498" y2="80"
+                stroke="#0F4C81" stroke-width="1.6" marker-end="url(#arr-accent)"/>
+          <!-- Agent -> Lake (down-right) -->
+          <line x1="420" y1="180" x2="498" y2="240"
+                stroke="#0F4C81" stroke-width="1.6" marker-end="url(#arr-accent)"/>
+        </svg>
+        <div class="viz-footnote">
+          Both the tenant and lake paths are SELECT-only at the runner
+          level. Multi-statement queries, mutations, and direct
+          references to physical lake tables are rejected before any
+          database connection opens.
+        </div>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         Section 3.2 — The four agents
+         ===================================================================== -->
+    <section id="agents-cards" class="section">
+      <h2>3.2 &middot; The four agents</h2>
+      <h3>One persona per analytic concern, all bound to the same viewer</h3>
+
+      <div class="agent-grid">
+        <div class="agent-card">
+          <div class="agent-name">Pricing &amp; Benchmarking</div>
+          <div class="agent-desc">
+            Compares the viewing merchant&rsquo;s prices to anonymized
+            peers on canonical SKUs and category-level positioning.
+          </div>
+          <div class="agent-q">How am I priced on dairy vs peers?</div>
+          <p class="agent-response">
+            Kroger is positioned competitively on dairy, with mixed
+            positioning across the category. On Babybel mini cheese
+            wheels, Kroger averages <span class="peer">$6.86</span> vs
+            <span class="peer">peer_a $7.34</span> (+7%) and
+            <span class="peer">peer_b $6.76</span> (&minus;1.5%). Sharp
+            cheddar shredded undercuts <span class="peer">peer_a</span>
+            by 5% and matches <span class="peer">peer_b</span> &mdash;
+            mid-market positioning on every high-velocity SKU.
+          </p>
+        </div>
+
+        <div class="agent-card">
+          <div class="agent-name">Anomaly Detection</div>
+          <div class="agent-desc">
+            Flags unusual operational patterns and contextualizes them
+            against peer baselines. Operational only &mdash; no fraud
+            claims.
+          </div>
+          <div class="agent-q">What unusual patterns am I seeing recently?</div>
+          <p class="agent-response">
+            Kroger experienced a sustained traffic dip in late May
+            (May&nbsp;18&ndash;22), with daily transactions falling to
+            ~560&ndash;630&nbsp;per day &mdash; a 35&ndash;45% decline
+            from weekend peaks. This is operationally consistent with
+            semester-end at nearby University City (UNC Charlotte),
+            which depresses foot traffic across the grocery market
+            in late May.
+          </p>
+        </div>
+
+        <div class="agent-card">
+          <div class="agent-name">Demand Forecasting</div>
+          <div class="agent-desc">
+            Identifies slow-movers, lapsed-buyer cohorts, and projected
+            promo uplift from historical campaigns.
+          </div>
+          <div class="agent-q">Slowing ice cream &mdash; what should I do?</div>
+          <p class="agent-response">
+            Three core ice cream SKUs are decelerating week-over-week:
+            Vanilla (&minus;14.9%), Mint Chocolate Chip (&minus;12.7%),
+            and Strawberry (&minus;5.2%). Cookies&nbsp;&amp;&nbsp;cream,
+            Rocky&nbsp;road, and Neapolitan are accelerating
+            (+14&ndash;20%) &mdash; consumers may be trading up to
+            premium variety flavors. Consider a targeted promo on
+            Vanilla and Mint Chocolate Chip paired with the
+            accelerating premium flavors.
+          </p>
+        </div>
+
+        <div class="agent-card">
+          <div class="agent-name">Trade Area Intelligence</div>
+          <div class="agent-desc">
+            Maps store catchment, peer neighborhood density, and
+            underserved-market opportunities.
+          </div>
+          <div class="agent-q">Which neighborhoods are underserved for new stores?</div>
+          <p class="agent-response">
+            Two neighborhoods stand out as underserved: Concord
+            (0&nbsp;own / 2&nbsp;peer&nbsp;grocers) and Huntersville
+            (0&nbsp;/&nbsp;1). Both are outer-suburban markets with
+            grocery demand established by competitors but no
+            own-footprint. Matthews (2&nbsp;own / 6&nbsp;peer) also
+            reads as underweight in a high-demand market.
+          </p>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <footer>
