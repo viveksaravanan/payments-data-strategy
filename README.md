@@ -3,9 +3,8 @@ title: Payments Data Strategy
 emoji: 📊
 colorFrom: blue
 colorTo: indigo
-sdk: streamlit
-sdk_version: 1.57.0
-app_file: streamlit_app.py
+sdk: docker
+app_port: 8501
 pinned: false
 license: mit
 ---

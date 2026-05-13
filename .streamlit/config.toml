@@ -6,12 +6,5 @@ secondaryBackgroundColor = "#F7F8FA"
 textColor = "#1A1F2E"
 font = "sans-serif"
 
-[server]
-headless = true
-enableCORS = false
-enableXsrfProtection = false
-enableWebsocketCompression = false
-fileWatcherType = "none"
-
 [browser]
 gatherUsageStats = false
