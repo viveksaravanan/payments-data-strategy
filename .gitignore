@@ -5,6 +5,7 @@ data/raw/*
 data/anon/**/*
 !data/anon/**/.gitkeep
 data/*.db
+!data/payments.db
 data/.build.log
 __pycache__/
 .pytest_cache/
