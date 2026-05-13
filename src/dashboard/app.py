@@ -159,7 +159,7 @@ st.markdown("<hr style='margin: 8px 0 12px;'/>", unsafe_allow_html=True)
 # Two-column layout (dashboard left 70% / chat right 30%)
 # ---------------------------------------------------------------------------
 
-dash_col, chat_col = st.columns([7, 3], gap="medium")
+dash_col, chat_col = st.columns([65, 35], gap="medium")
 
 with dash_col:
     # KPI row

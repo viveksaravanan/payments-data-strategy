@@ -7,6 +7,9 @@ Layout (top to bottom):
   3. "Clear chat history" button (only clears the current merchant).
   4. Scrollable chat history container (fixed height).
      Each turn renders as a `st.chat_message` user/assistant bubble.
+     A pending click or free-form submission renders its streaming
+     narration INSIDE this container (in the assistant bubble) so all
+     agent activity stays visually inside the chat window.
   5. Free-form `st.chat_input` at the bottom — routes through the
      orchestrator on submit.
 
@@ -81,6 +84,79 @@ def render_agent_response(text: str) -> None:
     st.markdown(_escape_dollars(text))
 
 
+def _render_history_entry(entry: dict) -> None:
+    """Render a single completed turn as a user + assistant bubble pair."""
+    with st.chat_message("user"):
+        # User input — render literally, no $-escape
+        st.markdown(entry.get("question", ""))
+    with st.chat_message("assistant"):
+        agent_name = entry.get("agent", "Agent")
+        st.caption(agent_name)
+        render_agent_response(entry.get("prose", ""))
+        tbl = entry.get("table")
+        if tbl is not None and not tbl.empty:
+            st.dataframe(
+                tbl, use_container_width=True, hide_index=True,
+            )
+        if entry.get("caveats"):
+            with st.expander("Caveats"):
+                for c in entry["caveats"]:
+                    # Caveats are agent-authored prose too — pre-escape
+                    # $ then substitute into the bullet template. Pre-escape
+                    # (not inline in the f-string) for Python 3.11
+                    # compatibility — see _escape_dollars.
+                    safe_c = _escape_dollars(str(c))
+                    st.markdown(f"- {safe_c}")
+
+
+def _render_live_turn(
+    question: str,
+    agent_label: str,
+    runner: "Callable[[Callable[[int, str], None], Callable[[str], None]], dict]",
+) -> dict:
+    """Render a user+assistant bubble pair with live narration streaming
+    into the assistant bubble. Returns the agent's final response dict.
+
+    The streaming placeholder receives both per-turn progress messages
+    and streamed final-answer tokens. When the runner returns, the
+    placeholder is replaced with the fully-formatted response (caption,
+    prose, table, caveats).
+
+    Streaming tokens are $-escaped to match `render_agent_response`.
+    """
+    with st.chat_message("user"):
+        st.markdown(question)
+    with st.chat_message("assistant"):
+        placeholder = st.empty()
+        streamed: list[str] = []
+
+        def on_progress(turn: int, msg: str) -> None:
+            if not streamed:
+                placeholder.markdown(
+                    f"_:hourglass_flowing_sand: **{agent_label}** — {msg}_"
+                )
+
+        def on_token(text: str) -> None:
+            streamed.append(text)
+            placeholder.markdown(_escape_dollars("".join(streamed)))
+
+        response = runner(on_progress, on_token)
+        placeholder.empty()
+        st.caption(response.get("agent", agent_label))
+        render_agent_response(response.get("prose", ""))
+        tbl = response.get("table")
+        if tbl is not None and not tbl.empty:
+            st.dataframe(
+                tbl, use_container_width=True, hide_index=True,
+            )
+        if response.get("caveats"):
+            with st.expander("Caveats"):
+                for c in response["caveats"]:
+                    safe_c = _escape_dollars(str(c))
+                    st.markdown(f"- {safe_c}")
+    return response
+
+
 # ---------------------------------------------------------------------------
 # Main render
 # ---------------------------------------------------------------------------
@@ -108,21 +184,18 @@ def render_chat_panel(merchant_id: str) -> None:
     # -- Description + 4 suggested-question buttons --
     st.caption(P.AGENT_DESCRIPTIONS[state.active_agent])
     agent_label = P.AGENT_LABELS[state.active_agent]
+
+    # Collect a button click without acting on it — we'll handle it
+    # below, INSIDE the chat container, so the streaming bubble appears
+    # in the chat window rather than below the buttons.
+    pending_click: tuple[str, str] | None = None
     for qid, qtext in questions_by_agent[state.active_agent]:
         if st.button(
             qtext,
             key=f"q_{merchant_id}_{state.active_agent}_{qid}",
             use_container_width=True,
         ):
-            response = _run_with_live_narration(
-                agent_label,
-                lambda progress, on_token: P.dispatch(
-                    state.active_agent, qid, merchant_id,
-                    progress=progress, on_token=on_token,
-                ),
-            )
-            _push(merchant_id, qtext, response)
-            st.rerun()
+            pending_click = (qid, qtext)
 
     # -- Clear chat history button --
     if st.button(
@@ -133,103 +206,48 @@ def render_chat_panel(merchant_id: str) -> None:
         reset_history(merchant_id)
         st.rerun()
 
-    # -- Scrollable chat history container --
-    chat_box = st.container(height=480, border=True)
-    with chat_box:
-        if not history:
-            st.caption(
-                "No questions yet. Pick a suggestion above, "
-                "or type one in below."
-            )
-        else:
-            for entry in history:
-                with st.chat_message("user"):
-                    # User input — render literally, no $-escape
-                    st.markdown(entry.get("question", ""))
-                with st.chat_message("assistant"):
-                    agent_name = entry.get("agent", "Agent")
-                    st.caption(agent_name)
-                    render_agent_response(entry.get("prose", ""))
-                    tbl = entry.get("table")
-                    if tbl is not None and not tbl.empty:
-                        st.dataframe(
-                            tbl, use_container_width=True, hide_index=True,
-                        )
-                    if entry.get("caveats"):
-                        with st.expander("Caveats"):
-                            for c in entry["caveats"]:
-                                # Caveats are agent-authored prose too —
-                                # pre-escape $ then substitute into the
-                                # bullet template. Pre-escape (not inline
-                                # in the f-string) for Python 3.11
-                                # compatibility — see _escape_dollars.
-                                safe_c = _escape_dollars(str(c))
-                                st.markdown(f"- {safe_c}")
+    # -- Reserve scrollable chat history container --
+    chat_box = st.container(height=700, border=True)
 
-    # -- Free-form input at the bottom --
+    # -- Free-form input at the bottom (rendered before container fill
+    # so it appears visually below the container) --
     free_q = st.chat_input(
         "Ask anything…",
         key=f"chat_input_{merchant_id}",
     )
-    if free_q and free_q.strip():
-        _handle_free_form(merchant_id, free_q.strip())
-        st.rerun()
 
-
-# ---------------------------------------------------------------------------
-# Free-form path — routes via the LLM orchestrator
-# ---------------------------------------------------------------------------
-
-def _handle_free_form(merchant_id: str, question: str) -> None:
-    """Free-form questions go through the orchestrator; the orchestrator's
-    own routing prefix (e.g. "Routed to the Pricing & Benchmarking Agent…")
-    will be embedded in the response prose."""
-    response = _run_with_live_narration(
-        "Conversational Advisor",
-        lambda progress, on_token: P.dispatch_orchestrated(
-            merchant_id, question,
-            progress=progress, on_token=on_token,
-        ),
-    )
-    _push(merchant_id, question, response)
-
-
-# ---------------------------------------------------------------------------
-# Live narration — progress + streaming tokens
-# ---------------------------------------------------------------------------
-
-def _run_with_live_narration(
-    agent_label: str,
-    runner: "Callable[[Callable[[int, str], None], Callable[[str], None]], dict]",
-) -> dict:
-    """Render a single placeholder that updates first with per-turn
-    progress messages, then with streamed final-answer text.
-
-    The placeholder is cleared on return — the chat history view
-    re-renders the final response with full formatting (table, chart,
-    caveats). Cache hits skip the callbacks entirely (no Streamlit
-    calls) so they return without rendering progress.
-
-    Streaming tokens are $-escaped to match `render_agent_response`.
-    """
-    placeholder = st.empty()
-    streamed: list[str] = []
-
-    def on_progress(turn: int, msg: str) -> None:
-        if not streamed:
-            placeholder.markdown(
-                f"_:hourglass_flowing_sand: **{agent_label}** — {msg}_"
+    # -- Fill the chat container --
+    with chat_box:
+        if not history and not pending_click and not (free_q and free_q.strip()):
+            st.caption(
+                "No questions yet. Pick a suggestion above, "
+                "or type one in below."
             )
+        for entry in history:
+            _render_history_entry(entry)
 
-    def on_token(text: str) -> None:
-        streamed.append(text)
-        # Escape $ in streamed tokens for the same reason
-        # `render_agent_response` does — keep dollar amounts from
-        # triggering LaTeX-math rendering mid-stream.
-        placeholder.markdown(_escape_dollars("".join(streamed)))
-
-    try:
-        response = runner(on_progress, on_token)
-    finally:
-        placeholder.empty()
-    return response
+        if pending_click is not None:
+            qid, qtext = pending_click
+            active_agent = state.active_agent
+            response = _render_live_turn(
+                qtext,
+                agent_label,
+                lambda progress, on_token: P.dispatch(
+                    active_agent, qid, merchant_id,
+                    progress=progress, on_token=on_token,
+                ),
+            )
+            _push(merchant_id, qtext, response)
+            st.rerun()
+        elif free_q and free_q.strip():
+            question = free_q.strip()
+            response = _render_live_turn(
+                question,
+                "Conversational Advisor",
+                lambda progress, on_token: P.dispatch_orchestrated(
+                    merchant_id, question,
+                    progress=progress, on_token=on_token,
+                ),
+            )
+            _push(merchant_id, question, response)
+            st.rerun()
