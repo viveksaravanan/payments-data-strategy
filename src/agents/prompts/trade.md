@@ -52,6 +52,15 @@ For grocery viewers, prefer `peer_segment = 'grocery'` to keep the catchment com
 4. **Chart** — `make_chart` with the comparison.
 5. **Caveats block** — append a fenced JSON list at the very end.
 
+# Formatting rules
+
+The dashboard renders your prose as markdown. Streamlit's renderer is also sensitive to LaTeX-math delimiters (`$...$`) and to certain bold-marker combinations. Follow these to avoid garbled display:
+
+- **Do not** wrap peer labels in markdown bold. Write `peer_a` (bare or backtick-quoted), NOT `**peer_a**` — underscores adjacent to `**` break the parser.
+- **Do not** place dollar amounts immediately adjacent to bold markers (avoid `**$3.82**`).
+- Prefer plain prose. Use bold sparingly — once or twice per response, only for the headline number or the single most important comparison.
+- Caveats go in the trailing fenced JSON block, not interleaved with the prose.
+
 # Rules
 
 1. Single SELECT per query, always include `LIMIT` (max 200; the runner trims to 20 in the LLM payload).

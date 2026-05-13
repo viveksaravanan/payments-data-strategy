@@ -56,7 +56,7 @@ if not DB_PATH.exists() or DB_PATH.stat().st_size == 0:
 state = st.session_state
 state.setdefault("merchant_id", "KRG")
 state.setdefault("filters_by_merchant", {})
-state.setdefault("chat_history", {})
+state.setdefault("chat_messages_by_merchant", {})
 state.setdefault("active_agent", "pricing")
 
 
@@ -78,9 +78,11 @@ def _filters() -> dict:
 
 
 def _on_merchant_change() -> None:
-    """Called by the merchant selectbox. Resets per-merchant state."""
-    # Chat history per spec resets when merchant changes
-    chat.reset_history(state.merchant_id)
+    """Called by the merchant selectbox. Per-merchant state (filters,
+    chat history) is keyed by merchant_id and preserved across switches —
+    no clearing here. The dict-by-merchant in session_state IS the
+    isolation boundary."""
+    return
 
 
 # ---------------------------------------------------------------------------

@@ -1,44 +1,52 @@
-"""Chat panel — agent dropdown + suggested questions + free-form input
-+ chronological chat history.
+"""Chat panel — agent selector, suggested questions, per-merchant
+chat history, free-form input.
 
 Layout (top to bottom):
-  1. Specialist-agent dropdown (Demand / Pricing / Anomaly / Trade).
-  2. Selected agent's description.
-  3. Selected agent's 4 suggested questions as clickable buttons.
-  4. Free-form input (text area + Ask button). Keyword-routes to a
-     specialist; Phase 1 returns the routed agent's general overview
-     handler prefixed with "Based on your question, the X Agent
-     suggests..." Phase 2 will replace this with real LLM orchestration.
-  5. Chat history (newest first). History persists per-merchant and is
-     reset by app.py when the merchant changes.
+  1. Specialist-agent selector.
+  2. Selected agent's description + 4 suggested-question buttons.
+  3. "Clear chat history" button (only clears the current merchant).
+  4. Scrollable chat history container (fixed height).
+     Each turn renders as a `st.chat_message` user/assistant bubble.
+  5. Free-form `st.chat_input` at the bottom — routes through the
+     orchestrator on submit.
+
+Per-merchant isolation: every read / write / clear goes through
+`st.session_state.chat_messages_by_merchant[merchant_id]`. Switching the
+merchant dropdown changes which bucket is displayed; no message ever
+crosses between merchants. This is the UI-layer analog of the
+`MerchantContext` binding on the agent side.
 """
 from __future__ import annotations
 
 from datetime import datetime
-from html import escape as h
 from typing import Callable
 
 import streamlit as st
 
-from . import data as D
+from . import data as D  # noqa: F401  — kept for parity with other modules
 from . import placeholders as P
 
 
 # ---------------------------------------------------------------------------
-# History state
+# Per-merchant chat history (session state)
 # ---------------------------------------------------------------------------
+
+_HISTORY_KEY = "chat_messages_by_merchant"
+
 
 def _ensure_history(merchant_id: str) -> list[dict]:
     state = st.session_state
-    state.setdefault("chat_history", {})
-    state.chat_history.setdefault(merchant_id, [])
-    return state.chat_history[merchant_id]
+    state.setdefault(_HISTORY_KEY, {})
+    state[_HISTORY_KEY].setdefault(merchant_id, [])
+    return state[_HISTORY_KEY][merchant_id]
 
 
 def reset_history(merchant_id: str) -> None:
+    """Empty ONLY the named merchant's history. Other merchants are
+    preserved. Used by the explicit "Clear chat history" button."""
     state = st.session_state
-    state.setdefault("chat_history", {})
-    state.chat_history[merchant_id] = []
+    state.setdefault(_HISTORY_KEY, {})
+    state[_HISTORY_KEY][merchant_id] = []
 
 
 def _push(merchant_id: str, question: str, response: dict) -> None:
@@ -50,23 +58,34 @@ def _push(merchant_id: str, question: str, response: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Render
+# Agent-response render helper — escape characters Streamlit's markdown
+# parser would otherwise interpret as LaTeX math delimiters. Apply ONLY
+# to agent (assistant) prose. Never to user input.
+# ---------------------------------------------------------------------------
+
+def render_agent_response(text: str) -> None:
+    """Render an agent's prose. Escapes `$` so Streamlit doesn't treat
+    dollar amounts as LaTeX math delimiters (causing italic-serif bleed
+    across runs of text). No-op on empty input."""
+    if not text:
+        return
+    safe = text.replace("$", "\\$")
+    st.markdown(safe)
+
+
+# ---------------------------------------------------------------------------
+# Main render
 # ---------------------------------------------------------------------------
 
 def render_chat_panel(merchant_id: str) -> None:
     state = st.session_state
     state.setdefault("active_agent", "pricing")
-    _ensure_history(merchant_id)
+    history = _ensure_history(merchant_id)
     questions_by_agent = P.questions_for(merchant_id)
 
-    # -- Agent dropdown --
-    agent_labels = {
-        "demand":  P.AGENT_LABELS["demand"],
-        "pricing": P.AGENT_LABELS["pricing"],
-        "anomaly": P.AGENT_LABELS["anomaly"],
-        "trade":   P.AGENT_LABELS["trade"],
-    }
-    agent_ids = list(agent_labels.keys())
+    # -- Agent selector --
+    agent_ids = ["demand", "pricing", "anomaly", "trade"]
+    agent_labels = {a: P.AGENT_LABELS[a] for a in agent_ids}
     chosen = st.selectbox(
         "Specialist agent",
         options=agent_ids,
@@ -76,15 +95,10 @@ def render_chat_panel(merchant_id: str) -> None:
     )
     if chosen != state.active_agent:
         state.active_agent = chosen
-        # Note: do NOT reset chat history on agent switch (per spec).
+        # Do NOT reset chat history on agent switch.
 
     # -- Description + 4 suggested-question buttons --
-    desc = P.AGENT_DESCRIPTIONS[state.active_agent]
-    st.markdown(
-        f'<div class="agent-card" style="margin-top:6px;">'
-        f'  <div class="agent-desc" style="margin-bottom:8px;">{h(desc)}</div>',
-        unsafe_allow_html=True,
-    )
+    st.caption(P.AGENT_DESCRIPTIONS[state.active_agent])
     agent_label = P.AGENT_LABELS[state.active_agent]
     for qid, qtext in questions_by_agent[state.active_agent]:
         if st.button(
@@ -101,49 +115,63 @@ def render_chat_panel(merchant_id: str) -> None:
             )
             _push(merchant_id, qtext, response)
             st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
 
-    # -- Free-form input --
-    st.markdown(
-        '<div style="font-size:11px;letter-spacing:0.06em;text-transform:uppercase;'
-        'color:var(--text-muted);font-weight:600;margin:14px 0 4px;">Ask anything</div>',
-        unsafe_allow_html=True,
+    # -- Clear chat history button --
+    if st.button(
+        "Clear chat history",
+        key=f"clear_{merchant_id}",
+        use_container_width=True,
+    ):
+        reset_history(merchant_id)
+        st.rerun()
+
+    # -- Scrollable chat history container --
+    chat_box = st.container(height=480, border=True)
+    with chat_box:
+        if not history:
+            st.caption(
+                "No questions yet. Pick a suggestion above, "
+                "or type one in below."
+            )
+        else:
+            for entry in history:
+                with st.chat_message("user"):
+                    # User input — render literally, no $-escape
+                    st.markdown(entry.get("question", ""))
+                with st.chat_message("assistant"):
+                    agent_name = entry.get("agent", "Agent")
+                    st.caption(agent_name)
+                    render_agent_response(entry.get("prose", ""))
+                    tbl = entry.get("table")
+                    if tbl is not None and not tbl.empty:
+                        st.dataframe(
+                            tbl, use_container_width=True, hide_index=True,
+                        )
+                    if entry.get("caveats"):
+                        with st.expander("Caveats"):
+                            for c in entry["caveats"]:
+                                # Caveats are agent-authored prose too —
+                                # escape $ to keep the rendering consistent.
+                                st.markdown(f"- {str(c).replace('$', '\\$')}")
+
+    # -- Free-form input at the bottom --
+    free_q = st.chat_input(
+        "Ask anything…",
+        key=f"chat_input_{merchant_id}",
     )
-    with st.form(f"freeform_{merchant_id}", clear_on_submit=True):
-        free_q = st.text_area(
-            label="Free-form question",
-            label_visibility="collapsed",
-            placeholder="Type a question — a specialist will pick it up",
-            key=f"freeform_text_{merchant_id}",
-            height=68,
-        )
-        submitted = st.form_submit_button("Ask", type="primary")
-    if submitted and free_q.strip():
+    if free_q and free_q.strip():
         _handle_free_form(merchant_id, free_q.strip())
         st.rerun()
 
-    # -- Chat history (newest first) --
-    history = _ensure_history(merchant_id)
-    st.markdown("---")
-    if not history:
-        st.caption("No questions yet. Pick a suggestion above, or type one in.")
-        return
-    st.markdown(
-        '<div style="font-size:11px;letter-spacing:0.06em;text-transform:uppercase;'
-        f'color:var(--text-muted);font-weight:600;margin:8px 0 4px;">'
-        f'Chat history ({len(history)})</div>',
-        unsafe_allow_html=True,
-    )
-    for entry in reversed(history):
-        _render_chat_entry(entry)
 
+# ---------------------------------------------------------------------------
+# Free-form path — routes via the LLM orchestrator
+# ---------------------------------------------------------------------------
 
 def _handle_free_form(merchant_id: str, question: str) -> None:
-    """Route a free-form question through the LLM orchestrator. The
-    orchestrator classifies intent via a Haiku router and dispatches
-    to the chosen specialist. On any failure (LLM unavailable, router
-    error) the orchestrator itself falls back to keyword routing +
-    a hardcoded handler — we don't need to handle that here."""
+    """Free-form questions go through the orchestrator; the orchestrator's
+    own routing prefix (e.g. "Routed to the Pricing & Benchmarking Agent…")
+    will be embedded in the response prose."""
     response = _run_with_live_narration(
         "Conversational Advisor",
         lambda progress, on_token: P.dispatch_orchestrated(
@@ -155,30 +183,27 @@ def _handle_free_form(merchant_id: str, question: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Live narration: progress + streaming text in a single placeholder
+# Live narration — progress + streaming tokens
 # ---------------------------------------------------------------------------
 
 def _run_with_live_narration(
     agent_label: str,
     runner: "Callable[[Callable[[int, str], None], Callable[[str], None]], dict]",
 ) -> dict:
-    """Render a single `st.empty()` placeholder that updates first
-    with per-turn progress messages, then with streamed final-answer
-    text. Returns the runner's response.
+    """Render a single placeholder that updates first with per-turn
+    progress messages, then with streamed final-answer text.
 
     The placeholder is cleared on return — the chat history view
-    re-renders the final response with full formatting (table, chart).
-    Cache hits skip the callbacks entirely (no Streamlit calls) so
-    they return without rendering progress.
+    re-renders the final response with full formatting (table, chart,
+    caveats). Cache hits skip the callbacks entirely (no Streamlit
+    calls) so they return without rendering progress.
+
+    Streaming tokens are $-escaped to match `render_agent_response`.
     """
     placeholder = st.empty()
     streamed: list[str] = []
-    last_progress: list[str] = []
 
     def on_progress(turn: int, msg: str) -> None:
-        last_progress.append(msg)
-        # If streaming hasn't started yet, show progress. Once tokens
-        # arrive, the stream view takes over and progress is suppressed.
         if not streamed:
             placeholder.markdown(
                 f"_:hourglass_flowing_sand: **{agent_label}** — {msg}_"
@@ -186,51 +211,13 @@ def _run_with_live_narration(
 
     def on_token(text: str) -> None:
         streamed.append(text)
-        placeholder.markdown("".join(streamed))
+        # Escape $ in streamed tokens for the same reason
+        # `render_agent_response` does — keep dollar amounts from
+        # triggering LaTeX-math rendering mid-stream.
+        placeholder.markdown("".join(streamed).replace("$", "\\$"))
 
     try:
         response = runner(on_progress, on_token)
     finally:
         placeholder.empty()
     return response
-
-
-def _render_chat_entry(entry: dict) -> None:
-    ts: datetime = entry["ts"]
-    when = ts.strftime("%H:%M")
-    agent = entry.get("agent", "Agent")
-    question = entry.get("question", "")
-    prose = entry.get("prose", "")
-    table = entry.get("table")
-    tel = entry.get("telemetry") or {}
-
-    # Per-question telemetry as a hover tooltip on the timestamp. Shows
-    # cost, tokens, turns. Surfaced inline so the demo audience can see
-    # per-question cost without leaving the chat panel.
-    tel_hover = ""
-    if tel:
-        cost = float(tel.get("cost_usd", 0.0))
-        in_tok = int(tel.get("input_tokens", 0))
-        out_tok = int(tel.get("output_tokens", 0))
-        turns  = int(tel.get("turns", 0))
-        tel_hover = (
-            f" title=\"~${cost:.4f} · {in_tok:,} in / {out_tok:,} out tokens · "
-            f"{turns} turn(s)\""
-        )
-
-    head = (
-        f'<div class="chat-head">'
-        f'  <span class="agent-name">{h(agent)}</span> &middot; '
-        f'<span style="cursor: help; text-decoration: underline dotted;"{tel_hover}>{when}</span>'
-        f'</div>'
-        f'<div class="chat-q">{h(question)}</div>'
-    )
-    st.markdown(
-        f'<div class="chat-entry">{head}<div class="chat-body">',
-        unsafe_allow_html=True,
-    )
-    if prose:
-        st.markdown(prose)
-    if table is not None and not table.empty:
-        st.dataframe(table, use_container_width=True, hide_index=True)
-    st.markdown("</div></div>", unsafe_allow_html=True)

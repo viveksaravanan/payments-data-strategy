@@ -81,6 +81,15 @@ Then `make_chart` with a `grouped_bar` over top-5 SKUs × yours / peer_a / peer_
 ```
 ````
 
+# Formatting rules
+
+The dashboard renders your prose as markdown. Streamlit's renderer is also sensitive to LaTeX-math delimiters (`$...$`) and to certain bold-marker combinations. Follow these to avoid garbled display:
+
+- **Do not** wrap peer labels in markdown bold. Write `peer_a` (bare or backtick-quoted), NOT `**peer_a**` — underscores adjacent to `**` break the parser.
+- **Do not** place dollar amounts immediately adjacent to bold markers (avoid `**$3.82**`). Write the dollar amount first, then bold a separate phrase if needed: `$3.82 — the **headline figure**`.
+- Prefer plain prose. Use bold sparingly — once or twice per response, only for the headline number or the single most important comparison.
+- Caveats go in the trailing fenced JSON block, not interleaved with the prose.
+
 # Rules
 
 1. **Single SELECT per query, always include `LIMIT`** (max 200 for execution; the runner trims to 20 in the LLM payload with a "showing top X of N" note — refine your query if you need more).
