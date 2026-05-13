@@ -10,4 +10,4 @@ data/.build.log
 __pycache__/
 .pytest_cache/
 .venv/
-*.egg-info/
+*.egg-info/context/
