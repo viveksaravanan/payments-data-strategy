@@ -255,12 +255,7 @@ def render_chat_panel(merchant_id: str) -> None:
     # explicit disabled fade.
     h1, h2, h3 = st.columns([0.7, 0.15, 0.15], gap="small")
     with h1:
-        st.markdown(
-            '<div style="font-size:13px;letter-spacing:0.06em;'
-            'text-transform:uppercase;color:var(--accent);font-weight:600;'
-            'margin:6px 0 0;">Specialist agents</div>',
-            unsafe_allow_html=True,
-        )
+        st.markdown("#### Ask the data")
     with h2:
         expanded = state.chat_expanded
         toggle_icon = "⤡" if expanded else "⤢"
@@ -274,6 +269,7 @@ def render_chat_panel(merchant_id: str) -> None:
             help=toggle_help,
             use_container_width=True,
             disabled=is_running,
+            type="secondary",
         ):
             state.chat_expanded = not expanded
             # Tell the next run to scroll the parent window to the top
@@ -289,12 +285,15 @@ def render_chat_panel(merchant_id: str) -> None:
             help="Wait for current response…" if is_running else "Clear chat history",
             use_container_width=True,
             disabled=is_running,
+            type="secondary",
         ):
             reset_history(merchant_id)
             st.rerun()
 
     # -- Agent selector (disabled during a run so an agent switch can't
-    # abort the in-flight dispatch) --
+    # abort the in-flight dispatch). label_visibility="collapsed" drops
+    # the "Specialist agent" sub-label — the dropdown content is
+    # self-explanatory. The label string is kept for screen readers. --
     agent_ids = ["demand", "pricing", "anomaly", "trade"]
     agent_labels = {a: P.AGENT_LABELS[a] for a in agent_ids}
     chosen = st.selectbox(
@@ -304,14 +303,17 @@ def render_chat_panel(merchant_id: str) -> None:
         index=agent_ids.index(state.active_agent),
         key=f"agent_select_{merchant_id}",
         disabled=is_running,
+        label_visibility="collapsed",
     )
     if chosen != state.active_agent and not is_running:
         state.active_agent = chosen
         # Do NOT reset chat history on agent switch.
 
-    # -- Description + 4 suggested-question buttons --
+    # -- Description --
     st.caption(P.AGENT_DESCRIPTIONS[state.active_agent])
     agent_label = P.AGENT_LABELS[state.active_agent]
+
+    st.markdown("---")
 
     # Suggested questions: clicking enqueues a pending dispatch but
     # does NOT run the agent in this run. Streamlit's auto-rerun on
@@ -325,6 +327,7 @@ def render_chat_panel(merchant_id: str) -> None:
             key=f"q_{merchant_id}_{state.active_agent}_{qid}",
             use_container_width=True,
             disabled=is_running,
+            type="secondary",
         ):
             clicked = (qid, qtext)
     if clicked is not None and not is_running:
@@ -339,8 +342,12 @@ def render_chat_panel(merchant_id: str) -> None:
         state.agent_running = True
         st.rerun()
 
+    st.markdown("---")
+
     # -- Reserve scrollable chat history container --
     chat_box = st.container(height=700, border=True)
+
+    st.markdown("---")
 
     # -- Free-form input at the bottom (rendered before container fill
     # so it appears visually below the container) --
