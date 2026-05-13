@@ -49,6 +49,7 @@ _CSS = """
     position: relative;
     box-shadow: 0 1px 3px rgba(15, 31, 46, 0.04), 0 1px 2px rgba(15, 31, 46, 0.03);
     height: 100%;
+    margin-bottom: 18px;
   }
   .kpi.clickable { cursor: pointer; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
   .kpi.clickable:hover { border-color: var(--accent); box-shadow: 0 4px 10px rgba(15, 76, 129, 0.10); }
@@ -229,6 +230,17 @@ _CSS = """
     color: var(--anomaly) !important;
     border-color: var(--anomaly) !important;
     background: rgba(196, 69, 54, 0.06) !important;
+  }
+  /* Explicit disabled state — Streamlit's default disabled styling is
+     subtle, so we hard-fade the icon to make it obvious that the
+     button is non-interactive during an agent dispatch. */
+  [class*="st-key-expand_btn_"] button:disabled,
+  [class*="st-key-clear_btn_"] button:disabled {
+    color: var(--text-muted) !important;
+    opacity: 0.35 !important;
+    cursor: not-allowed !important;
+    background: transparent !important;
+    border-color: var(--border) !important;
   }
 </style>
 """

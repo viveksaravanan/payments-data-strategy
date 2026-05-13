@@ -235,14 +235,24 @@ def render_chat_panel(merchant_id: str) -> None:
     state = st.session_state
     state.setdefault("active_agent", "pricing")
     state.setdefault("chat_expanded", False)
+    state.setdefault("agent_running", False)
+    state.setdefault("pending_dispatch", None)
     history = _ensure_history(merchant_id)
     questions_by_agent = P.questions_for(merchant_id)
+
+    # When an agent is mid-dispatch (i.e. we're inside the run that will
+    # process state.pending_dispatch below), disable every control that
+    # could re-trigger a Streamlit rerun — clicks on disabled HTML
+    # buttons are blocked browser-side, so the streaming `_render_live_turn`
+    # below can't be aborted mid-stream.
+    is_running = bool(state.agent_running)
 
     # -- Header row: title (left), expand toggle + clear-history (right) --
     # The expand and clear buttons share narrow columns so they read as
     # compact icon affordances. Keys use the merchant_id suffix; CSS in
     # styling.py targets `st-key-expand_btn_*` / `st-key-clear_btn_*` to
-    # apply the smaller padding + accent / danger hover tints.
+    # apply the smaller padding + accent / danger hover tints, plus the
+    # explicit disabled fade.
     h1, h2, h3 = st.columns([0.7, 0.15, 0.15], gap="small")
     with h1:
         st.markdown(
@@ -254,26 +264,37 @@ def render_chat_panel(merchant_id: str) -> None:
     with h2:
         expanded = state.chat_expanded
         toggle_icon = "⤡" if expanded else "⤢"
-        toggle_help = "Collapse chat" if expanded else "Expand chat"
+        if is_running:
+            toggle_help = "Wait for current response…"
+        else:
+            toggle_help = "Collapse chat" if expanded else "Expand chat"
         if st.button(
             toggle_icon,
             key=f"expand_btn_{merchant_id}",
             help=toggle_help,
             use_container_width=True,
+            disabled=is_running,
         ):
             state.chat_expanded = not expanded
+            # Tell the next run to scroll the parent window to the top
+            # — without this the user lands wherever the document was
+            # scrolled when they clicked the icon, which is often the
+            # bottom of the prior layout.
+            state.scroll_to_top_pending = True
             st.rerun()
     with h3:
         if st.button(
             "🗑",
             key=f"clear_btn_{merchant_id}",
-            help="Clear chat history",
+            help="Wait for current response…" if is_running else "Clear chat history",
             use_container_width=True,
+            disabled=is_running,
         ):
             reset_history(merchant_id)
             st.rerun()
 
-    # -- Agent selector --
+    # -- Agent selector (disabled during a run so an agent switch can't
+    # abort the in-flight dispatch) --
     agent_ids = ["demand", "pricing", "anomaly", "trade"]
     agent_labels = {a: P.AGENT_LABELS[a] for a in agent_ids}
     chosen = st.selectbox(
@@ -282,8 +303,9 @@ def render_chat_panel(merchant_id: str) -> None:
         format_func=lambda a: agent_labels[a],
         index=agent_ids.index(state.active_agent),
         key=f"agent_select_{merchant_id}",
+        disabled=is_running,
     )
-    if chosen != state.active_agent:
+    if chosen != state.active_agent and not is_running:
         state.active_agent = chosen
         # Do NOT reset chat history on agent switch.
 
@@ -291,17 +313,31 @@ def render_chat_panel(merchant_id: str) -> None:
     st.caption(P.AGENT_DESCRIPTIONS[state.active_agent])
     agent_label = P.AGENT_LABELS[state.active_agent]
 
-    # Collect a button click without acting on it — we'll handle it
-    # below, INSIDE the chat container, so the streaming bubble appears
-    # in the chat window rather than below the buttons.
-    pending_click: tuple[str, str] | None = None
+    # Suggested questions: clicking enqueues a pending dispatch but
+    # does NOT run the agent in this run. Streamlit's auto-rerun on
+    # button-click fires, and the next run renders everything with
+    # is_running=True before the dispatch executes inside the chat
+    # container — so the user can't disrupt mid-stream.
+    clicked: tuple[str, str] | None = None
     for qid, qtext in questions_by_agent[state.active_agent]:
         if st.button(
             qtext,
             key=f"q_{merchant_id}_{state.active_agent}_{qid}",
             use_container_width=True,
+            disabled=is_running,
         ):
-            pending_click = (qid, qtext)
+            clicked = (qid, qtext)
+    if clicked is not None and not is_running:
+        qid, qtext = clicked
+        state.pending_dispatch = {
+            "kind":     "question",
+            "qid":      qid,
+            "qtext":    qtext,
+            "agent_id": state.active_agent,
+            "agent_label": agent_label,
+        }
+        state.agent_running = True
+        st.rerun()
 
     # -- Reserve scrollable chat history container --
     chat_box = st.container(height=700, border=True)
@@ -311,11 +347,20 @@ def render_chat_panel(merchant_id: str) -> None:
     free_q = st.chat_input(
         "Ask anything…",
         key=f"chat_input_{merchant_id}",
+        disabled=is_running,
     )
+    if free_q and free_q.strip() and not is_running:
+        state.pending_dispatch = {
+            "kind":     "free",
+            "question": free_q.strip(),
+        }
+        state.agent_running = True
+        st.rerun()
 
     # -- Fill the chat container --
     with chat_box:
-        if not history and not pending_click and not (free_q and free_q.strip()):
+        pending = state.pending_dispatch
+        if not history and pending is None:
             st.caption(
                 "No questions yet. Pick a suggestion above, "
                 "or type one in below."
@@ -323,28 +368,34 @@ def render_chat_panel(merchant_id: str) -> None:
         for entry in history:
             _render_history_entry(entry)
 
-        if pending_click is not None:
-            qid, qtext = pending_click
-            active_agent = state.active_agent
-            response = _render_live_turn(
-                qtext,
-                agent_label,
-                lambda progress, on_token: P.dispatch(
-                    active_agent, qid, merchant_id,
-                    progress=progress, on_token=on_token,
-                ),
-            )
-            _push(merchant_id, qtext, response)
-            st.rerun()
-        elif free_q and free_q.strip():
-            question = free_q.strip()
-            response = _render_live_turn(
-                question,
-                "Conversational Advisor",
-                lambda progress, on_token: P.dispatch_orchestrated(
-                    merchant_id, question,
-                    progress=progress, on_token=on_token,
-                ),
-            )
-            _push(merchant_id, question, response)
+        if pending is not None:
+            try:
+                if pending["kind"] == "question":
+                    qid       = pending["qid"]
+                    qtext     = pending["qtext"]
+                    agent_id  = pending["agent_id"]
+                    label     = pending["agent_label"]
+                    response = _render_live_turn(
+                        qtext,
+                        label,
+                        lambda progress, on_token: P.dispatch(
+                            agent_id, qid, merchant_id,
+                            progress=progress, on_token=on_token,
+                        ),
+                    )
+                    _push(merchant_id, qtext, response)
+                else:  # "free"
+                    question = pending["question"]
+                    response = _render_live_turn(
+                        question,
+                        "Conversational Advisor",
+                        lambda progress, on_token: P.dispatch_orchestrated(
+                            merchant_id, question,
+                            progress=progress, on_token=on_token,
+                        ),
+                    )
+                    _push(merchant_id, question, response)
+            finally:
+                state.pending_dispatch = None
+                state.agent_running = False
             st.rerun()

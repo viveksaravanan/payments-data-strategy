@@ -26,6 +26,7 @@ from dotenv import load_dotenv
 load_dotenv()  # tolerated even though Phase 1 doesn't call any LLM APIs
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 from src.dashboard import chat, data as D, styling, views
 
@@ -43,6 +44,16 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 styling.inject()
+
+# Scroll the parent window back to the top whenever the chat-expand
+# state was just toggled. Streamlit strips <script> tags from
+# st.markdown, so this has to go through components.html — which paints
+# a zero-height iframe whose JS can reach the parent via window.parent.
+if st.session_state.pop("scroll_to_top_pending", False):
+    components.html(
+        "<script>window.parent.scrollTo({top: 0, left: 0, behavior: 'instant'});</script>",
+        height=0,
+    )
 
 if not DB_PATH.exists() or DB_PATH.stat().st_size == 0:
     st.error("Database not found or empty. Run `make seed` first.")
