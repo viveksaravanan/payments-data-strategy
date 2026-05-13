@@ -50,87 +50,87 @@ AGENT_DESCRIPTIONS = {
     "trade":   "Reveals trade-area saturation and underserved neighborhoods.",
 }
 
-# Grocery-framed questions (KRG / ACM / WDX)
+# Curated suggested questions — 3 per agent, segment-overridden.
+# Grocers (KRG / ACM / WDX) get peer-comparison framings that exercise
+# the cross-merchant lake. TBL (qsr) and TJX (off_price_retail) have no
+# same-segment peers in the panel, so their pricing / demand / trade
+# question sets are own-merchant-only. Anomaly Detection is shared
+# across all five merchants (always own-merchant by design).
+#
+# Preserved IDs (do not rename — referenced by HANDLERS and
+# _GENERAL_HARDCODED): dairy_vs_peers, anything_unusual, dairy_slowing,
+# underserved, new_store.
 QUESTIONS_GROCERY: dict[str, list[tuple[str, str]]] = {
-    "demand": [
-        ("dairy_slowing",     "What dairy SKUs are slowing down?"),
-        ("former_buyers",     "Which customers used to buy these regularly?"),
-        ("promo_uplift",      "What's the projected uplift from a 30% off promo to those customers?"),
-        ("campaign_attr",     "Show campaign attribution for promo Spring Pasta Sale"),
-    ],
     "pricing": [
-        ("dairy_vs_peers",    "How am I priced on dairy vs peers?"),
-        ("above_market",      "Which products am I significantly above market on?"),
-        ("below_market",      "Which products am I below market on?"),
-        ("produce_share",     "Show category share trends in produce"),
+        ("dairy_vs_peers",                 "How am I priced on dairy vs peers?"),
+        ("most_above_market_categories",   "Which categories am I most above market on?"),
+        ("biggest_price_advantage",        "Where do I have the biggest price advantage vs peers?"),
     ],
     "anomaly": [
-        ("anything_unusual",  "Anything unusual recently?"),
-        ("uc_declining",      "Why are my University City stores declining?"),
-        ("peers_uc",          "Is this happening to peers too?"),
-        ("plaza_avocado",     "Why did avocado spike at Plaza Midwood on April 22?"),
+        ("anything_unusual",   "What unusual patterns am I seeing in the last 30 days?"),
+        ("stores_off_baseline","Which stores broke from their baseline this month?"),
+        ("dow_pattern_shifts", "What day-of-week patterns shifted recently?"),
+    ],
+    "demand": [
+        ("dairy_slowing",              "Are my dairy SKUs slowing down?"),
+        ("category_velocity_decline",  "Which product categories are losing velocity over the last 30 days?"),
+        ("slow_mover_promo_uplift",    "What's the projected uplift if I promote my slowest-moving dairy SKUs?"),
     ],
     "trade": [
-        ("peer_clusters",     "Where do peer grocers cluster?"),
-        ("underserved",       "Which neighborhoods are underserved by my chain?"),
-        ("new_store",         "Where should I consider opening a new store?"),
-        ("velocity",          "How does my per-store velocity compare in same neighborhoods?"),
+        ("underserved",          "Which neighborhoods are underserved by my chain?"),
+        ("new_store",            "Where should I consider opening a new store?"),
+        ("peer_grocer_clusters", "Where do peer grocers cluster most heavily?"),
     ],
 }
 
-# QSR-adapted (Taco Bell). Same 4 agents, different questions.
+# TBL (Taco Bell) — own-merchant analysis only. No same-segment peers
+# in the panel, so pricing / demand / trade avoid peer framings.
+# Anomaly mirrors the grocer set (shared across all merchants).
 QUESTIONS_QSR: dict[str, list[tuple[str, str]]] = {
-    "demand": [
-        ("menu_slowing",      "What menu items are slowing down?"),
-        ("daypart_demand",    "Which dayparts are softening?"),
-        ("promo_uplift_qsr",  "What's the projected uplift from a value-meal promo?"),
-        ("campaign_attr_qsr", "Show campaign attribution for the latest LTO"),
-    ],
     "pricing": [
-        ("price_check_qsr",   "How is my average ticket positioned vs other foodservice peers?"),
-        ("above_market_qsr",  "Where is my menu pricing above the market average?"),
-        ("below_market_qsr",  "Where is my menu pricing below the market average?"),
-        ("category_share",    "Show category share trends across foodservice + grocery prepared foods"),
+        ("tbl_top_avg_ticket_categories", "Which menu categories have the highest average ticket?"),
+        ("tbl_pricing_across_stores",     "How does my pricing vary across store locations?"),
+        ("tbl_price_volume_relationship", "Which items have the strongest price-volume relationship?"),
     ],
     "anomaly": [
-        ("anything_unusual",  "Anything unusual recently?"),
-        ("store_slowdown",    "Are any of my stores slowing down vs the panel?"),
-        ("peers_similar",     "Is this happening to nearby grocers too?"),
-        ("daypart_anomaly",   "Are any dayparts behaving abnormally?"),
+        ("anything_unusual",   "What unusual patterns am I seeing in the last 30 days?"),
+        ("stores_off_baseline","Which stores broke from their baseline this month?"),
+        ("dow_pattern_shifts", "What day-of-week patterns shifted recently?"),
+    ],
+    "demand": [
+        ("tbl_menu_slowdowns",     "Which menu items are slowing down week over week?"),
+        ("tbl_time_of_day_shifts", "What time-of-day patterns are shifting in transaction volume?"),
+        ("tbl_combo_attach",       "Which combos drive the most attached items?"),
     ],
     "trade": [
-        ("peer_clusters_qsr", "Where do foodservice and grocery competitors cluster?"),
-        ("underserved_qsr",   "Which neighborhoods are underserved by Taco Bell?"),
-        ("new_store_qsr",     "Where should I consider opening a new store?"),
-        ("velocity_qsr",      "How does my per-store velocity compare to nearby grocers?"),
+        ("tbl_top_trade_areas",       "Where are my highest-performing stores by trade area?"),
+        ("tbl_strongest_catchment",   "Which of my stores has the strongest catchment?"),
+        ("tbl_footprint_distribution","How is my store footprint distributed across neighborhoods?"),
     ],
 }
 
-# Retail-adapted (TJ Maxx). Same 4 agents.
+# TJX — own-merchant analysis only. Same rationale as TBL: no
+# same-segment peers in the panel.
 QUESTIONS_RETAIL: dict[str, list[tuple[str, str]]] = {
-    "demand": [
-        ("cat_slowing",       "Which categories are slowing down?"),
-        ("former_buyers_tjx", "Which customers used to buy from these categories regularly?"),
-        ("promo_uplift_tjx",  "What's the projected uplift from a clearance event to those customers?"),
-        ("campaign_attr_tjx", "Show campaign attribution for the latest clearance event"),
-    ],
     "pricing": [
-        ("price_check_tjx",   "How is my average ticket positioned vs other peers?"),
-        ("above_market_tjx",  "Which categories are priced above the panel average?"),
-        ("below_market_tjx",  "Which categories are priced below the panel average?"),
-        ("category_share_tjx","Show category share trends across the panel"),
+        ("tjx_price_distribution",  "What's the price distribution across my product categories?"),
+        ("tjx_premium_categories",  "Which categories command the highest premium pricing?"),
+        ("tjx_pricing_consistency", "How consistent is my pricing across store locations?"),
     ],
     "anomaly": [
-        ("anything_unusual",  "Anything unusual recently?"),
-        ("store_slowdown_tjx","Are any of my stores slowing down vs the panel?"),
-        ("peers_similar_tjx", "Is this happening to nearby retail peers too?"),
-        ("cat_anomaly",       "Are any categories behaving abnormally?"),
+        ("anything_unusual",   "What unusual patterns am I seeing in the last 30 days?"),
+        ("stores_off_baseline","Which stores broke from their baseline this month?"),
+        ("dow_pattern_shifts", "What day-of-week patterns shifted recently?"),
+    ],
+    "demand": [
+        ("tjx_slowest_turnover",        "Which categories have the slowest inventory turnover?"),
+        ("tjx_product_mix_shifts",      "What product mix shifts have I seen this quarter?"),
+        ("tjx_accelerating_categories", "Which categories are accelerating in unit volume?"),
     ],
     "trade": [
-        ("peer_clusters_tjx", "Where do retail competitors cluster in the metro?"),
-        ("underserved_tjx",   "Which neighborhoods are underserved by TJ Maxx?"),
-        ("new_store_tjx",     "Where should I consider opening a new store?"),
-        ("velocity_tjx",      "How does my per-store velocity compare in same neighborhoods?"),
+        ("tjx_strongest_trade_areas",    "Which of my trade areas perform strongest?"),
+        ("tjx_store_geographic_spread",  "Where are my stores geographically clustered or spread out?"),
+        ("tjx_consistent_neighborhoods", "Which neighborhoods drive the most consistent store performance?"),
     ],
 }
 
@@ -1078,62 +1078,50 @@ def h_trade_velocity(merchant_id: str) -> dict:
 # Map (agent_id, question_id) → handler.
 # Question IDs that are shared across segments (e.g. anything_unusual,
 # new_store) map to a single handler that branches on segment internally.
+# HANDLERS is the mock-mode + LLM-failure fallback. Every qid that
+# appears in the QUESTIONS_* registry is mapped to the closest
+# semantically-related Phase 1 placeholder so the dashboard always
+# renders a real-looking response even when the LLM is unavailable.
+# The handlers themselves branch on merchant segment internally where
+# relevant.
 HANDLERS: dict[tuple[str, str], Callable[[str], dict]] = {
-    # Demand Forecasting (grocer questions)
-    ("demand", "dairy_slowing"):      h_demand_dairy_slowing,
-    ("demand", "former_buyers"):      h_demand_former_buyers,
-    ("demand", "promo_uplift"):       h_demand_promo_uplift,
-    ("demand", "campaign_attr"):      h_demand_campaign_attr,
-    # Demand Forecasting (QSR adapted)
-    ("demand", "menu_slowing"):       h_demand_dairy_slowing,    # branches on segment
-    ("demand", "daypart_demand"):     h_demand_dairy_slowing,
-    ("demand", "promo_uplift_qsr"):   h_demand_promo_uplift,
-    ("demand", "campaign_attr_qsr"):  h_demand_campaign_attr,
-    # Demand Forecasting (TJX adapted)
-    ("demand", "cat_slowing"):        h_demand_dairy_slowing,
-    ("demand", "former_buyers_tjx"):  h_demand_former_buyers,
-    ("demand", "promo_uplift_tjx"):   h_demand_promo_uplift,
-    ("demand", "campaign_attr_tjx"):  h_demand_campaign_attr,
+    # Pricing — grocers (peer-comparison) + TBL/TJX (own-merchant)
+    ("pricing", "dairy_vs_peers"):              h_pricing_dairy_vs_peers,
+    ("pricing", "most_above_market_categories"):h_pricing_above_market,
+    ("pricing", "biggest_price_advantage"):     h_pricing_below_market,
+    ("pricing", "tbl_top_avg_ticket_categories"): h_pricing_dairy_vs_peers,
+    ("pricing", "tbl_pricing_across_stores"):     h_pricing_dairy_vs_peers,
+    ("pricing", "tbl_price_volume_relationship"): h_pricing_dairy_vs_peers,
+    ("pricing", "tjx_price_distribution"):  h_pricing_dairy_vs_peers,
+    ("pricing", "tjx_premium_categories"):  h_pricing_above_market,
+    ("pricing", "tjx_pricing_consistency"): h_pricing_dairy_vs_peers,
 
-    # Pricing
-    ("pricing", "dairy_vs_peers"):    h_pricing_dairy_vs_peers,
-    ("pricing", "above_market"):      h_pricing_above_market,
-    ("pricing", "below_market"):      h_pricing_below_market,
-    ("pricing", "produce_share"):     h_pricing_produce_share,
-    ("pricing", "price_check_qsr"):   h_pricing_dairy_vs_peers,
-    ("pricing", "above_market_qsr"):  h_pricing_above_market,
-    ("pricing", "below_market_qsr"):  h_pricing_below_market,
-    ("pricing", "category_share"):    h_pricing_produce_share,
-    ("pricing", "price_check_tjx"):   h_pricing_dairy_vs_peers,
-    ("pricing", "above_market_tjx"):  h_pricing_above_market,
-    ("pricing", "below_market_tjx"):  h_pricing_below_market,
-    ("pricing", "category_share_tjx"): h_pricing_produce_share,
+    # Anomaly Detection — shared across all five merchants
+    ("anomaly", "anything_unusual"):    h_anomaly_anything_unusual,
+    ("anomaly", "stores_off_baseline"): h_anomaly_uc_declining,
+    ("anomaly", "dow_pattern_shifts"):  h_anomaly_anything_unusual,
 
-    # Anomaly Detection
-    ("anomaly", "anything_unusual"):  h_anomaly_anything_unusual,
-    ("anomaly", "uc_declining"):      h_anomaly_uc_declining,
-    ("anomaly", "peers_uc"):          h_anomaly_peers_uc,
-    ("anomaly", "plaza_avocado"):     h_anomaly_plaza_avocado,
-    ("anomaly", "store_slowdown"):    h_anomaly_uc_declining,
-    ("anomaly", "peers_similar"):     h_anomaly_peers_uc,
-    ("anomaly", "daypart_anomaly"):   h_anomaly_anything_unusual,
-    ("anomaly", "store_slowdown_tjx"): h_anomaly_uc_declining,
-    ("anomaly", "peers_similar_tjx"): h_anomaly_peers_uc,
-    ("anomaly", "cat_anomaly"):       h_anomaly_anything_unusual,
+    # Demand Forecasting — grocers + TBL/TJX
+    ("demand", "dairy_slowing"):             h_demand_dairy_slowing,
+    ("demand", "category_velocity_decline"): h_demand_dairy_slowing,
+    ("demand", "slow_mover_promo_uplift"):   h_demand_promo_uplift,
+    ("demand", "tbl_menu_slowdowns"):     h_demand_dairy_slowing,
+    ("demand", "tbl_time_of_day_shifts"): h_demand_dairy_slowing,
+    ("demand", "tbl_combo_attach"):       h_demand_dairy_slowing,
+    ("demand", "tjx_slowest_turnover"):        h_demand_dairy_slowing,
+    ("demand", "tjx_product_mix_shifts"):      h_demand_dairy_slowing,
+    ("demand", "tjx_accelerating_categories"): h_demand_dairy_slowing,
 
-    # Trade Area Intelligence
-    ("trade", "peer_clusters"):       h_trade_peer_clusters,
-    ("trade", "underserved"):         h_trade_underserved,
-    ("trade", "new_store"):           h_trade_new_store,
-    ("trade", "velocity"):            h_trade_velocity,
-    ("trade", "peer_clusters_qsr"):   h_trade_peer_clusters,
-    ("trade", "underserved_qsr"):     h_trade_underserved,
-    ("trade", "new_store_qsr"):       h_trade_new_store,
-    ("trade", "velocity_qsr"):        h_trade_velocity,
-    ("trade", "peer_clusters_tjx"):   h_trade_peer_clusters,
-    ("trade", "underserved_tjx"):     h_trade_underserved,
-    ("trade", "new_store_tjx"):       h_trade_new_store,
-    ("trade", "velocity_tjx"):        h_trade_velocity,
+    # Trade Area Intelligence — grocers + TBL/TJX
+    ("trade", "underserved"):          h_trade_underserved,
+    ("trade", "new_store"):            h_trade_new_store,
+    ("trade", "peer_grocer_clusters"): h_trade_peer_clusters,
+    ("trade", "tbl_top_trade_areas"):        h_trade_velocity,
+    ("trade", "tbl_strongest_catchment"):    h_trade_velocity,
+    ("trade", "tbl_footprint_distribution"): h_trade_velocity,
+    ("trade", "tjx_strongest_trade_areas"):    h_trade_velocity,
+    ("trade", "tjx_store_geographic_spread"):  h_trade_velocity,
+    ("trade", "tjx_consistent_neighborhoods"): h_trade_velocity,
 }
 
 
