@@ -7,10 +7,10 @@ textColor = "#1A1F2E"
 font = "sans-serif"
 
 [server]
-enableCORS = false
-enableXsrfProtection = false
-enableWebsocketCompression = false
 headless = true
+runOnSave = false
+enableStaticServing = true
 
 [browser]
 gatherUsageStats = false
+serverAddress = "0.0.0.0"
