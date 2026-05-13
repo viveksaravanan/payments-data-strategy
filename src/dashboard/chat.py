@@ -234,8 +234,44 @@ def _render_live_turn(
 def render_chat_panel(merchant_id: str) -> None:
     state = st.session_state
     state.setdefault("active_agent", "pricing")
+    state.setdefault("chat_expanded", False)
     history = _ensure_history(merchant_id)
     questions_by_agent = P.questions_for(merchant_id)
+
+    # -- Header row: title (left), expand toggle + clear-history (right) --
+    # The expand and clear buttons share narrow columns so they read as
+    # compact icon affordances. Keys use the merchant_id suffix; CSS in
+    # styling.py targets `st-key-expand_btn_*` / `st-key-clear_btn_*` to
+    # apply the smaller padding + accent / danger hover tints.
+    h1, h2, h3 = st.columns([0.7, 0.15, 0.15], gap="small")
+    with h1:
+        st.markdown(
+            '<div style="font-size:13px;letter-spacing:0.06em;'
+            'text-transform:uppercase;color:var(--accent);font-weight:600;'
+            'margin:6px 0 0;">Specialist agents</div>',
+            unsafe_allow_html=True,
+        )
+    with h2:
+        expanded = state.chat_expanded
+        toggle_icon = "⤡" if expanded else "⤢"
+        toggle_help = "Collapse chat" if expanded else "Expand chat"
+        if st.button(
+            toggle_icon,
+            key=f"expand_btn_{merchant_id}",
+            help=toggle_help,
+            use_container_width=True,
+        ):
+            state.chat_expanded = not expanded
+            st.rerun()
+    with h3:
+        if st.button(
+            "🗑",
+            key=f"clear_btn_{merchant_id}",
+            help="Clear chat history",
+            use_container_width=True,
+        ):
+            reset_history(merchant_id)
+            st.rerun()
 
     # -- Agent selector --
     agent_ids = ["demand", "pricing", "anomaly", "trade"]
@@ -266,15 +302,6 @@ def render_chat_panel(merchant_id: str) -> None:
             use_container_width=True,
         ):
             pending_click = (qid, qtext)
-
-    # -- Clear chat history button --
-    if st.button(
-        "Clear chat history",
-        key=f"clear_{merchant_id}",
-        use_container_width=True,
-    ):
-        reset_history(merchant_id)
-        st.rerun()
 
     # -- Reserve scrollable chat history container --
     chat_box = st.container(height=700, border=True)

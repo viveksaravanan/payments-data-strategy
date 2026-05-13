@@ -202,6 +202,34 @@ _CSS = """
 
   /* Section dividers / spacing */
   hr { border-color: var(--border); margin: 8px 0; }
+
+  /* Chat header action buttons (expand toggle + clear history).
+     Streamlit emits a per-widget class `st-key-<key>` on each widget's
+     wrapper when `key=` is set; we match it with [class*="..."] so the
+     same rule covers the per-merchant suffix (e.g. st-key-clear_btn_KRG).
+     Both buttons default to a quiet, neutral look; on hover, expand
+     picks up the accent color and clear picks up the danger/anomaly
+     color so the destructive action is visually distinguished. */
+  [class*="st-key-expand_btn_"] button,
+  [class*="st-key-clear_btn_"] button {
+    padding: 4px 0 !important;
+    min-height: 0 !important;
+    font-size: 14px !important;
+    line-height: 1.2 !important;
+    color: var(--text-muted) !important;
+    background: transparent !important;
+    border-color: var(--border) !important;
+  }
+  [class*="st-key-expand_btn_"] button:hover {
+    color: var(--accent) !important;
+    border-color: var(--accent) !important;
+    background: rgba(15, 76, 129, 0.06) !important;
+  }
+  [class*="st-key-clear_btn_"] button:hover {
+    color: var(--anomaly) !important;
+    border-color: var(--anomaly) !important;
+    background: rgba(196, 69, 54, 0.06) !important;
+  }
 </style>
 """
 
