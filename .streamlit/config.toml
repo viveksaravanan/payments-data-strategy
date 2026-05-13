@@ -8,9 +8,10 @@ font = "sans-serif"
 
 [server]
 headless = true
-runOnSave = false
-enableStaticServing = true
+enableCORS = false
+enableXsrfProtection = false
+enableWebsocketCompression = false
+fileWatcherType = "none"
 
 [browser]
 gatherUsageStats = false
-serverAddress = "0.0.0.0"
