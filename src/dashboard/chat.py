@@ -21,6 +21,7 @@ crosses between merchants. This is the UI-layer analog of the
 """
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Callable
 
@@ -84,29 +85,57 @@ def render_agent_response(text: str) -> None:
     st.markdown(_escape_dollars(text))
 
 
+# Defensive client-side stripper: removes a trailing ```caveats ... ```
+# fenced block from agent prose. The specialist's upstream regex
+# (specialist._CAVEATS_RE) is strict — anchored to end-of-string and
+# requires a newline before the closing fence. When the model drifts
+# (trailing whitespace, same-line close, etc.) the upstream parser
+# misses and the fence leaks into the prose, rendering as a JSON-looking
+# code block in the bubble. This pattern is more lenient.
+_CAVEATS_TAIL_RE = re.compile(
+    r"\n?```caveats\b.*?```\s*\Z",
+    re.DOTALL | re.IGNORECASE,
+)
+
+
+def _strip_caveats_tail(text: str) -> str:
+    if not text:
+        return text
+    return _CAVEATS_TAIL_RE.sub("", text).rstrip()
+
+
+def _render_caveats(caveats: "list[str] | None") -> None:
+    if not caveats:
+        return
+    lines = "\n".join(f"- {_escape_dollars(str(c))}" for c in caveats)
+    st.markdown(f"*Caveats:*\n{lines}")
+
+
+def _render_chart(chart) -> None:
+    if chart is None:
+        return
+    st.plotly_chart(chart, use_container_width=True)
+
+
+def _render_table(tbl) -> None:
+    if tbl is None or tbl.empty:
+        return
+    st.dataframe(tbl, use_container_width=True, hide_index=True)
+
+
 def _render_history_entry(entry: dict) -> None:
     """Render a single completed turn as a user + assistant bubble pair."""
     with st.chat_message("user"):
         # User input — render literally, no $-escape
         st.markdown(entry.get("question", ""))
     with st.chat_message("assistant"):
-        agent_name = entry.get("agent", "Agent")
-        st.caption(agent_name)
-        render_agent_response(entry.get("prose", ""))
-        tbl = entry.get("table")
-        if tbl is not None and not tbl.empty:
-            st.dataframe(
-                tbl, use_container_width=True, hide_index=True,
-            )
-        if entry.get("caveats"):
-            with st.expander("Caveats"):
-                for c in entry["caveats"]:
-                    # Caveats are agent-authored prose too — pre-escape
-                    # $ then substitute into the bullet template. Pre-escape
-                    # (not inline in the f-string) for Python 3.11
-                    # compatibility — see _escape_dollars.
-                    safe_c = _escape_dollars(str(c))
-                    st.markdown(f"- {safe_c}")
+        st.caption(entry.get("agent", "Agent"))
+        prose = _strip_caveats_tail(entry.get("prose", ""))
+        if prose:
+            st.markdown(_escape_dollars(prose))
+        _render_caveats(entry.get("caveats"))
+        _render_chart(entry.get("chart"))
+        _render_table(entry.get("table"))
 
 
 def _render_live_turn(
@@ -138,22 +167,26 @@ def _render_live_turn(
 
         def on_token(text: str) -> None:
             streamed.append(text)
-            placeholder.markdown(_escape_dollars("".join(streamed)))
+            full = "".join(streamed)
+            # Truncate before the trailing ```caveats fence so the
+            # placeholder only shows clean prose during the stream — the
+            # fenced JSON list would otherwise render as a code block.
+            cut = full.lower().find("```caveats")
+            visible = full if cut == -1 else full[:cut].rstrip()
+            placeholder.markdown(_escape_dollars(visible))
 
         response = runner(on_progress, on_token)
-        placeholder.empty()
-        st.caption(response.get("agent", agent_label))
-        render_agent_response(response.get("prose", ""))
-        tbl = response.get("table")
-        if tbl is not None and not tbl.empty:
-            st.dataframe(
-                tbl, use_container_width=True, hide_index=True,
-            )
-        if response.get("caveats"):
-            with st.expander("Caveats"):
-                for c in response["caveats"]:
-                    safe_c = _escape_dollars(str(c))
-                    st.markdown(f"- {safe_c}")
+        clean_prose = _strip_caveats_tail(response.get("prose", ""))
+        # Overwrite the placeholder with the final state (caption + prose)
+        # in one container call rather than emptying + re-adding widgets
+        # — keeps the bubble layout deterministic.
+        with placeholder.container():
+            st.caption(response.get("agent", agent_label))
+            if clean_prose:
+                st.markdown(_escape_dollars(clean_prose))
+        _render_caveats(response.get("caveats"))
+        _render_chart(response.get("chart"))
+        _render_table(response.get("table"))
     return response
 
 
