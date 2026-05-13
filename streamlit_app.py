@@ -67,11 +67,15 @@ except Exception:  # noqa: BLE001 — never crash the dashboard for telemetry
 # A daemon thread does the work; the main script returns in <100 ms and
 # reruns every 2 s until the DB appears. Each rerun is a full Streamlit
 # script pass — the websocket stays responsive throughout.
+#
+# State persistence: Streamlit runs the script in a fresh namespace on
+# every rerun, so module-level globals do NOT survive between reruns. The
+# thread handle and start-time live behind `@st.cache_resource`, which
+# caches at the server-process level and DOES persist across reruns and
+# across all browser sessions hitting the same container.
 # ---------------------------------------------------------------------------
 _DB_PATH = _REPO_ROOT / "data" / "payments.db"
 _BUILD_LOG = _REPO_ROOT / "data" / ".build.log"
-_BUILD_LOCK = threading.Lock()
-_BUILD_STATE: dict = {"started_at": None, "thread": None, "error": None}
 
 
 def _build_log(msg: str) -> None:
@@ -85,49 +89,54 @@ def _build_log(msg: str) -> None:
         pass
 
 
-def _build_database_blocking() -> None:
-    """Runs in a daemon thread. No Streamlit APIs touched here — the
-    main thread observes completion via `_DB_PATH.exists()`.
-    Writes status lines to data/.build.log so a stalled build is
-    debuggable post-mortem."""
-    import traceback
-    _build_log("build thread: start")
-    try:
-        _build_log("build thread: importing generators")
-        from src.generate import run_all as _gen
-        from src.db import seed as _seed
-        _build_log("build thread: calling run_all.main()")
-        _gen.main()
-        _build_log("build thread: calling db.seed.main()")
-        _seed.main()
-        _build_log("build thread: complete")
-    except Exception as exc:  # noqa: BLE001 — surface to UI via state
-        _BUILD_STATE["error"] = f"{type(exc).__name__}: {exc}"
-        _build_log(f"build thread: FAILED — {type(exc).__name__}: {exc}")
-        _build_log(traceback.format_exc())
+@st.cache_resource
+def _ensure_build_started() -> dict:
+    """Process-wide singleton: starts the build thread exactly once per
+    server process and returns a shared state dict whose identity
+    persists across all script reruns and browser sessions.
+
+    Because this is cached via `st.cache_resource`, the FIRST call (any
+    rerun on any session) starts the thread; all subsequent calls return
+    the same dict. This is the only correct way to share state across
+    Streamlit reruns — module-level globals get reinitialized on every
+    rerun, so the previous "_BUILD_STATE + lock" approach spawned a new
+    thread every 2 s.
+    """
+    state: dict = {"started_at": time.time(), "thread": None, "error": None}
+
+    def _run() -> None:
+        import traceback
+        _build_log("build thread: start")
+        try:
+            _build_log("build thread: importing generators")
+            from src.generate import run_all as _gen
+            from src.db import seed as _seed
+            _build_log("build thread: calling run_all.main()")
+            _gen.main()
+            _build_log("build thread: calling db.seed.main()")
+            _seed.main()
+            _build_log("build thread: complete")
+        except Exception as exc:  # noqa: BLE001 — surface to UI via state
+            state["error"] = f"{type(exc).__name__}: {exc}"
+            _build_log(f"build thread: FAILED — {type(exc).__name__}: {exc}")
+            _build_log(traceback.format_exc())
+
+    t = threading.Thread(target=_run, daemon=True)
+    state["thread"] = t
+    t.start()
+    return state
 
 
-def _start_build_once() -> None:
-    """Idempotent: only one build thread runs per server process even if
-    multiple users land during cold start."""
-    with _BUILD_LOCK:
-        if _BUILD_STATE["thread"] is None:
-            _BUILD_STATE["started_at"] = time.time()
-            t = threading.Thread(target=_build_database_blocking, daemon=True)
-            _BUILD_STATE["thread"] = t
-            t.start()
-
-
-def _render_build_status_and_rerun() -> None:
+def _render_build_status_and_rerun(state: dict) -> None:
     """Render the building-the-DB status page and schedule a rerun in 2 s.
     Surfaces build errors via `st.error` + `st.stop` so we don't loop
     forever on a dead thread."""
-    elapsed = time.time() - _BUILD_STATE["started_at"]
-    t = _BUILD_STATE["thread"]
+    elapsed = time.time() - state["started_at"]
+    t = state["thread"]
 
     # Dead-thread guard: thread exited but DB never appeared.
     if t is not None and not t.is_alive() and not _DB_PATH.exists():
-        msg = _BUILD_STATE["error"] or "build thread exited without producing the DB"
+        msg = state["error"] or "build thread exited without producing the DB"
         st.error(f"Database build failed: {msg}")
         st.stop()
 
@@ -147,8 +156,8 @@ def _render_build_status_and_rerun() -> None:
 
 
 if not _DB_PATH.exists():
-    _start_build_once()
-    _render_build_status_and_rerun()  # exits this script via st.rerun()
+    _state = _ensure_build_started()   # starts thread once, same dict every rerun
+    _render_build_status_and_rerun(_state)  # exits via st.rerun()
 
 
 # ---------------------------------------------------------------------------
