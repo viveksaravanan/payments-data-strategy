@@ -1,3 +1,15 @@
+---
+title: Payments Data Strategy
+emoji: 📊
+colorFrom: blue
+colorTo: indigo
+sdk: streamlit
+sdk_version: 1.57.0
+app_file: streamlit_app.py
+pinned: false
+license: mit
+---
+
 # Payments Data Strategy Demo
 
 A working demo of the data architecture described in the Core Data Strategy & Solutions document — synthetic cross-merchant transaction data, a privacy-engine that exposes the cross-merchant lake as parameterized views, and an AI agent that answers natural-language questions about both a merchant's own data and privacy-preserved peer aggregates.
