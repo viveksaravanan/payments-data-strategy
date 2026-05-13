@@ -63,14 +63,22 @@ def _push(merchant_id: str, question: str, response: dict) -> None:
 # to agent (assistant) prose. Never to user input.
 # ---------------------------------------------------------------------------
 
+def _escape_dollars(text: str) -> str:
+    """Escape `$` so Streamlit's markdown parser doesn't read it as a
+    LaTeX math delimiter. Defined as a top-level helper so callers can
+    pre-escape strings BEFORE substituting them into f-strings —
+    Python 3.11 doesn't allow backslashes inside f-string expression
+    parts."""
+    return text.replace("$", "\\$")
+
+
 def render_agent_response(text: str) -> None:
     """Render an agent's prose. Escapes `$` so Streamlit doesn't treat
     dollar amounts as LaTeX math delimiters (causing italic-serif bleed
     across runs of text). No-op on empty input."""
     if not text:
         return
-    safe = text.replace("$", "\\$")
-    st.markdown(safe)
+    st.markdown(_escape_dollars(text))
 
 
 # ---------------------------------------------------------------------------
@@ -151,8 +159,12 @@ def render_chat_panel(merchant_id: str) -> None:
                         with st.expander("Caveats"):
                             for c in entry["caveats"]:
                                 # Caveats are agent-authored prose too —
-                                # escape $ to keep the rendering consistent.
-                                st.markdown(f"- {str(c).replace('$', '\\$')}")
+                                # pre-escape $ then substitute into the
+                                # bullet template. Pre-escape (not inline
+                                # in the f-string) for Python 3.11
+                                # compatibility — see _escape_dollars.
+                                safe_c = _escape_dollars(str(c))
+                                st.markdown(f"- {safe_c}")
 
     # -- Free-form input at the bottom --
     free_q = st.chat_input(
@@ -214,7 +226,7 @@ def _run_with_live_narration(
         # Escape $ in streamed tokens for the same reason
         # `render_agent_response` does — keep dollar amounts from
         # triggering LaTeX-math rendering mid-stream.
-        placeholder.markdown("".join(streamed).replace("$", "\\$"))
+        placeholder.markdown(_escape_dollars("".join(streamed)))
 
     try:
         response = runner(on_progress, on_token)
