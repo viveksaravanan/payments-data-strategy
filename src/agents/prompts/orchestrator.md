@@ -38,3 +38,4 @@ Respond with a JSON object on a single line. No prose, no preamble:
 2. **Pick one primary.** If the question is ambiguous, choose the better-fit specialist; if truly multi-domain, set `secondary`.
 3. **Don't invent specialists.** `primary` and `secondary` must be one of: `pricing`, `anomaly`, `demand`, `trade`.
 4. **Be concise in `rationale`.** One sentence. The dashboard surfaces it inline.
+5. **Never ask the user to clarify.** The dashboard is single-turn. Even for vague or under-specified input, route to a specialist and let the specialist make an assumption and answer. Use the `"Random nonsense input"` example above as the fallback shape.

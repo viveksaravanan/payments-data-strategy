@@ -85,30 +85,68 @@ def render_agent_response(text: str) -> None:
     st.markdown(_escape_dollars(text))
 
 
-# Defensive client-side stripper: removes a trailing ```caveats ... ```
-# fenced block from agent prose. The specialist's upstream regex
-# (specialist._CAVEATS_RE) is strict — anchored to end-of-string and
-# requires a newline before the closing fence. When the model drifts
-# (trailing whitespace, same-line close, etc.) the upstream parser
-# misses and the fence leaks into the prose, rendering as a JSON-looking
-# code block in the bubble. This pattern is more lenient.
-_CAVEATS_TAIL_RE = re.compile(
-    r"\n?```caveats\b.*?```\s*\Z",
+# Defensive client-side stripper: removes ```caveats ... ``` fenced
+# blocks from agent prose. The specialist's upstream regex
+# (specialist._CAVEATS_RE) is strict — anchored to end-of-string,
+# requires a newline before the closing fence, and only matches the
+# literal `caveats` label. When the model drifts (trailing whitespace,
+# same-line close, alternate language label, fence appearing mid-prose
+# rather than at the very end) the parser misses and the fence leaks
+# into the prose, rendering as a JSON-style code block in the bubble.
+# We apply two passes:
+#   1. Strip every ```caveats ... ``` fence anywhere in the text.
+#   2. Strip any trailing fenced code block whose body looks like a
+#      JSON list — covers the case where the model uses no language
+#      label or writes ```json instead of ```caveats.
+_CAVEATS_LABELED_RE = re.compile(
+    r"\n?```caveats\b.*?```\s*",
     re.DOTALL | re.IGNORECASE,
+)
+_TRAILING_JSON_FENCE_RE = re.compile(
+    r"\n?```[A-Za-z0-9_-]*\s*\n?\s*\[[^`]*?\]\s*\n?```\s*\Z",
+    re.DOTALL,
 )
 
 
 def _strip_caveats_tail(text: str) -> str:
     if not text:
         return text
-    return _CAVEATS_TAIL_RE.sub("", text).rstrip()
+    cleaned = _CAVEATS_LABELED_RE.sub("", text)
+    cleaned = _TRAILING_JSON_FENCE_RE.sub("", cleaned)
+    return cleaned.rstrip()
+
+
+def _streaming_cut_index(text: str) -> int:
+    """Return the index at which the streaming display should be
+    truncated to hide the trailing caveats / JSON-array fenced block.
+    Returns -1 if no cut needed."""
+    lower = text.lower()
+    candidates = [
+        lower.find("```caveats"),
+        lower.find("```json"),
+    ]
+    candidates = [c for c in candidates if c != -1]
+    # Also cut at any bare ``` that begins a trailing JSON-array fence
+    # — we infer "trailing JSON fence" by looking for ```\n[ near the
+    # end of the streamed text. Cheap heuristic: find the last ```
+    # before end and check if the next non-whitespace char is '['.
+    last_fence = lower.rfind("```")
+    if last_fence != -1:
+        after = text[last_fence + 3:].lstrip()
+        if after.startswith("["):
+            candidates.append(last_fence)
+    return min(candidates) if candidates else -1
 
 
 def _render_caveats(caveats: "list[str] | None") -> None:
     if not caveats:
         return
     lines = "\n".join(f"- {_escape_dollars(str(c))}" for c in caveats)
-    st.markdown(f"*Caveats:*\n{lines}")
+    # Blank line between the italic label and the bullet list — without
+    # it, some markdown renderers glue the bullets to the previous
+    # paragraph instead of starting a list. Wrap in <small> via plain
+    # markdown so the block reads as a quiet footnote, not a header.
+    st.markdown(f"*Caveats:*\n\n{lines}")
 
 
 def _render_chart(chart) -> None:
@@ -168,10 +206,9 @@ def _render_live_turn(
         def on_token(text: str) -> None:
             streamed.append(text)
             full = "".join(streamed)
-            # Truncate before the trailing ```caveats fence so the
-            # placeholder only shows clean prose during the stream — the
-            # fenced JSON list would otherwise render as a code block.
-            cut = full.lower().find("```caveats")
+            # Truncate before any trailing caveats / JSON-array fence so
+            # the placeholder shows only clean prose during the stream.
+            cut = _streaming_cut_index(full)
             visible = full if cut == -1 else full[:cut].rstrip()
             placeholder.markdown(_escape_dollars(visible))
 

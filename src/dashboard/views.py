@@ -86,7 +86,7 @@ def render_kpi_row(merchant_id: str, filters: dict) -> None:
         ("Active customers",    _fmt_int(k["active_customers"]),   k["active_customers_delta"]),
     ]
 
-    cols = st.columns(4, gap="small")
+    cols = st.columns(4, gap="medium")
     for col, (label, value, delta) in zip(cols, cards):
         with col:
             delta_text, delta_cls = _fmt_pct(delta)

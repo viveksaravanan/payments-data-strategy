@@ -40,16 +40,18 @@ _CSS = """
   h3 { font-size: 15px !important; font-weight: 600 !important; }
 
   /* KPI cards — match the report's `.stat-row` rhythm */
-  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 8px 0 16px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin: 8px 0 16px; }
   .kpi {
     background: #fff;
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 18px 20px;
+    border-radius: 10px;
+    padding: 22px 22px;
     position: relative;
+    box-shadow: 0 1px 3px rgba(15, 31, 46, 0.04), 0 1px 2px rgba(15, 31, 46, 0.03);
+    height: 100%;
   }
   .kpi.clickable { cursor: pointer; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
-  .kpi.clickable:hover { border-color: var(--accent); box-shadow: 0 2px 6px rgba(15, 76, 129, 0.08); }
+  .kpi.clickable:hover { border-color: var(--accent); box-shadow: 0 4px 10px rgba(15, 76, 129, 0.10); }
   .kpi .num {
     font-size: 28px;
     font-weight: 600;
