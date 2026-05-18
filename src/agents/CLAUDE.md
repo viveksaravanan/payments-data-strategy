@@ -1,18 +1,46 @@
 # Agents
 
-The advisor is the only merchant-scoped agent currently shipping. The
-strategy doc §10.2 specifies seven personas; specialists beyond the
-Conversational Business Advisor pattern are deferred. The Network
-Analyst from v2 has been retired — all v2.5 agents are merchant-scoped
-(every query inherits a viewing-merchant context).
+Five user-facing agents currently ship — all merchant-scoped (every
+query inherits a viewing-merchant context). The Network Analyst from v2
+has been retired. The strategy doc §10.2 specifies seven personas; the
+remaining two stay on the v4 roadmap.
 
-- **`advisor.py`** — Merchant Advisor. Tools: `schema_info`,
-  `query_tenant`, `query_lake`, `chart_spec`. Used by all five merchant
-  roles in the dashboard. Receives `current_merchant_id` at construction
-  time; the runner passes it into both tenant and lake tool calls.
+- **`orchestrator.py`** — **Conversational Business Advisor.** Routes a
+  free-form question to a specialist via a Haiku-based router prompt
+  (`prompts/orchestrator.md`), with a keyword-based fallback if the
+  router fails. No tool loop here; the orchestrator just classifies and
+  dispatches. The dashboard's chat panel calls this for free-form input
+  and prepends the routing decision ("Routed to the Pricing & Benchmarking
+  Agent…") to the specialist's response.
+- **`pricing.py`** — **Pricing & Benchmarking Agent.** Per-SKU pricing,
+  category share, peer-relative price gaps. `MAX_TURNS = 7`.
+- **`anomaly.py`** — **Anomaly Detection Agent.** Operational anomalies
+  only (no fraud). Knows the three planted signals (University City
+  decline, Plaza Midwood avocado spike, pasta-promo divergence) and
+  the privacy rule on naming. `MAX_TURNS = 7`.
+- **`demand.py`** — **Demand Forecasting & Campaign Adjudication
+  Agent.** Slow-mover analysis, campaign attribution, projected promo
+  uplift. `MAX_TURNS = 6`.
+- **`trade.py`** — **Trade Area Intelligence Agent.** Catchment density,
+  underserved neighborhoods, new-store siting. `MAX_TURNS = 6`.
 
-The shared loop is in the agent file rather than abstracted out — the
-duplication is small and keeps the loop legible.
+All four specialists subclass **`specialist.py::Specialist`** — the
+shared bounded tool loop, the streaming-tokens callback, the caveats
+parser, the `SpecialistResponse` dataclass. Tools and SQL guards live
+in **`tools.py`** (shared across orchestrator-routed specialists).
+Prompts live in **`prompts/<name>.md`** loaded once at module import.
+
+Suggested-question dispatch from the chat panel routes through
+`src/dashboard/placeholders.py::dispatch` (which calls
+`_llm_dispatch`); free-form input routes through
+`placeholders.py::dispatch_orchestrated` (which calls the
+orchestrator). The dispatch layer keeps the chat-history shape uniform
+across both paths.
+
+The legacy v2 `advisor.py` (`MerchantAdvisor` class) was archived in
+Phase 1.5 to `docs/archive/legacy_agent/advisor.py` — the orchestrator
+is its v3 replacement. Tests for it moved alongside, file extension
+renamed so pytest skips them.
 
 ## Hard rules
 
@@ -66,9 +94,11 @@ duplication is small and keeps the loop legible.
 ## Style
 
 - **Prompts live in `prompts/*.md`**, never as Python strings. Edit
-  them directly. Load with `Path("prompts/advisor.md").read_text()` at
-  module import. No f-string interpolation in prompts — pass dynamic
-  context (current_merchant, today's date) as a separate user message.
+  them directly. Each specialist's class declares `PROMPT_PATH = Path(__file__).parent / "prompts" / "<name>.md"`;
+  the base class reads it once at construction. Dynamic context
+  (`{{viewer_id}}`, `{{viewer_name}}`, `{{viewer_segment}}`) is rendered
+  via plain string replacement inside the base class, not via Python
+  f-strings.
 - **Tools are real-Python, not LLM-described.** A tool is a function
   that the runner invokes when the model emits a `tool_use` block; the
   runner appends the result as a `tool_result`. No wrapper frameworks.
@@ -118,13 +148,23 @@ Default to `claude-opus-4-7`. For unit tests against the real API
 (rare), use `claude-haiku-4-5` to keep cost down. Most unit tests
 should mock the client — see `tests/test_agents.py` for the pattern.
 
-## Mock mode
+## Mock / fallback mode
 
-Each agent supports `--mock` flag (or `mock=True` constructor arg). In
-mock mode, the agent skips API calls and returns canned responses. This
-is the demo safety net: if the API key is missing or there's an outage,
-the dashboard still works.
+The v3 specialists themselves don't have a `mock=True` constructor arg
+— that was a v2 affordance on the legacy `MerchantAdvisor` (now
+archived). The dashboard's offline safety net is at the **dispatch**
+layer in `src/dashboard/placeholders.py`:
 
-The canned responses live as constants in each agent file. Update them
-when you update the demo questions or the lake schema (so the canned
-SQL stays runnable).
+- `_llm_dispatch(agent_id, qid, merchant_id, …)` runs the specialist
+  via `spec.answer(...)`.
+- `_hardcoded_dispatch(agent_id, qid, merchant_id)` returns a canned
+  result for the suggested-question id, using Phase 1 placeholder
+  handlers registered in `HANDLERS`.
+- The dispatch wrapper falls back to `_hardcoded_dispatch` when
+  `ANTHROPIC_API_KEY` is missing or the LLM call raises. This keeps
+  the dashboard usable as a static demo without API credentials.
+
+When you add a new suggested question, register a `HANDLERS` entry so
+the fallback path doesn't surface "No placeholder handler is wired."
+Phase 1.5's question-curation pass made all live qids HANDLERS-covered;
+keep that property.

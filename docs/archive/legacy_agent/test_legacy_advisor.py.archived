@@ -1,0 +1,123 @@
+"""ARCHIVED — legacy `MerchantAdvisor` tests.
+
+These tests covered the v2 `src/agents/advisor.py::MerchantAdvisor`
+class. That class has been archived to `docs/archive/legacy_agent/advisor.py`
+during Phase 1.5 (Decision §1.6 in V3_AUDIT.md) — nothing in product
+imports it. The agents that actually ship for v3 are the orchestrator
+(`src/agents/orchestrator.py`, the "Conversational Business Advisor")
+plus four specialists (pricing, anomaly, demand, trade); their tool
+surface is covered by `tests/test_agents.py` (which tests
+`src.agents.tools` directly) and `tests/test_agents_phase2.py`.
+
+The file extension is `.py.archived` so pytest does not collect it.
+Restore by moving back to `tests/test_legacy_advisor.py` and
+restoring the legacy `advisor.py` to `src/agents/` if the class is
+ever revived. Kept here for git-archaeology continuity.
+"""
+from __future__ import annotations
+
+from types import SimpleNamespace
+
+import pytest
+
+from src.agents.advisor import MAX_TURNS, MerchantAdvisor
+
+
+# ---------------------------------------------------------------------------
+# Loop termination
+# ---------------------------------------------------------------------------
+
+class _AlwaysToolUseClient:
+    """Stub Anthropic client whose every response is a `tool_use` for `schema_info`."""
+
+    def __init__(self) -> None:
+        self.call_count = 0
+        self.messages = self  # so client.messages.create(...) works
+
+    def create(self, **_kwargs: object) -> SimpleNamespace:
+        self.call_count += 1
+        block = SimpleNamespace(
+            type="tool_use",
+            name="schema_info",
+            input={},
+            id=f"tu_{self.call_count}",
+        )
+        return SimpleNamespace(stop_reason="tool_use", content=[block])
+
+
+def test_loop_terminates_at_max_turns() -> None:
+    client = _AlwaysToolUseClient()
+    advisor = MerchantAdvisor("KRG", mock=False, client=client)
+    resp = advisor.ask("a question that will loop forever")
+    assert resp.turns == MAX_TURNS
+    assert client.call_count == MAX_TURNS
+    assert "MAX_TURNS" in resp.answer
+
+
+# ---------------------------------------------------------------------------
+# Mock mode
+# ---------------------------------------------------------------------------
+
+def test_advisor_mock_returns_answer() -> None:
+    advisor = MerchantAdvisor("KRG", mock=True)
+    resp = advisor.ask(
+        "What are my top categories by revenue last week, and which "
+        "subcategories drove each?"
+    )
+    assert resp.answer
+    assert resp.turns == 1
+    assert len(resp.sql) >= 1
+    assert resp.sql[0]["tool"] == "tenant"
+
+
+def test_advisor_mock_exercises_lake_view_builder() -> None:
+    """The mock should include a lake call routed through the
+    view-builder so the rows come back peer-pseudonymized."""
+    advisor = MerchantAdvisor("KRG", mock=True)
+    resp = advisor.ask("How does my dairy pricing compare to peers?")
+    lake_calls = [s for s in resp.sql if s["tool"] == "lake"]
+    assert len(lake_calls) >= 1, "advisor mock should call query_lake"
+    # The mock's lake query references the view-builder names.
+    assert "lake_transactions" in lake_calls[0]["query"]
+    # Result rows must be peer-pseudonymized (no underlying merchant_id).
+    rows = lake_calls[0]["rows"]["rows"]
+    if rows:
+        peers = {row[0] for row in rows}
+        assert peers <= {"peer_a", "peer_b", "peer_c", "peer_d"}
+
+
+# ---------------------------------------------------------------------------
+# Tool surface
+# ---------------------------------------------------------------------------
+
+def test_advisor_tool_surface_includes_both_query_tools() -> None:
+    advisor = MerchantAdvisor("KRG", mock=True)
+    names = {tool["name"] for tool in advisor.tools}
+    assert {"schema_info", "query_tenant", "query_lake", "chart_spec"} <= names
+
+
+def test_advisor_rejects_unknown_merchant_id() -> None:
+    with pytest.raises(ValueError):
+        MerchantAdvisor("NOPE", mock=True)
+
+
+# ---------------------------------------------------------------------------
+# Integration: advisor's _dispatch threads viewing_merchant_id into query_lake.
+# ---------------------------------------------------------------------------
+
+def test_advisor_dispatch_passes_viewing_merchant_id_to_lake() -> None:
+    """Construct an advisor for KRG, dispatch a synthetic query_lake
+    tool call, and verify the rows came back peer-pseudonymized (which
+    only happens through the v2.5 view-builder path)."""
+    advisor = MerchantAdvisor("KRG", mock=True)
+    result = advisor._dispatch(
+        "query_lake",
+        {
+            "query": (
+                "SELECT peer_id, COUNT(*) AS n FROM lake_transactions "
+                "GROUP BY peer_id ORDER BY peer_id LIMIT 10"
+            )
+        },
+    )
+    peers = {row[0] for row in result["rows"]}
+    assert peers == {"peer_a", "peer_b", "peer_c", "peer_d"}

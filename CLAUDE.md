@@ -77,18 +77,28 @@ beyond these.
   a bug.
 
 **Agents:**
-- Single agent today: `advisor.py` (Merchant Advisor — uses tenant +
-  lake views, scoped to a `current_merchant_id`). The strategy doc
-  specifies seven merchant-scoped agent personas; specialists beyond
-  the Merchant Advisor are deferred.
-- Tool definitions in `tools.py`. Prompts in `prompts/*.md` (loaded as
-  files, never inlined as Python strings).
+- Five user-facing agents: `orchestrator.py` (the Conversational
+  Business Advisor — routes free-form questions to a specialist via
+  a Haiku-based router with a keyword fallback) plus four specialists
+  in `pricing.py`, `anomaly.py`, `demand.py`, `trade.py`. Each
+  specialist subclasses `specialist.py::Specialist` (shared tool
+  loop, caveats parser, response shape). The chat panel calls into
+  the orchestrator for free-form input and dispatches directly to
+  specialists for suggested-question clicks.
+- Legacy v2 `advisor.py` (`MerchantAdvisor` class) has been archived
+  to `docs/archive/legacy_agent/advisor.py`; the orchestrator
+  superseded it. Tests for the archived class moved alongside.
+- Tool definitions in `tools.py`. Prompts in `prompts/*.md` (loaded
+  as files, never inlined as Python strings). The four specialist
+  prompts live there; the orchestrator's router prompt is
+  `prompts/orchestrator.md`.
 - The SQL tools enforce SELECT-only at the runner level. The tenant
   tool requires `WHERE merchant_id = '<current_merchant>'`. The lake
   tool runs SQL through `src/lake/views.py::get_lake_*` with the
   viewing merchant threaded in — it cannot reference physical
   `lake_*` tables (there are none).
-- Agents NEVER mutate the DB. `MAX_TURNS = 6`.
+- Agents NEVER mutate the DB. `MAX_TURNS = 6` (specialists may bump
+  to 7 — see their class definitions).
 
 **Code:**
 - One module = one concern. Files under ~200 lines.
@@ -114,7 +124,9 @@ L-diversity explicit verification. Differential privacy beyond a
 documented stub. Annual seasonality. EBT, cash, declined transactions.
 Demographics (age/income bands). The hardware/edge layer from strategy
 doc §3–§6 — data appears already-captured at the start of the pipeline.
-Specialist agent personas beyond the single Merchant Advisor.
+Specialist agent personas beyond the five already shipping
+(orchestrator + pricing + anomaly + demand + trade) — the strategy
+doc §10.2 names seven; the remaining two stay on the v4 roadmap.
 
 ## File guide
 
