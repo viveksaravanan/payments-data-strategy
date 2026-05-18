@@ -62,16 +62,16 @@ make demo
 
 `make demo` generates synthetic data, loads SQLite, and launches the dashboard on `http://localhost:8501`. `scripts/demo.sh` is the equivalent shell wrapper. Total cold-start time: ~2 minutes (~80s generation, ~25s SQLite seed, plus Streamlit startup).
 
-## Running on Streamlit Cloud
+## Running on HuggingFace Spaces
 
-The dashboard is deployed via Streamlit Community Cloud. The entry point at the repo root is [`streamlit_app.py`](./streamlit_app.py) — it sets up the import path, promotes `ANTHROPIC_API_KEY` from `st.secrets` into the environment, builds `data/payments.db` if missing (the 362 MB DB is gitignored, so cold starts regenerate it from committed catalogs), and then imports `src.dashboard.app` to render the page.
+The dashboard is deployed as a HuggingFace Space using the **Docker SDK**. `data/payments.db` (~362 MB) is shipped via Git LFS so cold starts skip generation — the container boots straight into the dashboard. The Space metadata at the top of this README configures the SDK + port; the `Dockerfile` at the repo root builds the image; the entry point is [`streamlit_app.py`](./streamlit_app.py) at the repo root.
 
-- **Entry point:** `streamlit_app.py` (configure `Main file path` to this in share.streamlit.io)
-- **Required secret:** `ANTHROPIC_API_KEY` (configure under *Advanced settings → Secrets* on share.streamlit.io)
-- **Cold-start time:** ~3–4 minutes on Streamlit's shared CPU the first time after deploy or after the app sleeps (DB regeneration ≈ ~2 min locally, slower on shared hardware). Subsequent loads while the container is warm are instant.
-- **Live app:** _TBD — update with the public URL after deploy._
+- **Entry point:** `streamlit_app.py` — sets the import path, promotes `ANTHROPIC_API_KEY` from `st.secrets` into the environment, verifies the LFS-pulled DB exists, and runs `src/dashboard/app.py` via `runpy.run_path` (Streamlit reruns the entry script on every interaction; `runpy` bypasses Python's import cache so the dashboard re-executes cleanly).
+- **Required secret:** `ANTHROPIC_API_KEY` (configure under *Space settings → Secrets*).
+- **Cold-start time:** instant once the image is warm; LFS-shipped DB means no per-launch generation.
+- **Rebuild after a push:** HF Spaces rebuilds the Docker image with a warm layer cache, typically ~3–5 minutes.
 
-Generation reads only from committed JSON catalogs under `data/catalogs/`; there are no external network dependencies, so the cold-start build is deterministic and reproducible from the seed.
+Generation still reads only from committed JSON catalogs under `data/catalogs/`; the local `make seed` path remains deterministic and reproducible from `RANDOM_SEED` for anyone who needs to rebuild the DB.
 
 ## What's in the demo
 
@@ -139,13 +139,14 @@ See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the mapping to the parent Core Da
 
 ## Files
 
-- [`PLAN.md`](./PLAN.md) — build plan with time-boxed blocks
+- [`V3_VISION.md`](./V3_VISION.md) — the rubric for everything v3 (thesis, three rubric tests, agent posture, gold-standard demo beat)
+- [`V3_AUDIT.md`](./V3_AUDIT.md) — Phase 1 audit of the codebase against the v3 rubric, with locked decisions
+- [`PLAN.md`](./PLAN.md) — short pointer to where current v3 plans live
 - [`DATA.md`](./DATA.md) — synthetic data specification (panel, schema, generator, anomalies)
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md) — strategy-doc mapping and deferred items
-- [`V2_5_DATA_DESIGN.md`](./V2_5_DATA_DESIGN.md) — locked target spec for the data layer
-- [`docs/V2_5_RECONCILIATION.md`](./docs/V2_5_RECONCILIATION.md) — phased refactor plan from v2 to v2.5
-- [`docs/archive/v2_audit.md`](./docs/archive/v2_audit.md) — historical audit of the v2 implementation
+- [`V2_5_DATA_DESIGN.md`](./V2_5_DATA_DESIGN.md) — locked source of truth for the data layer
 - [`CLAUDE.md`](./CLAUDE.md) — conventions and commands for working with Claude Code
+- [`docs/archive/`](./docs/archive/) — historical plans (v2 build plan, v2→v2.5 reconciliation, completed phase artifacts)
 
 ## License
 
