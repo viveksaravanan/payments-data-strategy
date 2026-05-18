@@ -100,3 +100,88 @@ CREATE INDEX ix_t_items_sku     ON tenant_transaction_items(sku);
 CREATE INDEX ix_t_items_txn     ON tenant_transaction_items(txn_id);
 CREATE INDEX ix_t_promo_sku     ON tenant_promotions(merchant_id, sku);
 CREATE INDEX ix_t_promo_dates   ON tenant_promotions(start_date, end_date);
+
+-- ============== Per-viewer tenant views (Phase 1.5, Decision §1.5) ==============
+--
+-- Each merchant gets one view per tenant_* table, scoped to its own
+-- merchant_id. The agent's query_tenant tool (src/agents/tools.py)
+-- CTE-wraps the agent's SQL so references to `tenant_<table>` resolve
+-- to the appropriate `tenant_view_<merchant>_<table>` for the current
+-- viewing merchant — making it impossible to satisfy the runner's
+-- regex predicate check and still read another merchant's rows.
+--
+-- tenant_view_<M>_customers shows customers who have transacted
+-- with merchant <M>, established by JOIN against tenant_transactions.
+-- A customer who shopped at multiple merchants appears in multiple
+-- views (correctly — each merchant has independently observed
+-- them). Customers in the panel who have never transacted with
+-- <M> do not appear in <M>'s view.
+--
+-- This view is the tenant-isolation boundary for the customers
+-- table. Cross-merchant analysis happens in the lake, where
+-- customer_id is dropped per the "no consumer linkage" rule.
+
+CREATE VIEW tenant_view_KRG_customers AS
+  SELECT DISTINCT c.* FROM tenant_customers c
+  JOIN tenant_transactions t ON t.customer_id = c.customer_id
+  WHERE t.merchant_id = 'KRG';
+CREATE VIEW tenant_view_KRG_stores       AS SELECT * FROM tenant_stores       WHERE merchant_id = 'KRG';
+CREATE VIEW tenant_view_KRG_products     AS SELECT * FROM tenant_products     WHERE merchant_id = 'KRG';
+CREATE VIEW tenant_view_KRG_transactions AS SELECT * FROM tenant_transactions WHERE merchant_id = 'KRG';
+CREATE VIEW tenant_view_KRG_transaction_items AS
+  SELECT i.* FROM tenant_transaction_items i
+  JOIN tenant_transactions t ON t.txn_id = i.txn_id
+  WHERE t.merchant_id = 'KRG';
+CREATE VIEW tenant_view_KRG_promotions   AS SELECT * FROM tenant_promotions   WHERE merchant_id = 'KRG';
+
+CREATE VIEW tenant_view_ACM_customers AS
+  SELECT DISTINCT c.* FROM tenant_customers c
+  JOIN tenant_transactions t ON t.customer_id = c.customer_id
+  WHERE t.merchant_id = 'ACM';
+CREATE VIEW tenant_view_ACM_stores       AS SELECT * FROM tenant_stores       WHERE merchant_id = 'ACM';
+CREATE VIEW tenant_view_ACM_products     AS SELECT * FROM tenant_products     WHERE merchant_id = 'ACM';
+CREATE VIEW tenant_view_ACM_transactions AS SELECT * FROM tenant_transactions WHERE merchant_id = 'ACM';
+CREATE VIEW tenant_view_ACM_transaction_items AS
+  SELECT i.* FROM tenant_transaction_items i
+  JOIN tenant_transactions t ON t.txn_id = i.txn_id
+  WHERE t.merchant_id = 'ACM';
+CREATE VIEW tenant_view_ACM_promotions   AS SELECT * FROM tenant_promotions   WHERE merchant_id = 'ACM';
+
+CREATE VIEW tenant_view_WDX_customers AS
+  SELECT DISTINCT c.* FROM tenant_customers c
+  JOIN tenant_transactions t ON t.customer_id = c.customer_id
+  WHERE t.merchant_id = 'WDX';
+CREATE VIEW tenant_view_WDX_stores       AS SELECT * FROM tenant_stores       WHERE merchant_id = 'WDX';
+CREATE VIEW tenant_view_WDX_products     AS SELECT * FROM tenant_products     WHERE merchant_id = 'WDX';
+CREATE VIEW tenant_view_WDX_transactions AS SELECT * FROM tenant_transactions WHERE merchant_id = 'WDX';
+CREATE VIEW tenant_view_WDX_transaction_items AS
+  SELECT i.* FROM tenant_transaction_items i
+  JOIN tenant_transactions t ON t.txn_id = i.txn_id
+  WHERE t.merchant_id = 'WDX';
+CREATE VIEW tenant_view_WDX_promotions   AS SELECT * FROM tenant_promotions   WHERE merchant_id = 'WDX';
+
+CREATE VIEW tenant_view_TBL_customers AS
+  SELECT DISTINCT c.* FROM tenant_customers c
+  JOIN tenant_transactions t ON t.customer_id = c.customer_id
+  WHERE t.merchant_id = 'TBL';
+CREATE VIEW tenant_view_TBL_stores       AS SELECT * FROM tenant_stores       WHERE merchant_id = 'TBL';
+CREATE VIEW tenant_view_TBL_products     AS SELECT * FROM tenant_products     WHERE merchant_id = 'TBL';
+CREATE VIEW tenant_view_TBL_transactions AS SELECT * FROM tenant_transactions WHERE merchant_id = 'TBL';
+CREATE VIEW tenant_view_TBL_transaction_items AS
+  SELECT i.* FROM tenant_transaction_items i
+  JOIN tenant_transactions t ON t.txn_id = i.txn_id
+  WHERE t.merchant_id = 'TBL';
+CREATE VIEW tenant_view_TBL_promotions   AS SELECT * FROM tenant_promotions   WHERE merchant_id = 'TBL';
+
+CREATE VIEW tenant_view_TJX_customers AS
+  SELECT DISTINCT c.* FROM tenant_customers c
+  JOIN tenant_transactions t ON t.customer_id = c.customer_id
+  WHERE t.merchant_id = 'TJX';
+CREATE VIEW tenant_view_TJX_stores       AS SELECT * FROM tenant_stores       WHERE merchant_id = 'TJX';
+CREATE VIEW tenant_view_TJX_products     AS SELECT * FROM tenant_products     WHERE merchant_id = 'TJX';
+CREATE VIEW tenant_view_TJX_transactions AS SELECT * FROM tenant_transactions WHERE merchant_id = 'TJX';
+CREATE VIEW tenant_view_TJX_transaction_items AS
+  SELECT i.* FROM tenant_transaction_items i
+  JOIN tenant_transactions t ON t.txn_id = i.txn_id
+  WHERE t.merchant_id = 'TJX';
+CREATE VIEW tenant_view_TJX_promotions   AS SELECT * FROM tenant_promotions   WHERE merchant_id = 'TJX';

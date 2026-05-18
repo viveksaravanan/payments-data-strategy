@@ -90,6 +90,46 @@ def test_tenant_isolation_accepts_double_quoted_predicate() -> None:
     assert T.has_merchant_predicate(sql, "KRG") is True
 
 
+# Phase 1.5 (Decision §1.5): the CTE wrapper shadows tenant_* table
+# names with per-viewer views (tenant_view_<M>_<table>). The two tests
+# below verify that a SQL string which *satisfies the regex predicate
+# check* but tries to broaden the result set via OR-clauses still
+# returns only the viewing merchant's rows — the view is the real
+# isolation boundary.
+
+def test_tenant_isolation_blocks_or_1_eq_1_bypass() -> None:
+    """`WHERE merchant_id = 'KRG' OR 1=1` satisfies the regex check but
+    disables logical isolation. The per-viewer view blocks it."""
+    result = T.query_tenant(
+        "SELECT DISTINCT merchant_id FROM tenant_transactions "
+        "WHERE merchant_id = 'KRG' OR 1=1",
+        current_merchant="KRG",
+    )
+    seen = {row[0] for row in result["rows"]}
+    assert seen == {"KRG"}, f"expected only KRG rows; got {seen}"
+
+
+def test_tenant_isolation_blocks_or_other_merchant_bypass() -> None:
+    """`WHERE merchant_id = 'KRG' OR merchant_id = 'ACM'` asks for
+    both grocers. The per-viewer view limits the agent to KRG rows."""
+    result = T.query_tenant(
+        "SELECT DISTINCT merchant_id FROM tenant_transactions "
+        "WHERE merchant_id = 'KRG' OR merchant_id = 'ACM'",
+        current_merchant="KRG",
+    )
+    seen = {row[0] for row in result["rows"]}
+    assert seen == {"KRG"}, f"expected only KRG rows; got {seen}"
+
+
+def test_tenant_isolation_rejects_unknown_viewer() -> None:
+    """`current_merchant` outside the panel raises before the DB opens."""
+    with pytest.raises(ValueError):
+        T.query_tenant(
+            "SELECT 1 FROM tenant_transactions WHERE merchant_id = 'NOPE'",
+            current_merchant="NOPE",
+        )
+
+
 # ---------------------------------------------------------------------------
 # query_lake — Phase 5b v2.5 path (with viewing_merchant_id).
 # ---------------------------------------------------------------------------

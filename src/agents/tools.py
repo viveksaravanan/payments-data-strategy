@@ -383,6 +383,34 @@ def schema_info() -> dict[str, Any]:
     return {"ddl": SCHEMA_PATH.read_text()}
 
 
+# Phase 1.5 (Decision §1.5): tenant tables the agent may reference. The
+# runner CTE-wraps the agent's SQL so each name resolves to the
+# corresponding `tenant_view_<viewer>_<suffix>` defined in
+# `src/db/schema.sql`. The CTE wrap is the primary isolation mechanism;
+# the `has_merchant_predicate` regex below remains as a second layer.
+_TENANT_TABLES = (
+    "tenant_customers",
+    "tenant_stores",
+    "tenant_products",
+    "tenant_transactions",
+    "tenant_transaction_items",
+    "tenant_promotions",
+)
+_VALID_VIEWERS = ("KRG", "ACM", "WDX", "TBL", "TJX")
+
+
+def _tenant_view_cte(viewer: str) -> str:
+    """Build the leading CTE block that shadows every `tenant_<table>`
+    name with the per-viewer view from `schema.sql`. Prepended to the
+    agent's SELECT before execution.
+    """
+    parts = [
+        f"  {tbl} AS (SELECT * FROM tenant_view_{viewer}_{tbl[len('tenant_'):]})"
+        for tbl in _TENANT_TABLES
+    ]
+    return "WITH " + ",\n".join(parts) + "\n"
+
+
 def query_tenant(
     query: str,
     current_merchant: str,
@@ -394,7 +422,13 @@ def query_tenant(
         raise ValueError(
             f"Tenant queries must include WHERE merchant_id = '{current_merchant}'."
         )
-    return _exec_select(query, db_path or DB_PATH)
+    if current_merchant not in _VALID_VIEWERS:
+        raise ValueError(
+            f"Unknown current_merchant {current_merchant!r}. "
+            f"Expected one of {list(_VALID_VIEWERS)}."
+        )
+    wrapped = _tenant_view_cte(current_merchant) + query
+    return _exec_select(wrapped, db_path or DB_PATH)
 
 
 def query_lake(
