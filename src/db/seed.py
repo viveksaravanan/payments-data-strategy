@@ -2,8 +2,15 @@
 
 The DB file is rebuilt from scratch on every run so the seed is idempotent.
 Foreign-key enforcement is set per-connection (PRAGMA is not persisted).
-The lake is not a physical layer in v2.5 — it's computed at query time
-from the tenant tables (see ``src/lake/views.py``).
+
+Phase 1.5: after the tenant load, the lake is **materialized** as
+per-viewer physical tables `lake_transactions_<viewer>` /
+`lake_stores_<viewer>`. The agent's runtime contract is preserved —
+agents still write SQL against `lake_transactions` and `lake_stores`,
+and the CTE wrapper in `src/agents/tools.py::query_lake` redirects to
+the materialized table. Materialization runs the heavy UDF templates
+in `src/lake/views.py::_build_lake_*_sql` once at seed time so
+runtime queries are pure SQLite (no per-row Python hops).
 
     uv run python -m src.db.seed
 """
@@ -14,6 +21,13 @@ import time
 from pathlib import Path
 
 import pandas as pd
+
+from src.lake.views import (
+    _VALID_VIEWERS,
+    _build_lake_stores_sql,
+    _build_lake_transactions_sql,
+    register_lake_functions,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 DB_PATH = ROOT / "data" / "payments.db"
@@ -103,6 +117,49 @@ def main() -> None:
         dtype={"txn_id": str, "sku": str, "promo_id": str},
     )
     _load(conn, titems, TENANT_ITEM_COLS, "tenant_transaction_items")
+
+    # Phase 1.5: materialize the lake. Runs the UDF-laden template
+    # from src/lake/views.py once per viewer and writes the rows to a
+    # physical table. Drop-if-exists keeps this idempotent against a
+    # future workflow that doesn't pre-wipe the DB. Indexes match the
+    # anchor-chart query shapes in V3_VISION.md.
+    register_lake_functions(conn)
+    t_lake = time.time()
+    for viewer in _VALID_VIEWERS:
+        # The :viewing bind param is replaced with a literal since the
+        # viewer comes from a known set (no injection risk) and SQLite
+        # doesn't accept bind params in `CREATE TABLE ... AS SELECT`.
+        txn_sql    = _build_lake_transactions_sql(viewer).replace(":viewing", f"'{viewer}'")
+        stores_sql = _build_lake_stores_sql(viewer).replace(":viewing", f"'{viewer}'")
+        conn.execute(f"DROP TABLE IF EXISTS lake_transactions_{viewer}")
+        conn.execute(f"DROP TABLE IF EXISTS lake_stores_{viewer}")
+        conn.execute(f"CREATE TABLE lake_transactions_{viewer} AS {txn_sql}")
+        conn.execute(f"CREATE TABLE lake_stores_{viewer}       AS {stores_sql}")
+        conn.execute(
+            f"CREATE INDEX IF NOT EXISTS ix_lake_txn_{viewer}_cat_date "
+            f"ON lake_transactions_{viewer}(category, txn_date)"
+        )
+        conn.execute(
+            f"CREATE INDEX IF NOT EXISTS ix_lake_txn_{viewer}_peer_date "
+            f"ON lake_transactions_{viewer}(peer_id, txn_date)"
+        )
+        conn.execute(
+            f"CREATE INDEX IF NOT EXISTS ix_lake_txn_{viewer}_canon "
+            f"ON lake_transactions_{viewer}(canonical_name)"
+        )
+        conn.execute(
+            f"CREATE INDEX IF NOT EXISTS ix_lake_txn_{viewer}_date "
+            f"ON lake_transactions_{viewer}(txn_date)"
+        )
+        conn.execute(
+            f"CREATE INDEX IF NOT EXISTS ix_lake_stores_{viewer}_peer "
+            f"ON lake_stores_{viewer}(peer_id)"
+        )
+        conn.execute(
+            f"CREATE INDEX IF NOT EXISTS ix_lake_stores_{viewer}_nbhd "
+            f"ON lake_stores_{viewer}(neighborhood)"
+        )
+    print(f"[seed] materialized lake for 5 viewers in {time.time() - t_lake:.1f}s")
 
     conn.commit()
     conn.close()

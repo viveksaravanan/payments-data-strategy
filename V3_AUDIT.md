@@ -54,6 +54,23 @@ to the agent. The runner's CTE wrapper rewrites bodies to
 `SELECT * FROM lake_transactions_<viewer>`; the agent never sees
 the per-viewer table names.
 
+**Measured speedup (Phase 1.5, 2026-05-17).** Two representative
+queries, best-of-3 timings against the local DB:
+
+| Query | Pre-1.5 (UDF template) | Post-1.5 (materialized) | Speedup |
+|---|---:|---:|---:|
+| Dairy aggregate (anchor-chart shape: `canonical_name × peer_id`, `WHERE category='DAIRY'`) | 1,726 ms | 298 ms | 5.8× |
+| Peer × txn_date over the full 90-day window | 2,807 ms | 126 ms | 22.3× |
+
+Audit's pre-1.5 estimates (300–800 ms filtered, 2–3 s broad) held.
+Post-1.5 numbers put even the broad-panel query under 150 ms —
+inside the lean-forward budget for an interactive panel.
+
+Seed-time cost of the materialization: +91 s (5 viewers × ~18 s
+each to run the UDF template + build the indexes). Local `make seed`
+end-to-end went from ~30 s to 120 s — paid once per build, not per
+query.
+
 ---
 
 ### 1.2 k=5 suppression on the two anchor charts

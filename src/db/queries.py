@@ -4,11 +4,13 @@ The agent runs its own SQL through the tools; these are reference
 queries used by the dashboard and by tests to validate the schema
 actually answers the demo's headline questions.
 
-Lake queries reference the v2.5 virtual lake (``lake_transactions`` /
-``lake_stores``) — the agent runner CTE-wraps those names into the
-view-builder SQL with the viewing merchant baked in. ``customer_id``
-is not in the lake; cross-merchant customer-cohort questions resolve
-at the tenant layer only.
+Lake queries reference the lake (``lake_transactions`` /
+``lake_stores``) — Phase 1.5 materializes those as per-viewer
+physical tables at seed time. The agent runner CTE-wraps the
+unqualified names so the agent's SQL contract is unchanged; see
+``src/lake/views.py``. ``customer_id`` is not in the lake;
+cross-merchant customer-cohort questions resolve at the tenant
+layer only.
 """
 from __future__ import annotations
 

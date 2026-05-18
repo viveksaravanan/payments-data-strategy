@@ -1,6 +1,6 @@
-"""Parameterized lake view-builders.
+"""Lake view-builders.
 
-`V2_5_DATA_DESIGN.md` Phase 2 specifies the lake as two virtual tables:
+`V2_5_DATA_DESIGN.md` Phase 2 specifies the lake as two logical tables:
 
   - ``lake_transactions`` — wide, denormalized; one row per
     transaction line item with peer + transaction + product +
@@ -8,11 +8,23 @@
   - ``lake_stores`` — store-level reference for geographic queries.
     6 columns.
 
-Both are computed at query time from the tenant tables. The viewing
-merchant's data is excluded; peer merchants are pseudonymized via
-``peer_id``; opaque IDs replace ``txn_id`` / ``store_id`` to prevent
-merchant-prefix leakage; ZIP5 → ZIP3; full timestamp → ``txn_date`` +
-2-hour ``txn_hour_bucket``; ``txn_total`` → 10-bin ``txn_total_bin``;
+**Phase 1.5 (V3_AUDIT.md Decision §1.1) materializes the lake at seed
+time** as per-viewer physical tables — `lake_transactions_<viewer>` /
+`lake_stores_<viewer>` — built once by ``src/db/seed.py`` using the
+``_build_lake_*_sql`` helpers below. Runtime queries read those
+materialized tables directly (no per-row Python UDFs). The lake remains
+*logically* virtual — defined as a privacy-engine transformation of
+tenant data — but the transformation runs once at seed time rather
+than per query. Agent-facing SQL contracts (`lake_transactions`,
+`lake_stores`) are unchanged: the agent's SQL keeps referencing the
+unqualified names, and ``src/agents/tools.py::query_lake`` wraps it in
+a CTE that resolves to the per-viewer materialized table.
+
+Privacy semantics are identical to v2.5: the viewing merchant's data
+is excluded; peer merchants are pseudonymized via ``peer_id``; opaque
+IDs replace ``txn_id`` / ``store_id`` to prevent merchant-prefix
+leakage; ZIP5 → ZIP3; full timestamp → ``txn_date`` + 2-hour
+``txn_hour_bucket``; ``txn_total`` → 10-bin ``txn_total_bin``;
 ``customer_id`` is **dropped** ("no consumer linkage").
 
 Helpers in this module:
@@ -182,10 +194,10 @@ def _connect(db_path: Path) -> sqlite3.Connection:
 # View builders
 # ---------------------------------------------------------------------------
 
-# 21 columns per V2_5_DATA_DESIGN.md lines 627–650. Inner SELECT used
-# both by `get_lake_transactions` (executed directly with :viewing
-# parameter binding) and by the agent runner (wrapped as a CTE that
-# shadows the v2 physical `lake_transactions` table — see Phase 5b).
+# 21 columns per V2_5_DATA_DESIGN.md lines 627–650. Phase 1.5: this
+# SELECT runs once per viewer at seed time (`src/db/seed.py`) to build
+# the `lake_transactions_<viewer>` physical table. Runtime queries
+# read the materialized table directly via `lake_transactions_sql()`.
 _LAKE_TXN_SQL_TEMPLATE = """
 SELECT
     _opaque_id(t.txn_id, l.line_id)              AS lake_txn_id,
@@ -233,27 +245,60 @@ WHERE s.merchant_id != :viewing{extra_filter}
 """
 
 
-def lake_transactions_sql(
-    viewing_merchant_id: str, sql_filter: str | None = None
-) -> str:
-    """Return the inner SELECT for ``lake_transactions`` parameterized
-    on ``:viewing``. Used by ``get_lake_transactions`` (runs directly)
-    and by the agent runner (wraps as a CTE)."""
-    _validate_filter(sql_filter)
+# Phase 1.5 (Decision §1.1): the lake is materialized at seed time as
+# per-viewer physical tables `lake_transactions_<M>` / `lake_stores_<M>`.
+# Runtime queries read those tables directly — no per-row Python UDFs.
+# The heavy UDF templates remain as private build helpers used only by
+# `src/db/seed.py`. Agent-facing SQL contracts (`lake_transactions`,
+# `lake_stores`) are preserved: the agent's SQL is unchanged; the
+# runner's CTE wrapper redirects to the materialized table.
+_VALID_VIEWERS = ("KRG", "ACM", "WDX", "TBL", "TJX")
+
+
+def _validate_viewer(viewer: str) -> None:
+    if viewer not in _VALID_VIEWERS:
+        raise ValueError(
+            f"Unknown viewing_merchant_id {viewer!r}. "
+            f"Expected one of {list(_VALID_VIEWERS)}."
+        )
+
+
+def _build_lake_transactions_sql(viewing_merchant_id: str) -> str:
+    """Full UDF-laden SELECT used by `src/db/seed.py` to materialize
+    `lake_transactions_<viewer>` once at seed time. The `:viewing`
+    bind parameter is supplied by the caller.
+
+    Not for runtime use — runtime queries go through
+    `lake_transactions_sql()` which returns a simple
+    `SELECT * FROM lake_transactions_<viewer>` against the
+    materialized table.
+    """
     case_sql = peer_case_sql(viewing_merchant_id, "t.merchant_id")
-    extra = f" AND ({sql_filter})" if sql_filter else ""
-    return _LAKE_TXN_SQL_TEMPLATE.format(peer_case=case_sql, extra_filter=extra)
+    return _LAKE_TXN_SQL_TEMPLATE.format(peer_case=case_sql, extra_filter="")
 
 
-def lake_stores_sql(
-    viewing_merchant_id: str, sql_filter: str | None = None
-) -> str:
-    """Return the inner SELECT for ``lake_stores`` parameterized on
-    ``:viewing``."""
-    _validate_filter(sql_filter)
+def _build_lake_stores_sql(viewing_merchant_id: str) -> str:
+    """Full UDF-laden SELECT used by `src/db/seed.py` to materialize
+    `lake_stores_<viewer>` once at seed time."""
     case_sql = peer_case_sql(viewing_merchant_id, "s.merchant_id")
-    extra = f" AND ({sql_filter})" if sql_filter else ""
-    return _LAKE_STORES_SQL_TEMPLATE.format(peer_case=case_sql, extra_filter=extra)
+    return _LAKE_STORES_SQL_TEMPLATE.format(peer_case=case_sql, extra_filter="")
+
+
+def lake_transactions_sql(viewing_merchant_id: str) -> str:
+    """Return the runtime SELECT body for ``lake_transactions`` as
+    seen by the agent's `query_lake` CTE wrapper. Phase 1.5 materialized
+    the lake at seed time, so this is a simple `SELECT * FROM
+    lake_transactions_<viewer>` against the per-viewer physical table.
+    """
+    _validate_viewer(viewing_merchant_id)
+    return f"SELECT * FROM lake_transactions_{viewing_merchant_id}"
+
+
+def lake_stores_sql(viewing_merchant_id: str) -> str:
+    """Return the runtime SELECT body for ``lake_stores`` — simple
+    `SELECT * FROM lake_stores_<viewer>` post-materialization."""
+    _validate_viewer(viewing_merchant_id)
+    return f"SELECT * FROM lake_stores_{viewing_merchant_id}"
 
 
 def register_lake_functions(conn: sqlite3.Connection) -> None:
@@ -298,23 +343,29 @@ def get_lake_transactions(
     """Return the lake-transactions wide view from the perspective of
     ``viewing_merchant_id``.
 
-    The viewing merchant's own transactions are excluded; the other
-    four merchants appear pseudonymized as ``peer_a``..``peer_d`` per
-    the documented mapping. ``customer_id`` is not present — the lake
-    enforces "no consumer linkage" per strategy doc §5.2.
+    Phase 1.5 materialized the lake at seed time, so this reads from
+    `lake_transactions_<viewer>` directly. The viewing merchant's own
+    transactions are excluded; the other four merchants appear
+    pseudonymized as ``peer_a``..``peer_d`` per the documented
+    mapping. ``customer_id`` is not present — the lake enforces "no
+    consumer linkage" per strategy doc §5.2.
 
-    `sql_filter` is appended as ``AND ({sql_filter})`` to the inner
-    query — useful for narrowing to a date or category. The filter is
-    passed through a small block-list; the agent runner adds further
-    SELECT-only enforcement in Phase 5b.
+    `sql_filter` is appended as an outer ``WHERE (sql_filter)`` clause
+    — useful for narrowing to a date or category. **It must reference
+    lake output columns (e.g., `txn_date`, `category`, `payment_type`,
+    `discount`), not internal tenant aliases** — the lake is
+    materialized; the tenant join aliases (`t.`, `l.`, `p.`) that the
+    pre-Phase-1.5 template used are no longer in scope.
     """
-    sql = lake_transactions_sql(viewing_merchant_id, sql_filter=sql_filter)
+    _validate_viewer(viewing_merchant_id)
+    _validate_filter(sql_filter)
+    sql = f"SELECT * FROM lake_transactions_{viewing_merchant_id}"
+    if sql_filter:
+        sql += f" WHERE ({sql_filter})"
     db = db_path or DEFAULT_DB_PATH
     conn = _connect(db)
     try:
-        return pd.read_sql_query(
-            sql, conn, params={"viewing": viewing_merchant_id}
-        )
+        return pd.read_sql_query(sql, conn)
     finally:
         conn.close()
 
@@ -328,14 +379,21 @@ def get_lake_stores(
     """Return the lake-stores reference view from the perspective of
     ``viewing_merchant_id``.
 
-    Same exclusion / pseudonymization rules as ``get_lake_transactions``.
+    Phase 1.5 materialized: reads from `lake_stores_<viewer>` directly.
+    Same exclusion / pseudonymization rules as
+    ``get_lake_transactions``. ``sql_filter`` must reference lake
+    output columns (`peer_id`, `peer_segment`, `store_zip3`,
+    `neighborhood`, `metro_region`), not the pre-Phase-1.5 `s.`-aliased
+    tenant column names.
     """
-    sql = lake_stores_sql(viewing_merchant_id, sql_filter=sql_filter)
+    _validate_viewer(viewing_merchant_id)
+    _validate_filter(sql_filter)
+    sql = f"SELECT * FROM lake_stores_{viewing_merchant_id}"
+    if sql_filter:
+        sql += f" WHERE ({sql_filter})"
     db = db_path or DEFAULT_DB_PATH
     conn = _connect(db)
     try:
-        return pd.read_sql_query(
-            sql, conn, params={"viewing": viewing_merchant_id}
-        )
+        return pd.read_sql_query(sql, conn)
     finally:
         conn.close()

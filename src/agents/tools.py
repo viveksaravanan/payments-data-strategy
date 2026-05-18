@@ -524,12 +524,11 @@ def query_lake(
         ")\n"
         f"{query}"
     )
-    result = _exec_select(
-        wrapped,
-        db_path or DB_PATH,
-        params={"viewing": viewing_merchant_id},
-        register_lake=True,
-    )
+    # Phase 1.5: the CTE body resolves to a SELECT against the
+    # per-viewer materialized table; no `:viewing` bind param and no
+    # UDFs are referenced at runtime. The lake-functions registration
+    # and the `viewing` param became dead after materialization.
+    result = _exec_select(wrapped, db_path or DB_PATH)
     return _maybe_suppress_sub_k(result)
 
 

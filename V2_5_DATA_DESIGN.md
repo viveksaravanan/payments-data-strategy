@@ -1110,6 +1110,41 @@ This approach:
 - The viewing merchant's data is automatically excluded
 - Easy to extend — new fields just get added to the query
 
+### Phase 1.5 (V3 Decision §1.1): the lake is materialized at seed time
+
+The "computed at query time" property above held through v2.5 but
+became a latency problem under the v3 interactive-dashboard load — the
+template above runs three Python-resident SQLite UDFs (`_opaque_id` ×
+2, `_to_hour_bucket`, `_to_total_bin`) per row, and a typical viewer
+sees ~1.1M peer line-item rows. Broad-panel queries were measuring at
+2–3 seconds (see `V3_AUDIT.md` §1.1 for the timings).
+
+Phase 1.5 (`make seed`) now runs the template once per viewer at seed
+time and writes the result to physical tables
+`lake_transactions_<viewer>` / `lake_stores_<viewer>` indexed for the
+anchor-chart query shapes (`(category, txn_date)`, `(peer_id,
+txn_date)`, `(canonical_name)`, `(txn_date)`, plus `(peer_id)` and
+`(neighborhood)` on the stores tables). Implementation lives in
+`src/db/seed.py`; the template stays in `src/lake/views.py` as
+`_build_lake_transactions_sql` / `_build_lake_stores_sql` (private
+seed-time helpers).
+
+**The lake remains *logically* virtual** — defined as a privacy-engine
+transformation of tenant data — but the transformation runs once at
+seed time rather than per query. **Agent-facing SQL contracts are
+unchanged**: the agent still writes `SELECT … FROM lake_transactions
+…`, and `src/agents/tools.py::query_lake` wraps that in a CTE
+(`lake_transactions AS (SELECT * FROM lake_transactions_<viewer>)`)
+so the unqualified name resolves transparently. Privacy semantics are
+identical: same rows, same exclusion-of-viewing-merchant, same
+peer pseudonymization, same opaque IDs and bin/bucket
+generalization — the transformation is just precomputed.
+
+Seed-time cost: +~90 seconds (`make seed` total grew from ~30 s to
+~120 s on the local machine — 5 viewers × ~18 s each). Runtime
+speedup: 5–22× depending on query shape; both anchor-chart paths now
+under 300 ms.
+
 ## Honest accounting: what's preserved, approximate, and lost
 
 ### Fully preserved at the lake

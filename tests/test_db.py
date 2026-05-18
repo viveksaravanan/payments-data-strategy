@@ -56,13 +56,40 @@ def test_schema_applies_cleanly(tmp_path: Path) -> None:
     c.close()
 
 
-def test_no_physical_lake_tables(conn: sqlite3.Connection) -> None:
-    """v2.5 holds no physical lake_* tables — the lake is virtual."""
+def test_lake_materialized_tables_present(conn: sqlite3.Connection) -> None:
+    """Phase 1.5 (V3_AUDIT.md Decision §1.1) inverts the v2.5 "lake is
+    virtual" invariant — the lake is now materialized at seed time as
+    per-viewer physical tables. This test pins the post-Phase-1.5
+    shape:
+
+      * exactly the 10 expected `lake_*_<viewer>` tables exist
+        (lake_transactions_<M> + lake_stores_<M> for the 5 viewers in
+        the panel),
+      * each is non-empty (catches a broken materialization that
+        creates the table but writes no rows),
+      * nothing else matching `lake_%` slipped in — a future viewer
+        added without updating this test, or a stray v2-era physical
+        lake table, would fail here.
+    """
+    viewers = ("KRG", "ACM", "WDX", "TBL", "TJX")
+    expected = {
+        f"lake_{kind}_{m}"
+        for m in viewers
+        for kind in ("transactions", "stores")
+    }
     rows = conn.execute(
         "SELECT name FROM sqlite_master "
         "WHERE type='table' AND name LIKE 'lake_%'"
     ).fetchall()
-    assert rows == [], f"unexpected physical lake_* tables: {rows}"
+    names = {r[0] for r in rows}
+    assert names == expected, (
+        f"unexpected lake_* table shape. "
+        f"extra: {sorted(names - expected)}, "
+        f"missing: {sorted(expected - names)}"
+    )
+    for name in sorted(expected):
+        count = conn.execute(f"SELECT COUNT(*) FROM {name}").fetchone()[0]
+        assert count > 0, f"{name} materialized empty — broken seed"
 
 
 def test_indexes_present(conn: sqlite3.Connection) -> None:

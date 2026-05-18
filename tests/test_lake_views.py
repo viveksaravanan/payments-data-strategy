@@ -190,7 +190,7 @@ def test_apply_k_anonymity_on_real_aggregate() -> None:
     view; verify suppression actually fires (some cells fall below k=5)."""
     df = get_lake_transactions(
         "KRG",
-        sql_filter="DATE(t.txn_ts) = '2026-04-22'",
+        sql_filter="txn_date = '2026-04-22'",
     )
     if df.empty:
         pytest.skip("no lake transactions on the chosen date")
@@ -218,7 +218,7 @@ def test_lake_transactions_excludes_viewing_merchant(viewing: str) -> None:
     merchant. We verify by joining back through the opaque store ID
     and observing that no row maps to a store owned by `viewing`."""
     df = get_lake_transactions(
-        viewing, sql_filter="DATE(t.txn_ts) = '2026-04-22'"
+        viewing, sql_filter="txn_date = '2026-04-22'"
     )
     if df.empty:
         pytest.skip("no transactions on 2026-04-22 for this viewer")
@@ -255,12 +255,12 @@ def test_lake_transactions_full_panel_excludes_viewer() -> None:
 
 
 def test_lake_transactions_columns_match_design() -> None:
-    df = get_lake_transactions("KRG", sql_filter="DATE(t.txn_ts) = '2026-04-22'")
+    df = get_lake_transactions("KRG", sql_filter="txn_date = '2026-04-22'")
     assert list(df.columns) == EXPECTED_LAKE_TXN_COLS
 
 
 def test_lake_transactions_has_no_customer_id() -> None:
-    df = get_lake_transactions("KRG", sql_filter="DATE(t.txn_ts) = '2026-04-22'")
+    df = get_lake_transactions("KRG", sql_filter="txn_date = '2026-04-22'")
     forbidden = {"customer_id", "customer_pan", "customer_name", "customer_email"}
     assert not (forbidden & set(df.columns)), (
         f"customer-linkage columns leaked into lake view: "
@@ -270,7 +270,7 @@ def test_lake_transactions_has_no_customer_id() -> None:
 
 def test_lake_transactions_bucket_vocabulary() -> None:
     """All txn_hour_bucket values must be from the documented HOUR_BUCKETS."""
-    df = get_lake_transactions("KRG", sql_filter="DATE(t.txn_ts) = '2026-04-22'")
+    df = get_lake_transactions("KRG", sql_filter="txn_date = '2026-04-22'")
     if df.empty:
         pytest.skip("empty result")
     observed = set(df["txn_hour_bucket"].dropna().unique())
@@ -287,7 +287,7 @@ def test_lake_transactions_bin_vocabulary() -> None:
 def test_lake_transactions_peer_segment_correct() -> None:
     """For Kroger viewing: peer_a (ACM) and peer_b (WDX) are grocery;
     peer_c (TBL) is qsr; peer_d (TJX) is off_price_retail."""
-    df = get_lake_transactions("KRG", sql_filter="DATE(t.txn_ts) = '2026-04-22'")
+    df = get_lake_transactions("KRG", sql_filter="txn_date = '2026-04-22'")
     if df.empty:
         pytest.skip("empty result")
     by_peer = df[["peer_id", "peer_segment"]].drop_duplicates()
@@ -304,7 +304,7 @@ def test_lake_transactions_peer_segment_correct() -> None:
 def test_lake_transactions_discount_pct_applied_formula() -> None:
     """For lines with discount > 0: discount_pct_applied ==
     ROUND(discount / (unit_price * qty), 2)."""
-    df = get_lake_transactions("KRG", sql_filter="l.discount > 0").head(500)
+    df = get_lake_transactions("KRG", sql_filter="discount > 0").head(500)
     if df.empty:
         pytest.skip("no discounted lines for Kroger viewer")
     expected = (df["discount"] / (df["unit_price"] * df["qty"])).round(2)
@@ -315,8 +315,8 @@ def test_lake_transactions_discount_pct_applied_formula() -> None:
 def test_lake_transactions_opaque_ids_are_stable() -> None:
     """Two runs of the same view-builder produce identical opaque IDs
     for the same underlying rows."""
-    df1 = get_lake_transactions("KRG", sql_filter="DATE(t.txn_ts) = '2026-04-22'")
-    df2 = get_lake_transactions("KRG", sql_filter="DATE(t.txn_ts) = '2026-04-22'")
+    df1 = get_lake_transactions("KRG", sql_filter="txn_date = '2026-04-22'")
+    df2 = get_lake_transactions("KRG", sql_filter="txn_date = '2026-04-22'")
     if df1.empty:
         pytest.skip("empty result")
     pd.testing.assert_series_equal(
@@ -328,7 +328,7 @@ def test_lake_transactions_opaque_ids_are_stable() -> None:
 
 def test_lake_transactions_opaque_ids_unique_per_line() -> None:
     """Each (txn_id, line_id) must hash to a distinct lake_txn_id."""
-    df = get_lake_transactions("KRG", sql_filter="DATE(t.txn_ts) = '2026-04-22'")
+    df = get_lake_transactions("KRG", sql_filter="txn_date = '2026-04-22'")
     if df.empty:
         pytest.skip("empty result")
     assert df["lake_txn_id"].is_unique
@@ -412,6 +412,6 @@ def test_sql_filter_rejects_comment_injection() -> None:
 def test_sql_filter_accepts_legitimate_predicate() -> None:
     # Just shouldn't raise — empty result is OK.
     df = get_lake_transactions(
-        "KRG", sql_filter="t.payment_type = 'credit' AND p.category = 'DAIRY'"
+        "KRG", sql_filter="payment_type = 'credit' AND category = 'DAIRY'"
     )
     assert isinstance(df, pd.DataFrame)

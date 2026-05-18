@@ -1,7 +1,13 @@
--- v2.5 SQLite schema. Only tenant_* tables are physical; the lake is a
--- virtual layer computed at query time from the tenant tables (see
--- src/lake/views.py for the view-builders). Foreign-key enforcement is
--- per-connection — see src/db/seed.py for the PRAGMA.
+-- SQLite schema. The tenant_* tables (plus the shared merchants
+-- dimension) are physical. The lake is materialized at seed time
+-- (V3 Phase 1.5, Decision §1.1) as per-viewer tables
+-- `lake_transactions_<viewer>` / `lake_stores_<viewer>` — those tables
+-- aren't defined in this schema file; they're built by src/db/seed.py
+-- using the templates in src/lake/views.py. The per-viewer tenant
+-- views (tenant_view_<viewer>_<table>, defined at the bottom of this
+-- file) form the tenant-isolation boundary for the agent's
+-- query_tenant tool. Foreign-key enforcement is per-connection —
+-- see src/db/seed.py for the PRAGMA.
 
 PRAGMA foreign_keys = ON;
 
