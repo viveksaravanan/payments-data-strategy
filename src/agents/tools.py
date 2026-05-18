@@ -32,6 +32,7 @@ from src.lake import (
     lake_transactions_sql,
     register_lake_functions,
 )
+from src.lake.views import K_ANONYMITY_K
 
 ROOT = Path(__file__).resolve().parents[2]
 DB_PATH = ROOT / "data" / "payments.db"
@@ -431,6 +432,63 @@ def query_tenant(
     return _exec_select(wrapped, db_path or DB_PATH)
 
 
+# Phase 1.5 (Decision §1.2): names that look like aggregate counts and
+# trigger k=5 suppression on lake results. The agents' prompts ask for
+# `COUNT(*) AS n` on customer-dimension breakdowns; the looser
+# `_count` / `_n` suffix rule catches cases where the agent picks a
+# different alias.
+_EXACT_COUNT_NAMES = frozenset({"count", "cnt", "n", "row_count", "num_rows"})
+
+
+def _find_count_column_index(columns: list[str]) -> int | None:
+    """Return the index of the first count-like column, or None."""
+    for i, col in enumerate(columns):
+        low = col.lower()
+        if low in _EXACT_COUNT_NAMES:
+            return i
+        if low.endswith("_count") or low.endswith("_n"):
+            return i
+    return None
+
+
+def _maybe_suppress_sub_k(
+    result: dict[str, Any], k: int = K_ANONYMITY_K,
+) -> dict[str, Any]:
+    """If the lake result has a count column, drop rows where that
+    count is below `k` and append a `"suppression"` note. No-op if no
+    count column is detected (the prompts ask agents to include
+    `COUNT(*) AS n` on customer-dimension breakdowns precisely so this
+    hook can fire)."""
+    cols = result.get("columns") or []
+    if not cols:
+        return result
+    idx = _find_count_column_index(cols)
+    if idx is None:
+        return result
+    rows = result.get("rows") or []
+    kept = []
+    for r in rows:
+        v = r[idx]
+        try:
+            if v is not None and float(v) >= k:
+                kept.append(r)
+        except (TypeError, ValueError):
+            # Non-numeric column we matched on name — bail safely
+            # rather than silently dropping every row.
+            return result
+    suppressed = len(rows) - len(kept)
+    if suppressed == 0:
+        return result
+    result = dict(result)
+    result["rows"] = kept
+    result["row_count"] = len(kept)
+    result["suppression"] = (
+        f"{suppressed} row(s) below k={k} suppressed for privacy "
+        f"(count column: '{cols[idx]}')."
+    )
+    return result
+
+
 def query_lake(
     query: str,
     viewing_merchant_id: str,
@@ -444,6 +502,13 @@ def query_lake(
     the viewer's own data is excluded and peers are pseudonymized.
     References to legacy v2 physical lake table names outside the v2.5
     model and to ``tenant_*`` tables are rejected.
+
+    Phase 1.5: when the result contains a count-like column (`n`,
+    `count`, `cnt`, `*_count`, `*_n`, etc.), rows below k=5 are
+    suppressed and a `"suppression"` note is added to the result.
+    Agents are instructed (in their system prompts) to include
+    `COUNT(*) AS n` on customer-dimension breakdowns so suppression
+    can apply.
     """
     if not is_safe_select(query):
         raise ValueError("Only a single read-only SELECT statement is allowed.")
@@ -459,12 +524,13 @@ def query_lake(
         ")\n"
         f"{query}"
     )
-    return _exec_select(
+    result = _exec_select(
         wrapped,
         db_path or DB_PATH,
         params={"viewing": viewing_merchant_id},
         register_lake=True,
     )
+    return _maybe_suppress_sub_k(result)
 
 
 def chart_spec(type: str, x: str, y: str, title: str) -> dict[str, Any]:

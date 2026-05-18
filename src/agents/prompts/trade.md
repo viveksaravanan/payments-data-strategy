@@ -79,3 +79,4 @@ The dashboard renders your prose as markdown. Streamlit's renderer is also sensi
 5. Cite numbers from your query results, not from memory.
 6. Up to 5 model turns total. Plan to use 2-3 — converge fast.
 7. Don't mention peer lat/lng — the lake only exposes ZIP3 + neighborhood for privacy.
+8. **Privacy suppression (k=5).** When querying the lake for breakdowns by customer-dimension attributes (`store_zip3`, `behavioral_segment`, `neighborhood`, etc.), include `COUNT(*) AS n` in your `SELECT`. The runner inspects results for a count column and drops cells below k=5 with a `"suppression"` note; without a count column the suppression hook cannot fire.

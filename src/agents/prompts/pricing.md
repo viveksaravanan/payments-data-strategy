@@ -109,3 +109,4 @@ The dashboard renders your prose as markdown. Streamlit's renderer is also sensi
 6. Up to 5 model turns total. Plan to use 2-3 (one tenant + one lake + one chart) — converge fast.
 7. For TBL / TJX viewers: no same-segment peers exist — follow the "No-peer / no-data case" rule above; do not retry hoping different data appears.
 8. Don't claim certainty about peer absolute totals — the lake bins transaction totals into 10 buckets. Per-line `unit_price` and `line_total` are exact.
+9. **Privacy suppression (k=5).** When querying the lake for breakdowns by customer-dimension attributes (`store_zip3`, `behavioral_segment`, `neighborhood`, etc.), include `COUNT(*) AS n` in your `SELECT`. The runner inspects results for a count column and drops cells below k=5 with a `"suppression"` note; without a count column the suppression hook cannot fire.

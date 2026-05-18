@@ -201,3 +201,42 @@ def test_query_lake_v2_5_rejects_unknown_viewing_merchant() -> None:
             "SELECT 1 FROM lake_transactions LIMIT 1",
             viewing_merchant_id="NOPE",
         )
+
+
+# Phase 1.5 (Decision §1.2): k=5 suppression is applied to lake results
+# that include a count-like column. Tight cells (peer × hour-bucket ×
+# card-network on a single day) produce sub-k rows reliably.
+
+def test_query_lake_applies_k5_suppression_when_count_column_present() -> None:
+    """A finely-grouped lake query produces sub-k cells; the runner
+    detects the count column, drops them, and surfaces a suppression
+    note."""
+    result = T.query_lake(
+        "SELECT peer_id, txn_hour_bucket, card_network, COUNT(*) AS n "
+        "FROM lake_transactions WHERE txn_date = '2026-04-22' "
+        "GROUP BY peer_id, txn_hour_bucket, card_network "
+        "ORDER BY peer_id, txn_hour_bucket, card_network LIMIT 200",
+        viewing_merchant_id="KRG",
+    )
+    # Suppression note is present (some cells were below k=5).
+    assert "suppression" in result, (
+        f"expected suppression note in result; got keys {list(result)}"
+    )
+    assert "k=5" in result["suppression"]
+    # Every surviving row has n >= 5.
+    n_idx = result["columns"].index("n")
+    assert all(row[n_idx] >= 5 for row in result["rows"]), (
+        "all surviving rows must satisfy n >= k=5"
+    )
+
+
+def test_query_lake_no_suppression_when_no_count_column() -> None:
+    """A SELECT without a count column should NOT have a suppression
+    key — the runner has nothing to filter on."""
+    result = T.query_lake(
+        "SELECT peer_id, category, ROUND(AVG(unit_price), 2) AS avg_price "
+        "FROM lake_transactions WHERE category = 'DAIRY' "
+        "GROUP BY peer_id, category ORDER BY peer_id LIMIT 20",
+        viewing_merchant_id="KRG",
+    )
+    assert "suppression" not in result
