@@ -525,3 +525,128 @@ Non-decision cleanups (no debate, proceed in the same execution pass):
   `V2_5_PHASE2A5_RESULTS.md`, `DASHBOARD_PLAN.md` (§2.4).
 - Move eight `phase2*_validate.py` scripts to `scripts/archive/` (§2.5).
 - Update README's deployment section: Streamlit Cloud → HF Spaces (§2.6).
+
+---
+
+## Phase 1.5 completed 2026-05-17
+
+All six locked decisions executed in six commits — one per step,
+verified independently. Final test count: 212 (was 213 pre-Phase-1.5;
+delta of 6 archived MerchantAdvisor tests, +5 new bypass + suppression
+tests). Streamlit boots clean (HTTP 200 on root + rerun) at each step
+boundary. Anchor-chart lake queries measured 5.8× / 22.3× faster
+post-materialization (see §1.1 table).
+
+### Steps executed
+
+| Step | Commit | What landed |
+|---|---|---|
+| 1 | `522dcea` | Doc archives: `PLAN.md` → `docs/archive/PLAN_v2.md` + new 1-page pointer; five `docs/V2_5_*.md` + `DASHBOARD_PLAN.md` → `docs/archive/`; nine `scripts/phase2*_validate.py` + `phase2c1_diagnose_demand.py` → `scripts/archive/`; README "Streamlit Cloud" → "HuggingFace Spaces"; baselined `V3_AUDIT.md`. |
+| 2 | `0cff41a` | Archived legacy `MerchantAdvisor`: `src/agents/advisor.py` + `prompts/advisor.md` → `docs/archive/legacy_agent/`. Split `tests/test_agents.py` — 6 MerchantAdvisor tests moved to `legacy_agent/test_legacy_advisor.py.archived`. Rewrote root `CLAUDE.md` agents section + `src/agents/CLAUDE.md` opener. |
+| 3 | `df7c827` | 30 per-viewer tenant views added to `schema.sql` (5 merchants × 6 tables). `query_tenant` CTE-wraps the agent's SQL to shadow `tenant_<table>` with `tenant_view_<viewer>_<table>`. Customers view uses DISTINCT + JOIN against transactions (defeats `GROUP BY primary_grocer` panel-distribution leakage). 3 new bypass-attempt tests. |
+| 4 | `f315b40` | k=5 suppression hook in `query_lake`. New `_find_count_column_index` + `_maybe_suppress_sub_k`. Each specialist prompt gains a rule: "include `COUNT(*) AS n` on customer-dimension breakdowns so suppression can apply." 2 new suppression tests. |
+| 5 | `4900155` | Lake materialized at seed time as 10 per-viewer physical tables. `get_lake_*` rewritten to read materialized tables; agent SQL contract preserved via CTE wrapper. Indexes on anchor-chart query shapes. Test rewrites: 10 `sql_filter` calls in `test_lake_views.py` from tenant aliases to lake column names, plus the legacy `test_no_physical_lake_tables` rewritten (see Deviation 1 below). Stale "lake is virtual" docstrings updated in `views.py`, `schema.sql`, `queries.py`. `V2_5_DATA_DESIGN.md` got a "Phase 1.5: materialized at seed time" subsection. `V3_AUDIT.md` §1.1 got the speedup table. |
+| 6 | *(this commit)* | Phase 1.5 summary appended here. No code changes; verifications below. |
+
+### Deviations from plan
+
+**1. `tests/test_db.py::test_no_physical_lake_tables` needed rewriting.**
+Beyond the planned 10 `sql_filter` rewrites in `test_lake_views.py`,
+one more test required surgery in Step 5: `test_no_physical_lake_tables`
+asserted the v2.5 invariant *"v2.5 holds no physical lake_* tables —
+the lake is virtual,"* which Decision §1.1 explicitly inverts. The
+test failure was the architecture change landing correctly, not a
+problem with the materialization. Surfaced via `AskUserQuestion`
+before patching per the workflow contract; user-approved rewrite to
+`test_lake_materialized_tables_present` asserts the 10 expected
+per-viewer tables exist, each non-empty, with nothing else matching
+`lake_%`. The new test catches both broken materialization (empty
+tables) and future drift (e.g., a 6th viewer added without updating
+the panel set).
+
+**2. Materialization is slower than the plan's estimate.** The plan
+expected ~40 s of materialization work added to seed time; actual cost
+is ~91 s (5 viewers × ~18 s each — the UDF template is the
+bottleneck, exactly the cost we're amortizing away from runtime). Net
+`make seed` end-to-end: ~30 s → ~120 s. Paid once per build; runtime
+queries dropped from 1.7–2.8 s to 126–298 ms, more than recouping the
+build-time spend on the first dashboard interaction.
+
+**3. Documentation drift discovered during Step 5 was wider than the
+single file named in the plan.** Plan called for updating
+`V2_5_DATA_DESIGN.md`'s "lake as parameterized views" section; in
+practice three more files had stale "lake is virtual / computed at
+query time" claims (`src/lake/views.py` top docstring, `src/db/schema.sql`
+header comment, `src/db/queries.py` docstring). Fixed in the Step 5
+commit alongside the design-doc update. None is a behavior change;
+all are documentation precision.
+
+### Design calls that came up mid-execution
+
+**Idempotency of the lake materialization.** Confirmed `seed.py`'s
+existing pattern (`if DB_PATH.exists(): DB_PATH.unlink()` at the top
+of `main()`) makes `CREATE TABLE` / `CREATE VIEW` DDL inherently
+idempotent against the wipe — no `IF NOT EXISTS` needed on the views
+in `schema.sql`. For the lake materialization in `seed.py`, added
+defensive `DROP TABLE IF EXISTS … ; CREATE TABLE … AS SELECT` plus
+`CREATE INDEX IF NOT EXISTS` so a hypothetical future workflow that
+doesn't wipe the DB (e.g., incremental rebuild) stays correct. Did
+not run `make seed && make seed` end-to-end as a probe (3–4 minute
+cost, redundant against the DB-wipe pattern); the defensive DDL is
+the standard SQLite idiom and the wipe pattern is the actual
+execution path today.
+
+**Where `unsafe_allow_html` lives.** The plan's verification step
+expected zero hits in `src/dashboard/` overall; the actual repo state
+has many pre-existing hits in `views.py`, `app.py`, `styling.py` (the
+dashboard's panel-card / KPI-card layout HTML — out of scope for
+Phase 1.5). `src/dashboard/chat.py` is clean (zero hits — that was
+removed in a prior task). Phase 1.5 added zero new
+`unsafe_allow_html` lines anywhere; the verification's strict claim
+was over-stated and the Phase-1.5-specific invariant ("Phase 1.5
+adds no new `unsafe_allow_html`") holds.
+
+### HF Spaces deployment note (out-of-band)
+
+The `data/payments.db` shipped via Git LFS to HF Spaces was built
+against the pre-Phase-1.5 schema — it has neither the 30 new tenant
+views nor the 10 materialized lake tables. The dashboard would fail
+on the first `query_lake` against `lake_transactions_<viewer>` after
+this commit chain ships to HF as-is. To bring HF in sync: locally
+`make seed` to rebuild the DB (already done — sits at HEAD on disk),
+then `git add data/payments.db && git push hfspace main`. This is a
+deployment operation, not Phase 1.5 source work; left to the user
+to run when ready to push the foundation hardening to production.
+
+### Files touched (top-line)
+
+```
+Step 1: 18 files (PLAN.md + new pointer; 5 docs + 9 scripts to
+        archive; README; V3_AUDIT.md baselined)
+Step 2:  6 files (advisor.py + advisor.md archived; test split;
+        2 CLAUDE.md files rewritten)
+Step 3:  3 files (schema.sql, tools.py, test_agents.py)
+Step 4:  6 files (tools.py, 4 specialist prompts, test_agents.py)
+Step 5:  9 files (seed.py, views.py, schema.sql, queries.py,
+        tools.py, V2_5_DATA_DESIGN.md, V3_AUDIT.md,
+        test_db.py, test_lake_views.py)
+Step 6:  1 file  (V3_AUDIT.md — this section)
+```
+
+The `data/payments.db` regenerated locally during Step 5 is
+intentionally not committed to git proper — the binary is LFS-tracked
+and updates separately from the source code commits.
+
+### Final test results
+
+```
+$ uv run pytest -q
+================ 212 passed, 21 deselected in 60.7s ================
+```
+
+Test deltas across the six steps:
+
+| | Pre-1.5 | Step 2 | Step 3 | Step 4 | Step 5 |
+|---|---:|---:|---:|---:|---:|
+| Total passing | 213 | 207 | 210 | 212 | 212 |
+| Δ | — | −6 archived | +3 bypass | +2 suppression | 0 (rewrites) |
