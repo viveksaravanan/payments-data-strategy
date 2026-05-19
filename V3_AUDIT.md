@@ -650,3 +650,149 @@ Test deltas across the six steps:
 |---|---:|---:|---:|---:|---:|
 | Total passing | 213 | 207 | 210 | 212 | 212 |
 | Δ | — | −6 archived | +3 bypass | +2 suppression | 0 (rewrites) |
+
+---
+
+## Phase 1.6 completed 2026-05-19
+
+Synthetic-data calibration to address two Phase 2 findings:
+
+1. Customer overlap unrealistically broad (87% shopping at 3+
+   merchants in 90 days).
+2. Grocer pricing positioning invisible (±2.4% noise envelope on
+   dairy staples, no positioning signal).
+
+Calibration discipline: parameter-level targets set before regenerating,
+no iteration to chase specific chart findings, one tuning pass
+allowed per parameter family if regenerated data wildly implausible
+(unused — both passes landed in target bands).
+
+### Pass 1 — affinity + pricing positioning
+
+Commit: `Phase 1.6 Pass 1: calibrate affinity + pricing parameters`.
+
+Parameters changed:
+- `LOYALIST_CHAIN_CHOICE` (parameters.py:143): 0.90/0.08/0.02 →
+  0.94/0.05/0.01. Loyalists' mean 2nd-grocer visits drop from
+  ~1.8 to ~1.1 over 22 trips.
+- `QSR_TRIP_BUCKETS` (parameters.py:120-123): 50%/50% bimodal at
+  6-15 / 0-3 trips → 30%/40%/30% trimodal at 6-12 / 2-5 / 0-1
+  trips. More realistic gradient.
+- Grocer overlay multipliers in `data/catalogs/overlays/`:
+  tight tier ACM 1.03 → 1.05, WDX 0.97 → 0.95. Loose tier ACM
+  1.07 → 1.10, WDX 0.93 → 0.90. KRG remains 1.00/1.00 baseline.
+  Symmetric multipliers around KRG so peer-average centers at KRG.
+
+Verification (V3_DATA_QUERIES_PASS1.md):
+- Section 3.3 customer-overlap distribution shifted from
+  1.7/11.7/36.6/38.5/11.5 (orig) to 3.7/17.0/39.3/31.4/8.6 (P1).
+  20.7% at 1-2 merchants vs 30% target; 31.4% at 4 merchants vs
+  20% target. Direction correct, magnitude moderate. Accepted —
+  meaningfully more realistic than baseline.
+- Section 2.1 KRG-vs-peer-average gaps remained near zero (by
+  design — symmetric multipliers collapse to 0 at peer-average).
+- Section 2.3 per-peer dairy gaps: KRG -4.97% vs peer_a (ACM),
+  +4.91% vs peer_b (WDX), both within ±2% noise envelope.
+  Verified pricing change fired correctly.
+- Section 2.4 per-peer household gaps: KRG -9.52% vs peer_a,
+  +11.02% vs peer_b. Verified loose-tier multipliers.
+
+Verification-method finding: when symmetric calibration is in play,
+peer-average queries collapse to baseline by construction. The
+visible signal lives in per-peer slices, not peer-average. Folded
+into V3_VISION.md's chart spec revision (Deliverable 2).
+
+### Pass 2 — trade area + category emphasis + shopping patterns
+
+Commit: `Phase 1.6 Pass 2: differentiate grocers along trade-area,
+category mix, basket size`.
+
+New mechanism: per-merchant category-purchase-probability weights.
+Mechanism (b) from the Pass 2 mapping report — did not exist
+previously. Category emphasis was purely inventory-driven (mechanism
+a), which is why grocer category mixes were near-identical
+pre-Pass 2.
+
+Parameters changed (all new dicts in parameters.py + threading
+merchant_id through metro.py and transactions.py):
+- `MERCHANT_NEIGHBORHOOD_BIAS`: ACM concentrates in SouthPark,
+  Ballantyne, Dilworth (2.0× weight) and de-emphasizes NoDa,
+  Pineville, Mooresville (0.5×). WDX concentrates in NoDa, UC,
+  Pineville, Mooresville (2.0-2.5×) and de-emphasizes affluent
+  neighborhoods (0.4-0.5×). KRG broad-coverage baseline (no
+  overlay).
+- 5-neighborhood shared comparison footprint enforced via
+  `require_zips`: Dilworth, SouthPark, University City, Ballantyne,
+  Plaza Midwood. Each grocer has ≥2 stores in each. Critical for
+  cross-merchant peer comparison at the neighborhood level.
+- `MERCHANT_CATEGORY_BIAS`: KRG produce 1.20 / meat 1.10
+  (fresh-forward). ACM dairy 1.20 / bakery 1.10 / pantry 0.85 /
+  household 0.90 (premium-prepared). WDX pantry 1.20 / frozen
+  1.15 / produce 0.85 (value-pantry).
+- `MERCHANT_BASKET_SIZE_MULT`: ACM 0.90, KRG 1.00, WDX 1.20.
+  High-end cap on hi parameter when mult > 1.0 (WDX max basket
+  capped at original triangular ceiling to prevent unrealistic
+  48-item baskets).
+
+Verification (V3_DATA_QUERIES_PASS2.md):
+- Section 4.5 trade area distribution: ACM 16/25 = 64% in
+  affluent neighborhoods (above the 35-40% target). WDX 5/20 =
+  25% in working-class neighborhoods (below the 35-40% target).
+  Asymmetry is a deliberate tradeoff: the 5-neighborhood shared
+  footprint consumes 10 of WDX's 20 stores, leaving less room
+  for working-class concentration. The shared footprint is
+  load-bearing for the cross-merchant peer comparison demo
+  story; accepting weaker WDX trade-area positioning is the
+  correct tradeoff.
+- Section 5.1 category emphasis: KRG produce +1.4pp, meat +1.1pp.
+  ACM dairy +2.1pp, pantry -1.9pp. WDX pantry +2.4pp, frozen
+  appears in top 5 at 7.7%, produce -1.5pp. Grocers' top-5
+  category fingerprints now distinct (KRG: MEAT/PANTRY/PRODUCE/
+  DAIRY/HOUSEHOLD; ACM: MEAT/PANTRY/DAIRY/PRODUCE/HOUSEHOLD;
+  WDX: MEAT/PANTRY/DAIRY/HOUSEHOLD/BEVERAGES).
+- Section 4.1 basket size: ACM median 9, KRG median 10, WDX
+  median 11. WDX p95 30, max 40 (cap verified). No unrealistic
+  high-end baskets.
+- Section 4.2 ticket: ACM median $72.57, KRG $77.75, WDX $80.86.
+  Ticket inversion from original target (premium grocer no longer
+  the highest-ticket grocer). Pass 2 finding: basket-size
+  dimension dominates unit-price dimension in trip-total terms.
+  This is realistic — real value grocers see higher tickets than
+  premium grocers because shoppers stock up. Demo storyline
+  shifts from "ACM tickets higher" to "ACM tickets reflect
+  smaller-pricier baskets, WDX reflects larger-cheaper baskets."
+- Section 5.6 Pass 1 pricing preserved: per-peer dairy gaps
+  -4.97 / +4.58 (vs Pass 1's -6.18 / +4.91). Within noise
+  envelope; Pass 1 calibration not perturbed by Pass 2 changes.
+- Section 3.3 customer overlap distribution preserved: ±1pp from
+  Pass 1 across all five buckets. Pass 1 calibration not
+  perturbed.
+- Section 6.1/6.2 University City decline preserved: KRG ~500
+  weekly baseline → ~270 at trough, ACM ~530 → ~400, WDX ~340
+  → ~280. Planted anomaly still reads clearly post-regeneration.
+
+Observation worth filing for Phase 3: TBL transaction count
+dropped from ~49K to ~36K (-27%) due to the Pass 1 QSR trip-bucket
+recalibration. Customer count at TBL similar (~7,700); each
+customer making fewer trips. Plenty of activity for demo
+analytics; just less than pre-calibration.
+
+### Phase 1.6 summary
+
+Foundation now supports the v3 cross-merchant story credibly:
+- Customers have meaningful primary-grocer preferences (cross-
+  merchant insight isn't tautological since "your customers
+  shop everywhere" isn't true anymore).
+- Grocers are visibly distinct on four dimensions: pricing
+  positioning, trade area, category emphasis, basket size /
+  ticket shape.
+- Planted anomalies preserved.
+- Cross-merchant peer comparison footprint preserved (5 shared
+  neighborhoods, ≥2 stores per grocer per neighborhood).
+
+Deploy implication: same schema as Phase 1.5. HF Spaces redeploy
+is data-only (LFS-shipped DB needs rebuild + repush); no schema
+migration. Same caveat as Phase 1.5 close-out: hold the deploy
+until Phase 3-6 work is more shippable.
+
+No tuning pass used. Both passes accepted as regenerated.
