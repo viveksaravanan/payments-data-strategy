@@ -1,8 +1,8 @@
 {
   "merchant_id": "ACM",
   "keep_fraction": 0.9,
-  "tight_multiplier": 1.03,
-  "loose_multiplier": 1.07,
+  "tight_multiplier": 1.05,
+  "loose_multiplier": 1.10,
   "tight_categories": [
     "BAKERY",
     "BEVERAGES",

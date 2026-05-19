@@ -1,8 +1,8 @@
 {
   "merchant_id": "WDX",
   "keep_fraction": 0.79,
-  "tight_multiplier": 0.97,
-  "loose_multiplier": 0.93,
+  "tight_multiplier": 0.95,
+  "loose_multiplier": 0.90,
   "tight_categories": [
     "BAKERY",
     "BEVERAGES",

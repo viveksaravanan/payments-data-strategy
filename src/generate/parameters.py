@@ -116,10 +116,14 @@ LAPSED_TRIP_BUCKETS = [
 ]
 
 # Step 4a: QSR (Taco Bell) trip count distribution.
-# 50% have 6–15 trips, 50% have 0–3 trips.
+# Phase 1.6 Pass 1: three-bucket gradient — 30% fans (6–12 trips),
+# 40% occasional (2–5 trips), 30% rare (0–1 trips). Replaces the
+# original bimodal 50/50 to better reflect the realistic spread of
+# QSR-shopping intensity in a 10K-customer metro panel.
 QSR_TRIP_BUCKETS = [
-    (0.50, (6, 15)),
-    (0.50, (0, 3)),
+    (0.30, (6, 12)),
+    (0.40, (2,  5)),
+    (0.30, (0,  1)),
 ]
 
 # Step 4a: Retail (TJ Maxx) trip count distribution.
@@ -140,7 +144,7 @@ PAY_CYCLE_DAYS = {1, 2, 3, 15, 16, 17}
 PAY_CYCLE_MULTIPLIER = 1.15
 
 # Step 4d/4e: per-trip merchant-choice probabilities for grocery customers.
-LOYALIST_CHAIN_CHOICE   = {"primary": 0.90, "second": 0.08, "third": 0.02}
+LOYALIST_CHAIN_CHOICE   = {"primary": 0.94, "second": 0.05, "third": 0.01}
 SPLITTER_CHAIN_DEFAULT  = {"primary": 0.65, "secondary": 0.30, "third": 0.05}
 SPLITTER_CHAIN_WEEKEND  = {"primary": 0.80, "secondary": 0.20}
 SPLITTER_CHAIN_WEEKDAY  = {"primary": 0.50, "secondary": 0.50}
