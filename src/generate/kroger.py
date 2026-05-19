@@ -5,7 +5,10 @@ Phase 4: per-merchant modules expose `build(rng)` returning a
 `src/generate/transactions.py`.
 
 Kroger forces stores in 28205 (Plaza Midwood) and 28213 (University City)
-so the Phase 6 anomaly anchors have local foot traffic.
+so the Phase 6 anomaly anchors have local foot traffic. Phase 1.6 Pass 2
+extends the required-zip set to enforce a 5-neighborhood shared
+comparison footprint across all three grocers (≥2 stores each in
+Dilworth, SouthPark, University City, Ballantyne, Plaza Midwood).
 """
 from datetime import timedelta
 
@@ -16,13 +19,26 @@ from . import catalog_grocery, metro, parameters as P, promotions
 from .anomalies import pinned_pasta_promo
 from .transactions import MerchantData
 
-KROGER_REQUIRED_ZIPS = ("28205", "28213")
+# Shared 5-neighborhood comparison footprint (≥2 stores each):
+# Dilworth (28203 ×2), SouthPark (28210 + 28211), University City
+# (28213 + 28223), Ballantyne (28277 ×2), Plaza Midwood (28205 ×2).
+SHARED_FOOTPRINT_ZIPS = (
+    "28203", "28203",
+    "28210", "28211",
+    "28213", "28223",
+    "28277", "28277",
+    "28205", "28205",
+)
+
+KROGER_REQUIRED_ZIPS = SHARED_FOOTPRINT_ZIPS
 
 
 def build_stores(rng: np.random.Generator) -> pd.DataFrame:
     n = P.MERCHANT_CONFIGS["kroger"]["n_stores"]
     zips = metro.assign_store_zips(
-        "grocery", n, rng, require_zips=KROGER_REQUIRED_ZIPS
+        "grocery", n, rng,
+        require_zips=KROGER_REQUIRED_ZIPS,
+        merchant_id="KRG",
     )
     rows = []
     for i, zip5 in enumerate(zips, start=1):

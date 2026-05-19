@@ -6,15 +6,18 @@ import pandas as pd
 
 from . import catalog_winn_dixie, metro, parameters as P, promotions
 from .anomalies import pinned_pasta_promo
+from .kroger import SHARED_FOOTPRINT_ZIPS
 from .transactions import MerchantData
 
-WINN_DIXIE_REQUIRED_ZIPS = ("28213",)
+WINN_DIXIE_REQUIRED_ZIPS = SHARED_FOOTPRINT_ZIPS
 
 
 def build_stores(rng: np.random.Generator) -> pd.DataFrame:
     n = P.MERCHANT_CONFIGS["winn_dixie"]["n_stores"]
     zips = metro.assign_store_zips(
-        "grocery", n, rng, require_zips=WINN_DIXIE_REQUIRED_ZIPS
+        "grocery", n, rng,
+        require_zips=WINN_DIXIE_REQUIRED_ZIPS,
+        merchant_id="WDX",
     )
     rows = []
     for i, zip5 in enumerate(zips, start=1):

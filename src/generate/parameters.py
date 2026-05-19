@@ -351,6 +351,81 @@ MERCHANT_CONFIGS: dict[str, dict] = {
 V2_5_MERCHANT_CONFIGS = MERCHANT_CONFIGS  # alias
 
 # ---------------------------------------------------------------------------
+# Phase 1.6 Pass 2 — per-merchant differentiation overlays
+# ---------------------------------------------------------------------------
+#
+# These three dicts make ACM read as premium-affluent and WDX as
+# value/working-class, on top of Pass 1's pricing and affinity
+# calibration. KRG remains the neutral baseline.
+
+# Per-merchant neighborhood bias for store ZIP allocation. Multiplicative
+# overlay on top of the segment-region weights in `metro._TIER_WEIGHTS`.
+# Default 1.0 for any neighborhood not listed. Concentration 2.0× /
+# de-emphasis 0.5× (softened from an initial 2.5/0.4 proposal — keeps
+# the trade-area positioning in line with Pass 1's moderate pricing
+# intensity).
+MERCHANT_NEIGHBORHOOD_BIAS: dict[str, dict[str, float]] = {
+    "ACM": {
+        # Concentrate in affluent neighborhoods.
+        "SouthPark":   2.0,
+        "Ballantyne":  2.0,
+        "Dilworth":    2.0,
+        # De-emphasize working-class neighborhoods.
+        "NoDa":        0.5,
+        "Pineville":   0.5,
+        "Mooresville": 0.5,
+    },
+    "WDX": {
+        # Concentrate in working-class / value neighborhoods.
+        "NoDa":            2.0,
+        "University City": 2.0,
+        "Pineville":       2.0,
+        "Mooresville":     2.0,
+        # De-emphasize affluent neighborhoods.
+        "SouthPark":       0.5,
+        "Ballantyne":      0.5,
+        "Dilworth":        0.5,
+    },
+    # KRG: no bias — broad-coverage baseline.
+}
+
+# Per-merchant category-sampling bias. Multiplicative overlay on top of
+# `ARCHETYPE_CATEGORY_WEIGHTS` inside the grocery trip's category
+# sampler. Default 1.0 for any category not listed. This is a NEW
+# mechanism in Pass 2 — until now category mix was archetype-only, so
+# all three grocers had near-identical category revenue shares.
+MERCHANT_CATEGORY_BIAS: dict[str, dict[str, float]] = {
+    "KRG": {
+        "PRODUCE": 1.20,
+        "MEAT":    1.10,
+    },
+    "ACM": {
+        "DAIRY":     1.20,
+        "BAKERY":    1.10,
+        "PANTRY":    0.85,
+        "HOUSEHOLD": 0.90,
+    },
+    "WDX": {
+        "PANTRY":  1.20,
+        "FROZEN":  1.15,
+        "PRODUCE": 0.85,
+    },
+}
+
+# Per-merchant basket-size multiplier on the (lo, mode, hi) triple from
+# `BASKET_SIZE_GROCERY`. ACM shrinks baskets (smaller-pricier trips),
+# WDX grows them (larger-cheaper trips). For multipliers > 1.0 the hi
+# bound is capped at the original to keep the high end realistic — a
+# 1.20× on (stocker, stockup) = (18, 28, 40) would give 48-item
+# baskets, which isn't a value-grocer pattern. The cap is applied
+# generically inside `_sample_basket_size`.
+MERCHANT_BASKET_SIZE_MULT: dict[str, float] = {
+    "ACM": 0.90,
+    "KRG": 1.00,
+    "WDX": 1.20,
+}
+
+# ---------------------------------------------------------------------------
 # Per-merchant peer mapping — Phase 2 lake (consumed by Phase 5 view-builder)
 # ---------------------------------------------------------------------------
 

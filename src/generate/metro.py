@@ -70,12 +70,19 @@ _TIER_WEIGHTS = {
 }
 
 
-def _tier_weighted_zip_pool(segment: str) -> tuple[list[str], np.ndarray]:
+def _tier_weighted_zip_pool(
+    segment: str, merchant_id: str | None = None
+) -> tuple[list[str], np.ndarray]:
     weights = _TIER_WEIGHTS[segment]
+    nbhd_bias = (
+        P.MERCHANT_NEIGHBORHOOD_BIAS.get(merchant_id, {})
+        if merchant_id is not None else {}
+    )
     zips: list[str] = []
     probs: list[float] = []
     for neighborhood, (region, zip_list) in P.V2_5_NEIGHBORHOODS.items():
-        w = weights[region] / max(len(zip_list), 1)
+        bias = nbhd_bias.get(neighborhood, 1.0)
+        w = (weights[region] * bias) / max(len(zip_list), 1)
         for z in zip_list:
             zips.append(z)
             probs.append(w)
@@ -90,15 +97,19 @@ def assign_store_zips(
     rng: np.random.Generator,
     *,
     require_zips: tuple[str, ...] = (),
+    merchant_id: str | None = None,
 ) -> list[str]:
     """Pick `n_stores` ZIPs for a merchant in `segment`.
 
     `require_zips`: ZIPs that MUST receive at least one store (used to
-    guarantee Phase 6 anomaly targets exist — e.g. each grocer must have
-    a store in 28213/28223 (University City) and Kroger must have a
-    store in 28205 (Plaza Midwood)).
+    guarantee the shared comparison footprint and Phase 6 anomaly
+    targets).
+
+    `merchant_id`: if provided, `MERCHANT_NEIGHBORHOOD_BIAS` is applied
+    to the per-neighborhood probabilities (Pass 2). None preserves the
+    segment-only behavior.
     """
-    zips, probs = _tier_weighted_zip_pool(segment)
+    zips, probs = _tier_weighted_zip_pool(segment, merchant_id=merchant_id)
     if n_stores < len(require_zips):
         raise ValueError(
             f"Cannot place {len(require_zips)} required ZIPs into "

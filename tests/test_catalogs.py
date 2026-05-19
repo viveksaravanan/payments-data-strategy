@@ -22,8 +22,8 @@ LOOSE_CATEGORIES = {"HOUSEHOLD", "PERSONAL", "BABY", "PET"}
 
 # Two-tier multipliers per `data/catalogs/overlays/*.json`. Per-SKU ±2%
 # noise is applied at catalog-build time.
-TIGHT_MULTIPLIERS = {"KRG": 1.00, "ACM": 1.03, "WDX": 0.97}
-LOOSE_MULTIPLIERS = {"KRG": 1.00, "ACM": 1.07, "WDX": 0.93}
+TIGHT_MULTIPLIERS = {"KRG": 1.00, "ACM": 1.05, "WDX": 0.95}
+LOOSE_MULTIPLIERS = {"KRG": 1.00, "ACM": 1.10, "WDX": 0.90}
 
 # Per-grocer SKU-count targets per the design doc, with a ±5% band.
 SKU_COUNT_TARGETS = {

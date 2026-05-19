@@ -270,8 +270,27 @@ def _sample_archetype(rng: np.random.Generator) -> str:
     return str(rng.choice(keys, p=probs))
 
 
+def _apply_basket_mult(
+    mult: float, lo: float, mid: float, hi: float
+) -> tuple[float, float, float]:
+    """Scale (lo, mid, hi) by `mult`. For mult > 1.0 the hi bound is
+    capped at the original to keep the high end realistic — a 1.20×
+    scaling on (stocker, stockup) = (18, 28, 40) would yield 48-item
+    baskets, outside the value-grocer pattern WDX is meant to read as.
+    Triangular requires lo <= mid <= hi; mid is clamped defensively."""
+    lo_m = lo * mult
+    mid_m = mid * mult
+    hi_m = hi * mult
+    if mult > 1.0:
+        hi_m = min(hi_m, hi)
+        mid_m = min(mid_m, hi_m)
+        lo_m = min(lo_m, mid_m)
+    return lo_m, mid_m, hi_m
+
+
 def _sample_basket_size(
     rng: np.random.Generator,
+    merchant_id: str,
     segment: str,
     behavioral_segment: str,
     archetype: str | None,
@@ -283,6 +302,9 @@ def _sample_basket_size(
         lo, mid, hi = P.BASKET_SIZE_RETAIL
     else:  # grocery
         lo, mid, hi = P.BASKET_SIZE_GROCERY[(behavioral_segment, archetype or "fill_in")]
+        mult = P.MERCHANT_BASKET_SIZE_MULT.get(merchant_id, 1.0)
+        if mult != 1.0:
+            lo, mid, hi = _apply_basket_mult(mult, lo, mid, hi)
     raw = rng.triangular(lo, mid, hi)
     return max(1, int(round(raw)))
 
@@ -363,14 +385,16 @@ def _sample_qty(rng: np.random.Generator, category: str) -> int:
 
 def _sample_category_for_grocery(
     rng: np.random.Generator,
+    merchant_id: str,
     archetype: str,
     available_cats: list[str],
 ) -> str:
     weights = P.ARCHETYPE_CATEGORY_WEIGHTS[archetype]
+    merchant_bias = P.MERCHANT_CATEGORY_BIAS.get(merchant_id, {})
     keys: list[str] = []
     probs: list[float] = []
     for c in available_cats:
-        w = weights.get(c, 0.0)
+        w = weights.get(c, 0.0) * merchant_bias.get(c, 1.0)
         if w > 0:
             keys.append(c)
             probs.append(w)
@@ -769,7 +793,7 @@ def _emit_trip(
 
     # ---- Basket size ----
     basket_size = _sample_basket_size(
-        rng, merchant.segment, customer_segment, archetype
+        rng, merchant.merchant_id, merchant.segment, customer_segment, archetype
     )
 
     # ---- Anomaly: per-trip pasta / avocado SKU multipliers ----
@@ -884,7 +908,9 @@ def _generate_line_items(
     while len(chosen_skus) < basket_size and attempts < basket_size * 4:
         attempts += 1
         if segment == "grocery" and archetype is not None:
-            cat = _sample_category_for_grocery(rng, archetype, available_cats)
+            cat = _sample_category_for_grocery(
+                rng, merchant_id, archetype, available_cats
+            )
         else:
             # Uniform over categories present in the catalog.
             cat = str(rng.choice(available_cats))
