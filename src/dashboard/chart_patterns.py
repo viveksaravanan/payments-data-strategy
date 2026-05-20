@@ -44,6 +44,31 @@ DIVERGING_HIGH  = "#0F4C81"   # blue — own above peer / over-indexed
 
 
 # ---------------------------------------------------------------------------
+# Peer display labels
+#
+# Internal data keys keep the lake's raw `peer_a` / `peer_b` identifiers
+# (consistent with lake_transactions.peer_id values from Phase 1.5).
+# User-facing strings — legends, axis ticks, hover tooltips, takeaway
+# subtitles — abstract these to "Peer A" / "Peer B". The demo framing
+# is "you vs the market", not "you vs ACM specifically"; abstracted
+# labels keep the cross-merchant story working even if the merchant
+# selector hides which grocer is which peer.
+# ---------------------------------------------------------------------------
+
+PEER_DISPLAY = {
+    "peer_a":         "Peer A",
+    "peer_b":         "Peer B",
+    "peer_aggregate": "Peers (avg)",
+}
+
+
+def peer_display(label: str) -> str:
+    """Convert an internal peer id (``peer_a``) to its user-facing
+    display form (``Peer A``). Unknown labels fall through unchanged."""
+    return PEER_DISPLAY.get(label, label)
+
+
+# ---------------------------------------------------------------------------
 # Pattern 1 — Time-series-vs-peers
 # ---------------------------------------------------------------------------
 
@@ -89,7 +114,7 @@ def render_time_series_vs_peers(
             x=data["weeks"],
             y=data["peer_a"],
             mode="lines+markers",
-            name="peer_a",
+            name=peer_display("peer_a"),
             line=dict(color=PEER_A, dash="dash", width=2),
             marker=dict(size=6, color=PEER_A),
             connectgaps=False,
@@ -99,7 +124,7 @@ def render_time_series_vs_peers(
             x=data["weeks"],
             y=data["peer_b"],
             mode="lines+markers",
-            name="peer_b",
+            name=peer_display("peer_b"),
             line=dict(color=PEER_B, dash="dot", width=2),
             marker=dict(size=6, color=PEER_B),
             connectgaps=False,
@@ -224,14 +249,14 @@ def _series_traces_for_panel(panel: dict) -> list[go.Bar]:
         vals = panel.get("peer_a_gaps") or panel.get("peer_a")
         traces.append(go.Bar(
             y=cats, x=vals, orientation="h",
-            name="peer_a",
+            name=peer_display("peer_a"),
             marker=dict(color=PEER_A),
         ))
     if panel.get("peer_b_gaps") is not None or panel.get("peer_b") is not None:
         vals = panel.get("peer_b_gaps") or panel.get("peer_b")
         traces.append(go.Bar(
             y=cats, x=vals, orientation="h",
-            name="peer_b",
+            name=peer_display("peer_b"),
             marker=dict(color=PEER_B),
         ))
     if panel.get("own") is not None:
@@ -416,7 +441,7 @@ def _render_heatmap_cross_merchant_diverging(
 
     fig = go.Figure(go.Heatmap(
         z=cells,
-        x=cols,
+        x=[peer_display(c) for c in cols],
         y=rows,
         text=text,
         texttemplate="%{text}",
@@ -450,6 +475,121 @@ def _render_heatmap_cross_merchant_diverging(
     # top of the heatmap (default Plotly puts y=0 at the bottom).
     fig.update_yaxes(tickfont=dict(size=11), automargin=True,
                      autorange="reversed")
+
+    _render_card_header(title, takeaway)
+    st.plotly_chart(fig, use_container_width=True)
+
+
+# ---------------------------------------------------------------------------
+# Pattern 4 — Scatter with peer context
+# ---------------------------------------------------------------------------
+
+def render_scatter_with_peers(
+    data: dict,
+    *,
+    title: str,
+    takeaway: str,
+    height: int | None = None,
+) -> None:
+    """Pattern 4 — scatter plot with optional reference lines.
+
+    Each ``point`` becomes a bubble whose marker area is proportional
+    to ``size``. Used by P3 (volume × pricing-gap quadrants) and D4
+    (own share vs peer share, with 45° parity line).
+
+    ``data`` keys:
+
+        points: list of dicts, each with
+            ``label`` (str), ``x`` (float), ``y`` (float),
+            ``size`` (float)
+        x_label, y_label:        axis labels
+        x_zero_line (bool):      draw a dotted vertical reference at x=0
+        y_baseline (float|None): draw a dotted horizontal reference here
+        show_45_degree_line:     draw a dashed y=x parity line
+    """
+    points = data.get("points") or []
+    if not points:
+        _render_card_header(title, takeaway)
+        st.caption("_No data available for this view._")
+        return
+
+    import math
+    sizes = [float(p["size"]) for p in points]
+    s_min, s_max = min(sizes), max(sizes)
+
+    def _to_marker_size(s: float) -> float:
+        # Square-root scaling for area-proportional markers, capped to a
+        # 6–34 px range so the smallest bubbles stay readable and the
+        # largest don't dwarf the chart.
+        if s_max <= s_min:
+            return 14.0
+        return 6.0 + 28.0 * math.sqrt(max(0.0, (s - s_min) / (s_max - s_min)))
+
+    xs = [float(p["x"]) for p in points]
+    ys = [float(p["y"]) for p in points]
+    labels = [str(p["label"]) for p in points]
+    marker_sizes = [_to_marker_size(s) for s in sizes]
+
+    # Reference lines drawn before the main trace so they sit behind
+    # the bubbles. Plotly handles z-order in trace-add order.
+    fig = go.Figure()
+
+    if data.get("show_45_degree_line"):
+        # Span both axes so the line covers the full visible data range.
+        lo = min(min(xs), min(ys))
+        hi = max(max(xs), max(ys))
+        pad = (hi - lo) * 0.08 if hi > lo else 1.0
+        fig.add_trace(go.Scatter(
+            x=[lo - pad, hi + pad],
+            y=[lo - pad, hi + pad],
+            mode="lines",
+            line=dict(color=BASELINE_LINE, dash="dash", width=1.5),
+            name="parity",
+            showlegend=False,
+            hoverinfo="skip",
+        ))
+
+    fig.add_trace(go.Scatter(
+        x=xs, y=ys,
+        mode="markers+text",
+        marker=dict(
+            size=marker_sizes,
+            color=ACCENT,
+            opacity=0.55,
+            line=dict(width=1, color=ACCENT),
+        ),
+        text=labels,
+        textposition="top center",
+        textfont=dict(size=10, color="#4A5161"),
+        customdata=[[s] for s in sizes],
+        hovertemplate=(
+            "<b>%{text}</b><br>"
+            f"{data['x_label']}: %{{x:.2f}}<br>"
+            f"{data['y_label']}: %{{y:.2f}}<br>"
+            "Size: %{customdata[0]:,.0f}<extra></extra>"
+        ),
+    ))
+
+    if data.get("x_zero_line"):
+        fig.add_vline(x=0, line_dash="dot", line_color=BASELINE_LINE)
+    y_baseline = data.get("y_baseline")
+    if y_baseline is not None:
+        fig.add_hline(y=y_baseline, line_dash="dot", line_color=BASELINE_LINE)
+
+    fig.update_layout(
+        xaxis_title=data["x_label"],
+        yaxis_title=data["y_label"],
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        margin=dict(l=64, r=24, t=12, b=48),
+        height=height or 380,
+        showlegend=False,
+        hovermode="closest",
+    )
+    fig.update_xaxes(showgrid=True, gridcolor=GRID_LINE, zeroline=False,
+                     tickfont=dict(size=10))
+    fig.update_yaxes(showgrid=True, gridcolor=GRID_LINE, zeroline=False,
+                     tickfont=dict(size=10))
 
     _render_card_header(title, takeaway)
     st.plotly_chart(fig, use_container_width=True)

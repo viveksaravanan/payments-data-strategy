@@ -137,21 +137,21 @@ def _render_p1(merchant_id: str) -> None:
     below = chart_data["max_below"]
     if above and below and above[0] > PARITY and below[0] < -PARITY:
         takeaway = (
-            f"You're priced {above[0]:.1f}% above {above[2]} in "
-            f"{above[1]}; {abs(below[0]):.1f}% below {below[2]} in "
-            f"{below[1]}."
+            f"You're priced {above[0]:.1f}% above {CP.peer_display(above[2])} "
+            f"in {above[1]}; {abs(below[0]):.1f}% below "
+            f"{CP.peer_display(below[2])} in {below[1]}."
         )
     elif above and above[0] > PARITY:
         takeaway = (
             f"You're priced above peers across categories; "
             f"widest gap: +{above[0]:.1f}% in {above[1]} "
-            f"(vs {above[2]})."
+            f"(vs {CP.peer_display(above[2])})."
         )
     elif below and below[0] < -PARITY:
         takeaway = (
             f"You're priced below peers across categories; "
             f"widest gap: {below[0]:.1f}% in {below[1]} "
-            f"(vs {below[2]})."
+            f"(vs {CP.peer_display(below[2])})."
         )
     else:
         takeaway = "Your prices are at or near peer levels across categories."
@@ -172,7 +172,7 @@ def _render_p2(merchant_id: str) -> None:
         st.caption("_No pricing data available for this merchant._")
         return
     takeaway = CP.format_takeaway(
-        "Your staple tier averages {staple_pct:+.1f}% vs peer_a; "
+        "Your staple tier averages {staple_pct:+.1f}% vs Peer A; "
         "non-food tier averages {nonfood_pct:+.1f}%. "
         "Your pricing strategy is {tier_signal} across tiers.",
         chart_data,
@@ -182,6 +182,52 @@ def _render_p2(merchant_id: str) -> None:
         title="Pricing positioning: staples vs non-food",
         takeaway=takeaway,
         mode="two_panel",
+    )
+
+
+def _render_p3(merchant_id: str) -> None:
+    """P3: pricing-leverage scatter — volume × peer-gap quadrants (Pattern 4)."""
+    chart_data = D.category_pricing_leverage(merchant_id)
+    if not chart_data["points"]:
+        st.caption("_No pricing data available for this merchant._")
+        return
+    above = chart_data["above_peer_names"]
+    if above:
+        names = ", ".join(above)
+        takeaway = (
+            f"Your largest priced-above-peers categories are {names}; "
+            f"{chart_data['top_volume_category']} is the highest-volume "
+            "opportunity."
+        )
+    else:
+        takeaway = (
+            "You're at or below peer pricing on every category; "
+            f"{chart_data['top_volume_category']} is your largest "
+            "category by volume."
+        )
+    CP.render_scatter_with_peers(
+        chart_data,
+        title="Pricing leverage by category",
+        takeaway=takeaway,
+    )
+
+
+def _render_d4(merchant_id: str) -> None:
+    """D4: own share vs peer share — basket-mix scatter with parity line (Pattern 4)."""
+    chart_data = D.category_share_vs_peer_share(merchant_id)
+    if not chart_data["points"]:
+        st.caption("_No basket-mix data available for this merchant._")
+        return
+    takeaway = (
+        f"{chart_data['over_category']} overperforms peers by "
+        f"{chart_data['over_pp']:+.1f}pp share; "
+        f"{chart_data['under_category']} underperforms by "
+        f"{chart_data['under_pp']:+.1f}pp."
+    )
+    CP.render_scatter_with_peers(
+        chart_data,
+        title="Your category mix vs peer-average",
+        takeaway=takeaway,
     )
 
 
@@ -209,7 +255,9 @@ QUESTION_RENDERERS: dict[str, Callable[[str], None]] = {
     "A1": _render_a1,
     "P1": _render_p1,
     "P2": _render_p2,
+    "P3": _render_p3,
     "D3": _render_d3,
+    "D4": _render_d4,
 }
 
 

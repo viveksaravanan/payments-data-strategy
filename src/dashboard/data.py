@@ -1343,6 +1343,198 @@ def category_peer_pricing_gaps(merchant_id: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# P3 — Volume × pricing-gap scatter (Pattern 4)
+# ---------------------------------------------------------------------------
+
+# Magnitude below which we treat a category's gap as parity with peers
+# rather than calling it "priced above" in the takeaway.
+_P3_ABOVE_PARITY_PCT = 0.5
+
+
+@st.cache_data(ttl=3600)
+def category_pricing_leverage(merchant_id: str) -> dict:
+    """Per-category x = pricing gap vs peer-average, y = own line
+    count, size = own revenue. Data shape for Pattern 4 (P3).
+
+    Peer-average is the simple mean of peer_a's and peer_b's
+    per-category mean unit price. Categories where both peers fall
+    below the k=5 floor are skipped entirely (no useful comparison).
+    """
+    lake_t = f"lake_transactions_{merchant_id}"
+
+    with _conn() as c:
+        own_rows = c.execute(
+            """
+            SELECT p.category,
+                   AVG(i.unit_price) AS mean_price,
+                   COUNT(*)          AS n_lines,
+                   SUM(i.line_total) AS revenue
+            FROM tenant_transaction_items i
+            JOIN tenant_products p     ON p.sku    = i.sku
+            JOIN tenant_transactions t ON t.txn_id = i.txn_id
+            WHERE t.merchant_id = ?
+            GROUP BY p.category
+            """,
+            (merchant_id,),
+        ).fetchall()
+
+        peer_rows = c.execute(
+            f"""
+            SELECT peer_id, category,
+                   AVG(unit_price) AS mean_price,
+                   COUNT(*)        AS n_lines
+            FROM {lake_t}
+            WHERE peer_segment = 'grocery'
+              AND peer_id IN ('peer_a', 'peer_b')
+            GROUP BY peer_id, category
+            HAVING n_lines >= 5
+            """,
+        ).fetchall()
+
+    # Per-category peer-mean price (mean across whichever peers have
+    # data; suppressed cells from k=5 don't enter the mean).
+    peer_prices: dict[str, list[float]] = {}
+    for _pid, cat, price, _n in peer_rows:
+        peer_prices.setdefault(cat, []).append(float(price))
+    peer_mean: dict[str, float] = {
+        cat: (sum(ps) / len(ps)) for cat, ps in peer_prices.items()
+    }
+
+    points: list[dict] = []
+    for cat, own_p, n_lines, revenue in own_rows:
+        pm = peer_mean.get(cat)
+        if pm is None or pm == 0:
+            continue
+        gap = round((float(own_p) - pm) / pm * 100, 1)
+        points.append({
+            "label": cat,
+            "x":     gap,
+            "y":     int(n_lines),
+            "size":  float(revenue),
+        })
+    # Sort by size descending so the largest bubbles draw first and
+    # smaller bubbles sit on top of them in the visual stack.
+    points.sort(key=lambda p: p["size"], reverse=True)
+
+    # Takeaway metadata: categories priced above peer-mean, sorted by
+    # the magnitude of their pricing gap; plus the highest-volume
+    # priced-above category (the merchant's lever with the biggest
+    # dollar impact).
+    above_peer = [p for p in points if p["x"] > _P3_ABOVE_PARITY_PCT]
+    above_peer.sort(key=lambda p: p["x"], reverse=True)
+    above_peer_names = [p["label"] for p in above_peer[:3]]
+
+    if above_peer:
+        top_volume_above = max(above_peer, key=lambda p: p["size"])
+        top_volume_category = top_volume_above["label"]
+    elif points:
+        top_volume_category = max(points, key=lambda p: p["size"])["label"]
+    else:
+        top_volume_category = "—"
+
+    return {
+        "points":              points,
+        "x_label":             "Price gap vs peer-avg (%)",
+        "y_label":             "Line count (volume)",
+        "x_zero_line":         True,
+        "y_baseline":          None,
+        "show_45_degree_line": False,
+        "above_peer_names":    above_peer_names,
+        "top_volume_category": top_volume_category,
+    }
+
+
+# ---------------------------------------------------------------------------
+# D4 — Own share vs peer-mean share scatter (Pattern 4)
+# ---------------------------------------------------------------------------
+
+@st.cache_data(ttl=3600)
+def category_share_vs_peer_share(merchant_id: str) -> dict:
+    """Per-category x = own share of own revenue, y = peer-mean share
+    of peer revenue, size = own absolute revenue. Pattern 4 (D4) with
+    a 45° parity line.
+
+    Points off the parity line are the merchant's distinct mix
+    positioning. Below the line: own under-indexes (peers carry more
+    of that category). Above the line: own over-indexes.
+    """
+    lake_t = f"lake_transactions_{merchant_id}"
+
+    with _conn() as c:
+        own_rows = c.execute(
+            """
+            SELECT p.category, SUM(i.line_total) AS rev
+            FROM tenant_transaction_items i
+            JOIN tenant_products p     ON p.sku    = i.sku
+            JOIN tenant_transactions t ON t.txn_id = i.txn_id
+            WHERE t.merchant_id = ?
+            GROUP BY p.category
+            """,
+            (merchant_id,),
+        ).fetchall()
+        peer_rows = c.execute(
+            f"""
+            SELECT peer_id, category, SUM(line_total) AS rev
+            FROM {lake_t}
+            WHERE peer_segment = 'grocery'
+              AND peer_id IN ('peer_a', 'peer_b')
+            GROUP BY peer_id, category
+            """,
+        ).fetchall()
+
+    own_total = sum(float(r) for _, r in own_rows) or 1.0
+    own_share = {cat: float(rev) / own_total * 100 for cat, rev in own_rows}
+    own_rev   = {cat: float(rev) for cat, rev in own_rows}
+
+    peer_totals: dict[str, float] = {}
+    peer_cat_rev: dict[tuple[str, str], float] = {}
+    for pid, cat, rev in peer_rows:
+        peer_totals[pid] = peer_totals.get(pid, 0.0) + float(rev)
+        peer_cat_rev[(pid, cat)] = float(rev)
+    peer_share_by_cat: dict[str, float] = {}
+    for cat in own_share:
+        shares = []
+        for pid, total in peer_totals.items():
+            if total > 0:
+                shares.append(peer_cat_rev.get((pid, cat), 0.0) / total * 100)
+        peer_share_by_cat[cat] = (sum(shares) / len(shares)) if shares else 0.0
+
+    points: list[dict] = []
+    deltas: list[tuple[str, float]] = []
+    for cat, share in own_share.items():
+        peer_s = peer_share_by_cat.get(cat, 0.0)
+        points.append({
+            "label": cat,
+            "x":     round(share,  2),
+            "y":     round(peer_s, 2),
+            "size":  own_rev[cat],
+        })
+        deltas.append((cat, share - peer_s))
+    points.sort(key=lambda p: p["size"], reverse=True)
+    deltas.sort(key=lambda r: r[1], reverse=True)
+
+    if deltas:
+        over_category,  over_pp  = deltas[0]
+        under_category, under_pp = deltas[-1]
+    else:
+        over_category = under_category = "—"
+        over_pp = under_pp = 0.0
+
+    return {
+        "points":              points,
+        "x_label":             "Your share of revenue (%)",
+        "y_label":             "Peer-mean share of revenue (%)",
+        "x_zero_line":         False,
+        "y_baseline":          None,
+        "show_45_degree_line": True,
+        "over_category":       over_category,
+        "over_pp":             round(over_pp,  1),
+        "under_category":      under_category,
+        "under_pp":            round(under_pp, 1),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Compatibility shims for placeholders.py and earlier views (no-op now)
 # ---------------------------------------------------------------------------
 
