@@ -754,6 +754,845 @@ cold). All three.
 
 ---
 
+## Section 3B — TBL and TJX question sets
+
+Section 3's 12 finals assume grocer-style cross-merchant peer
+comparison (peer_a, peer_b grocers in the lake). TBL (QSR) and TJX
+(off-price retail) each sit alone in their segment within the
+panel, so peer comparison at the segment level doesn't apply. For
+the pricing, anomaly, and demand specialists, TBL and TJX get
+own-data variations of the same chart patterns. The trade
+specialist's questions are cross-merchant by geography (not
+segment), so T1, T2, and T4 are reused verbatim for TBL and TJX
+viewers.
+
+Net-new question IDs use a `T-` prefix for TBL and an `R-` prefix
+for TJX. Nine net-new questions per viewer (three per specialist
+across pricing, anomaly, demand) + three reused trade questions =
+12 suggested questions per viewer, parity with grocer viewers.
+
+---
+
+### T-P1. How is my average ticket trending across dayparts?
+
+**Specialist:** pricing (TBL)
+
+**The question (as a merchant would phrase it):** "Is my ticket
+size moving up or down at different times of day?"
+
+**Signal:** Own-data weekly average transaction value, broken out
+by daypart (morning / lunch / afternoon / evening derived from
+`tenant_transactions.txn_ts` hour). Trend computed across the
+90-day window with one series per daypart.
+
+**Therefore-test:** Identify dayparts where the average ticket is
+drifting up or down. A rising lunch ticket alongside a flat
+evening ticket is a pricing-dynamics signal worth understanding.
+Tomorrow's action: investigate the drifting daypart for menu mix
+changes, price changes, or shift in customer composition.
+
+**Cross-merchant test:** Tenant-only. No same-segment peer in the
+panel, so daypart-ticket comparison is own-only by design.
+
+**Visualization pattern:** Pattern 1 (time-series-vs-peers) used in
+own-only mode — multiple lines representing the four dayparts, no
+peer overlay.
+
+**Visualization spec:**
+- Chart type: line chart, x = week (week-starting-Sunday), y =
+  mean transaction value per daypart.
+- Encoding: four lines, one per daypart (morning, lunch,
+  afternoon, evening). Own merchant brand color shared across
+  lines; daypart distinguished by line style (solid, dashed,
+  dotted, long-dash) plus legend.
+- Interactivity:
+  - Hover: tooltip with weekly mean ticket, daypart label,
+    transaction count.
+  - Click week: drilldown to daily ticket-by-daypart for that
+    week.
+  - "Ask the agent about this": pre-fills with the daypart name +
+    the direction of drift.
+- Empty / edge states:
+  - Daypart with fewer than k=5 transactions per week → suppress
+    that point with hover note.
+
+**Takeaway sentence shape (computed from data):**
+*"Your {top_daypart} ticket is {direction} {pct}% over 90 days;
+{bottom_daypart} is {direction} {pct}%."*
+
+**Rubric assessment:** Passes merchant-seat (named daypart for
+follow-up) and standalone (line + takeaway reads cold). Cross-
+merchant N/A by design — no same-segment peer in panel.
+
+---
+
+### T-P2. Which menu categories have shifted in price over the last 90 days?
+
+**Specialist:** pricing (TBL)
+
+**The question (as a merchant would phrase it):** "Where in my
+menu have prices moved over the last quarter?"
+
+**Signal:** Own-data per-category mean unit price over the 90-day
+window. TBL categories: COMBO, BURR, SIDE, DRINK, SPEC, TACO,
+BFAST. One trend line per top 6-8 categories by revenue.
+
+**Therefore-test:** Identify categories with material price drift;
+verify against menu pricing strategy. Tomorrow's action: pricing
+review on the drifted categories.
+
+**Cross-merchant test:** Tenant-only.
+
+**Visualization pattern:** Pattern 1 (own-only mode), one line per
+category.
+
+**Visualization spec:**
+- Chart type: line chart, x = week, y = mean unit price.
+- Encoding: one line per top 6-8 categories. Color: sequential
+  brand-family across categories (lightest → darkest by category
+  revenue rank).
+- Interactivity:
+  - Hover: tooltip with weekly mean price, category name, sample
+    size.
+  - Click line: drilldown to category-level SKU price breakdown.
+  - "Ask the agent about this": pre-fills with the category name.
+- Empty / edge states:
+  - Category with fewer than k=5 lines in a week → suppress that
+    point.
+
+**Takeaway sentence shape (computed from data):**
+*"{category} prices have {direction} {pct}% over 90 days; the
+next-largest shift is in {category} at {pct}%."*
+
+**Rubric assessment:** Passes merchant-seat (category-level
+investigation target) and standalone (line chart + takeaway reads
+cold). Cross-merchant N/A by design.
+
+---
+
+### T-P3. What's my price distribution across stores? Are any outliers?
+
+**Specialist:** pricing (TBL)
+
+**The question (as a merchant would phrase it):** "Are all of my
+stores pricing consistently, or do some run higher or lower
+tickets?"
+
+**Signal:** Own-data per-store average transaction value over 90
+days. Identifies stores whose average ticket has drifted from the
+chain mean, surfacing menu-execution, regional pricing, or data
+issues.
+
+**Therefore-test:** Pricing consistency across stores. Outliers
+investigated for menu-execution differences, regional pricing
+decisions, or data-quality concerns.
+
+**Cross-merchant test:** Tenant-only.
+
+**Visualization pattern:** Pattern 2 (cross-merchant comparison,
+single-dimension) used in own-only horizontal-bar mode.
+
+**Visualization spec:**
+- Chart type: horizontal bar chart, y = store_id, x = mean
+  transaction value over 90 days.
+- Encoding: bars sorted descending by mean ticket. Own merchant
+  brand color baseline; outliers (>1 standard deviation from the
+  chain mean) shaded darker. Reference line drawn at the chain
+  mean.
+- Interactivity:
+  - Hover bar: store_id, neighborhood, mean ticket, transaction
+    count.
+  - Click bar: drilldown to that store's transaction-level
+    breakdown.
+  - "Ask the agent about this": pre-fills with the store_id.
+- Empty / edge states:
+  - Store with fewer than k=5 transactions in the window →
+    suppress with footnote.
+
+**Takeaway sentence shape (computed from data):**
+*"Your highest-ticket store is {store} at \${value}; lowest is
+{store} at \${value}; range is \${range}."*
+
+**Rubric assessment:** Passes merchant-seat (specific outlier
+stores named) and standalone (bar + reference line + takeaway
+reads cold). Cross-merchant N/A by design.
+
+---
+
+### T-A1. Which of my stores has unusual traffic this week?
+
+**Specialist:** anomaly (TBL)
+
+**The question (as a merchant would phrase it):** "Are any of my
+stores running off pattern this week?"
+
+**Signal:** Own-data per-store recent weekly traffic vs that
+store's 4-week rolling baseline. Stores whose ratio exceeds a
+threshold (e.g., ±15%) are flagged.
+
+**Therefore-test:** Investigate the 1-3 flagged stores;
+operational or local-context check (event, road closure, local
+competitor, staffing).
+
+**Cross-merchant test:** Tenant-only. No QSR peers in panel for a
+neighborhood-baseline comparison.
+
+**Visualization pattern:** Pattern 9 (table + drilldown).
+
+**Visualization spec:**
+- Chart type: sortable table.
+- Columns: store_id, neighborhood, baseline weekly traffic,
+  recent weekly traffic, ratio, deviation flag.
+- Encoding: color cues on the ratio column (red if below
+  threshold, blue if above). Row highlighting for top N by
+  absolute deviation.
+- Interactivity:
+  - Hover row: full numeric breakdown.
+  - Click row: Pattern 1 time-series for that store over 90 days
+    plus the rolling baseline reference.
+  - "Ask the agent about this": pre-fills with the store_id.
+
+**Takeaway sentence shape (computed from data):**
+*"{N} stores show traffic {direction} baseline by >{X}%; top
+deviation: {store} at {ratio}."*
+
+**Rubric assessment:** Passes merchant-seat (specific stores
+named) and standalone (table + takeaway reads cold). Cross-
+merchant N/A by design.
+
+---
+
+### T-A2. Are any menu items spiking or dropping unusually?
+
+**Specialist:** anomaly (TBL)
+
+**The question (as a merchant would phrase it):** "What's selling
+unusually well — or badly — this week?"
+
+**Signal:** Own-data per-SKU recent weekly volume vs the prior
+4-week baseline. Rows ranked by absolute deviation.
+
+**Therefore-test:** Investigate stockouts (drops), promotional or
+social-media spikes, or seasonal shifts. Tomorrow's action: check
+supply / promo / posting context for the top flagged SKUs.
+
+**Cross-merchant test:** Tenant-only.
+
+**Visualization pattern:** Pattern 9 (table + drilldown).
+
+**Visualization spec:**
+- Chart type: sortable table.
+- Columns: SKU, category, recent weekly units, baseline weekly
+  units, ratio, deviation flag.
+- Encoding: ratio column color-coded on diverging scale.
+- Interactivity:
+  - Hover row: numeric breakdown + SKU description.
+  - Click row: SKU-level time-series over 90 days.
+  - "Ask the agent about this": pre-fills with the SKU name.
+
+**Takeaway sentence shape (computed from data):**
+*"{N} items show volume {direction} baseline by >{X}%; largest
+spike: {sku}; largest drop: {sku}."*
+
+**Rubric assessment:** Passes merchant-seat (named SKUs to
+investigate) and standalone (table + takeaway reads cold). Cross-
+merchant N/A by design.
+
+---
+
+### T-A3. Which dayparts are running below my own baseline?
+
+**Specialist:** anomaly (TBL)
+
+**The question (as a merchant would phrase it):** "Is there a
+recurring weak spot in my day-of-week-by-daypart schedule?"
+
+**Signal:** Own-data day-of-week × daypart heatmap of the recent
+week, with cell values expressed as the delta from the merchant's
+prior 4-week baseline for the same day×daypart cell. Negative
+cells flagged as weak.
+
+**Therefore-test:** Identify when traffic is consistently below
+norms — staffing, marketing, or hours-of-operation decisions.
+
+**Cross-merchant test:** Tenant-only. Comparison is current week
+vs own baseline; no peer side.
+
+**Visualization pattern:** Pattern 3 (cross-merchant heatmap) used
+in **own-only diverging mode** — the diverging encoding compares
+current week vs own baseline rather than own vs peer.
+
+**Visualization spec:**
+- Chart type: heatmap. Rows = day of week (Mon-Sun), columns =
+  daypart (morning, lunch, afternoon, evening).
+- Encoding: cell color = ratio (or delta) vs baseline. Diverging
+  red-white-blue, white at parity (= 1.0 or 0). Cell text overlay
+  shows transaction count + ratio.
+- Interactivity:
+  - Hover cell: raw current-week count, baseline count, ratio.
+  - Click cell: drilldown to that day×daypart's transaction
+    breakdown for the recent week.
+  - "Ask the agent about this": pre-fills with the weakest cell's
+    day + daypart.
+- Empty / edge states:
+  - Cell with fewer than k=5 transactions in the recent week →
+    suppress + hover note.
+
+**Takeaway sentence shape (computed from data):**
+*"Your weakest day-daypart this week is {day} {daypart} ({ratio}
+of baseline); strongest is {day} {daypart}."*
+
+**Rubric assessment:** Passes merchant-seat (specific weak cell
+named) and standalone (heatmap + takeaway reads cold). Cross-
+merchant N/A by design.
+
+---
+
+### T-D1. What does my menu mix look like? Where am I most concentrated?
+
+**Specialist:** demand (TBL)
+
+**The question (as a merchant would phrase it):** "What share of
+revenue comes from each of my menu categories?"
+
+**Signal:** Own-data per-category share of revenue (or
+transaction share) over the filter window. Top categories
+surfaced; minor categories rolled up into "Other".
+
+**Therefore-test:** Identify mix concentration. Decide whether
+heavy dependence on one or two categories is intentional menu
+strategy or a vulnerability worth diversifying against.
+
+**Cross-merchant test:** Tenant-only.
+
+**Visualization pattern:** Pattern 2 (single-dim comparison) used
+as a share bar without peer comparison.
+
+**Visualization spec:**
+- Chart type: horizontal bar chart, y = category, x = share of
+  revenue (percentage).
+- Encoding: top 8 categories visible, "Other" rolled up below.
+  Own merchant brand color across bars.
+- Interactivity:
+  - Hover bar: category name, revenue, share.
+  - Click bar: category-level SKU drilldown.
+  - "Ask the agent about this": pre-fills with the category name.
+
+**Takeaway sentence shape (computed from data):**
+*"Top 3 categories ({c1}, {c2}, {c3}) account for {pct}% of
+revenue."*
+
+**Rubric assessment:** Passes merchant-seat (concentration check
+informs menu-strategy review) and standalone (bar + takeaway reads
+cold). Cross-merchant N/A by design.
+
+---
+
+### T-D2. Which categories are gaining or losing share over time?
+
+**Specialist:** demand (TBL)
+
+**The question (as a merchant would phrase it):** "Where is my
+menu mix shifting? Anything trending up or down?"
+
+**Signal:** Own-data per-category share of weekly revenue over
+the 90-day window. Trend per category.
+
+**Therefore-test:** Identify category momentum. Investigate
+declining categories (menu fatigue, supply issues, local
+competition) and validate growing ones (menu refresh that's
+working).
+
+**Cross-merchant test:** Tenant-only.
+
+**Visualization pattern:** Pattern 1 (own-only mode), one line
+per category.
+
+**Visualization spec:**
+- Chart type: line chart, x = week, y = category share
+  (percentage of weekly revenue).
+- Encoding: one line per top 5-6 categories. Color: sequential
+  brand-family.
+- Interactivity:
+  - Hover: category name, week, share, weekly revenue.
+  - Click line: category detail view.
+  - "Ask the agent about this": pre-fills with the category +
+    direction of trend.
+
+**Takeaway sentence shape (computed from data):**
+*"{growing_category} share is up {pct}pp over 90 days;
+{declining_category} is down {pct}pp."*
+
+**Rubric assessment:** Passes merchant-seat (category momentum
+review) and standalone (multi-line chart + takeaway reads cold).
+Cross-merchant N/A by design.
+
+---
+
+### T-D3. What's driving my revenue change this week — traffic, ticket, or mix?
+
+**Specialist:** demand (TBL)
+
+**The question (as a merchant would phrase it):** "Revenue moved
+this week. What's the actual driver?"
+
+**Signal:** Own-data decomposition of current-week revenue vs the
+prior 4-week baseline. Drivers: traffic (transaction count),
+ticket (dollars per transaction), mix (category-share shifts),
+residual. Each driver's contribution to the change is computed in
+dollars.
+
+**Therefore-test:** Focus attention on the dominant driver of
+revenue change. Different drivers warrant different
+investigations (traffic → marketing/local context; ticket →
+pricing/menu; mix → category-specific signals).
+
+**Cross-merchant test:** Tenant-only. Decomposition is own-vs-own-
+baseline, no peer comparison.
+
+**Visualization pattern:** Pattern 5 (decomposition / waterfall)
+used in **own-vs-own-baseline mode** — drivers are computed against
+the merchant's own prior 4-week baseline rather than against a peer
+cohort.
+
+**Visualization spec:**
+- Chart type: waterfall bar chart. X = drivers (traffic / avg
+  ticket / mix / residual). Y = contribution to weekly revenue
+  change in dollars.
+- Encoding: positive bars (own ahead of baseline on this driver)
+  in brand color; negative bars (behind baseline) in diverging
+  red. Connecting bars show cumulative running total.
+- Interactivity:
+  - Hover bar: numeric contribution + raw current and baseline
+    values.
+  - Click bar: that driver's weekly trend over the 90-day window.
+  - "Ask the agent about this": pre-fills with the dominant
+    driver name.
+
+**Takeaway sentence shape (computed from data):**
+*"Revenue {direction} {pct}% vs baseline; {dominant_driver}
+contributes {pct}pp."*
+
+**Rubric assessment:** Passes merchant-seat (named driver focus
+for investigation) and standalone (waterfall + takeaway reads
+cold). Cross-merchant N/A by design.
+
+---
+
+### Trade specialist for TBL
+
+Trade specialist for TBL reuses T1, T2, and T4 from Section 3
+directly. Trade-area questions are cross-merchant via customer
+geography (not segment), so they apply to any viewer including
+non-grocers. The shared 5-neighborhood footprint (Phase 1.6
+calibration) ensures TBL stores overlap with peer stores in enough
+neighborhoods to make the comparison meaningful.
+
+---
+
+### R-P1. How is my average ticket trending across categories?
+
+**Specialist:** pricing (TJX)
+
+**The question (as a merchant would phrase it):** "Is my ticket
+size moving up or down across product categories?"
+
+**Signal:** Own-data per-category mean transaction value over the
+90-day window. TJX categories: ACC (accessories), SHO (shoes),
+WOM (women's), MEN (men's), JEW (jewelry), BTY (beauty), HOM, KID.
+
+**Therefore-test:** Ticket trends by category. ACC is TJX's
+largest category by revenue; its ticket trajectory is the most
+consequential signal. Tomorrow's action: investigate the highest-
+movement category for assortment or pricing shifts.
+
+**Cross-merchant test:** Tenant-only.
+
+**Visualization pattern:** Pattern 1 (own-only mode), one line
+per category.
+
+**Visualization spec:**
+- Chart type: line chart, x = week, y = mean transaction value
+  per category.
+- Encoding: one line per top 5-6 categories. Color: sequential
+  brand-family.
+- Interactivity:
+  - Hover: weekly mean ticket, transaction count, category name.
+  - Click line: category drilldown.
+  - "Ask the agent about this": pre-fills with the category.
+
+**Takeaway sentence shape (computed from data):**
+*"{category} ticket has {direction} {pct}% over 90 days;
+{next_category} is {direction} {pct}%."*
+
+**Rubric assessment:** Passes merchant-seat (category-level
+trajectory review) and standalone (line chart + takeaway reads
+cold). Cross-merchant N/A by design.
+
+---
+
+### R-P2. Which categories have the widest price spread within them?
+
+**Specialist:** pricing (TJX)
+
+**The question (as a merchant would phrase it):** "Where in my
+inventory do prices range from low to high the most?"
+
+**Signal:** Own-data per-category price distribution. Min, median,
+and max unit price per category, plus the price-range ratio
+(max / min). Categories with wide spreads indicate large
+assortment variation (e.g., ACC ranging from costume jewelry to
+designer handbags).
+
+**Therefore-test:** Wide-spread categories indicate inventory mix
+diversity. Useful for assortment planning, signage / merchandising
+decisions, and cross-category comparison of pricing strategy.
+
+**Cross-merchant test:** Tenant-only.
+
+**Visualization pattern:** Pattern 9 (table + drilldown), used with
+quantile columns rather than ratio columns.
+
+**Visualization spec:**
+- Chart type: sortable table.
+- Columns: category, min unit price, median, max, price-range
+  ratio (max / min), transaction count.
+- Encoding: numeric column sorting; row highlighting for top N by
+  ratio.
+- Interactivity:
+  - Hover row: full numeric breakdown.
+  - Click row: SKU-level price distribution for that category
+    (histogram).
+  - "Ask the agent about this": pre-fills with the category name.
+
+**Takeaway sentence shape (computed from data):**
+*"{widest_spread_category} has the widest price spread ({ratio}×
+from min to max); {tightest} is narrowest."*
+
+**Rubric assessment:** Passes merchant-seat (assortment-mix review
+informed by spread) and standalone (table + takeaway reads cold).
+Cross-merchant N/A by design.
+
+---
+
+### R-P3. What's my high-ticket vs low-ticket transaction split?
+
+**Specialist:** pricing (TJX)
+
+**The question (as a merchant would phrase it):** "How does my
+revenue concentrate by ticket size — is it Pareto, or more even?"
+
+**Signal:** Own-data transactions distributed across ticket bands
+(e.g., \$0–50, \$50–100, \$100–200, \$200–500, \$500+). For each
+band, the share of total transactions and the share of total
+revenue.
+
+**Therefore-test:** Inspect basket shape. If the top 20% of
+transactions drives 80% of revenue (Pareto), TJX's pricing
+leverage sits with the high-ticket band; if more even, broader
+ticket-band investment is warranted.
+
+**Cross-merchant test:** Tenant-only.
+
+**Visualization pattern:** Pattern 2 (single-dim comparison) used
+as ticket-band bar chart.
+
+**Visualization spec:**
+- Chart type: horizontal bar chart, y = ticket band (ordered
+  ascending), x = two metrics shown — transaction count and
+  revenue (grouped bars or dual-axis).
+- Encoding: transaction-count bars in own brand color; revenue
+  bars in a contrasting brand-family shade.
+- Interactivity:
+  - Hover bar: ticket band, transaction count, share of
+    transactions, revenue, share of revenue.
+  - Click bar: drilldown to transaction list within that band.
+  - "Ask the agent about this": pre-fills with the ticket band.
+
+**Takeaway sentence shape (computed from data):**
+*"Your top ticket band (\${X}-{Y}) accounts for {pct}% of
+transactions and {pct}% of revenue."*
+
+**Rubric assessment:** Passes merchant-seat (revenue-concentration
+shape informs pricing strategy) and standalone (bar + takeaway
+reads cold). Cross-merchant N/A by design.
+
+---
+
+### R-A1. Which of my stores has unusual traffic this week?
+
+**Specialist:** anomaly (TJX)
+
+**The question (as a merchant would phrase it):** "Are any of my
+stores running off pattern this week?"
+
+**Signal:** Own-data per-store recent weekly traffic vs that
+store's 4-week rolling baseline. TJX has 8 stores, smaller
+footprint than TBL, so each flagged store carries proportionally
+more weight.
+
+**Therefore-test:** Investigate the 1-2 flagged stores;
+operational or local-context check.
+
+**Cross-merchant test:** Tenant-only. No same-segment peers in
+panel for neighborhood-baseline comparison.
+
+**Visualization pattern:** Pattern 9 (table + drilldown).
+
+**Visualization spec:**
+- Chart type: sortable table.
+- Columns: store_id, neighborhood, baseline weekly traffic,
+  recent weekly traffic, ratio, deviation flag.
+- Encoding: color cues on the ratio column; row highlighting for
+  flagged rows.
+- Interactivity:
+  - Hover row: full numeric breakdown.
+  - Click row: Pattern 1 time-series for that store.
+  - "Ask the agent about this": pre-fills with the store_id.
+
+**Takeaway sentence shape (computed from data):**
+*"{N} stores show traffic {direction} baseline by >{X}%; top
+deviation: {store} at {ratio}."*
+
+**Rubric assessment:** Passes merchant-seat (specific stores
+named) and standalone (table + takeaway reads cold). Cross-
+merchant N/A by design.
+
+---
+
+### R-A2. Are any categories spiking or dropping unusually?
+
+**Specialist:** anomaly (TJX)
+
+**The question (as a merchant would phrase it):** "Is any product
+category running way above or below normal?"
+
+**Signal:** Own-data per-category recent weekly volume vs the
+prior 4-week baseline. TJX has fewer SKUs per category than TBL
+has per category, so category-level anomalies are the more
+meaningful aggregation level (per-SKU anomalies would frequently
+fall below k=5).
+
+**Therefore-test:** Investigate stockouts, promotional spikes,
+seasonal shifts, or assortment changes.
+
+**Cross-merchant test:** Tenant-only.
+
+**Visualization pattern:** Pattern 9 (table + drilldown).
+
+**Visualization spec:**
+- Chart type: sortable table.
+- Columns: category, recent weekly volume, baseline weekly
+  volume, ratio, deviation flag.
+- Encoding: ratio column color-coded on diverging scale.
+- Interactivity:
+  - Hover row: numeric breakdown.
+  - Click row: Pattern 1 time-series for that category.
+  - "Ask the agent about this": pre-fills with the category name.
+
+**Takeaway sentence shape (computed from data):**
+*"{N} categories show volume {direction} baseline by >{X}%;
+largest spike: {category}; largest drop: {category}."*
+
+**Rubric assessment:** Passes merchant-seat (named categories) and
+standalone (table + takeaway reads cold). Cross-merchant N/A by
+design.
+
+---
+
+### R-A3. Which days of the week are running below my baseline?
+
+**Specialist:** anomaly (TJX)
+
+**The question (as a merchant would phrase it):** "Is there a
+recurring weak day in my week?"
+
+**Signal:** Own-data day-of-week × week heatmap of the last 4-8
+weeks. Cell value = ratio of that day-week's transactions to the
+day's prior 4-week baseline. TJX's off-price retail pattern
+doesn't carry the QSR daypart structure; day-of-week is the
+meaningful temporal axis.
+
+**Therefore-test:** Identify recurring weak days for staffing,
+marketing, or hours-of-operation review.
+
+**Cross-merchant test:** Tenant-only.
+
+**Visualization pattern:** Pattern 3 (cross-merchant heatmap) used
+in **own-only diverging mode** — diverging encoding compares the
+current period vs own baseline rather than own vs peer.
+
+**Visualization spec:**
+- Chart type: heatmap. Rows = day of week, columns = week (last
+  4-8 weeks).
+- Encoding: cell color = ratio to baseline. Diverging red-white-
+  blue, white at parity (1.0). Cell text shows ratio.
+- Interactivity:
+  - Hover cell: day, week, transaction count, baseline count,
+    ratio.
+  - Click cell: that day-week's transaction breakdown.
+  - "Ask the agent about this": pre-fills with the weakest day.
+- Empty / edge states:
+  - Cell with fewer than k=5 transactions → suppress + hover note.
+
+**Takeaway sentence shape (computed from data):**
+*"Weakest day-week this period: {day} week of {date} ({ratio} of
+baseline)."*
+
+**Rubric assessment:** Passes merchant-seat (specific weak day-
+week named) and standalone (heatmap + takeaway reads cold).
+Cross-merchant N/A by design.
+
+---
+
+### R-D1. What does my category mix look like?
+
+**Specialist:** demand (TJX)
+
+**The question (as a merchant would phrase it):** "What share of
+revenue comes from each product category?"
+
+**Signal:** Own-data per-category share of revenue. TJX category
+set: ACC, SHO, WOM, MEN, JEW, BTY, HOM, KID. Top categories
+surfaced; minor categories rolled up into "Other".
+
+**Therefore-test:** Identify mix concentration. Assortment
+planning signal — is revenue concentrated in one or two
+categories, or distributed?
+
+**Cross-merchant test:** Tenant-only.
+
+**Visualization pattern:** Pattern 2 (single-dim comparison) used
+as a share bar.
+
+**Visualization spec:**
+- Chart type: horizontal bar chart, y = category, x = share of
+  revenue.
+- Encoding: top 6-8 categories visible. Own merchant brand color.
+- Interactivity:
+  - Hover bar: category, revenue, share.
+  - Click bar: category SKU-level drilldown.
+  - "Ask the agent about this": pre-fills with the category name.
+
+**Takeaway sentence shape (computed from data):**
+*"Top 3 categories ({c1}, {c2}, {c3}) account for {pct}% of
+revenue."*
+
+**Rubric assessment:** Passes merchant-seat (concentration check)
+and standalone (bar + takeaway reads cold). Cross-merchant N/A by
+design.
+
+---
+
+### R-D2. Which categories are gaining or losing share over time?
+
+**Specialist:** demand (TJX)
+
+**The question (as a merchant would phrase it):** "Is my category
+mix shifting? Where?"
+
+**Signal:** Own-data per-category share of weekly revenue over
+the 90-day window. Trend per category.
+
+**Therefore-test:** Identify category momentum. Investigate
+declining categories for assortment / inventory issues; validate
+rising categories for further investment.
+
+**Cross-merchant test:** Tenant-only.
+
+**Visualization pattern:** Pattern 1 (own-only mode), one line
+per category.
+
+**Visualization spec:**
+- Chart type: line chart, x = week, y = category share.
+- Encoding: one line per top 5-6 categories. Color: sequential
+  brand-family.
+- Interactivity:
+  - Hover: category, week, share, revenue.
+  - Click line: category detail.
+  - "Ask the agent about this": pre-fills with the category +
+    direction.
+
+**Takeaway sentence shape (computed from data):**
+*"{growing_category} share is up {pct}pp over 90 days;
+{declining_category} is down {pct}pp."*
+
+**Rubric assessment:** Passes merchant-seat (momentum-driven
+investigation pointer) and standalone (line + takeaway reads
+cold). Cross-merchant N/A by design.
+
+---
+
+### R-D3. What's driving my revenue change this week?
+
+**Specialist:** demand (TJX)
+
+**The question (as a merchant would phrase it):** "Revenue moved.
+What's the actual driver — traffic, ticket, or mix?"
+
+**Signal:** Own-data decomposition of current-week revenue vs the
+prior 4-week baseline. Drivers: traffic (transaction count),
+ticket (dollars per transaction), mix (category-share shifts),
+residual. Contributions computed in dollars.
+
+**Therefore-test:** Focus attention on the dominant driver.
+Different drivers warrant different investigations.
+
+**Cross-merchant test:** Tenant-only. Own-vs-own-baseline
+decomposition.
+
+**Visualization pattern:** Pattern 5 (decomposition / waterfall)
+used in **own-vs-own-baseline mode**.
+
+**Visualization spec:**
+- Chart type: waterfall bar chart. X = drivers (traffic /
+  ticket / mix / residual). Y = contribution to weekly revenue
+  change in dollars.
+- Encoding: positive bars in brand color; negative bars in
+  diverging red. Connecting bars show cumulative running total.
+- Interactivity:
+  - Hover bar: numeric contribution + raw current and baseline
+    values.
+  - Click bar: that driver's weekly trend.
+  - "Ask the agent about this": pre-fills with the dominant
+    driver.
+
+**Takeaway sentence shape (computed from data):**
+*"Revenue {direction} {pct}% vs baseline; {dominant_driver}
+contributes {pct}pp."*
+
+**Rubric assessment:** Passes merchant-seat (driver focus) and
+standalone (waterfall + takeaway reads cold). Cross-merchant N/A
+by design.
+
+---
+
+### Trade specialist for TJX
+
+Trade specialist for TJX reuses T1, T2, and T4 from Section 3
+directly. Trade-area questions are cross-merchant via customer
+geography (not segment), so they apply to any viewer including
+non-grocers. The shared 5-neighborhood footprint (Phase 1.6
+calibration) ensures TJX stores overlap with peer stores in enough
+neighborhoods to make the comparison meaningful.
+
+---
+
+### Cross-cutting notes for Section 3B
+
+The 18 net-new TBL/TJX questions (9 per viewer in pricing,
+anomaly, demand) plus the 3 reused trade questions (T1, T2, T4)
+give each non-grocer viewer 12 suggested questions total —
+structural parity with the grocer viewers (KRG, ACM, WDX). Most
+TBL/TJX questions are own-data variations of existing chart
+patterns; the trade specialist's questions are cross-merchant via
+geography. The new pattern application is T-A3 / R-A3 (Pattern 3
+used in own-only diverging mode, comparing current week vs own
+baseline rather than across peers) and T-D3 / R-D3 (Pattern 5
+used in own-vs-own-baseline mode).
+
+---
+
 ## Section 4 — Chart patterns reference
 
 The 9 chart patterns the dashboard and agents follow. Phase 4
@@ -794,7 +1633,9 @@ peers {co-moved / diverged} ({pct_per_peer})."*
 - "Ask the agent about this" button surfaces the metric + the
   notable week.
 
-**Used by suggested questions:** A1.
+**Used by suggested questions:** A1. Also used in own-only mode
+(single merchant, multiple series for sub-dimensions) by T-P1,
+T-P2, T-D2, R-P1, R-D2.
 
 **Library:** Plotly.
 
@@ -827,7 +1668,8 @@ are too heavy for a one-dimensional comparison.
   detail (often Pattern 1 if temporal, Pattern 9 if enumerated).
 
 **Used by suggested questions:** P2 (in a two-panel layout), D3
-(with diverging encoding).
+(with diverging encoding). Also used in own-only mode by T-P3,
+T-D1, R-P3, R-D1.
 
 **Library:** Plotly.
 
@@ -857,7 +1699,9 @@ widest in {cell_label}."*
 - Click cell: drill to Pattern 1 (time-series for that cell) or
   Pattern 4 (scatter context).
 
-**Used by suggested questions:** P1.
+**Used by suggested questions:** P1. Also used in own-only
+diverging mode (current week vs own baseline rather than own vs
+peer) by T-A3 and R-A3.
 
 **Library:** Plotly.
 
@@ -917,7 +1761,9 @@ other drivers are within noise."*
 - Click bar: drill to Pattern 1 for that driver's 90-day
   trajectory.
 
-**Used by suggested questions:** D7.
+**Used by suggested questions:** D7. Also used in own-vs-own-
+baseline mode (drivers computed against own prior baseline rather
+than against a peer cohort) by T-D3 and R-D3.
 
 **Library:** Plotly.
 
@@ -949,7 +1795,9 @@ polygons (choropleth) and store markers (optional layers).
   neighborhood) or Pattern 9 (detail table for that neighborhood).
 - Layer toggles: own stores, peer stores, customer density.
 
-**Used by suggested questions:** T1, T2, T4.
+**Used by suggested questions:** T1, T2, T4. These three questions
+are reused verbatim by TBL and TJX viewers (trade-area comparison
+is cross-merchant via geography, not segment).
 
 **Library:** Folium.
 
@@ -1041,7 +1889,8 @@ another chart pattern.
 - Click row: drill to Pattern 1 (time-series for that item) or
   Pattern 6 (map for that location).
 
-**Used by suggested questions:** A2, A3.
+**Used by suggested questions:** A2, A3. Also used by T-A1, T-A2,
+R-A1, R-A2, R-P2.
 
 **Library:** Streamlit native.
 

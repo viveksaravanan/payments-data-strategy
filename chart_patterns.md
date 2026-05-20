@@ -54,7 +54,9 @@ peers {co-moved / diverged} ({pct_per_peer})."*
 - "Ask the agent about this" button surfaces the metric + the
   notable week.
 
-**Used by suggested questions:** A1.
+**Used by suggested questions:** A1. Also used in own-only mode
+(single merchant, multiple series for sub-dimensions) by T-P1,
+T-P2, T-D2, R-P1, R-D2.
 
 **Library:** Plotly.
 
@@ -87,7 +89,8 @@ are too heavy for a one-dimensional comparison.
   detail (often Pattern 1 if temporal, Pattern 9 if enumerated).
 
 **Used by suggested questions:** P2 (in a two-panel layout), D3
-(with diverging encoding).
+(with diverging encoding). Also used in own-only mode by T-P3,
+T-D1, R-P3, R-D1.
 
 **Library:** Plotly.
 
@@ -117,7 +120,9 @@ widest in {cell_label}."*
 - Click cell: drill to Pattern 1 (time-series for that cell) or
   Pattern 4 (scatter context).
 
-**Used by suggested questions:** P1.
+**Used by suggested questions:** P1. Also used in own-only
+diverging mode (current week vs own baseline rather than own vs
+peer) by T-A3 and R-A3.
 
 **Library:** Plotly.
 
@@ -177,7 +182,9 @@ other drivers are within noise."*
 - Click bar: drill to Pattern 1 for that driver's 90-day
   trajectory.
 
-**Used by suggested questions:** D7.
+**Used by suggested questions:** D7. Also used in own-vs-own-
+baseline mode (drivers computed against own prior baseline rather
+than against a peer cohort) by T-D3 and R-D3.
 
 **Library:** Plotly.
 
@@ -209,7 +216,9 @@ polygons (choropleth) and store markers (optional layers).
   neighborhood) or Pattern 9 (detail table for that neighborhood).
 - Layer toggles: own stores, peer stores, customer density.
 
-**Used by suggested questions:** T1, T2, T4.
+**Used by suggested questions:** T1, T2, T4. These three questions
+are reused verbatim by TBL and TJX viewers (trade-area comparison
+is cross-merchant via geography, not segment).
 
 **Library:** Folium.
 
@@ -301,7 +310,8 @@ another chart pattern.
 - Click row: drill to Pattern 1 (time-series for that item) or
   Pattern 6 (map for that location).
 
-**Used by suggested questions:** A2, A3.
+**Used by suggested questions:** A2, A3. Also used by T-A1, T-A2,
+R-A1, R-A2, R-P2.
 
 **Library:** Streamlit native.
 
