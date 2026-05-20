@@ -796,7 +796,10 @@ _A1_BASELINE_WEEKS  = 4
 
 # Magnitude threshold (percentage drop from baseline) used to label a
 # series as "declined" for market-vs-store-specific classification.
-_A1_DECLINE_PCT     = 20.0
+# Set at the noise floor below which week-to-week wobble can produce
+# false positives; declines beyond this are visually unambiguous on
+# the Pattern 1 chart and match the V3_VISION worked-example narrative.
+_A1_DECLINE_PCT     = 15.0
 
 
 @st.cache_data(ttl=3600)
