@@ -346,6 +346,116 @@ def _render_standard(data: dict, *, title: str, takeaway: str,
 
 
 # ---------------------------------------------------------------------------
+# Pattern 3 — Cross-merchant heatmap
+# ---------------------------------------------------------------------------
+
+def render_heatmap(
+    data: dict,
+    *,
+    title: str,
+    takeaway: str,
+    mode: str = "cross_merchant_diverging",
+    height: int | None = None,
+) -> None:
+    """Pattern 3 — heatmap with three modes.
+
+    Modes:
+
+    - ``"cross_merchant_diverging"`` — diverging red-white-blue
+      color scale, symmetric around zero. Cells are typically
+      percentage gaps (own vs peer). Red = own below peer, blue =
+      own above peer. Cell text overlays the gap value.
+      ``data`` keys: ``rows`` (list[str]), ``cols`` (list[str]),
+      ``cells`` (2D list[float|None] aligned to rows × cols).
+      ``None`` cells render transparent (k=5 suppression).
+
+    - ``"own_only_diverging"`` — Phase 4.3 work (T-A3, R-A3). Not
+      yet implemented.
+    - ``"own_only_sequential"`` — Phase 4.4 work (Card 2.3). Not
+      yet implemented.
+    """
+    if mode == "cross_merchant_diverging":
+        _render_heatmap_cross_merchant_diverging(
+            data, title=title, takeaway=takeaway, height=height,
+        )
+        return
+    raise NotImplementedError(
+        f"render_heatmap mode {mode!r} not implemented "
+        f"(Phase 4.2b implements cross_merchant_diverging only)."
+    )
+
+
+def _render_heatmap_cross_merchant_diverging(
+    data: dict,
+    *,
+    title: str,
+    takeaway: str,
+    height: int | None,
+) -> None:
+    rows = data["rows"]
+    cols = data["cols"]
+    cells = data["cells"]
+    if not rows or not cols:
+        _render_card_header(title, takeaway)
+        st.caption("_No data available for this view._")
+        return
+
+    # Plotly heatmap treats None as missing → cell renders blank.
+    # Text overlay uses an em-dash for suppressed cells.
+    text = [
+        [f"{v:+.1f}%" if v is not None else "—" for v in row]
+        for row in cells
+    ]
+
+    # Symmetric color range around zero so red and blue have equal
+    # saturation magnitude regardless of the actual data range.
+    flat = [v for row in cells for v in row if v is not None]
+    abs_max = max((abs(v) for v in flat), default=1.0)
+    # Floor at 1.0 so very small gaps don't show as fully saturated.
+    abs_max = max(abs_max, 1.0)
+
+    fig = go.Figure(go.Heatmap(
+        z=cells,
+        x=cols,
+        y=rows,
+        text=text,
+        texttemplate="%{text}",
+        textfont=dict(size=11, color="#1A1F2E"),
+        colorscale=[
+            [0.0, DIVERGING_LOW],
+            [0.5, DIVERGING_MID],
+            [1.0, DIVERGING_HIGH],
+        ],
+        zmid=0,
+        zmin=-abs_max,
+        zmax=abs_max,
+        hoverongaps=False,
+        hovertemplate="<b>%{y}</b> vs %{x}<br>%{text}<extra></extra>",
+        colorbar=dict(
+            ticksuffix="%",
+            tickformat=".0f",
+            thickness=10,
+            outlinewidth=0,
+        ),
+        xgap=2, ygap=2,  # subtle gridlines between cells
+    ))
+    fig.update_layout(
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        margin=dict(l=80, r=20, t=20, b=24),
+        height=height or max(280, 30 * len(rows) + 80),
+    )
+    fig.update_xaxes(tickfont=dict(size=11), side="top")
+    # autorange="reversed" so the first row in `rows` appears at the
+    # top of the heatmap (default Plotly puts y=0 at the bottom).
+    fig.update_yaxes(tickfont=dict(size=11), automargin=True,
+                     autorange="reversed")
+
+    _render_card_header(title, takeaway)
+    st.plotly_chart(fig, use_container_width=True)
+
+
+# ---------------------------------------------------------------------------
 # Takeaway-subtitle templating
 # ---------------------------------------------------------------------------
 

@@ -120,6 +120,50 @@ def _render_a1(merchant_id: str) -> None:
     )
 
 
+def _render_p1(merchant_id: str) -> None:
+    """P1: category × peer pricing heatmap (Pattern 3 cross-merchant diverging)."""
+    chart_data = D.category_peer_pricing_gaps(merchant_id)
+    if not chart_data["rows"]:
+        st.caption("_No pricing data available for this merchant._")
+        return
+
+    # The takeaway varies based on whether the matrix spans zero:
+    #   - mixed (positive + negative cells): "above X in Y; below Z in W"
+    #   - all-positive: "above peers across the board; widest in Y"
+    #   - all-negative: "below peers across the board; widest in Y"
+    #   - near-parity: "at or near peer levels"
+    PARITY = 0.5
+    above = chart_data["max_above"]  # (value, category, peer)
+    below = chart_data["max_below"]
+    if above and below and above[0] > PARITY and below[0] < -PARITY:
+        takeaway = (
+            f"You're priced {above[0]:.1f}% above {above[2]} in "
+            f"{above[1]}; {abs(below[0]):.1f}% below {below[2]} in "
+            f"{below[1]}."
+        )
+    elif above and above[0] > PARITY:
+        takeaway = (
+            f"You're priced above peers across categories; "
+            f"widest gap: +{above[0]:.1f}% in {above[1]} "
+            f"(vs {above[2]})."
+        )
+    elif below and below[0] < -PARITY:
+        takeaway = (
+            f"You're priced below peers across categories; "
+            f"widest gap: {below[0]:.1f}% in {below[1]} "
+            f"(vs {below[2]})."
+        )
+    else:
+        takeaway = "Your prices are at or near peer levels across categories."
+
+    CP.render_heatmap(
+        chart_data,
+        title="Your prices vs peer grocers, by category",
+        takeaway=takeaway,
+        mode="cross_merchant_diverging",
+    )
+
+
 def _render_p2(merchant_id: str) -> None:
     """P2: staple-tier vs non-food-tier pricing positioning (Pattern 2)."""
     chart_data = D.staple_vs_nonfood_pricing(merchant_id)
@@ -163,6 +207,7 @@ def _render_d3(merchant_id: str) -> None:
 
 QUESTION_RENDERERS: dict[str, Callable[[str], None]] = {
     "A1": _render_a1,
+    "P1": _render_p1,
     "P2": _render_p2,
     "D3": _render_d3,
 }

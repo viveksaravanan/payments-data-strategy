@@ -1211,6 +1211,138 @@ def basket_mix_vs_peers(merchant_id: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# P1 — Category × peer pricing heatmap (Pattern 3 cross-merchant diverging)
+# ---------------------------------------------------------------------------
+
+# How many categories to surface on the heatmap. The top 10 by own
+# revenue captures the merchant's main basket categories without
+# pushing the heatmap height beyond what the chat panel can show.
+_P1_TOP_N_CATEGORIES = 10
+
+# Minimum peer line-count per cell. Below this, the cell is suppressed
+# per Phase 1.5 k=5 (the lake materialization already filters at the
+# row level; we re-enforce at the aggregate cell level to match the
+# documented anchor-chart contract from V3_AUDIT.md §1.2).
+_P1_MIN_PEER_LINES = 5
+
+# Magnitude threshold below which we treat a gap as parity rather
+# than describing it as "above" or "below" in the takeaway.
+_P1_PARITY_THRESHOLD = 0.5
+
+
+@st.cache_data(ttl=3600)
+def category_peer_pricing_gaps(merchant_id: str) -> dict:
+    """Per-category × per-peer pricing gap matrix for P1
+    (Pattern 3 cross_merchant_diverging).
+
+    Rows: top-``_P1_TOP_N_CATEGORIES`` categories by own revenue.
+    Cols: ``["peer_a", "peer_b"]`` — the two same-segment grocer
+          peers.
+
+    Each cell = ``(own_mean_unit_price - peer_mean_unit_price) /
+    peer_mean_unit_price * 100``. Cells where the peer line count
+    falls below ``_P1_MIN_PEER_LINES`` are returned as ``None``;
+    the chart helper renders these as transparent with an em-dash
+    label.
+
+    Returns a dict shaped for ``render_heatmap`` plus the metadata
+    the renderer uses to format its takeaway:
+
+        rows, cols, cells:    heatmap inputs
+        max_above:            tuple(value, category, peer_label) for
+                              the widest positive gap (own > peer)
+        max_below:            same shape for the widest negative gap
+        n_suppressed:         count of cells suppressed for k<5
+    """
+    lake_t = f"lake_transactions_{merchant_id}"
+
+    with _conn() as c:
+        own_rows = c.execute(
+            """
+            SELECT p.category,
+                   AVG(i.unit_price) AS mean_price,
+                   SUM(i.line_total) AS revenue
+            FROM tenant_transaction_items i
+            JOIN tenant_products p     ON p.sku    = i.sku
+            JOIN tenant_transactions t ON t.txn_id = i.txn_id
+            WHERE t.merchant_id = ?
+            GROUP BY p.category
+            """,
+            (merchant_id,),
+        ).fetchall()
+
+        peer_rows = c.execute(
+            f"""
+            SELECT peer_id, category,
+                   AVG(unit_price)  AS mean_price,
+                   COUNT(*)         AS n_lines
+            FROM {lake_t}
+            WHERE peer_segment = 'grocery'
+              AND peer_id IN ('peer_a', 'peer_b')
+            GROUP BY peer_id, category
+            """,
+        ).fetchall()
+
+    if not own_rows:
+        return {
+            "rows": [], "cols": ["peer_a", "peer_b"], "cells": [],
+            "max_above": None, "max_below": None, "n_suppressed": 0,
+        }
+
+    # Top-N categories by own revenue.
+    own_top = sorted(own_rows, key=lambda r: float(r[2]), reverse=True)
+    own_top = own_top[:_P1_TOP_N_CATEGORIES]
+    own_by_cat = {r[0]: float(r[1]) for r in own_top}
+    rows = [r[0] for r in own_top]
+
+    peer_price = {(pid, cat): float(p) for pid, cat, p, _ in peer_rows}
+    peer_n     = {(pid, cat): int(n)   for pid, cat, _, n in peer_rows}
+
+    cols = ["peer_a", "peer_b"]
+    cells: list[list[float | None]] = []
+    n_suppressed = 0
+    for cat in rows:
+        own_p = own_by_cat[cat]
+        row = []
+        for pid in cols:
+            n = peer_n.get((pid, cat), 0)
+            pp = peer_price.get((pid, cat))
+            if pp is None or n < _P1_MIN_PEER_LINES or pp == 0:
+                row.append(None)
+                if pp is None:
+                    n_suppressed += 0  # peer doesn't carry this category
+                else:
+                    n_suppressed += 1
+            else:
+                row.append(round((own_p - pp) / pp * 100, 1))
+        cells.append(row)
+
+    # Flatten to find the widest positive and widest negative gaps for
+    # the takeaway. Ignore suppressed cells.
+    flat: list[tuple[float, str, str]] = []
+    for i, cat in enumerate(rows):
+        for j, pid in enumerate(cols):
+            v = cells[i][j]
+            if v is not None:
+                flat.append((v, cat, pid))
+
+    if not flat:
+        max_above = max_below = None
+    else:
+        max_above = max(flat, key=lambda r: r[0])
+        max_below = min(flat, key=lambda r: r[0])
+
+    return {
+        "rows":         rows,
+        "cols":         cols,
+        "cells":        cells,
+        "max_above":    max_above,
+        "max_below":    max_below,
+        "n_suppressed": n_suppressed,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Compatibility shims for placeholders.py and earlier views (no-op now)
 # ---------------------------------------------------------------------------
 
