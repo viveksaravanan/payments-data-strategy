@@ -18,7 +18,7 @@ import pandas as pd
 import pytest
 
 from src.agents.context import MerchantContext
-from src.dashboard import placeholders as P
+from src.dashboard import agents as A
 
 # Anthropic SDK is only required for the @llm-marked tests.
 _HAS_KEY = bool(os.environ.get("ANTHROPIC_API_KEY"))
@@ -33,9 +33,9 @@ NAME_BY_ID = {
 }
 
 PRICING_QUESTIONS_BY_SEGMENT = {
-    "grocery":         ["dairy_vs_peers", "above_market", "below_market", "produce_share"],
-    "qsr":             ["price_check_qsr", "above_market_qsr", "below_market_qsr", "category_share"],
-    "off_price_retail": ["price_check_tjx", "above_market_tjx", "below_market_tjx", "category_share_tjx"],
+    "grocery":          ["P1", "P2", "P3"],
+    "qsr":              ["T-P1", "T-P2", "T-P3"],
+    "off_price_retail": ["R-P1", "R-P2", "R-P3"],
 }
 
 SEGMENT_BY_ID = {
@@ -138,28 +138,19 @@ def test_llm_module_is_available_check():
     assert llm.is_available() == bool(os.environ.get("ANTHROPIC_API_KEY"))
 
 
-def test_dispatch_falls_back_to_hardcoded_when_llm_unavailable(monkeypatch):
-    """With ANTHROPIC_API_KEY unset, the dispatch path returns a
-    hardcoded response with NO fallback label (mock mode is silent)."""
+def test_dispatch_returns_error_when_llm_unavailable(monkeypatch):
+    """With ANTHROPIC_API_KEY unset, dispatch returns an honest error
+    response. Phase 4.0 dropped the v2.5 mock fallback — no canned
+    prose, no silent success."""
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    # Force is_available to recompute by reimporting? Just monkeypatch.
     from src.agents import llm
     monkeypatch.setattr(llm, "is_available", lambda: False)
-    resp = P.dispatch("pricing", "dairy_vs_peers", "KRG")
+    resp = A.dispatch("pricing", "P1", "KRG")
+    # Contract-shape preserved so chat.py renders it like a real response.
     assert "agent" in resp and "prose" in resp
-    # No fallback flag because LLM was never attempted
-    assert not resp.get("fallback", False)
-
-
-def test_label_fallback_prepends_clear_failure_label():
-    """Smoke-check the labeled-fallback helper."""
-    raw = {"agent": "X", "prose": "hardcoded prose", "table": None, "chart": None}
-    labeled = P._label_fallback(raw, "TimeoutError: 60s exceeded")
-    assert labeled["fallback"] is True
-    assert "LLM call failed" in labeled["prose"]
-    assert "hardcoded prose" in labeled["prose"]
-    # Hardcoded prose still intact — only prefixed
-    assert labeled["prose"].endswith("hardcoded prose")
+    # Marked as an error so the session cache doesn't freeze it in.
+    assert resp.get("error") is True
+    assert "couldn't reach the agent" in resp["prose"].lower()
 
 
 # ---------------------------------------------------------------------------
@@ -224,9 +215,9 @@ PRICING_MATRIX = [
 @pytest.mark.parametrize(("merchant_id", "question_id"), PRICING_MATRIX)
 def test_pricing_matrix_no_name_leak_and_sql_scoped(merchant_id, question_id):
     """The full Phase 2A peer-isolation matrix: 5 viewers × 4 pricing
-    questions = 20 LLM calls. For each: no peer real-name leak; tenant
+    questions = 15 LLM calls. For each: no peer real-name leak; tenant
     SQL scoped to viewer; lake SQL doesn't touch tenant_*."""
-    resp = P.dispatch("pricing", question_id, merchant_id)
+    resp = A.dispatch("pricing", question_id, merchant_id)
     assert resp.get("agent"), "response missing agent label"
     assert resp.get("prose"), "response missing prose"
 
@@ -257,8 +248,8 @@ def test_cross_viewer_correctness_different_peer_mappings():
     level. The SQL audit (in the matrix above) confirms it at the
     query level.
     """
-    krg = P.dispatch("pricing", "dairy_vs_peers", "KRG")
-    acm = P.dispatch("pricing", "dairy_vs_peers", "ACM")
+    krg = A.dispatch("pricing", "P1", "KRG")
+    acm = A.dispatch("pricing", "P1", "ACM")
 
     # Both succeed
     assert krg.get("prose") and acm.get("prose")

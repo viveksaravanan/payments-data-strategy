@@ -27,8 +27,9 @@ from typing import Callable
 
 import streamlit as st
 
+from . import agents as A
 from . import data as D  # noqa: F401  — kept for parity with other modules
-from . import placeholders as P
+from . import questions as Q
 
 
 # ---------------------------------------------------------------------------
@@ -238,7 +239,6 @@ def render_chat_panel(merchant_id: str) -> None:
     state.setdefault("agent_running", False)
     state.setdefault("pending_dispatch", None)
     history = _ensure_history(merchant_id)
-    questions_by_agent = P.questions_for(merchant_id)
 
     # When an agent is mid-dispatch (i.e. we're inside the run that will
     # process state.pending_dispatch below), disable every control that
@@ -295,7 +295,7 @@ def render_chat_panel(merchant_id: str) -> None:
     # the "Specialist agent" sub-label — the dropdown content is
     # self-explanatory. The label string is kept for screen readers. --
     agent_ids = ["demand", "pricing", "anomaly", "trade"]
-    agent_labels = {a: P.AGENT_LABELS[a] for a in agent_ids}
+    agent_labels = {a: A.AGENT_LABELS[a] for a in agent_ids}
     chosen = st.selectbox(
         "Specialist agent",
         options=agent_ids,
@@ -310,8 +310,8 @@ def render_chat_panel(merchant_id: str) -> None:
         # Do NOT reset chat history on agent switch.
 
     # -- Description --
-    st.caption(P.AGENT_DESCRIPTIONS[state.active_agent])
-    agent_label = P.AGENT_LABELS[state.active_agent]
+    st.caption(A.AGENT_DESCRIPTIONS[state.active_agent])
+    agent_label = A.AGENT_LABELS[state.active_agent]
 
     st.markdown("---")
 
@@ -321,7 +321,8 @@ def render_chat_panel(merchant_id: str) -> None:
     # is_running=True before the dispatch executes inside the chat
     # container — so the user can't disrupt mid-stream.
     clicked: tuple[str, str] | None = None
-    for qid, qtext in questions_by_agent[state.active_agent]:
+    for q in Q.questions_for(merchant_id, state.active_agent):
+        qid, qtext = q["id"], q["text"]
         if st.button(
             qtext,
             key=f"q_{merchant_id}_{state.active_agent}_{qid}",
@@ -385,7 +386,7 @@ def render_chat_panel(merchant_id: str) -> None:
                     response = _render_live_turn(
                         qtext,
                         label,
-                        lambda progress, on_token: P.dispatch(
+                        lambda progress, on_token: A.dispatch(
                             agent_id, qid, merchant_id,
                             progress=progress, on_token=on_token,
                         ),
@@ -396,7 +397,7 @@ def render_chat_panel(merchant_id: str) -> None:
                     response = _render_live_turn(
                         question,
                         "Conversational Advisor",
-                        lambda progress, on_token: P.dispatch_orchestrated(
+                        lambda progress, on_token: A.dispatch_orchestrated(
                             merchant_id, question,
                             progress=progress, on_token=on_token,
                         ),
