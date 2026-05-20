@@ -768,6 +768,208 @@ def lake_txns_filtered(merchant_id: str, sql_filter: str | None) -> pd.DataFrame
 
 
 # ---------------------------------------------------------------------------
+# Phase 4.1 — Question-specific data queries
+# ---------------------------------------------------------------------------
+#
+# Each suggested question that anchors on a dashboard chart pattern has a
+# dedicated data helper here. The helper returns a dict shaped for the
+# pattern's render function (see chart_patterns.py).
+#
+# A1 (University City decline) anchors on Pattern 1: weekly transaction
+# trajectory for the merchant's UC stores plus peer_a / peer_b UC stores,
+# normalized to a 4-week baseline. Grocer viewers only — TBL and TJX
+# have no same-segment peer with UC presence.
+
+# The 90-day panel spans Sun Mar 1 2026 → Fri May 29 2026. SQLite's
+# `DATE(ts, 'weekday 0', '-6 days')` bins each timestamp to the Monday
+# that starts its containing Mon-Sun week (the convention v2.5 reports
+# already use). The first such week (Feb 23) and the last (May 25) are
+# partial; we filter to the 12 fully-covered weeks Mar 2 → May 18 so the
+# trough detector doesn't pick a partial-week artifact.
+_A1_FULL_WEEK_FIRST = "2026-03-02"
+_A1_FULL_WEEK_LAST  = "2026-05-18"
+
+# Baseline window for A1 normalization: first 4 full weeks (Mar 2 → Mar
+# 29). Trough search excludes baseline weeks so the merchant's "before"
+# index is anchored at 100.
+_A1_BASELINE_WEEKS  = 4
+
+# Magnitude threshold (percentage drop from baseline) used to label a
+# series as "declined" for market-vs-store-specific classification.
+_A1_DECLINE_PCT     = 20.0
+
+
+@st.cache_data(ttl=3600)
+def uc_decline_trajectory(merchant_id: str) -> dict:
+    """Weekly transaction trajectory for the merchant's University City
+    stores plus same-segment peers (peer_a, peer_b), normalized to a
+    4-week baseline. Used by A1.
+
+    Returns dict with keys:
+        weeks:              list of week-starting (Monday) ISO date strings.
+        own:                list of normalized values (baseline = 100);
+                            ``None`` for weeks with no data.
+        peer_a, peer_b:     same shape; ``None`` when peer has no UC
+                            footprint or weekly cell falls below k=5.
+        trough_week:        human-formatted week of the own merchant's
+                            trough ("Apr 27") — empty if no trough found.
+        own_pct_drop:       integer percentage drop from baseline at the
+                            own trough.
+        peer_a_pct_drop,
+        peer_b_pct_drop:    integer drop for each peer at the same
+                            trough window (±1 week).
+        market_signal:      ``"market-wide"`` / ``"store-specific"`` /
+                            ``"mixed"`` — see Phase 4.1 A1 spec.
+        has_peers:          True if at least one peer series has data;
+                            False (the pattern helper should drop the
+                            peer overlays) when both are empty.
+
+    The query is k=5 suppressed on peer cells per Phase 1.5: weeks
+    with fewer than 5 peer transactions in UC return ``None`` for that
+    peer slot in that week.
+    """
+    from datetime import date
+
+    lake_t = f"lake_transactions_{merchant_id}"
+    lake_s = f"lake_stores_{merchant_id}"
+
+    with _conn() as c:
+        own_rows = c.execute(
+            """
+            SELECT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+                   COUNT(DISTINCT t.txn_id) AS n
+            FROM tenant_transactions t
+            JOIN tenant_stores s ON s.store_id = t.store_id
+            WHERE t.merchant_id = ?
+              AND s.neighborhood = 'University City'
+              AND DATE(t.txn_ts, 'weekday 0', '-6 days') BETWEEN ? AND ?
+            GROUP BY week
+            ORDER BY week
+            """,
+            (merchant_id, _A1_FULL_WEEK_FIRST, _A1_FULL_WEEK_LAST),
+        ).fetchall()
+
+        peer_rows = c.execute(
+            f"""
+            SELECT t.peer_id,
+                   DATE(t.txn_date, 'weekday 0', '-6 days') AS week,
+                   COUNT(DISTINCT t.lake_txn_id) AS n
+            FROM {lake_t} t
+            JOIN {lake_s} s ON s.lake_store_id = t.lake_store_id
+            WHERE s.neighborhood = 'University City'
+              AND t.peer_segment = 'grocery'
+              AND t.peer_id IN ('peer_a', 'peer_b')
+              AND DATE(t.txn_date, 'weekday 0', '-6 days') BETWEEN ? AND ?
+            GROUP BY t.peer_id, week
+            HAVING COUNT(DISTINCT t.lake_txn_id) >= 5
+            ORDER BY t.peer_id, week
+            """,
+            (_A1_FULL_WEEK_FIRST, _A1_FULL_WEEK_LAST),
+        ).fetchall()
+
+    # Build week ordering from the union of every series' weeks so we
+    # can hand the chart helper aligned lists.
+    own_by_week    = {w: int(n) for w, n in own_rows}
+    peer_a_by_week = {w: int(n) for pid, w, n in peer_rows if pid == "peer_a"}
+    peer_b_by_week = {w: int(n) for pid, w, n in peer_rows if pid == "peer_b"}
+    all_weeks      = sorted(
+        set(own_by_week) | set(peer_a_by_week) | set(peer_b_by_week)
+    )
+
+    empty = {
+        "weeks": [], "own": [], "peer_a": [], "peer_b": [],
+        "trough_week": "", "own_pct_drop": 0,
+        "peer_a_pct_drop": 0, "peer_b_pct_drop": 0,
+        "market_signal": "store-specific",
+        "has_peers": False,
+    }
+    if not all_weeks:
+        return empty
+
+    def _series(by_week: dict) -> list[int | None]:
+        return [by_week.get(w) for w in all_weeks]
+
+    def _baseline(seq: list) -> float | None:
+        head = [v for v in seq[:_A1_BASELINE_WEEKS] if v is not None]
+        return (sum(head) / len(head)) if head else None
+
+    def _normalize(seq: list, base: float | None) -> list:
+        if base is None or base == 0:
+            return [None] * len(seq)
+        return [round(v / base * 100, 1) if v is not None else None for v in seq]
+
+    own_seq    = _series(own_by_week)
+    peer_a_seq = _series(peer_a_by_week)
+    peer_b_seq = _series(peer_b_by_week)
+
+    own_norm    = _normalize(own_seq, _baseline(own_seq))
+    peer_a_norm = _normalize(peer_a_seq, _baseline(peer_a_seq))
+    peer_b_norm = _normalize(peer_b_seq, _baseline(peer_b_seq))
+
+    # Trough: argmin of own's normalized series from week _A1_BASELINE_WEEKS
+    # onward (so the merchant's baseline isn't also its trough).
+    trough_idx: int | None = None
+    trough_val: float | None = None
+    for i in range(_A1_BASELINE_WEEKS, len(own_norm)):
+        v = own_norm[i]
+        if v is None:
+            continue
+        if trough_val is None or v < trough_val:
+            trough_idx = i
+            trough_val = v
+
+    if trough_idx is None or trough_val is None:
+        return {**empty, "weeks": all_weeks,
+                "own": own_norm, "peer_a": peer_a_norm, "peer_b": peer_b_norm,
+                "has_peers": any(v is not None for v in peer_a_norm + peer_b_norm)}
+
+    trough_week_iso = all_weeks[trough_idx]
+    # Format Monday week-start as e.g. "Apr 27" — display convention
+    # the V3_VISION worked example uses.
+    trough_week = date.fromisoformat(trough_week_iso).strftime("%b %-d")
+    own_pct_drop = max(0, int(round(100 - trough_val)))
+
+    def _peer_drop_around_trough(seq: list) -> int:
+        # Look at the same week ± 1 to absorb 1-week phase offsets between
+        # own's trough and a peer's minimum (peers may co-decline a week
+        # earlier or later).
+        idxs = [trough_idx - 1, trough_idx, trough_idx + 1]
+        vals = [seq[i] for i in idxs if 0 <= i < len(seq) and seq[i] is not None]
+        if not vals:
+            return 0
+        return max(0, int(round(100 - min(vals))))
+
+    peer_a_pct_drop = _peer_drop_around_trough(peer_a_norm)
+    peer_b_pct_drop = _peer_drop_around_trough(peer_b_norm)
+
+    # Market signal: both peers + own all decline ≥20% → market-wide.
+    # Own declines and zero peers do → store-specific. Anything else → mixed.
+    peers_with_decline = sum(
+        1 for d in (peer_a_pct_drop, peer_b_pct_drop) if d >= _A1_DECLINE_PCT
+    )
+    own_declined = own_pct_drop >= _A1_DECLINE_PCT
+    if own_declined and peers_with_decline == 2:
+        market_signal = "market-wide"
+    elif own_declined and peers_with_decline == 0:
+        market_signal = "store-specific"
+    else:
+        market_signal = "mixed"
+
+    return {
+        "weeks":             all_weeks,
+        "own":               own_norm,
+        "peer_a":            peer_a_norm,
+        "peer_b":            peer_b_norm,
+        "trough_week":       trough_week,
+        "own_pct_drop":      own_pct_drop,
+        "peer_a_pct_drop":   peer_a_pct_drop,
+        "peer_b_pct_drop":   peer_b_pct_drop,
+        "market_signal":     market_signal,
+        "has_peers":         any(v is not None for v in peer_a_norm + peer_b_norm),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Compatibility shims for placeholders.py and earlier views (no-op now)
 # ---------------------------------------------------------------------------
 

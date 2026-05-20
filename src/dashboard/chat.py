@@ -28,7 +28,8 @@ from typing import Callable
 import streamlit as st
 
 from . import agents as A
-from . import data as D  # noqa: F401  — kept for parity with other modules
+from . import chart_patterns as CP
+from . import data as D
 from . import questions as Q
 
 
@@ -54,12 +55,91 @@ def reset_history(merchant_id: str) -> None:
     state[_HISTORY_KEY][merchant_id] = []
 
 
-def _push(merchant_id: str, question: str, response: dict) -> None:
+def _push(
+    merchant_id: str,
+    question: str,
+    response: dict,
+    *,
+    qid: str | None = None,
+) -> None:
+    """Append a turn to the merchant's chat history.
+
+    `qid` (when set) lets the history-replay path re-render the
+    pattern chart associated with the question — kept as a separate
+    field rather than mixed into `response` so it survives the
+    `**response` spread without conflict.
+    """
     _ensure_history(merchant_id).append({
         "ts":       datetime.now(),
         "question": question,
+        "qid":      qid,
         **response,
     })
+
+
+# ---------------------------------------------------------------------------
+# Question → chart renderer registry
+#
+# Each entry maps a suggested-question ID to a function that fetches the
+# question's data and renders the appropriate chart pattern. Called from
+# both the live-turn path (after the agent's prose lands) and the
+# history-replay path (on every rerun).
+#
+# Phase 4.1 wires A1 only. Phase 4.2 grows the registry as more
+# questions land.
+# ---------------------------------------------------------------------------
+
+def _render_a1(merchant_id: str) -> None:
+    """A1: University City weekly transaction trajectory (Pattern 1)."""
+    chart_data = D.uc_decline_trajectory(merchant_id)
+    if not chart_data.get("weeks"):
+        st.caption("_No University City data available for this merchant._")
+        return
+
+    # If the viewer has no UC stores at all, render the peer overlays
+    # only and a different takeaway. Avoids the "you dropped 0%" gibberish.
+    if not chart_data.get("trough_week"):
+        takeaway = (
+            "You have no University City stores in the panel — "
+            "showing peer trajectories only."
+        )
+    else:
+        takeaway = CP.format_takeaway(
+            "Your UC transactions dropped {own_pct_drop}% from baseline "
+            "by week of {trough_week}; peers also declined "
+            "({peer_a_pct_drop}% and {peer_b_pct_drop}%). "
+            "The pattern is {market_signal}.",
+            chart_data,
+        )
+
+    CP.render_time_series_vs_peers(
+        chart_data,
+        title="University City weekly transactions",
+        takeaway=takeaway,
+        show_peers=chart_data.get("has_peers", True),
+    )
+
+
+QUESTION_RENDERERS: dict[str, Callable[[str], None]] = {
+    "A1": _render_a1,
+}
+
+
+def _render_question_chart(qid: str | None, merchant_id: str) -> None:
+    """Render the chart associated with `qid`, if a renderer is wired.
+
+    Wrapped in try/except so a chart-render failure doesn't break the
+    surrounding chat-message bubble.
+    """
+    if not qid:
+        return
+    renderer = QUESTION_RENDERERS.get(qid)
+    if renderer is None:
+        return
+    try:
+        renderer(merchant_id)
+    except Exception as exc:  # noqa: BLE001 — chart errors are non-fatal
+        st.caption(f"_(chart render failed: {type(exc).__name__})_")
 
 
 # ---------------------------------------------------------------------------
@@ -162,8 +242,14 @@ def _render_table(tbl) -> None:
     st.dataframe(tbl, use_container_width=True, hide_index=True)
 
 
-def _render_history_entry(entry: dict) -> None:
-    """Render a single completed turn as a user + assistant bubble pair."""
+def _render_history_entry(entry: dict, merchant_id: str) -> None:
+    """Render a single completed turn as a user + assistant bubble pair.
+
+    If `entry["qid"]` names a question with a registered chart
+    renderer, that pattern's chart is rendered inside the assistant
+    bubble after the prose + agent-provided chart/table — keeping
+    the bubble cohesive across replay.
+    """
     with st.chat_message("user"):
         # User input — render literally, no $-escape
         st.markdown(entry.get("question", ""))
@@ -175,12 +261,17 @@ def _render_history_entry(entry: dict) -> None:
         _render_caveats(entry.get("caveats"))
         _render_chart(entry.get("chart"))
         _render_table(entry.get("table"))
+        if not entry.get("error"):
+            _render_question_chart(entry.get("qid"), merchant_id)
 
 
 def _render_live_turn(
     question: str,
     agent_label: str,
     runner: "Callable[[Callable[[int, str], None], Callable[[str], None]], dict]",
+    *,
+    qid: str | None = None,
+    merchant_id: str | None = None,
 ) -> dict:
     """Render a user+assistant bubble pair with live narration streaming
     into the assistant bubble. Returns the agent's final response dict.
@@ -225,6 +316,8 @@ def _render_live_turn(
         _render_caveats(response.get("caveats"))
         _render_chart(response.get("chart"))
         _render_table(response.get("table"))
+        if qid and merchant_id and not response.get("error"):
+            _render_question_chart(qid, merchant_id)
     return response
 
 
@@ -238,6 +331,11 @@ def render_chat_panel(merchant_id: str) -> None:
     state.setdefault("chat_expanded", False)
     state.setdefault("agent_running", False)
     state.setdefault("pending_dispatch", None)
+    # Phase 4.1: Ask-about-this affordance pre-fills the chat with a
+    # context-aware question. Streamlit's st.chat_input doesn't accept
+    # a value= argument, so the prefill is rendered as a "confirm to
+    # send" card above the input rather than injected into the field.
+    state.setdefault("chat_input_prefill", None)
     history = _ensure_history(merchant_id)
 
     # When an agent is mid-dispatch (i.e. we're inside the run that will
@@ -343,12 +441,65 @@ def render_chat_panel(merchant_id: str) -> None:
         state.agent_running = True
         st.rerun()
 
+    # ----- DEBUG: Phase 4.1 test affordance -----
+    # Remove in Phase 4.4 when real card-side "Ask about this" buttons
+    # land in the dashboard column. Lets us exercise the pre-fill +
+    # specialist-snap plumbing without dashboard cards.
+    if st.button(
+        "🧪 [DEBUG] Test Ask-about-this → A1",
+        key=f"debug_ask_about_{merchant_id}",
+        disabled=is_running,
+        use_container_width=True,
+    ):
+        state.chat_input_prefill = (
+            "What's driving the transaction drop at my "
+            "University City stores?"
+        )
+        state.active_agent = "anomaly"
+        st.rerun()
+    # ----- end DEBUG -----
+
     st.markdown("---")
 
     # -- Reserve scrollable chat history container --
     chat_box = st.container(height=700, border=True)
 
     st.markdown("---")
+
+    # -- Pending-question card (confirm-to-send for the Ask-about-this
+    # affordance). Streamlit's st.chat_input has no value= parameter,
+    # so we surface the templated question as a small card with Send /
+    # Cancel buttons. The chat_input below stays as the free-form input.
+    prefill = state.chat_input_prefill
+    if prefill is not None:
+        with st.container(border=True):
+            st.caption("Confirm to send:")
+            st.markdown(prefill)
+            cs, cc = st.columns([1, 1])
+            with cs:
+                if st.button(
+                    "Send",
+                    key=f"prefill_send_{merchant_id}",
+                    type="primary",
+                    disabled=is_running,
+                    use_container_width=True,
+                ):
+                    state.pending_dispatch = {
+                        "kind":     "free",
+                        "question": prefill,
+                    }
+                    state.chat_input_prefill = None
+                    state.agent_running = True
+                    st.rerun()
+            with cc:
+                if st.button(
+                    "Cancel",
+                    key=f"prefill_cancel_{merchant_id}",
+                    disabled=is_running,
+                    use_container_width=True,
+                ):
+                    state.chat_input_prefill = None
+                    st.rerun()
 
     # -- Free-form input at the bottom (rendered before container fill
     # so it appears visually below the container) --
@@ -374,7 +525,7 @@ def render_chat_panel(merchant_id: str) -> None:
                 "or type one in below."
             )
         for entry in history:
-            _render_history_entry(entry)
+            _render_history_entry(entry, merchant_id)
 
         if pending is not None:
             try:
@@ -390,8 +541,10 @@ def render_chat_panel(merchant_id: str) -> None:
                             agent_id, qid, merchant_id,
                             progress=progress, on_token=on_token,
                         ),
+                        qid=qid,
+                        merchant_id=merchant_id,
                     )
-                    _push(merchant_id, qtext, response)
+                    _push(merchant_id, qtext, response, qid=qid)
                 else:  # "free"
                     question = pending["question"]
                     response = _render_live_turn(
