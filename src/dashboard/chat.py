@@ -120,8 +120,51 @@ def _render_a1(merchant_id: str) -> None:
     )
 
 
+def _render_p2(merchant_id: str) -> None:
+    """P2: staple-tier vs non-food-tier pricing positioning (Pattern 2)."""
+    chart_data = D.staple_vs_nonfood_pricing(merchant_id)
+    if not chart_data["panel_a_data"]["categories"] and \
+       not chart_data["panel_b_data"]["categories"]:
+        st.caption("_No pricing data available for this merchant._")
+        return
+    takeaway = CP.format_takeaway(
+        "Your staple tier averages {staple_pct:+.1f}% vs peer_a; "
+        "non-food tier averages {nonfood_pct:+.1f}%. "
+        "Your pricing strategy is {tier_signal} across tiers.",
+        chart_data,
+    )
+    CP.render_cross_merchant_comparison(
+        chart_data,
+        title="Pricing positioning: staples vs non-food",
+        takeaway=takeaway,
+        mode="two_panel",
+    )
+
+
+def _render_d3(merchant_id: str) -> None:
+    """D3: basket-mix fingerprint vs peer-average (Pattern 2 diverging)."""
+    chart_data = D.basket_mix_vs_peers(merchant_id)
+    if not chart_data["categories"]:
+        st.caption("_No basket-mix data available for this merchant._")
+        return
+    takeaway = CP.format_takeaway(
+        "You're over-indexed on {top_category} (+{top_pp:.1f}pp vs "
+        "peer-average); under-indexed on {bottom_category} "
+        "({bottom_pp:.1f}pp).",
+        chart_data,
+    )
+    CP.render_cross_merchant_comparison(
+        chart_data,
+        title="Your basket mix vs peer-average",
+        takeaway=takeaway,
+        mode="diverging",
+    )
+
+
 QUESTION_RENDERERS: dict[str, Callable[[str], None]] = {
     "A1": _render_a1,
+    "P2": _render_p2,
+    "D3": _render_d3,
 }
 
 

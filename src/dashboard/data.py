@@ -973,6 +973,244 @@ def uc_decline_trajectory(merchant_id: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# P2 — Staple vs non-food tier pricing comparison (Pattern 2 two-panel)
+# ---------------------------------------------------------------------------
+#
+# Pricing tiers follow the catalog overlays from Phase 1.6:
+#   tight (staples):   BAKERY, BEVERAGES, DAIRY, FROZEN, MEAT, PANTRY,
+#                      PRODUCE, SNACKS
+#   loose (non-food):  BABY, HOUSEHOLD, PERSONAL, PET
+#
+# Each panel shows the per-category percentage gap between own mean
+# unit price and each peer's mean unit price. Weighted aggregates (by
+# own category revenue) feed the takeaway sentence.
+
+_P2_TIGHT_CATEGORIES = [
+    "BAKERY", "BEVERAGES", "DAIRY", "FROZEN",
+    "MEAT", "PANTRY", "PRODUCE", "SNACKS",
+]
+_P2_LOOSE_CATEGORIES = ["BABY", "HOUSEHOLD", "PERSONAL", "PET"]
+
+# Width (in pp) below which we read staple-vs-non-food gaps as the
+# same. Above this, we label the strategy "asymmetric" and report
+# which tier is softer.
+_P2_TIER_SYMMETRY_PP = 2.0
+
+
+@st.cache_data(ttl=3600)
+def staple_vs_nonfood_pricing(merchant_id: str) -> dict:
+    """Per-tier × per-peer pricing comparison for P2 (Pattern 2 two-panel).
+
+    Returns a dict shaped for ``render_cross_merchant_comparison(mode='two_panel')``:
+
+        panel_a_title:  "Staple categories"
+        panel_a_data:   {categories: [...], peer_a_gaps: [...], peer_b_gaps: [...]}
+        panel_b_title:  "Non-food categories"
+        panel_b_data:   same shape
+        staple_pct:     weighted-mean own-vs-peer_a gap on staple tier
+                        (float, signed percentage)
+        nonfood_pct:    weighted-mean own-vs-peer_a gap on non-food tier
+        tier_signal:    "symmetric" | "asymmetric (softer on staples)" |
+                        "asymmetric (softer on non-food)"
+
+    Per-cell gap = ``(own_price - peer_price) / peer_price * 100``.
+    Cells with peer line count < 5 (k-anon, Phase 1.5) are returned
+    as ``None`` so the chart helper omits the bar.
+    """
+    lake_t = f"lake_transactions_{merchant_id}"
+    all_tiers = _P2_TIGHT_CATEGORIES + _P2_LOOSE_CATEGORIES
+    placeholders = ",".join("?" * len(all_tiers))
+
+    with _conn() as c:
+        own_rows = c.execute(
+            f"""
+            SELECT p.category,
+                   AVG(i.unit_price)    AS mean_price,
+                   SUM(i.line_total)    AS revenue
+            FROM tenant_transaction_items i
+            JOIN tenant_products p     ON p.sku    = i.sku
+            JOIN tenant_transactions t ON t.txn_id = i.txn_id
+            WHERE t.merchant_id = ?
+              AND p.category IN ({placeholders})
+            GROUP BY p.category
+            """,
+            (merchant_id, *all_tiers),
+        ).fetchall()
+
+        peer_rows = c.execute(
+            f"""
+            SELECT peer_id, category,
+                   AVG(unit_price)              AS mean_price,
+                   COUNT(DISTINCT lake_txn_id)  AS n_txns
+            FROM {lake_t}
+            WHERE peer_segment = 'grocery'
+              AND peer_id IN ('peer_a', 'peer_b')
+              AND category IN ({placeholders})
+            GROUP BY peer_id, category
+            HAVING n_txns >= 5
+            """,
+            tuple(all_tiers),
+        ).fetchall()
+
+    own_by_cat = {cat: {"price": float(p), "rev": float(r)} for cat, p, r in own_rows}
+    peer_a_by_cat = {cat: float(p) for pid, cat, p, _ in peer_rows if pid == "peer_a"}
+    peer_b_by_cat = {cat: float(p) for pid, cat, p, _ in peer_rows if pid == "peer_b"}
+
+    def _gap(own_p: float, peer_p: float | None) -> float | None:
+        if peer_p is None or peer_p == 0:
+            return None
+        return round((own_p - peer_p) / peer_p * 100, 1)
+
+    def _panel(tier_cats: list[str]) -> dict:
+        cats: list[str] = []
+        peer_a_gaps: list[float | None] = []
+        peer_b_gaps: list[float | None] = []
+        for cat in tier_cats:
+            if cat not in own_by_cat:
+                continue
+            cats.append(cat)
+            own_p = own_by_cat[cat]["price"]
+            peer_a_gaps.append(_gap(own_p, peer_a_by_cat.get(cat)))
+            peer_b_gaps.append(_gap(own_p, peer_b_by_cat.get(cat)))
+        return {
+            "categories":  cats,
+            "peer_a_gaps": peer_a_gaps,
+            "peer_b_gaps": peer_b_gaps,
+        }
+
+    panel_a = _panel(_P2_TIGHT_CATEGORIES)
+    panel_b = _panel(_P2_LOOSE_CATEGORIES)
+
+    def _weighted_mean(panel: dict, gaps_key: str) -> float:
+        """Revenue-weighted mean of the per-category gaps."""
+        num = 0.0
+        den = 0.0
+        for cat, gap in zip(panel["categories"], panel[gaps_key]):
+            if gap is None:
+                continue
+            w = own_by_cat[cat]["rev"]
+            num += gap * w
+            den += w
+        return round(num / den, 1) if den > 0 else 0.0
+
+    staple_pct  = _weighted_mean(panel_a, "peer_a_gaps")
+    nonfood_pct = _weighted_mean(panel_b, "peer_a_gaps")
+
+    diff = nonfood_pct - staple_pct
+    if abs(diff) < _P2_TIER_SYMMETRY_PP:
+        tier_signal = "symmetric"
+    elif diff > 0:
+        # Non-food gap is more positive → own is relatively more
+        # expensive on non-food → pricing is softer (closer to peer)
+        # on staples.
+        tier_signal = "asymmetric (softer on staples)"
+    else:
+        tier_signal = "asymmetric (softer on non-food)"
+
+    return {
+        "panel_a_title": "Staple categories",
+        "panel_a_data":  panel_a,
+        "panel_b_title": "Non-food categories",
+        "panel_b_data":  panel_b,
+        "staple_pct":    staple_pct,
+        "nonfood_pct":   nonfood_pct,
+        "tier_signal":   tier_signal,
+    }
+
+
+# ---------------------------------------------------------------------------
+# D3 — Basket-mix fingerprint vs peer average (Pattern 2 diverging)
+# ---------------------------------------------------------------------------
+
+@st.cache_data(ttl=3600)
+def basket_mix_vs_peers(merchant_id: str) -> dict:
+    """Per-category own-share vs peer-mean-share, surfaced as a
+    diverging bar chart for D3 (Pattern 2 diverging mode).
+
+    For each category:
+        own_share       = own category revenue / own total revenue
+        peer_mean_share = mean across peer_a, peer_b of that peer's
+                          (category revenue / total revenue)
+        delta_pp        = own_share - peer_mean_share, in pp
+
+    Returns categories sorted by ``delta_pp`` descending so the chart
+    reads "most over-indexed" at top, "most under-indexed" at bottom.
+    """
+    lake_t = f"lake_transactions_{merchant_id}"
+
+    with _conn() as c:
+        own_rows = c.execute(
+            """
+            SELECT p.category, SUM(i.line_total) AS rev
+            FROM tenant_transaction_items i
+            JOIN tenant_products p     ON p.sku    = i.sku
+            JOIN tenant_transactions t ON t.txn_id = i.txn_id
+            WHERE t.merchant_id = ?
+            GROUP BY p.category
+            """,
+            (merchant_id,),
+        ).fetchall()
+
+        peer_rows = c.execute(
+            f"""
+            SELECT peer_id, category, SUM(line_total) AS rev
+            FROM {lake_t}
+            WHERE peer_segment = 'grocery'
+              AND peer_id IN ('peer_a', 'peer_b')
+            GROUP BY peer_id, category
+            """
+        ).fetchall()
+
+    own_total = sum(float(r) for _, r in own_rows) or 1.0
+    own_share = {cat: float(r) / own_total * 100 for cat, r in own_rows}
+
+    # Each peer's per-category share is computed against THAT peer's
+    # own total revenue (so categories sum to 100% per peer) — then we
+    # average the two peer shares.
+    peer_totals: dict[str, float] = {}
+    peer_cat_rev: dict[tuple[str, str], float] = {}
+    for pid, cat, rev in peer_rows:
+        rev_f = float(rev)
+        peer_totals[pid] = peer_totals.get(pid, 0.0) + rev_f
+        peer_cat_rev[(pid, cat)] = rev_f
+    peer_share_by_cat: dict[str, float] = {}
+    for cat in own_share:
+        shares = []
+        for pid, total in peer_totals.items():
+            if total <= 0:
+                continue
+            cat_rev = peer_cat_rev.get((pid, cat), 0.0)
+            shares.append(cat_rev / total * 100)
+        peer_share_by_cat[cat] = (sum(shares) / len(shares)) if shares else 0.0
+
+    deltas = sorted(
+        [(cat, round(own_share[cat] - peer_share_by_cat[cat], 1)) for cat in own_share],
+        key=lambda r: r[1], reverse=True,
+    )
+    categories = [c for c, _ in deltas]
+    delta_vals = [d for _, d in deltas]
+
+    if not categories:
+        return {
+            "categories": [], "deltas": [],
+            "top_category": "—", "top_pp": 0.0,
+            "bottom_category": "—", "bottom_pp": 0.0,
+        }
+
+    top_category, top_pp     = deltas[0]
+    bottom_category, bottom_pp = deltas[-1]
+
+    return {
+        "categories":      categories,
+        "deltas":          delta_vals,
+        "top_category":    top_category,
+        "top_pp":          top_pp,
+        "bottom_category": bottom_category,
+        "bottom_pp":       bottom_pp,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Compatibility shims for placeholders.py and earlier views (no-op now)
 # ---------------------------------------------------------------------------
 
