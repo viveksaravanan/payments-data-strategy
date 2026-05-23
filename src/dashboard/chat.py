@@ -1519,50 +1519,53 @@ def render_chat_panel(merchant_id: str) -> None:
 
     st.markdown("---")
 
-    # -- Free-form input — Phase 4.5 follow-up swaps ``st.chat_input``
-    # for ``st.text_area`` + Send button because ``st.chat_input``
-    # cannot accept a programmatic initial value. The affordance flow
-    # sets ``state.chat_input_prefill`` which becomes the textarea's
-    # initial value on the next rerun; user can edit or send. --
+    # -- Free-form input (Variant B "rounded pill with inline arrow")
+    # The text-area + Send button are wrapped in a container with a
+    # stable key (``chat_input_row``) so CSS can style them as one
+    # rounded white pill with a purple circular arrow on the right.
+    # Streamlit renders each widget in its own div, so the pill look
+    # comes from CSS targeting the wrapper + restyling the textarea
+    # / button children. --
     prefill = state.chat_input_prefill or ""
     # Re-key the textarea per (merchant_id, prefill-hash) so a fresh
     # prefill from an affordance click forces the widget to remount
     # with the new ``value=`` — without the re-key, Streamlit keeps
     # the prior textarea content and ignores the value kwarg.
     input_key = f"chat_input_{merchant_id}_{hash(prefill) & 0xFFFF:04x}"
-    free_q = st.text_area(
-        "Ask anything…",
-        value=prefill,
-        key=input_key,
-        height=80,
-        disabled=is_running,
-        label_visibility="collapsed",
-        placeholder="Ask anything…",
-    )
-    if st.button(
-        "Send",
-        key=f"chat_send_{merchant_id}",
-        type="primary",
-        disabled=is_running,
-        use_container_width=True,
-    ):
-        if free_q and free_q.strip():
-            state.pending_dispatch = {
-                "kind":     "free",
-                "question": free_q.strip(),
-            }
-            state.chat_input_prefill = ""
-            state.agent_running = True
-            st.rerun()
+    with st.container(key="chat_input_row"):
+        free_q = st.text_area(
+            "Ask anything…",
+            value=prefill,
+            key=input_key,
+            height=68,
+            disabled=is_running,
+            label_visibility="collapsed",
+            placeholder="Ask any question about your data…",
+        )
+        if st.button(
+            "›",
+            key=f"chat_send_{merchant_id}",
+            type="primary",
+            disabled=is_running,
+            help="Send",
+        ):
+            if free_q and free_q.strip():
+                state.pending_dispatch = {
+                    "kind":     "free",
+                    "question": free_q.strip(),
+                }
+                state.chat_input_prefill = ""
+                state.agent_running = True
+                st.rerun()
 
     # -- Fill the chat container --
     with chat_box:
+        # Phase 4.5 final: "No questions yet" placeholder removed.
+        # The input area's placeholder copy already invites typing;
+        # a duplicate empty-state message added noise. An empty
+        # ``chat_box`` reads as an open canvas waiting for the first
+        # turn.
         pending = state.pending_dispatch
-        if not history and pending is None:
-            st.caption(
-                "No questions yet. Pick a suggestion above, "
-                "or type one in below."
-            )
         for entry in history:
             _render_history_entry(entry, merchant_id)
 

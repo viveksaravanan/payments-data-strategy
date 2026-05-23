@@ -560,6 +560,86 @@ _CSS = """
     pointer-events: none;  /* purely visual — click-to-close not wired in this commit */
   }
 
+  /* Phase 4.5 final — Variant B chat input.
+     The wrapper container (``chat_input_row``) is styled as one
+     rounded white pill with a 1 px border + subtle shadow. The
+     ``st.text_area`` inside is restyled to be borderless / shadowless
+     so it reads as the pill's interior. The "Send" button (a single
+     ``›`` glyph) is positioned absolutely on the right side of the
+     pill as a 32 × 32 purple circle. */
+  div[class*="st-key-chat_input_row"] {
+    position: relative !important;
+    background: #FFFFFF !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 24px !important;
+    padding: 4px 48px 4px 16px !important;  /* right padding = arrow + gutter */
+    margin-top: 8px !important;
+    box-shadow: 0 1px 3px rgba(15, 31, 46, 0.04);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  div[class*="st-key-chat_input_row"]:focus-within {
+    border-color: #534AB7 !important;
+    box-shadow: 0 0 0 3px rgba(83, 74, 183, 0.12);
+  }
+  /* Textarea inside the pill — borderless, transparent bg, no
+     resize handle, no scrollbar at rest. */
+  div[class*="st-key-chat_input_row"] textarea {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    padding: 8px 4px !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+    resize: none !important;
+    min-height: 0 !important;
+  }
+  div[class*="st-key-chat_input_row"] textarea:focus {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+  }
+  /* Send button — small purple circle on the right edge of the
+     pill, vertically centered. */
+  div[class*="st-key-chat_input_row"] div[class*="st-key-chat_send_"] {
+    position: absolute !important;
+    right: 8px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 32px !important;
+    z-index: 5;
+  }
+  div[class*="st-key-chat_input_row"] div[class*="st-key-chat_send_"] button {
+    width: 32px !important;
+    height: 32px !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    background: #534AB7 !important;
+    border: none !important;
+    color: #FFFFFF !important;
+    font-size: 20px !important;
+    line-height: 1 !important;
+    font-weight: 600 !important;
+    box-shadow: 0 1px 3px rgba(83, 74, 183, 0.30);
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+  div[class*="st-key-chat_input_row"] div[class*="st-key-chat_send_"] button:hover {
+    background: #443B9F !important;
+    transform: translateY(-1px);
+  }
+  div[class*="st-key-chat_input_row"] div[class*="st-key-chat_send_"] button:disabled {
+    background: var(--text-muted) !important;
+    cursor: not-allowed;
+    transform: none;
+  }
+  /* Suppress the Streamlit textarea label area + counter inside the
+     pill — ``label_visibility="collapsed"`` hides the label text
+     but Streamlit still reserves a small spacer; flatten it. */
+  div[class*="st-key-chat_input_row"] [data-testid="stWidgetLabel"] {
+    display: none !important;
+  }
+
   /* Mobile responsiveness — drawer becomes a bottom sheet at narrow
      viewports. */
   @media (max-width: 768px) {
