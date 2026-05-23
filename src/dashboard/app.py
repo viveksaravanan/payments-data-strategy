@@ -209,12 +209,7 @@ else:
     with dash_col:
         views.render_kpi_strip(mid, filters)
         views.render_performance_section(mid, filters)
-
-        map_col, ins_col = st.columns([6, 4], gap="small")
-        with map_col:
-            views.render_map(mid, filters)
-        with ins_col:
-            views.render_insights_panel(mid, filters)
+        views.render_geography_section(mid, filters)
 
         cat_col, store_col = st.columns([1, 1], gap="small")
         with cat_col:

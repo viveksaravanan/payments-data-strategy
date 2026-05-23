@@ -80,6 +80,139 @@ def render_kpi_row(merchant_id: str, filters: dict) -> None:
     render_kpi_strip(merchant_id, filters)
 
 
+def render_geography_section(merchant_id: str, filters: dict) -> None:  # noqa: ARG001
+    """Phase 4.4 Section 3 — Geography. Two cards in a 55/45 row:
+
+    - Card 3.1 Neighborhood performance map (Pattern 6 diverging,
+      no peer overlay since the dashboard column is own-data only).
+    - Card 3.2 Store performance distribution (Pattern 9 sorted
+      worst-first by recent/baseline ratio).
+    """
+    from . import chart_patterns as CP
+
+    cols = st.columns([55, 45], gap="small")
+
+    # Card 3.1 — Neighborhood performance map
+    with cols[0]:
+        with st.container(border=True):
+            CP.render_ask_about_this(
+                key=f"ask_about_geo_map_{merchant_id}",
+                specialist="trade",
+                prefill=(
+                    "Which of my neighborhoods are over- or "
+                    "under-performing, and is the issue mine or the "
+                    "market's?"
+                ),
+            )
+            chart_data = D.neighborhood_performance(merchant_id)
+            nbhds = chart_data["neighborhoods"]
+            if not nbhds:
+                st.caption("_No store footprint to map._")
+            else:
+                ranked = sorted(
+                    [n for n in nbhds if n["own_delta_pct"] is not None],
+                    key=lambda n: n["own_delta_pct"],
+                    reverse=True,
+                )
+                # Convert own_delta_pct (% delta vs baseline) → ratio
+                # to baseline for the "X% of baseline" phrasing.
+                weakest = chart_data["weakest"]
+                top3 = [n["name"] for n in ranked[:3]]
+                if weakest is None or weakest["own_delta_pct"] is None:
+                    takeaway = "Insufficient neighborhood-level data."
+                else:
+                    w_ratio = 1.0 + (weakest["own_delta_pct"] / 100)
+                    takeaway = (
+                        f"Top 3 neighborhoods: {', '.join(top3)}. "
+                        f"Weakest: {weakest['name']} at "
+                        f"{w_ratio * 100:.0f}% of baseline."
+                    )
+                polygons = []
+                for n in nbhds:
+                    v = n["own_delta_pct"]
+                    tip = (
+                        f"<b>{n['name']}</b><br>"
+                        f"Own: {n['own_n_txns']:,} txns / "
+                        f"{n['own_n_stores']} stores<br>"
+                        f"Δ vs baseline: "
+                        f"{('—' if v is None else f'{v:+.1f}%')}"
+                    )
+                    polygons.append({
+                        "name": n["name"], "value": v, "tooltip": tip,
+                    })
+                CP.render_neighborhood_map(
+                    {
+                        "polygons":    polygons,
+                        "own_stores":  chart_data["own_markers"],
+                        "peer_stores": [],
+                        "value_label": "Δ vs your baseline (%)",
+                        "map_key":     f"3_1_{merchant_id}",
+                    },
+                    title="Neighborhood performance",
+                    takeaway=takeaway,
+                    mode="diverging",
+                    height=420,
+                )
+
+    # Card 3.2 — Store performance distribution
+    with cols[1]:
+        with st.container(border=True):
+            CP.render_ask_about_this(
+                key=f"ask_about_store_perf_{merchant_id}",
+                specialist="anomaly",
+                prefill=(
+                    "Which stores are showing unusual traffic this week?"
+                ),
+            )
+            # Grocers carry the peer-neighborhood column via the A2
+            # helper; TBL / TJX have no same-segment peers so use the
+            # leaner own-only variant. Both produce the same row
+            # shape minus the peer column.
+            if D.has_same_segment_peers(merchant_id):
+                chart_data = D.store_anomalies(merchant_id)
+            else:
+                chart_data = D.store_anomalies_own_only(merchant_id)
+            rows = chart_data["rows"]
+            if not rows:
+                st.caption("_No stores with enough baseline data._")
+            else:
+                # Re-sort worst-first (ratio ascending = most-negative
+                # deviation_pct first). The helpers sort by absolute
+                # magnitude; this card wants direction-aware ordering
+                # so the worst rows surface at the top.
+                rows = sorted(rows, key=lambda r: r["deviation_pct"])
+                n_under = sum(
+                    1 for r in rows if r["deviation_pct"] <= -15.0
+                )
+                n_over = sum(
+                    1 for r in rows if r["deviation_pct"] >= 15.0
+                )
+                top_perf = max(rows, key=lambda r: r["deviation_pct"])
+                takeaway = (
+                    f"{n_under} of {len(rows)} stores running below "
+                    f"baseline by >15%; top performer "
+                    f"{top_perf['store_id']} at "
+                    f"{top_perf['deviation_pct']:+.1f}% vs baseline."
+                )
+                columns = [
+                    {"key": "store_id",      "label": "Store",        "kind": "text"},
+                    {"key": "neighborhood",  "label": "Neighborhood", "kind": "text"},
+                    {"key": "baseline",      "label": "Baseline/wk",  "kind": "float"},
+                    {"key": "recent",        "label": "Recent",       "kind": "int"},
+                    {"key": "deviation_pct", "label": "Δ vs baseline",
+                     "kind": "pct", "diverging": True},
+                ]
+                CP.render_table_with_drilldown(
+                    {
+                        "rows":    rows,
+                        "columns": columns,
+                    },
+                    title="Store performance distribution",
+                    takeaway=takeaway,
+                    height=360,
+                )
+
+
 def render_performance_section(merchant_id: str, filters: dict) -> None:  # noqa: ARG001
     """Phase 4.4 Section 2 — Performance over time. Three cards in a
     row: Revenue trajectory, Transaction trajectory, Hour × DOW
