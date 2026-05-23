@@ -635,12 +635,22 @@ coming back, how often, where they're from. All own-data.
 - **Interactivity:**
   - Hover bar: exact counts, percentages, week-over-week trend.
   - Click bar: drilldown to a list of customers in that segment.
-- **Per-viewer adaptation:**
-  - Grocers: typically ~5-15% new in any given week (loyalty
-    business).
-  - TBL: higher new-customer share (QSR pulls walk-in traffic).
-  - TJX: lower new-customer share (deeper engagement, less
-    frequent return).
+- **Per-viewer adaptation:** (Updated Phase 4.5 to reflect
+  observed data — the original design predicted TJX would have
+  the lowest new-customer share; the calibrated synthetic data
+  shows the opposite.)
+  - Grocers: ~4% new in any given week (loyalty business).
+  - TBL: similar to grocers in absolute share (~4%) despite the
+    QSR walk-in framing — the customer panel anchors most TBL
+    customers across the 90-day window.
+  - TJX: highest new-customer share (~18%). Off-price retail
+    customers visit less frequently than grocery customers,
+    which paradoxically produces a higher new-customer share per
+    week — sparse visits = a larger fraction of any given week's
+    customers having their first ever transaction that week. The
+    smaller TJX customer base (~960 unique per week vs grocers'
+    2.6-3.4K) also makes any week's variation register as a
+    bigger percentage swing.
 - **"Ask about this" routing:** Demand specialist. Pre-fill:
   "What's the composition of my customer base this week — are
   new customers growing or my base growing?"

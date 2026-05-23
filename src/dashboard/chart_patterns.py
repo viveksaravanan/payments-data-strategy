@@ -371,6 +371,25 @@ def _render_card_footnote(footnote: str) -> None:
     )
 
 
+# ---------------------------------------------------------------------------
+# Sort-direction convention (Phase 4.5 (2/2))
+#
+# Dashboard cards are action-oriented and sort worst-first so the
+# rows the merchant should act on land at the top:
+#   - Card 3.2 Store performance:  deviation_pct ASC
+#   - Card 4.2 Underperformers:    deviation_pct ASC
+#   - Card 4.2 Top performers:     recent_revenue DESC
+#
+# Chat-side anomaly tables (A2, T-A1, R-A1) are investigation-oriented
+# and sort by absolute magnitude so the largest swing in either
+# direction surfaces first:
+#   - chat A2 / T-A1 / R-A1:        abs(deviation_pct) DESC
+#
+# This is intentional — the dashboard surfaces "what to do" while the
+# chat surfaces "what changed". Don't unify them.
+# ---------------------------------------------------------------------------
+
+
 def render_empty_state(message: str) -> None:
     """Render an empty-state message in place of chart content.
 

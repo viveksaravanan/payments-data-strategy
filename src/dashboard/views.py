@@ -72,12 +72,9 @@ PLOTLY_CONFIG = {"displayModeBar": False, "responsive": True}
 
 
 # ---------------------------------------------------------------------------
-# KPI row
+# KPI row — Phase 4.5 (2/2) removed the v2.5 ``render_kpi_row`` compat
+# shim. v3 callers use ``render_kpi_strip`` directly (Phase 4.4a).
 # ---------------------------------------------------------------------------
-
-def render_kpi_row(merchant_id: str, filters: dict) -> None:
-    """Compat shim — delegates to ``render_kpi_strip``."""
-    render_kpi_strip(merchant_id, filters)
 
 
 def render_customers_section(merchant_id: str, filters: dict) -> None:  # noqa: ARG001
@@ -363,15 +360,27 @@ def render_catalog_section(merchant_id: str, filters: dict) -> None:  # noqa: AR
                         if r["deviation_pct"] is not None
                         and r["deviation_pct"] <= -15.0
                     )
-                    if rows:
-                        worst = rows[0]
-                        takeaway = (
-                            f"{n_decliners} SKUs declining >15% vs "
-                            f"baseline. Largest drop: {worst['sku_name']} "
-                            f"at {worst['deviation_pct']:+.1f}%."
+                    if not rows:
+                        # Underperformers view with no SKU below the
+                        # -15 % floor: swap the table for an empty-
+                        # state block so the merchant sees a clear
+                        # "nothing to act on" rather than an empty
+                        # grid.
+                        CP._render_card_header(
+                            "SKU performance",
+                            "No SKU-level decliners in the recent week.",
                         )
-                    else:
-                        takeaway = "No SKU-level decliners in the recent window."
+                        CP.render_empty_state(
+                            "Every SKU is within 15% of its first-4-week "
+                            "baseline. No underperformers to investigate."
+                        )
+                        return
+                    worst = rows[0]
+                    takeaway = (
+                        f"{n_decliners} SKUs declining >15% vs "
+                        f"baseline. Largest drop: {worst['sku_name']} "
+                        f"at {worst['deviation_pct']:+.1f}%."
+                    )
                 CP.render_table_with_drilldown(
                     {
                         "rows": rows,

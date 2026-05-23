@@ -2353,18 +2353,33 @@ def performance_trajectory(merchant_id: str) -> dict:
     txn_30d_pct = _delta_pct(transactions)
     bas_30d_pct = _delta_pct(basket)
 
-    # Trend shape: compare the last-2-weeks average to the 4-weeks-prior
-    # average. If close → stable. If the rate of change is increasing
-    # → accelerating, decreasing → decelerating.
-    if len(revenue) >= 6:
-        recent_rate = (revenue[-1] - revenue[-3]) / 2 if revenue[-3] else 0
-        prior_rate  = (revenue[-3] - revenue[-5]) / 2 if revenue[-5] else 0
-        if abs(recent_rate - prior_rate) < abs(recent_rate) * 0.20:
+    # Trend shape: compare the last-2-weeks mean revenue to the
+    # 8-weeks-prior mean (weeks -10..-2). The wider prior window damps
+    # noise from any single below-trend week, and the 2-week recent
+    # window catches genuine acceleration without being whipsawed by
+    # a single week's bounce. 4.4b's tighter 1w-vs-2w window
+    # produced "accelerating" across every viewer — the calibrated
+    # data has gentle overall growth and noise dominated the
+    # single-point rate-of-change calculation.
+    if len(revenue) >= 10:
+        recent_mean = sum(revenue[-2:]) / 2
+        prior_mean  = sum(revenue[-10:-2]) / 8 if revenue[-10:-2] else 0
+        if prior_mean <= 0:
             trend_shape = "stable"
-        elif recent_rate > prior_rate:
-            trend_shape = "accelerating"
         else:
-            trend_shape = "decelerating"
+            growth = recent_mean / prior_mean - 1
+            # 8 % deadband — calibrated to the synthetic data's
+            # overall ~6-10 % growth band. Below 8 % growth reads as
+            # tracking the panel-wide trend; above signals genuine
+            # acceleration. A tighter 5 % deadband classified all
+            # five viewers as accelerating in the current data;
+            # 8 % differentiates per-viewer.
+            if abs(growth) < 0.08:
+                trend_shape = "stable"
+            elif growth > 0:
+                trend_shape = "accelerating"
+            else:
+                trend_shape = "decelerating"
     else:
         trend_shape = "stable"
 
