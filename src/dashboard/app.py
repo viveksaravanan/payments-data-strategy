@@ -207,7 +207,7 @@ else:
     dash_col, chat_col = st.columns([65, 35], gap="medium")
 
     with dash_col:
-        views.render_kpi_row(mid, filters)
+        views.render_kpi_strip(mid, filters)
 
         map_col, ins_col = st.columns([6, 4], gap="small")
         with map_col:

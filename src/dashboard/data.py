@@ -2551,6 +2551,216 @@ def category_anomalies(merchant_id: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Phase 4.4 — KPI strip data (Section 1: Performance pulse)
+# ---------------------------------------------------------------------------
+#
+# Each KPI card surfaces a value, a delta vs prior 4-week average, and
+# a 12-week sparkline. Anchored to the same Mon-Sun week binning as
+# A1/A2/A3 so the "this week" / "vs prior 4 weeks" semantics stay
+# consistent across the dashboard.
+
+# Last full Mon-Sun week + first-of-baseline reuse the
+# ``_A_RECENT_WEEK_START`` / ``_A_BASELINE_WEEK_*`` constants defined
+# further down for the A2/A3 helpers. Defining them here would
+# duplicate; declare lazily inside the function body via module
+# constant lookup.
+
+
+@st.cache_data(ttl=3600)
+def kpi_strip(merchant_id: str) -> dict:
+    """Five-card KPI strip data — Revenue / Transactions / Avg basket /
+    Unique customers / Anomaly count, each with a delta vs the prior
+    4-week average and a 12-week trailing sparkline.
+
+    Returns::
+
+        {
+            "revenue":          {"value": float, "delta_pct": float,
+                                 "sparkline": list[float]},
+            "transactions":     {...},
+            "avg_basket":       {...},
+            "unique_customers": {...},
+            "anomaly":          {"value": int, "n_stores": int,
+                                 "n_categories": int,
+                                 "sparkline": list[int]},
+        }
+    """
+    weeks = [
+        "2026-03-02", "2026-03-09", "2026-03-16", "2026-03-23",
+        "2026-03-30", "2026-04-06", "2026-04-13", "2026-04-20",
+        "2026-04-27", "2026-05-04", "2026-05-11", "2026-05-18",
+    ]
+    week_lo, week_hi = weeks[0], weeks[-1]
+    recent = weeks[-1]
+    prior_lo, prior_hi = weeks[-5], weeks[-2]  # 4 weeks prior to recent
+
+    with _conn() as c:
+        # Per-week aggregates for the 12-week sparkline.
+        rows = c.execute(
+            """
+            SELECT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+                   SUM(t.txn_total)              AS revenue,
+                   COUNT(DISTINCT t.txn_id)      AS n_txns,
+                   COUNT(DISTINCT t.customer_id) AS n_customers
+            FROM tenant_transactions t
+            WHERE t.merchant_id = ?
+              AND DATE(t.txn_ts, 'weekday 0', '-6 days')
+                  BETWEEN ? AND ?
+            GROUP BY week
+            """,
+            (merchant_id, week_lo, week_hi),
+        ).fetchall()
+
+    rev_by_wk: dict[str, float] = {w: float(r) for w, r, _, _ in rows}
+    txn_by_wk: dict[str, int] = {w: int(t) for w, _, t, _ in rows}
+    cust_by_wk: dict[str, int] = {w: int(c) for w, _, _, c in rows}
+
+    def _series(d: dict) -> list[float]:
+        return [float(d.get(w, 0)) for w in weeks]
+
+    rev_series  = _series(rev_by_wk)
+    txn_series  = _series(txn_by_wk)
+    cust_series = _series(cust_by_wk)
+    basket_series = [
+        (rev_series[i] / txn_series[i]) if txn_series[i] > 0 else 0.0
+        for i in range(len(weeks))
+    ]
+
+    def _delta(recent_val: float, prior_vals: list[float]) -> float:
+        prior_mean = sum(prior_vals) / len(prior_vals) if prior_vals else 0.0
+        if prior_mean <= 0:
+            return 0.0
+        return round((recent_val / prior_mean - 1) * 100, 1)
+
+    prior_idx = slice(-5, -1)  # 4 weeks prior to recent
+    rev_recent  = rev_series[-1];  rev_delta  = _delta(rev_recent,  rev_series[prior_idx])
+    txn_recent  = txn_series[-1];  txn_delta  = _delta(txn_recent,  txn_series[prior_idx])
+    cust_recent = cust_series[-1]; cust_delta = _delta(cust_recent, cust_series[prior_idx])
+    bas_recent  = basket_series[-1]; bas_delta = _delta(bas_recent,  basket_series[prior_idx])
+
+    # Anomaly count = stores + categories deviating >15% from
+    # ``first-4w`` baseline (matches A2/A3 conventions). Computed for
+    # every week so the sparkline shows the trailing-12-week anomaly
+    # trajectory rather than a single point.
+    anomaly_series = _anomaly_count_series(merchant_id, weeks)
+    anomaly_recent = anomaly_series[-1]
+    anomaly_breakdown = _anomaly_count_breakdown(merchant_id)
+
+    return {
+        "revenue": {
+            "value":     rev_recent,
+            "delta_pct": rev_delta,
+            "sparkline": rev_series,
+        },
+        "transactions": {
+            "value":     int(txn_recent),
+            "delta_pct": txn_delta,
+            "sparkline": txn_series,
+        },
+        "avg_basket": {
+            "value":     bas_recent,
+            "delta_pct": bas_delta,
+            "sparkline": basket_series,
+        },
+        "unique_customers": {
+            "value":     int(cust_recent),
+            "delta_pct": cust_delta,
+            "sparkline": cust_series,
+        },
+        "anomaly": {
+            "value":        anomaly_recent,
+            "n_stores":     anomaly_breakdown["n_stores"],
+            "n_categories": anomaly_breakdown["n_categories"],
+            "sparkline":    anomaly_series,
+        },
+    }
+
+
+def _anomaly_count_series(merchant_id: str, weeks: list[str]) -> list[int]:
+    """Per-week anomaly count: number of stores + categories whose
+    weekly transactions / line-count deviate from the merchant's
+    first-4-week baseline by >15 %. Returns a list aligned to
+    ``weeks`` (one int per week)."""
+    week_lo, week_hi = weeks[0], weeks[-1]
+    baseline_lo = "2026-03-02"
+    baseline_hi = "2026-03-23"
+
+    with _conn() as c:
+        # Per (store, week) txn counts for the full window.
+        store_rows = c.execute(
+            """
+            SELECT t.store_id,
+                   DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+                   COUNT(DISTINCT t.txn_id) AS n_txns
+            FROM tenant_transactions t
+            WHERE t.merchant_id = ?
+              AND DATE(t.txn_ts, 'weekday 0', '-6 days') BETWEEN ? AND ?
+            GROUP BY t.store_id, week
+            """,
+            (merchant_id, week_lo, week_hi),
+        ).fetchall()
+        cat_rows = c.execute(
+            """
+            SELECT p.category,
+                   DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+                   COUNT(*) AS n_lines
+            FROM tenant_transaction_items i
+            JOIN tenant_products p     ON p.sku    = i.sku
+            JOIN tenant_transactions t ON t.txn_id = i.txn_id
+            WHERE t.merchant_id = ?
+              AND DATE(t.txn_ts, 'weekday 0', '-6 days') BETWEEN ? AND ?
+            GROUP BY p.category, week
+            """,
+            (merchant_id, week_lo, week_hi),
+        ).fetchall()
+
+    store_baselines: dict[str, list[int]] = {}
+    store_by_wk: dict[str, dict[str, int]] = {}
+    for sid, wk, n in store_rows:
+        store_by_wk.setdefault(sid, {})[wk] = int(n)
+        if baseline_lo <= wk <= baseline_hi:
+            store_baselines.setdefault(sid, []).append(int(n))
+
+    cat_baselines: dict[str, list[int]] = {}
+    cat_by_wk: dict[str, dict[str, int]] = {}
+    for cat, wk, n in cat_rows:
+        cat_by_wk.setdefault(cat, {})[wk] = int(n)
+        if baseline_lo <= wk <= baseline_hi:
+            cat_baselines.setdefault(cat, []).append(int(n))
+
+    out: list[int] = []
+    for wk in weeks:
+        n_anom = 0
+        for sid, base_list in store_baselines.items():
+            base = sum(base_list) / 4 if base_list else 0
+            if base <= 0:
+                continue
+            n = store_by_wk.get(sid, {}).get(wk, 0)
+            if abs(n / base - 1) >= 0.15:
+                n_anom += 1
+        for cat, base_list in cat_baselines.items():
+            base = sum(base_list) / 4 if base_list else 0
+            if base <= 0:
+                continue
+            n = cat_by_wk.get(cat, {}).get(wk, 0)
+            if abs(n / base - 1) >= 0.15:
+                n_anom += 1
+        out.append(n_anom)
+    return out
+
+
+def _anomaly_count_breakdown(merchant_id: str) -> dict:
+    """Split this week's anomaly count into store-side and category-
+    side contributions — used by the KPI hint subtitle."""
+    s = store_anomalies_own_only(merchant_id)
+    cat = category_anomalies(merchant_id)
+    return {
+        "n_stores":     s["n_flagged"],
+        "n_categories": cat["n_flagged"],
+    }
+
+
+# ---------------------------------------------------------------------------
 # Phase 4.3 — TBL / TJX question data (own-only)
 # ---------------------------------------------------------------------------
 #

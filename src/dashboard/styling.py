@@ -83,6 +83,59 @@ _CSS = """
     font-weight: 600;
   }
 
+  /* Phase 4.4 KPI callout primitives — rendered inside an
+     st.container(border=True), so the bordered shell comes from
+     Streamlit; the typography rules below match the v2.5 .kpi rhythm. */
+  .kpi-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin: 0 0 6px 0;
+  }
+  .kpi-value {
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+    margin: 0 0 4px 0;
+  }
+  .kpi-delta { font-size: 12px; font-variant-numeric: tabular-nums; margin: 4px 0 4px 0; }
+  .kpi-delta.up   { color: var(--good); }
+  .kpi-delta.down { color: var(--bad); }
+  .kpi-delta.flat { color: var(--text-muted); }
+  .kpi-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  /* "Ask about this" affordance — small icon-style button. Targets
+     Streamlit's per-widget st-key-* class so the button renders
+     compactly inside the KPI card header row. */
+  div[class*="st-key-ask_about_"] button {
+    padding: 2px 6px !important;
+    min-height: 0 !important;
+    font-size: 14px !important;
+    line-height: 1.2 !important;
+    border-color: transparent !important;
+    background: transparent !important;
+    opacity: 0.45;
+    transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  }
+  div[class*="st-key-ask_about_"] button:hover {
+    opacity: 1.0 !important;
+    background: var(--accent-soft) !important;
+    border-color: var(--accent-soft) !important;
+  }
+  div[class*="st-key-ask_about_"] button:disabled {
+    opacity: 0.25 !important;
+    cursor: not-allowed;
+  }
+
   /* Generic card primitive */
   .panel-card {
     background: #fff;

@@ -1477,24 +1477,6 @@ def render_chat_panel(merchant_id: str) -> None:
         state.agent_running = True
         st.rerun()
 
-    # ----- DEBUG: Phase 4.1 test affordance -----
-    # Remove in Phase 4.4 when real card-side "Ask about this" buttons
-    # land in the dashboard column. Lets us exercise the pre-fill +
-    # specialist-snap plumbing without dashboard cards.
-    if st.button(
-        "🧪 [DEBUG] Test Ask-about-this → A1",
-        key=f"debug_ask_about_{merchant_id}",
-        disabled=is_running,
-        use_container_width=True,
-    ):
-        state.chat_input_prefill = (
-            "What's driving the transaction drop at my "
-            "University City stores?"
-        )
-        state.active_agent = "anomaly"
-        st.rerun()
-    # ----- end DEBUG -----
-
     st.markdown("---")
 
     # -- Reserve scrollable chat history container --

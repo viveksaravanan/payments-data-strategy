@@ -1423,6 +1423,148 @@ def render_table_with_drilldown(
 
 
 # ---------------------------------------------------------------------------
+# Pattern 8 — KPI callout (single-number + sparkline + delta arrow)
+# ---------------------------------------------------------------------------
+
+# Maps semantic flag → ``--accent`` override for the KPI value text.
+_KPI_FLAG_COLOR = {
+    "alert": "var(--bad)",
+    "clear": "var(--good)",
+}
+
+_DELTA_ARROW = {
+    "up":   "▲",
+    "down": "▼",
+    "flat": "▬",
+}
+
+
+def _render_sparkline(values: list[float], *, color: str = ACCENT) -> None:
+    """Tiny axis-less Plotly line used inside Pattern 8 cards. Keeps a
+    fixed ~38 px height so all 5 KPI cards in a row stay vertically
+    aligned regardless of value magnitudes."""
+    if not values or len(values) < 2:
+        return
+    fig = go.Figure(go.Scatter(
+        x=list(range(len(values))),
+        y=values,
+        mode="lines",
+        line=dict(color=color, width=1.6, shape="spline"),
+        hoverinfo="skip",
+    ))
+    fig.update_layout(
+        height=38,
+        margin=dict(l=0, r=0, t=2, b=0),
+        showlegend=False,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(visible=False, fixedrange=True),
+        yaxis=dict(visible=False, fixedrange=True),
+    )
+    st.plotly_chart(fig, use_container_width=True,
+                     config={"displayModeBar": False})
+
+
+def render_ask_about_this(
+    *,
+    key: str,
+    specialist: str,
+    prefill: str,
+    label: str = "💬",
+    help_text: str = "Ask the agent about this",
+) -> None:
+    """Per-card "Ask about this" affordance.
+
+    Clicking sets ``state.chat_input_prefill`` + ``state.active_agent``
+    (the existing two-state plumbing from Phase 4.1). The chat panel's
+    confirm-to-send card picks the prefill up on the next rerun; the
+    specialist switcher snaps to ``specialist``.
+
+    Disabled while an agent is mid-dispatch — clicking during a stream
+    would otherwise queue a second dispatch behind the running one.
+    """
+    state = st.session_state
+    is_running = bool(state.get("agent_running", False))
+    if st.button(
+        label,
+        key=key,
+        help=help_text,
+        disabled=is_running,
+        use_container_width=True,
+    ):
+        state.chat_input_prefill = prefill
+        state.active_agent = specialist
+        st.rerun()
+
+
+def render_kpi_callout(
+    *,
+    label: str,
+    value: str,
+    delta_text: str | None = None,
+    delta_direction: str = "flat",
+    sparkline: list[float] | None = None,
+    hint: str | None = None,
+    flag: str | None = None,
+    ask_about_this: dict | None = None,
+) -> None:
+    """Pattern 8 — single-number KPI callout with sparkline and delta.
+
+    Renders inside a bordered container so callers can drop a row of
+    five via ``st.columns(5)`` without additional layout glue.
+
+    ``ask_about_this`` is an optional dict shaped
+    ``{key, specialist, prefill}``. When present the affordance icon
+    renders in the card's header row alongside the label.
+    """
+    value_color = _KPI_FLAG_COLOR.get(flag or "", "var(--text)")
+
+    with st.container(border=True):
+        # Header row: label + optional ask-about-this affordance.
+        if ask_about_this:
+            head_l, head_r = st.columns([0.84, 0.16], gap="small")
+            with head_l:
+                st.markdown(
+                    f'<div class="kpi-label">{label}</div>',
+                    unsafe_allow_html=True,
+                )
+            with head_r:
+                render_ask_about_this(**ask_about_this)
+        else:
+            st.markdown(
+                f'<div class="kpi-label">{label}</div>',
+                unsafe_allow_html=True,
+            )
+
+        st.markdown(
+            f'<div class="kpi-value" style="color:{value_color};">{value}</div>',
+            unsafe_allow_html=True,
+        )
+
+        if delta_text:
+            cls = delta_direction if delta_direction in ("up", "down", "flat") else "flat"
+            arrow = _DELTA_ARROW.get(cls, "")
+            st.markdown(
+                f'<div class="kpi-delta {cls}">{arrow} {delta_text}</div>',
+                unsafe_allow_html=True,
+            )
+
+        if sparkline:
+            spark_color = (
+                "#C44536" if flag == "alert" else
+                "#2F855A" if flag == "clear" else
+                ACCENT
+            )
+            _render_sparkline(sparkline, color=spark_color)
+
+        if hint:
+            st.markdown(
+                f'<div class="kpi-hint">{hint}</div>',
+                unsafe_allow_html=True,
+            )
+
+
+# ---------------------------------------------------------------------------
 # Takeaway-subtitle templating
 # ---------------------------------------------------------------------------
 

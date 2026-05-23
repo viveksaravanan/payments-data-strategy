@@ -76,28 +76,116 @@ PLOTLY_CONFIG = {"displayModeBar": False, "responsive": True}
 # ---------------------------------------------------------------------------
 
 def render_kpi_row(merchant_id: str, filters: dict) -> None:
-    """4 KPI cards. Each card: large number + label + 30-day delta."""
-    k = D.kpi_block(merchant_id, D._filters_key(filters))
+    """Compat shim — delegates to ``render_kpi_strip``."""
+    render_kpi_strip(merchant_id, filters)
 
-    cards = [
-        ("Revenue (90d)",       _fmt_money(k["revenue"]),          k["revenue_delta"]),
-        ("Transactions (90d)",  _fmt_int(k["transactions"]),       k["transactions_delta"]),
-        ("Avg transaction",     _fmt_money(k["avg_transaction"]),  k["avg_transaction_delta"]),
-        ("Active customers",    _fmt_int(k["active_customers"]),   k["active_customers_delta"]),
-    ]
 
-    cols = st.columns(4, gap="medium")
-    for col, (label, value, delta) in zip(cols, cards):
-        with col:
-            delta_text, delta_cls = _fmt_pct(delta)
-            html = (
-                f'<div class="kpi">'
-                f'  <div class="num">{value}</div>'
-                f'  <div class="label">{label}</div>'
-                f'  <div class="delta {delta_cls}">{delta_text}</div>'
-                f'</div>'
-            )
-            st.markdown(html, unsafe_allow_html=True)
+def render_kpi_strip(merchant_id: str, filters: dict) -> None:  # noqa: ARG001
+    """Phase 4.4 KPI strip: 5 Pattern 8 callouts in a row — Revenue,
+    Transactions, Avg basket, Unique customers, Anomaly count. Each
+    card carries an "Ask about this" affordance routing per
+    V3_DASHBOARD_DESIGN.md Section 5.5.
+    """
+    from . import chart_patterns as CP
+
+    k = D.kpi_strip(merchant_id)
+
+    def _direction(pct: float) -> str:
+        return "up" if pct > 0 else ("down" if pct < 0 else "flat")
+
+    cols = st.columns(5, gap="small")
+
+    # Card 1.1 — Revenue
+    with cols[0]:
+        CP.render_kpi_callout(
+            label="Revenue this week",
+            value=_fmt_money(k["revenue"]["value"]),
+            delta_text=f"{k['revenue']['delta_pct']:+.1f}% vs prior 4w",
+            delta_direction=_direction(k["revenue"]["delta_pct"]),
+            sparkline=k["revenue"]["sparkline"],
+            ask_about_this={
+                "key":        f"ask_about_revenue_{merchant_id}",
+                "specialist": "anomaly",
+                "prefill":    "What's driving the change in my revenue this week?",
+            },
+        )
+
+    # Card 1.2 — Transactions
+    with cols[1]:
+        CP.render_kpi_callout(
+            label="Transactions this week",
+            value=_fmt_int(k["transactions"]["value"]),
+            delta_text=f"{k['transactions']['delta_pct']:+.1f}% vs prior 4w",
+            delta_direction=_direction(k["transactions"]["delta_pct"]),
+            sparkline=k["transactions"]["sparkline"],
+            ask_about_this={
+                "key":        f"ask_about_txns_{merchant_id}",
+                "specialist": "anomaly",
+                "prefill":    "What's driving the change in my transaction count this week?",
+            },
+        )
+
+    # Card 1.3 — Avg basket (relabeled from "Avg transaction")
+    with cols[2]:
+        CP.render_kpi_callout(
+            label="Avg basket",
+            value=_fmt_money(k["avg_basket"]["value"]),
+            delta_text=f"{k['avg_basket']['delta_pct']:+.1f}% vs prior 4w",
+            delta_direction=_direction(k["avg_basket"]["delta_pct"]),
+            sparkline=k["avg_basket"]["sparkline"],
+            ask_about_this={
+                "key":        f"ask_about_basket_{merchant_id}",
+                "specialist": "demand",
+                "prefill":    "What's changing about my average ticket?",
+            },
+        )
+
+    # Card 1.4 — Unique customers
+    with cols[3]:
+        CP.render_kpi_callout(
+            label="Unique customers",
+            value=_fmt_int(k["unique_customers"]["value"]),
+            delta_text=f"{k['unique_customers']['delta_pct']:+.1f}% vs prior 4w",
+            delta_direction=_direction(k["unique_customers"]["delta_pct"]),
+            sparkline=k["unique_customers"]["sparkline"],
+            ask_about_this={
+                "key":        f"ask_about_customers_{merchant_id}",
+                "specialist": "demand",
+                "prefill":    "Is my customer count growing or declining? Why?",
+            },
+        )
+
+    # Card 1.5 — Anomaly count (NEW)
+    with cols[4]:
+        a = k["anomaly"]
+        flag = "alert" if a["value"] > 0 else "clear"
+        if a["value"] == 0:
+            hint = "All clear"
+        else:
+            parts = []
+            if a["n_stores"]:
+                parts.append(
+                    f"{a['n_stores']} store{'s' if a['n_stores'] != 1 else ''}"
+                )
+            if a["n_categories"]:
+                parts.append(
+                    f"{a['n_categories']} categor"
+                    f"{'ies' if a['n_categories'] != 1 else 'y'}"
+                )
+            hint = f"{a['value']} flagged ({' + '.join(parts)})" if parts \
+                else f"{a['value']} flagged"
+        CP.render_kpi_callout(
+            label="Anomaly count",
+            value=str(a["value"]),
+            flag=flag,
+            hint=hint,
+            sparkline=[float(v) for v in a["sparkline"]],
+            ask_about_this={
+                "key":        f"ask_about_anomaly_{merchant_id}",
+                "specialist": "anomaly",
+                "prefill":    "What's flagged this week?",
+            },
+        )
 
 
 # ---------------------------------------------------------------------------
