@@ -80,6 +80,173 @@ def render_kpi_row(merchant_id: str, filters: dict) -> None:
     render_kpi_strip(merchant_id, filters)
 
 
+def render_catalog_section(merchant_id: str, filters: dict) -> None:  # noqa: ARG001
+    """Phase 4.4 Section 4 — Catalog. Two cards in a 40/60 row:
+
+    - Card 4.1 Category mix (Pattern 2 own-bars, top 8 + "Other"
+      roll-up). Replaces v2.5's category-mix donut.
+    - Card 4.2 SKU performance (Pattern 9 with a Top/Bottom toggle).
+      The toggle persists per-merchant in session state so switching
+      merchants doesn't reset the view.
+    """
+    from . import chart_patterns as CP
+
+    cols = st.columns([40, 60], gap="small")
+    state = st.session_state
+    state.setdefault("sku_view_by_merchant", {})
+
+    # Card 4.1 — Category mix
+    with cols[0]:
+        with st.container(border=True):
+            # Per-viewer affordance routing for Card 4.1 — Demand
+            # specialist for all three segments but different pre-fill.
+            prefill_by_segment = {
+                "KRG": ("Where am I over- or under-indexed in my basket "
+                         "mix vs peers?"),
+                "ACM": ("Where am I over- or under-indexed in my basket "
+                         "mix vs peers?"),
+                "WDX": ("Where am I over- or under-indexed in my basket "
+                         "mix vs peers?"),
+                "TBL": ("What does my menu mix look like? Where am I "
+                         "most concentrated?"),
+                "TJX": ("What does my category mix look like? Where am I "
+                         "concentrated?"),
+            }
+            CP.render_ask_about_this(
+                key=f"ask_about_cat_mix_{merchant_id}",
+                specialist="demand",
+                prefill=prefill_by_segment.get(merchant_id, prefill_by_segment["KRG"]),
+            )
+            chart_data = D.category_share_own(merchant_id, top_n=8)
+            if not chart_data["labels"]:
+                st.caption("_No category-share data available._")
+            else:
+                names = chart_data["top3_names"]
+                # Count "long tail" = remaining bars beyond top-3 (the
+                # final "Other" bar collapses any below top-8 into one,
+                # but the long-tail story should reflect everything past
+                # the named top-3).
+                n_long_tail = max(0, len(chart_data["labels"]) - 3)
+                takeaway = (
+                    f"Top 3 categories ({', '.join(names)}) account for "
+                    f"{chart_data['top3_pct']:.1f}% of revenue. "
+                    f"{n_long_tail} categor"
+                    f"{'ies' if n_long_tail != 1 else 'y'} make up the "
+                    "long tail."
+                )
+                CP.render_horizontal_bars_own(
+                    chart_data,
+                    title="Category mix",
+                    takeaway=takeaway,
+                    height=360,
+                )
+
+    # Card 4.2 — SKU performance with top/bottom toggle
+    with cols[1]:
+        with st.container(border=True):
+            current_view = state.sku_view_by_merchant.get(merchant_id, "top")
+            # Toggle widget — persisted per merchant so a viewer switch
+            # doesn't reset another merchant's chosen view.
+            view = st.radio(
+                "Show",
+                options=["Top performers", "Underperformers"],
+                index=0 if current_view == "top" else 1,
+                horizontal=True,
+                key=f"sku_view_{merchant_id}",
+                label_visibility="collapsed",
+            )
+            view_key = "top" if view == "Top performers" else "bottom"
+            state.sku_view_by_merchant[merchant_id] = view_key
+
+            # Affordance routing depends on view + segment.
+            if view_key == "top":
+                ask_specialist = "demand"
+                ask_prefill = (
+                    "Tell me more about my top-performing SKUs and "
+                    "what's driving them"
+                )
+            else:
+                ask_specialist = "anomaly"
+                # Pre-fill matches the segment's anomaly-SKU question.
+                ask_prefill = {
+                    "KRG": "Which SKUs or categories are spiking or dropping unusually?",
+                    "ACM": "Which SKUs or categories are spiking or dropping unusually?",
+                    "WDX": "Which SKUs or categories are spiking or dropping unusually?",
+                    "TBL": "Are any menu items spiking or dropping unusually?",
+                    "TJX": "Are any categories spiking or dropping unusually?",
+                }.get(merchant_id, "Which SKUs are spiking or dropping unusually?")
+            CP.render_ask_about_this(
+                key=f"ask_about_sku_{merchant_id}",
+                specialist=ask_specialist,
+                prefill=ask_prefill,
+            )
+
+            chart_data = D.sku_performance(merchant_id)
+            all_rows = chart_data["rows"]
+            if not all_rows:
+                st.caption("_No SKU data in the recent window._")
+            else:
+                if view_key == "top":
+                    rows = sorted(
+                        all_rows,
+                        key=lambda r: r["recent_revenue"],
+                        reverse=True,
+                    )[:20]
+                    n_decliners = sum(
+                        1 for r in all_rows
+                        if r["deviation_pct"] is not None
+                        and r["deviation_pct"] <= -15.0
+                    )
+                    total_rev = sum(r["recent_revenue"] for r in all_rows) or 1.0
+                    top10_rev = sum(r["recent_revenue"] for r in rows[:10])
+                    top_sku = rows[0]
+                    takeaway = (
+                        f"Top SKU: {top_sku['sku_name']} "
+                        f"(${top_sku['recent_revenue']:,.0f} this week). "
+                        f"Top 10 SKUs account for "
+                        f"{top10_rev / total_rev * 100:.0f}% of revenue."
+                    )
+                else:
+                    # Underperformers — sort by deviation_pct asc.
+                    # SKUs with no baseline (deviation_pct is None)
+                    # can't be classified as decliners; drop them.
+                    rows = sorted(
+                        [r for r in all_rows if r["deviation_pct"] is not None],
+                        key=lambda r: r["deviation_pct"],
+                    )[:20]
+                    n_decliners = sum(
+                        1 for r in all_rows
+                        if r["deviation_pct"] is not None
+                        and r["deviation_pct"] <= -15.0
+                    )
+                    if rows:
+                        worst = rows[0]
+                        takeaway = (
+                            f"{n_decliners} SKUs declining >15% vs "
+                            f"baseline. Largest drop: {worst['sku_name']} "
+                            f"at {worst['deviation_pct']:+.1f}%."
+                        )
+                    else:
+                        takeaway = "No SKU-level decliners in the recent window."
+                CP.render_table_with_drilldown(
+                    {
+                        "rows": rows,
+                        "columns": [
+                            {"key": "sku_name",       "label": "SKU",       "kind": "text"},
+                            {"key": "category",       "label": "Category",  "kind": "text"},
+                            {"key": "baseline_lines", "label": "Baseline/wk", "kind": "float"},
+                            {"key": "recent_lines",   "label": "Recent (lines)", "kind": "int"},
+                            {"key": "deviation_pct",  "label": "Δ vs baseline",
+                             "kind": "pct", "diverging": True},
+                            {"key": "recent_revenue", "label": "Revenue ($)", "kind": "float"},
+                        ],
+                    },
+                    title="SKU performance",
+                    takeaway=takeaway,
+                    height=330,
+                )
+
+
 def render_geography_section(merchant_id: str, filters: dict) -> None:  # noqa: ARG001
     """Phase 4.4 Section 3 — Geography. Two cards in a 55/45 row:
 
@@ -572,255 +739,12 @@ def render_insights_panel(merchant_id: str, filters: dict) -> None:
     st.markdown('</div>', unsafe_allow_html=True)
 
 
-# ---------------------------------------------------------------------------
-# Detail charts — category mix + store performance
-# ---------------------------------------------------------------------------
-
-_CATEGORY_PALETTE = [
-    "#0F4C81", "#3A6FA5", "#6F8FB8", "#C0563F", "#5B7B58",
-    "#7B8294", "#B7791F", "#9A8BB5", "#3F8B92", "#7A4F3C",
-    "#5C7A99", "#A5B07A", "#C28A7E",
-]
-
-
-def render_category_mix(merchant_id: str, filters: dict) -> None:
-    df = D.category_mix(merchant_id, D._filters_key(filters))
-    st.markdown('<div class="panel-card">'
-                '<div class="panel-title">Revenue by category</div>',
-                unsafe_allow_html=True)
-    if df.empty:
-        st.caption("No revenue in this filter.")
-        st.markdown('</div>', unsafe_allow_html=True)
-        return
-    fig = go.Figure(go.Pie(
-        labels=df["category"],
-        values=df["revenue"],
-        hole=0.55,
-        marker={"colors": _CATEGORY_PALETTE * 3},
-        hovertemplate="<b>%{label}</b><br>$%{value:,.0f}<br>%{percent}<extra></extra>",
-        textinfo="none",
-    ))
-    fig.update_layout(**_plotly_layout(
-        height=300,
-        margin={"l": 8, "r": 8, "t": 16, "b": 8},
-        showlegend=True,
-        legend={"font": {"size": 11}, "orientation": "v",
-                  "yanchor": "middle", "y": 0.5,
-                  "xanchor": "left",   "x": 1.0},
-    ))
-    st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-
-def render_store_performance(merchant_id: str, filters: dict) -> None:
-    df = D.store_performance(merchant_id, D._filters_key(filters))
-    color = D.MERCHANT_COLOR[merchant_id]
-    selected = set(filters.get("stores") or [])
-    st.markdown('<div class="panel-card">'
-                '<div class="panel-title">Stores by 90-day transactions</div>',
-                unsafe_allow_html=True)
-    if df.empty:
-        st.caption("No stores.")
-        st.markdown('</div>', unsafe_allow_html=True)
-        return
-    # If a store filter is active, dim unselected rows visually by using
-    # a lighter color for those bars.
-    bar_colors = [
-        color if (not selected or s in selected) else ACCENT_LIGHT
-        for s in df["store_id"]
-    ]
-    fig = go.Figure(go.Bar(
-        x=df["n_txns"].iloc[::-1],
-        y=df["store_id"].iloc[::-1],
-        orientation="h",
-        marker={"color": list(reversed(bar_colors))},
-        hovertemplate="<b>%{y}</b><br>%{customdata}<br>%{x:,} txns<extra></extra>",
-        customdata=df["neighborhood"].iloc[::-1],
-    ))
-    fig.update_layout(**_plotly_layout(
-        height=max(220, 16 * len(df)),
-        margin={"l": 8, "r": 16, "t": 4, "b": 32},
-        xaxis={"showgrid": True, "tickformat": ",.0f"},
-        yaxis={"showgrid": False, "tickfont": {"size": 10},
-                "automargin": True},
-    ))
-    st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-
-# ---------------------------------------------------------------------------
-# Payment Intelligence — 4 charts in a row
-# ---------------------------------------------------------------------------
-
-# Fixed labels for stable legend ordering across reruns.
-_PAYMENT_TYPES = ["credit", "debit"]
-_PAYMENT_TYPE_COLORS = {"credit": ACCENT, "debit": "#6F8FB8"}
-
-_NETWORKS = ["visa", "mc", "amex", "discover"]
-_NETWORK_COLORS = {"visa": ACCENT, "mc": "#C0563F", "amex": "#5B7B58", "discover": "#B7791F"}
-
-_ENTRY_MODES = ["chip", "contactless", "swipe", "manual"]
-_ENTRY_MODE_COLORS = {
-    "chip":        ACCENT,
-    "contactless": "#3A6FA5",
-    "swipe":       "#9A8BB5",
-    "manual":      "#C0563F",
-}
-
-_WALLET_COLORS = {"apple": "#1A1F2E", "google": "#0F4C81", "samsung": "#3A6FA5"}
-
-
-def render_payment_intelligence(merchant_id: str, filters: dict) -> None:
-    """Four charts in a single row exposing payment fields unique to a
-    Verifone-grade panel: method mix, card network, entry mode trend,
-    wallet adoption."""
-    fk = D._filters_key(filters)
-
-    st.markdown(
-        '<div style="font-size:13px;letter-spacing:0.06em;text-transform:uppercase;'
-        'color:var(--accent);font-weight:600;margin:18px 0 6px;">Payment intelligence</div>'
-        '<div style="font-size:12.5px;color:var(--text-muted);margin:0 0 10px;">'
-        'Verifone captures card-network, entry-mode, and wallet fields on every '
-        'transaction — most merchants do not see these in standard POS reports.'
-        '</div>',
-        unsafe_allow_html=True,
-    )
-
-    c1, c2, c3, c4 = st.columns(4, gap="small")
-    with c1:
-        _render_payment_method(D.payment_method_mix(merchant_id, fk))
-    with c2:
-        _render_card_network(D.card_network_mix(merchant_id, fk))
-    with c3:
-        _render_entry_mode_trend(D.entry_mode_trend(merchant_id, fk))
-    with c4:
-        _render_wallet_adoption(D.wallet_adoption(merchant_id, fk))
-
-
-def _render_payment_method(df: pd.DataFrame) -> None:
-    st.markdown('<div class="panel-card">'
-                '<div class="panel-title">Payment method</div>'
-                '<div class="panel-sub">credit vs debit</div>',
-                unsafe_allow_html=True)
-    if df.empty:
-        st.caption("No data in this filter.")
-        st.markdown('</div>', unsafe_allow_html=True)
-        return
-    colors = [_PAYMENT_TYPE_COLORS.get(lbl, ACCENT) for lbl in df["label"]]
-    fig = go.Figure(go.Pie(
-        labels=df["label"], values=df["n"], hole=0.55,
-        marker={"colors": colors},
-        textinfo="label+percent",
-        textfont={"size": 11, "color": "#fff"},
-        hovertemplate="<b>%{label}</b><br>%{value:,} txns<br>%{percent}<extra></extra>",
-    ))
-    fig.update_layout(**_plotly_layout(
-        height=220, margin={"l": 8, "r": 8, "t": 6, "b": 6},
-        showlegend=False,
-    ))
-    st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-
-def _render_card_network(df: pd.DataFrame) -> None:
-    st.markdown('<div class="panel-card">'
-                '<div class="panel-title">Card network</div>'
-                '<div class="panel-sub">Visa · Mastercard · Amex · Discover</div>',
-                unsafe_allow_html=True)
-    if df.empty:
-        st.caption("No data in this filter.")
-        st.markdown('</div>', unsafe_allow_html=True)
-        return
-    colors = [_NETWORK_COLORS.get(lbl, ACCENT) for lbl in df["label"]]
-    fig = go.Figure(go.Pie(
-        labels=df["label"], values=df["n"], hole=0.55,
-        marker={"colors": colors},
-        textinfo="label+percent",
-        textfont={"size": 11, "color": "#fff"},
-        hovertemplate="<b>%{label}</b><br>%{value:,} txns<br>%{percent}<extra></extra>",
-    ))
-    fig.update_layout(**_plotly_layout(
-        height=220, margin={"l": 8, "r": 8, "t": 6, "b": 6},
-        showlegend=False,
-    ))
-    st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-
-def _render_entry_mode_trend(df: pd.DataFrame) -> None:
-    st.markdown('<div class="panel-card">'
-                '<div class="panel-title">Entry mode over time</div>'
-                '<div class="panel-sub">stacked daily share</div>',
-                unsafe_allow_html=True)
-    if df.empty:
-        st.caption("No data in this filter.")
-        st.markdown('</div>', unsafe_allow_html=True)
-        return
-    modes = [m for m in _ENTRY_MODES if m in df.columns]
-    fig = go.Figure()
-    for m in modes:
-        fig.add_trace(go.Scatter(
-            x=df["day"], y=df[m],
-            mode="lines",
-            name=m,
-            stackgroup="entry",
-            line={"width": 0.5, "color": _ENTRY_MODE_COLORS.get(m, ACCENT)},
-            fillcolor=_ENTRY_MODE_COLORS.get(m, ACCENT),
-            hovertemplate="<b>%{x|%b %d}</b><br>" + m + ": %{y:,}<extra></extra>",
-        ))
-    fig.update_layout(**_plotly_layout(
-        height=220, margin={"l": 28, "r": 8, "t": 6, "b": 32},
-        showlegend=True,
-        legend={"orientation": "h", "y": -0.28, "x": 0,
-                 "xanchor": "left", "font": {"size": 10}},
-        xaxis={"tickformat": "%b %d", "tickfont": {"size": 10},
-                "linecolor": BORDER, "gridcolor": BORDER, "ticks": "outside"},
-        yaxis={"tickfont": {"size": 10}, "linecolor": BORDER,
-                "gridcolor": BORDER, "ticks": "outside", "rangemode": "tozero"},
-    ))
-    st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-
-def _render_wallet_adoption(w: dict) -> None:
-    pct = w.get("wallet_pct", 0.0)
-    total = w.get("contactless_total", 0)
-    breakdown = w.get("wallet_breakdown", pd.DataFrame())
-    st.markdown('<div class="panel-card">'
-                '<div class="panel-title">Mobile wallet adoption</div>'
-                '<div class="panel-sub">share of contactless txns</div>',
-                unsafe_allow_html=True)
-    if not total:
-        st.caption("No contactless transactions in this filter.")
-        st.markdown('</div>', unsafe_allow_html=True)
-        return
-    # Headline metric: percentage with a wallet
-    st.markdown(
-        f'<div style="font-size:30px;font-weight:600;color:var(--accent);'
-        f'letter-spacing:-0.02em;font-variant-numeric:tabular-nums;line-height:1.05;">'
-        f'{pct:.1f}%</div>'
-        f'<div style="font-size:11px;color:var(--text-muted);letter-spacing:0.05em;'
-        f'text-transform:uppercase;margin:2px 0 12px;">'
-        f'of {total:,} contactless transactions</div>',
-        unsafe_allow_html=True,
-    )
-    # Apple / Google / Samsung breakdown bar
-    if not breakdown.empty:
-        colors = [_WALLET_COLORS.get(w, ACCENT) for w in breakdown["wallet"]]
-        fig = go.Figure(go.Bar(
-            x=breakdown["n"].iloc[::-1],
-            y=breakdown["wallet"].iloc[::-1],
-            orientation="h",
-            marker={"color": list(reversed(colors))},
-            hovertemplate="<b>%{y}</b><br>%{x:,} txns<extra></extra>",
-        ))
-        fig.update_layout(**_plotly_layout(
-            height=120, margin={"l": 8, "r": 16, "t": 4, "b": 24},
-            xaxis={"tickformat": ",.0f", "tickfont": {"size": 10}},
-            yaxis={"tickfont": {"size": 11}, "automargin": True},
-        ))
-        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
-    st.markdown('</div>', unsafe_allow_html=True)
+# Phase 4.4d removed:
+#   render_category_mix       → replaced by Card 4.1 in render_catalog_section
+#   render_store_performance  → replaced by Card 3.2 in render_geography_section
+#   render_payment_intelligence (+ _render_payment_method, _render_card_network,
+#       _render_entry_mode_trend, _render_wallet_adoption) — out of scope per
+#       V3_PHASE4_AUDIT.md Section 5 (payment intelligence is NOT IN V3)
 
 
 # ---------------------------------------------------------------------------

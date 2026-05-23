@@ -389,3 +389,64 @@ and new cards).
 ---
 
 End of audit.
+
+---
+
+## Appendix: Phase 4.5 backlog
+
+The following items are deferred to Phase 4.5 (visual consistency
+pass) or later. Filed as they surfaced during Phase 4
+implementation; collected here so 4.5 has a concrete starting list.
+
+### Visual consistency work (Phase 4.5)
+- Palette consistency audit (every chart vs `V3_DASHBOARD_DESIGN.md`
+  Section 6)
+- Encoding rules standardization (line styles, point shapes,
+  fill opacity, baseline references)
+- Loading and empty states across charts
+- k=5 suppression treatment consistency
+- Hover behavior standardization (Plotly + Folium)
+- Mobile-readable behavior
+
+### Specific items from Phase 4 implementation
+- T-A3 late-night sparse column visual fix (deferred from
+  4.3a) — Tue-Sat late-night cells render blank because
+  recent-week counts fall below k=5; column looks sparse.
+- `render_kpi_row` compat shim removal (filed in 4.4a) — left
+  in place delegating to `render_kpi_strip` for safety; safe
+  to delete in 4.5.
+- Card 2.2 trend-shape comparison window: switch from
+  1w-vs-2w-prior to 2w-vs-8w-prior to reduce "accelerating"
+  reading across all viewers (filed in 4.4b) — current synth
+  data has overall growth so every viewer reads accelerating;
+  widening the window should add more contrast.
+- Customer-coverage footnote consistency across T2, T4, and
+  Card 5.3 (rolls in via 4.4e; verify in 4.5) — the
+  `CUSTOMER_COVERAGE_FOOTNOTE` constant from 4.2e follow-up is
+  the single source of truth.
+- Card 3.2 sort direction consistency check across dashboard
+  cards (filed in 4.4c) — Card 3.2 sorts worst-first by
+  signed deviation; chat-side A2/T-A1 sort by absolute
+  magnitude. Decide whether to unify.
+- v2.5 `render_time_patterns` deprecation (deferred from 4.4d)
+  — Card 2.3 (hour × DOW heatmap) supersedes it; the v2.5
+  renderer still renders in the dashboard column below
+  Section 4. Decide whether to remove or repurpose.
+- v2.5 `render_map`, `render_insights_panel`, `top_skus`,
+  `daily_volume` orphans (filed in 4.4c / 4.4d) — no longer
+  called from `app.py` but still defined in `views.py` /
+  `data.py`. Delete in 4.5.
+- `kpi_block` orphan (filed in 4.4a) — superseded by
+  `kpi_strip`; not called from `app.py` but still defined.
+
+### Filed for later phases (not 4.5)
+- D3 vs D4 redundancy: show one in demo curation (Phase 6
+  work)
+- Anomaly count card pre-fill text per-viewer adaptation
+  (Phase 5 agent prompt work)
+- Per-store traffic asymmetry between KRG/ACM/WDX (Phase 1.6
+  calibration review — possible v3.1)
+- Phase 1.6 WDX UC magnitude (~-6% vs grocers' -25 to -45%) —
+  accept asymmetry or recalibrate
+- Windows %-d strftime caveat in R-A3 (deployment concern,
+  not visual)

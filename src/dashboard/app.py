@@ -210,14 +210,7 @@ else:
         views.render_kpi_strip(mid, filters)
         views.render_performance_section(mid, filters)
         views.render_geography_section(mid, filters)
-
-        cat_col, store_col = st.columns([1, 1], gap="small")
-        with cat_col:
-            views.render_category_mix(mid, filters)
-        with store_col:
-            views.render_store_performance(mid, filters)
-
-        views.render_payment_intelligence(mid, filters)
+        views.render_catalog_section(mid, filters)
         views.render_time_patterns(mid, filters)
         views.render_customer_engagement(mid, filters)
 

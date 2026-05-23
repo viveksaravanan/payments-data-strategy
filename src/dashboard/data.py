@@ -306,78 +306,9 @@ def top_skus(merchant_id: str, filters_key: tuple, n: int = 5) -> pd.DataFrame:
         return pd.read_sql_query(sql, c, params=params)
 
 
-# ---------------------------------------------------------------------------
-# Category mix + store performance
-# ---------------------------------------------------------------------------
-
-@st.cache_data(ttl=3600)
-def category_mix(merchant_id: str, filters_key: tuple) -> pd.DataFrame:
-    """Revenue by category. Category filter (if any) narrows the donut
-    to the selected categories — natural behavior since the user has
-    asked to focus on those."""
-    filters = _unpack_filters_key(filters_key)
-    txn_where, txn_params = _txn_where(filters)
-    cat_where, cat_params = _category_where(filters)
-    sql = """
-    SELECT p.category, ROUND(SUM(i.line_total), 2) AS revenue
-    FROM tenant_transaction_items i
-    JOIN tenant_transactions t ON t.txn_id = i.txn_id
-    JOIN tenant_products p     ON p.sku    = i.sku
-    WHERE t.merchant_id = ?
-    """
-    params = [merchant_id]
-    if txn_where:
-        sql += f" AND {txn_where}"
-        params.extend(txn_params)
-    if cat_where:
-        sql += f" AND {cat_where}"
-        params.extend(cat_params)
-    sql += " GROUP BY p.category ORDER BY revenue DESC"
-    with _conn() as c:
-        return pd.read_sql_query(sql, c, params=params)
-
-
-@st.cache_data(ttl=3600)
-def store_performance(merchant_id: str, filters_key: tuple) -> pd.DataFrame:
-    """Per-store transaction counts. Category filter switches to line-
-    item path so the count reflects only matching items."""
-    filters = _unpack_filters_key(filters_key)
-    txn_where, txn_params = _txn_where(filters)
-    cat_where, cat_params = _category_where(filters)
-    if _has_category_filter(filters):
-        sql = """
-        SELECT s.store_id, s.neighborhood,
-               COUNT(DISTINCT t.txn_id) AS n_txns
-        FROM tenant_stores s
-        LEFT JOIN tenant_transactions t
-          ON t.store_id = s.store_id AND t.merchant_id = s.merchant_id
-        LEFT JOIN tenant_transaction_items i ON i.txn_id = t.txn_id
-        LEFT JOIN tenant_products p           ON p.sku   = i.sku AND p.merchant_id = s.merchant_id
-        WHERE s.merchant_id = ?
-        """
-        params = [merchant_id]
-        if txn_where:
-            sql += f" AND ({txn_where} OR t.txn_id IS NULL)"
-            params.extend(txn_params)
-        sql += f" AND ({cat_where} OR t.txn_id IS NULL)"
-        params.extend(cat_params)
-        sql += " GROUP BY s.store_id, s.neighborhood ORDER BY n_txns DESC"
-    else:
-        sql = """
-        SELECT s.store_id, s.neighborhood,
-               COUNT(t.txn_id) AS n_txns
-        FROM tenant_stores s
-        LEFT JOIN tenant_transactions t
-          ON t.store_id = s.store_id AND t.merchant_id = s.merchant_id
-        WHERE s.merchant_id = ?
-        """
-        params = [merchant_id]
-        if txn_where:
-            sql += f" AND ({txn_where} OR t.txn_id IS NULL)"
-            params.extend(txn_params)
-        sql += " GROUP BY s.store_id, s.neighborhood ORDER BY n_txns DESC"
-    with _conn() as c:
-        return pd.read_sql_query(sql, c, params=params)
+# Phase 4.4d removed ``category_mix`` (replaced by ``category_share_own``)
+# and ``store_performance`` (replaced by ``store_anomalies`` /
+# ``store_anomalies_own_only``).
 
 
 # ---------------------------------------------------------------------------
@@ -547,164 +478,9 @@ def customer_engagement(merchant_id: str, filters_key: tuple) -> dict:
     return out
 
 
-# ---------------------------------------------------------------------------
-# Payment Intelligence — Verifone-uniquely-rich payment fields
-# ---------------------------------------------------------------------------
-
-@st.cache_data(ttl=3600)
-def payment_method_mix(merchant_id: str, filters_key: tuple) -> pd.DataFrame:
-    """Share of transactions by payment_type (credit / debit)."""
-    filters = _unpack_filters_key(filters_key)
-    where, params = _txn_where(filters)
-    has_cat = _has_category_filter(filters)
-    cat_where, cat_params = _category_where(filters)
-    if has_cat:
-        sql = """
-        SELECT t.payment_type AS label, COUNT(DISTINCT t.txn_id) AS n
-        FROM tenant_transaction_items i
-        JOIN tenant_transactions t ON t.txn_id = i.txn_id
-        JOIN tenant_products p     ON p.sku    = i.sku
-        WHERE t.merchant_id = ?
-        """
-        q_params = [merchant_id]
-    else:
-        sql = "SELECT payment_type AS label, COUNT(*) AS n FROM tenant_transactions t WHERE t.merchant_id = ?"
-        q_params = [merchant_id]
-    if where:
-        sql += f" AND {where}"
-        q_params.extend(params)
-    if has_cat:
-        sql += f" AND {cat_where}"
-        q_params.extend(cat_params)
-    sql += " GROUP BY label ORDER BY n DESC"
-    with _conn() as c:
-        return pd.read_sql_query(sql, c, params=q_params)
-
-
-@st.cache_data(ttl=3600)
-def card_network_mix(merchant_id: str, filters_key: tuple) -> pd.DataFrame:
-    """Share of transactions by card_network (visa / mc / amex / discover)."""
-    filters = _unpack_filters_key(filters_key)
-    where, params = _txn_where(filters)
-    has_cat = _has_category_filter(filters)
-    cat_where, cat_params = _category_where(filters)
-    if has_cat:
-        sql = """
-        SELECT t.card_network AS label, COUNT(DISTINCT t.txn_id) AS n
-        FROM tenant_transaction_items i
-        JOIN tenant_transactions t ON t.txn_id = i.txn_id
-        JOIN tenant_products p     ON p.sku    = i.sku
-        WHERE t.merchant_id = ? AND t.card_network IS NOT NULL
-        """
-        q_params = [merchant_id]
-    else:
-        sql = """SELECT card_network AS label, COUNT(*) AS n
-                 FROM tenant_transactions t
-                 WHERE t.merchant_id = ? AND t.card_network IS NOT NULL"""
-        q_params = [merchant_id]
-    if where:
-        sql += f" AND {where}"
-        q_params.extend(params)
-    if has_cat:
-        sql += f" AND {cat_where}"
-        q_params.extend(cat_params)
-    sql += " GROUP BY label ORDER BY n DESC"
-    with _conn() as c:
-        return pd.read_sql_query(sql, c, params=q_params)
-
-
-@st.cache_data(ttl=3600)
-def entry_mode_trend(merchant_id: str, filters_key: tuple) -> pd.DataFrame:
-    """Per-day count of transactions by entry_mode. Pivoted wide for a
-    stacked-area chart (one column per mode)."""
-    filters = _unpack_filters_key(filters_key)
-    where, params = _txn_where(filters)
-    has_cat = _has_category_filter(filters)
-    cat_where, cat_params = _category_where(filters)
-    if has_cat:
-        sql = """
-        SELECT DATE(t.txn_ts) AS day, t.entry_mode AS entry_mode, COUNT(DISTINCT t.txn_id) AS n
-        FROM tenant_transaction_items i
-        JOIN tenant_transactions t ON t.txn_id = i.txn_id
-        JOIN tenant_products p     ON p.sku    = i.sku
-        WHERE t.merchant_id = ?
-        """
-        q_params = [merchant_id]
-    else:
-        sql = """SELECT DATE(txn_ts) AS day, entry_mode, COUNT(*) AS n
-                 FROM tenant_transactions t WHERE t.merchant_id = ?"""
-        q_params = [merchant_id]
-    if where:
-        sql += f" AND {where}"
-        q_params.extend(params)
-    if has_cat:
-        sql += f" AND {cat_where}"
-        q_params.extend(cat_params)
-    sql += " GROUP BY day, entry_mode ORDER BY day"
-    with _conn() as c:
-        long = pd.read_sql_query(sql, c, params=q_params)
-    if long.empty:
-        return long
-    wide = (long.pivot_table(index="day", columns="entry_mode", values="n",
-                              aggfunc="sum")
-                .fillna(0).astype(int).reset_index())
-    wide["day"] = pd.to_datetime(wide["day"])
-    return wide
-
-
-@st.cache_data(ttl=3600)
-def wallet_adoption(merchant_id: str, filters_key: tuple) -> dict:
-    """Mobile-wallet adoption among contactless transactions.
-
-    Returns:
-      - contactless_total:   distinct txn count where entry_mode='contactless'
-      - wallet_total:        of those, the count with wallet_type != NULL
-      - wallet_breakdown:    {apple, google, samsung} counts
-      - wallet_pct:          wallet_total / contactless_total × 100
-    """
-    filters = _unpack_filters_key(filters_key)
-    where, params = _txn_where(filters)
-    has_cat = _has_category_filter(filters)
-    cat_where, cat_params = _category_where(filters)
-    if has_cat:
-        base = """
-        FROM tenant_transaction_items i
-        JOIN tenant_transactions t ON t.txn_id = i.txn_id
-        JOIN tenant_products p     ON p.sku    = i.sku
-        WHERE t.merchant_id = ? AND t.entry_mode = 'contactless'
-        """
-    else:
-        base = "FROM tenant_transactions t WHERE t.merchant_id = ? AND t.entry_mode = 'contactless'"
-    q_params: list = [merchant_id]
-    if where:
-        base += f" AND {where}"
-        q_params.extend(params)
-    if has_cat:
-        base += f" AND {cat_where}"
-        q_params.extend(cat_params)
-    with _conn() as c:
-        # Use COUNT(DISTINCT t.txn_id) consistently in both code paths so
-        # the wallet_total / contactless_total ratio is meaningful when
-        # categories are filtered (one transaction can have many items).
-        total = c.execute(
-            f"SELECT COUNT(DISTINCT t.txn_id) {base}", q_params,
-        ).fetchone()[0] or 0
-        with_wallet = c.execute(
-            f"SELECT COUNT(DISTINCT t.txn_id) {base} AND t.wallet_type IS NOT NULL",
-            q_params,
-        ).fetchone()[0] or 0
-        breakdown_df = pd.read_sql_query(
-            f"""SELECT t.wallet_type AS wallet, COUNT(DISTINCT t.txn_id) AS n
-                {base} AND t.wallet_type IS NOT NULL
-                GROUP BY t.wallet_type ORDER BY n DESC""",
-            c, params=q_params,
-        )
-    return {
-        "contactless_total": int(total),
-        "wallet_total":      int(with_wallet),
-        "wallet_pct":        (100.0 * with_wallet / total) if total else 0.0,
-        "wallet_breakdown":  breakdown_df,
-    }
+# Phase 4.4d removed payment-intelligence helpers (``payment_method_mix``,
+# ``card_network_mix``, ``entry_mode_trend``, ``wallet_adoption``). The
+# payment-intelligence section is NOT IN V3 per V3_PHASE4_AUDIT.md.
 
 
 # ---------------------------------------------------------------------------
@@ -2548,6 +2324,76 @@ def category_anomalies(merchant_id: str) -> dict:
         "top_direction":       direction,
         "peer_signal_for_top": peer_signal_for_top,
     }
+
+
+# ---------------------------------------------------------------------------
+# Phase 4.4 — Section 4 helpers (Catalog, Card 4.2 SKU performance)
+# ---------------------------------------------------------------------------
+
+@st.cache_data(ttl=3600)
+def sku_performance(merchant_id: str) -> dict:
+    """Per-SKU recent-week line count + revenue plus deviation vs the
+    first-4w baseline mean. Used by Card 4.2's top/bottom toggle —
+    the same row set sorted two different ways (top by recent
+    revenue, bottom by deviation_pct ascending).
+
+    Returns all SKUs (no top-N cap) so the renderer can sort + slice
+    per view without re-querying.
+    """
+    with _conn() as c:
+        rows = c.execute(
+            """
+            WITH weekly AS (
+                SELECT p.sku, p.name AS sku_name, p.category,
+                       DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+                       COUNT(*) AS n_lines,
+                       SUM(i.line_total) AS revenue
+                FROM tenant_transaction_items i
+                JOIN tenant_products p     ON p.sku    = i.sku
+                JOIN tenant_transactions t ON t.txn_id = i.txn_id
+                WHERE t.merchant_id = ?
+                  AND DATE(t.txn_ts, 'weekday 0', '-6 days')
+                      BETWEEN ? AND ?
+                GROUP BY p.sku, week
+            )
+            SELECT sku, sku_name, category,
+                   SUM(CASE WHEN week = ? THEN n_lines ELSE 0 END) AS recent_lines,
+                   SUM(CASE WHEN week = ? THEN revenue ELSE 0 END) AS recent_revenue,
+                   SUM(CASE WHEN week BETWEEN ? AND ? THEN n_lines ELSE 0 END)
+                        * 1.0 / 4 AS baseline_lines
+            FROM weekly
+            GROUP BY sku, sku_name, category
+            """,
+            (
+                merchant_id,
+                _A_BASELINE_WEEK_START, _A_RECENT_WEEK_START,
+                _A_RECENT_WEEK_START,
+                _A_RECENT_WEEK_START,
+                _A_BASELINE_WEEK_START, _A_BASELINE_WEEK_END,
+            ),
+        ).fetchall()
+
+    out: list[dict] = []
+    for sku, name, cat, recent_lines, recent_rev, baseline_lines in rows:
+        baseline_f = float(baseline_lines or 0)
+        recent_f   = int(recent_lines or 0)
+        rev_f      = float(recent_rev or 0)
+        if baseline_f <= 0 and recent_f <= 0:
+            continue
+        if baseline_f <= 0:
+            dev = None
+        else:
+            dev = round((recent_f / baseline_f - 1) * 100, 1)
+        out.append({
+            "sku":            sku,
+            "sku_name":       name,
+            "category":       cat,
+            "baseline_lines": round(baseline_f, 1),
+            "recent_lines":   recent_f,
+            "recent_revenue": round(rev_f, 2),
+            "deviation_pct":  dev,
+        })
+    return {"rows": out}
 
 
 # ---------------------------------------------------------------------------
