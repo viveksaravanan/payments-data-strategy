@@ -29,7 +29,7 @@ QUESTIONS: dict[str, dict[str, list[dict]]] = {
         "anomaly": [
             {
                 "id":      "A1",
-                "text":    "Is this trend unique to me, or do peers see it too?",
+                "text":    "Why is University City declining? Are peers seeing the same drop?",
                 "pattern": "pattern_1_time_series",
             },
             {

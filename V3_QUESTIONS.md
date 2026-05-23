@@ -43,7 +43,7 @@ the shape of the final set, not relative strength.
 
 | ID | Question | Signal / answer | Viz rec | Status |
 |---|---|---|---|---|
-| A1 | Is this trend unique to me, or do peers see it too? | Weekly metric trajectory, own + peers, normalized to baseline. | Pattern 1 (time-series) | **SELECTED** |
+| A1 | Why is University City declining? Are peers seeing the same drop? | Weekly metric trajectory, own + peers, normalized to baseline. | Pattern 1 (time-series) | **SELECTED** |
 | A2 | Which of my stores show abnormal traffic recently? | Per-store baseline vs recent, ranked; peer-neighborhood cross-check. | Pattern 9 (table + drilldown) | **SELECTED** |
 | A3 | Which SKUs or categories are spiking or dropping unusually? | Per (SKU/category, week) recent-vs-baseline ratio; sorted by deviation. | Pattern 9 (table + drilldown) | **SELECTED** |
 | A4 | When during the week/day do anomalies cluster? | Day-of-week × hour heatmap of anomaly density. | Pattern 3 (heatmap) | **CUT** — cut by user preference; hybrid feel between Anomaly and Trade. |
@@ -250,12 +250,11 @@ standalone (quadrant layout reads cold). All three.
 
 ---
 
-### A1. Is this trend unique to me, or do peers see it too?
+### A1. Why is University City declining? Are peers seeing the same drop?
 
 **Specialist:** anomaly
 
-**The question (as a merchant would phrase it):** "Something's off
-this week. Is it just me, or are my peers seeing the same thing?"
+**The question (as a merchant would phrase it):** "Why is University City declining? Are peers seeing the same drop?"
 
 **Signal:** Weekly metric (transaction count, revenue, store-level
 or neighborhood-level) for own merchant + per peer, over the 90-day
