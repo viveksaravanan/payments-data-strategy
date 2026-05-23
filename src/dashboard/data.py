@@ -2638,12 +2638,13 @@ def kpi_strip(merchant_id: str) -> dict:
     cust_recent = cust_series[-1]; cust_delta = _delta(cust_recent, cust_series[prior_idx])
     bas_recent  = basket_series[-1]; bas_delta = _delta(bas_recent,  basket_series[prior_idx])
 
-    # Anomaly count = stores + categories deviating >15% from
-    # ``first-4w`` baseline (matches A2/A3 conventions). Computed for
-    # every week so the sparkline shows the trailing-12-week anomaly
-    # trajectory rather than a single point.
-    anomaly_series = _anomaly_count_series(merchant_id, weeks)
-    anomaly_recent = anomaly_series[-1]
+    # Anomaly counts split by direction. Concerning = ratio < 0.85
+    # (below baseline by ≥ 15 %); notable = ratio > 1.15 (above
+    # baseline). The card flags "alert" only when there's a
+    # concerning item — growth-mode merchants whose stores all run
+    # above baseline (TBL, TJX in the current synthetic data) read
+    # as "all clear" instead of red.
+    anomaly_counts = _anomaly_counts_series(merchant_id, weeks)
     anomaly_breakdown = _anomaly_count_breakdown(merchant_id)
 
     return {
@@ -2668,25 +2669,42 @@ def kpi_strip(merchant_id: str) -> dict:
             "sparkline": cust_series,
         },
         "anomaly": {
-            "value":        anomaly_recent,
-            "n_stores":     anomaly_breakdown["n_stores"],
-            "n_categories": anomaly_breakdown["n_categories"],
-            "sparkline":    anomaly_series,
+            "concerning":   anomaly_counts["concerning"][-1],
+            "notable":      anomaly_counts["notable"][-1],
+            "total":        anomaly_counts["total"][-1],
+            "n_stores_concerning":     anomaly_breakdown["n_stores_concerning"],
+            "n_stores_notable":        anomaly_breakdown["n_stores_notable"],
+            "n_categories_concerning": anomaly_breakdown["n_categories_concerning"],
+            "n_categories_notable":    anomaly_breakdown["n_categories_notable"],
+            "trailing_concerning": anomaly_counts["concerning"],
+            "trailing_notable":    anomaly_counts["notable"],
+            "trailing_total":      anomaly_counts["total"],
         },
     }
 
 
-def _anomaly_count_series(merchant_id: str, weeks: list[str]) -> list[int]:
-    """Per-week anomaly count: number of stores + categories whose
-    weekly transactions / line-count deviate from the merchant's
-    first-4-week baseline by >15 %. Returns a list aligned to
-    ``weeks`` (one int per week)."""
+def _anomaly_counts_series(
+    merchant_id: str,
+    weeks: list[str],
+) -> dict[str, list[int]]:
+    """Per-week anomaly counts split by direction. Returns three
+    aligned lists::
+
+        {
+            "total":      [...],  # ratio off baseline by >= 15%
+            "concerning": [...],  # ratio < 0.85 (below baseline)
+            "notable":    [...],  # ratio > 1.15 (above baseline)
+        }
+
+    Counts stores + categories pooled. Direction-aware so the KPI
+    card can flag "alert" only when there are below-baseline items
+    rather than coloring growth-mode merchants red.
+    """
     week_lo, week_hi = weeks[0], weeks[-1]
     baseline_lo = "2026-03-02"
     baseline_hi = "2026-03-23"
 
     with _conn() as c:
-        # Per (store, week) txn counts for the full window.
         store_rows = c.execute(
             """
             SELECT t.store_id,
@@ -2728,35 +2746,62 @@ def _anomaly_count_series(merchant_id: str, weeks: list[str]) -> list[int]:
         if baseline_lo <= wk <= baseline_hi:
             cat_baselines.setdefault(cat, []).append(int(n))
 
-    out: list[int] = []
+    total_s:      list[int] = []
+    concerning_s: list[int] = []
+    notable_s:    list[int] = []
     for wk in weeks:
-        n_anom = 0
+        n_conc = 0
+        n_note = 0
         for sid, base_list in store_baselines.items():
             base = sum(base_list) / 4 if base_list else 0
             if base <= 0:
                 continue
-            n = store_by_wk.get(sid, {}).get(wk, 0)
-            if abs(n / base - 1) >= 0.15:
-                n_anom += 1
+            ratio = (store_by_wk.get(sid, {}).get(wk, 0)) / base
+            if ratio <= 0.85:
+                n_conc += 1
+            elif ratio >= 1.15:
+                n_note += 1
         for cat, base_list in cat_baselines.items():
             base = sum(base_list) / 4 if base_list else 0
             if base <= 0:
                 continue
-            n = cat_by_wk.get(cat, {}).get(wk, 0)
-            if abs(n / base - 1) >= 0.15:
-                n_anom += 1
-        out.append(n_anom)
-    return out
+            ratio = (cat_by_wk.get(cat, {}).get(wk, 0)) / base
+            if ratio <= 0.85:
+                n_conc += 1
+            elif ratio >= 1.15:
+                n_note += 1
+        concerning_s.append(n_conc)
+        notable_s.append(n_note)
+        total_s.append(n_conc + n_note)
+    return {
+        "total":      total_s,
+        "concerning": concerning_s,
+        "notable":    notable_s,
+    }
 
 
 def _anomaly_count_breakdown(merchant_id: str) -> dict:
     """Split this week's anomaly count into store-side and category-
-    side contributions — used by the KPI hint subtitle."""
+    side contributions, each further split by direction — used by
+    the KPI hint subtitle and the alert/clear flag decision."""
     s = store_anomalies_own_only(merchant_id)
     cat = category_anomalies(merchant_id)
     return {
-        "n_stores":     s["n_flagged"],
-        "n_categories": cat["n_flagged"],
+        "n_stores":              s["n_flagged"],
+        "n_stores_concerning":   s["n_under"],
+        "n_stores_notable":      s["n_over"],
+        "n_categories":          cat["n_flagged"],
+        # category_anomalies doesn't pre-split direction; compute here.
+        "n_categories_concerning": sum(
+            1 for r in cat["rows"]
+            if r["flag"] and r["deviation_pct"] is not None
+            and r["deviation_pct"] < 0
+        ),
+        "n_categories_notable":   sum(
+            1 for r in cat["rows"]
+            if r["flag"] and r["deviation_pct"] is not None
+            and r["deviation_pct"] > 0
+        ),
     }
 
 

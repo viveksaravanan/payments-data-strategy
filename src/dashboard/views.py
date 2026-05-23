@@ -155,31 +155,34 @@ def render_kpi_strip(merchant_id: str, filters: dict) -> None:  # noqa: ARG001
             },
         )
 
-    # Card 1.5 — Anomaly count (NEW)
+    # Card 1.5 — Anomaly count (NEW). Direction-aware:
+    # concerning = below baseline by ≥ 15 % (alert / red);
+    # notable    = above baseline by ≥ 15 % (informational, no alert).
+    # Growth-mode merchants whose stores all run above baseline read
+    # "All clear" + a notable count, rather than a red number.
     with cols[4]:
         a = k["anomaly"]
-        flag = "alert" if a["value"] > 0 else "clear"
-        if a["value"] == 0:
-            hint = "All clear"
+        concerning = a["concerning"]
+        notable    = a["notable"]
+        flag = "alert" if concerning > 0 else "clear"
+        if concerning > 0:
+            value = str(concerning)
+            hint  = f"{concerning} concerning, {notable} notable"
         else:
-            parts = []
-            if a["n_stores"]:
-                parts.append(
-                    f"{a['n_stores']} store{'s' if a['n_stores'] != 1 else ''}"
-                )
-            if a["n_categories"]:
-                parts.append(
-                    f"{a['n_categories']} categor"
-                    f"{'ies' if a['n_categories'] != 1 else 'y'}"
-                )
-            hint = f"{a['value']} flagged ({' + '.join(parts)})" if parts \
-                else f"{a['value']} flagged"
+            value = "0"
+            hint  = (
+                f"All clear, {notable} notable" if notable > 0
+                else "All clear"
+            )
+        # Sparkline = trailing-12-week total flag count. Shows
+        # overall anomaly volatility regardless of direction split;
+        # the headline number + hint carry the direction story.
         CP.render_kpi_callout(
             label="Anomaly count",
-            value=str(a["value"]),
+            value=value,
             flag=flag,
             hint=hint,
-            sparkline=[float(v) for v in a["sparkline"]],
+            sparkline=[float(v) for v in a["trailing_total"]],
             ask_about_this={
                 "key":        f"ask_about_anomaly_{merchant_id}",
                 "specialist": "anomaly",
