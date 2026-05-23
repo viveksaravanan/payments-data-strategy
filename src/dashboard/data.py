@@ -2551,6 +2551,210 @@ def category_anomalies(merchant_id: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Phase 4.4 — Section 2 helpers (Performance over time, Cards 2.1-2.3)
+# ---------------------------------------------------------------------------
+
+@st.cache_data(ttl=3600)
+def performance_trajectory(merchant_id: str) -> dict:
+    """Weekly revenue, transactions, and avg-basket trajectory over
+    the 12-week full-weeks window. Shared by Card 2.1 (revenue
+    trajectory) and Card 2.2 (transaction trajectory).
+
+    Returns::
+
+        {
+            "weeks":          12 ISO date strings (week-starts),
+            "revenue":        list of weekly revenue ($),
+            "transactions":   list of weekly txn counts,
+            "basket":         list of weekly avg ticket ($),
+            "baseline_band":  list of weekly trailing-4w-mean revenue
+                              (visual reference band for Card 2.1);
+            "revenue_30d_pct":   % change over the last 30 days,
+            "txn_30d_pct":       % change over the last 30 days,
+            "basket_30d_pct":    % change over the last 30 days,
+            "revenue_trend_shape": "stable" | "accelerating" |
+                                   "decelerating",
+            "txn_growth_driver":   "more trips" | "bigger baskets" |
+                                   "both" | "neither, mixed",
+        }
+    """
+    weeks = [
+        "2026-03-02", "2026-03-09", "2026-03-16", "2026-03-23",
+        "2026-03-30", "2026-04-06", "2026-04-13", "2026-04-20",
+        "2026-04-27", "2026-05-04", "2026-05-11", "2026-05-18",
+    ]
+    week_lo, week_hi = weeks[0], weeks[-1]
+
+    with _conn() as c:
+        rows = c.execute(
+            """
+            SELECT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+                   SUM(t.txn_total)         AS revenue,
+                   COUNT(DISTINCT t.txn_id) AS n_txns
+            FROM tenant_transactions t
+            WHERE t.merchant_id = ?
+              AND DATE(t.txn_ts, 'weekday 0', '-6 days') BETWEEN ? AND ?
+            GROUP BY week
+            """,
+            (merchant_id, week_lo, week_hi),
+        ).fetchall()
+
+    rev_by_wk = {w: float(r) for w, r, _ in rows}
+    txn_by_wk = {w: int(n)   for w, _, n in rows}
+    revenue      = [rev_by_wk.get(w, 0.0) for w in weeks]
+    transactions = [txn_by_wk.get(w, 0)   for w in weeks]
+    basket = [
+        (revenue[i] / transactions[i]) if transactions[i] > 0 else 0.0
+        for i in range(len(weeks))
+    ]
+
+    # Trailing 4-week mean baseline (rolling) for the revenue band.
+    baseline_band: list[float] = []
+    for i in range(len(weeks)):
+        lo = max(0, i - 3)
+        window = revenue[lo: i + 1]
+        baseline_band.append(sum(window) / len(window) if window else 0.0)
+
+    # 30-day delta = last 4 weeks mean vs prior 4 weeks mean.
+    def _delta_pct(series: list[float]) -> float:
+        if len(series) < 8:
+            return 0.0
+        recent = sum(series[-4:]) / 4
+        prior  = sum(series[-8:-4]) / 4
+        return round((recent / prior - 1) * 100, 1) if prior > 0 else 0.0
+
+    rev_30d_pct = _delta_pct(revenue)
+    txn_30d_pct = _delta_pct(transactions)
+    bas_30d_pct = _delta_pct(basket)
+
+    # Trend shape: compare the last-2-weeks average to the 4-weeks-prior
+    # average. If close → stable. If the rate of change is increasing
+    # → accelerating, decreasing → decelerating.
+    if len(revenue) >= 6:
+        recent_rate = (revenue[-1] - revenue[-3]) / 2 if revenue[-3] else 0
+        prior_rate  = (revenue[-3] - revenue[-5]) / 2 if revenue[-5] else 0
+        if abs(recent_rate - prior_rate) < abs(recent_rate) * 0.20:
+            trend_shape = "stable"
+        elif recent_rate > prior_rate:
+            trend_shape = "accelerating"
+        else:
+            trend_shape = "decelerating"
+    else:
+        trend_shape = "stable"
+
+    # Growth-driver classification for Card 2.2's combined takeaway.
+    # 5pp noise floor — below that, treat as flat for the purposes of
+    # naming a driver.
+    noise = 5.0
+    txn_up    = txn_30d_pct >  noise
+    txn_down  = txn_30d_pct < -noise
+    bas_up    = bas_30d_pct >  noise
+    bas_down  = bas_30d_pct < -noise
+    if txn_up and bas_up:
+        driver = "both"
+    elif txn_up and not bas_up:
+        driver = "more trips"
+    elif bas_up and not txn_up:
+        driver = "bigger baskets"
+    elif txn_down or bas_down:
+        driver = "neither, mixed"
+    else:
+        driver = "stable on both"
+
+    return {
+        "weeks":          weeks,
+        "revenue":        [round(v, 2) for v in revenue],
+        "transactions":   transactions,
+        "basket":         [round(b, 2) for b in basket],
+        "baseline_band":  [round(v, 2) for v in baseline_band],
+        "revenue_30d_pct": rev_30d_pct,
+        "txn_30d_pct":    txn_30d_pct,
+        "basket_30d_pct": bas_30d_pct,
+        "revenue_trend_shape": trend_shape,
+        "txn_growth_driver":   driver,
+    }
+
+
+# Friendly day-of-week labels for the hour × DOW heatmap. SQLite's
+# strftime('%w', ...) returns 0=Sunday..6=Saturday; we re-order to
+# Mon-Sun for display so the work-week reads left-to-right naturally.
+_HOUR_DOW_DOW_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+_HOUR_DOW_SQLITE_ORDER = [1, 2, 3, 4, 5, 6, 0]  # Mon..Sun
+
+
+@st.cache_data(ttl=3600)
+def hour_dow_heatmap_card(merchant_id: str) -> dict:
+    """Hour × day-of-week traffic heatmap with peak/slow analysis.
+    Wraps the existing ``hour_dow_heatmap`` panel-totals DataFrame in
+    the shape Pattern 3 own-only-sequential expects, plus takeaway
+    metadata (peak cell, slow cell, weekday-vs-weekend ratio).
+    """
+    pivot = hour_dow_heatmap(merchant_id, _filters_key({}))
+    # Re-order rows Mon..Sun and label them; columns stay 0..23.
+    cells: list[list[int]] = []
+    for dow_sqlite in _HOUR_DOW_SQLITE_ORDER:
+        row = pivot.loc[dow_sqlite] if dow_sqlite in pivot.index else None
+        if row is None:
+            cells.append([0] * 24)
+        else:
+            cells.append([int(row[h]) for h in range(24)])
+
+    # Peak / slow over all cells (ignore zeros for slow — empty cells
+    # aren't "slow", they're "closed"). For grocers and TBL/TJX alike
+    # there are typically zero-traffic overnight hours; calling
+    # "Tuesday 3am" the slowest is uninformative.
+    peak = (0, 0, 0)  # (value, dow_idx, hr)
+    slow = (None, 0, 0)
+    for i in range(7):
+        for h in range(24):
+            v = cells[i][h]
+            if v > peak[0]:
+                peak = (v, i, h)
+            if v > 0 and (slow[0] is None or v < slow[0]):
+                slow = (v, i, h)
+    peak_dow, peak_hr, peak_val = (
+        _HOUR_DOW_DOW_NAMES[peak[1]], peak[2], peak[0]
+    )
+    if slow[0] is None:
+        slow_dow, slow_hr, slow_val = ("—", 0, 0)
+    else:
+        slow_dow, slow_hr, slow_val = (
+            _HOUR_DOW_DOW_NAMES[slow[1]], slow[2], slow[0]
+        )
+
+    # Weekday (Mon-Fri) vs weekend (Sat-Sun) total volume.
+    weekday_total = sum(sum(cells[i]) for i in range(0, 5))
+    weekend_total = sum(sum(cells[i]) for i in range(5, 7))
+    if weekend_total > 0 and weekday_total > 0:
+        # Per-day average, since weekday has 5 days and weekend has 2.
+        wd_avg = weekday_total / 5
+        we_avg = weekend_total / 2
+        if wd_avg >= we_avg:
+            wd_we_higher = "weekday"
+            wd_we_ratio  = round((wd_avg / we_avg - 1) * 100, 0)
+        else:
+            wd_we_higher = "weekend"
+            wd_we_ratio  = round((we_avg / wd_avg - 1) * 100, 0)
+    else:
+        wd_we_higher = "weekday"
+        wd_we_ratio  = 0
+
+    return {
+        "rows":      _HOUR_DOW_DOW_NAMES,
+        "cols":      [f"{h:02d}" for h in range(24)],
+        "cells":     cells,
+        "peak_dow":  peak_dow,
+        "peak_hr":   peak_hr,
+        "peak_val":  peak_val,
+        "slow_dow":  slow_dow,
+        "slow_hr":   slow_hr,
+        "slow_val":  slow_val,
+        "wd_we_higher": wd_we_higher,
+        "wd_we_ratio":  int(wd_we_ratio),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Phase 4.4 — KPI strip data (Section 1: Performance pulse)
 # ---------------------------------------------------------------------------
 #

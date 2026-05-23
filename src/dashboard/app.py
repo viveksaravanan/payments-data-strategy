@@ -208,6 +208,7 @@ else:
 
     with dash_col:
         views.render_kpi_strip(mid, filters)
+        views.render_performance_section(mid, filters)
 
         map_col, ins_col = st.columns([6, 4], gap="small")
         with map_col:

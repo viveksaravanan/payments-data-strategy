@@ -80,6 +80,103 @@ def render_kpi_row(merchant_id: str, filters: dict) -> None:
     render_kpi_strip(merchant_id, filters)
 
 
+def render_performance_section(merchant_id: str, filters: dict) -> None:  # noqa: ARG001
+    """Phase 4.4 Section 2 — Performance over time. Three cards in a
+    row: Revenue trajectory, Transaction trajectory, Hour × DOW
+    heatmap. Each carries an "Ask about this" affordance routing per
+    V3_DASHBOARD_DESIGN.md Section 5.5.
+    """
+    from . import chart_patterns as CP
+
+    t = D.performance_trajectory(merchant_id)
+
+    def _dir(pct: float) -> str:
+        return "up" if pct > 0 else ("down" if pct < 0 else "flat")
+
+    cols = st.columns(3, gap="small")
+
+    # Card 2.1 — Revenue trajectory
+    with cols[0]:
+        with st.container(border=True):
+            CP.render_ask_about_this(
+                key=f"ask_about_rev_traj_{merchant_id}",
+                specialist="anomaly",
+                prefill="What's behind the revenue trajectory I'm seeing?",
+            )
+            rev_pct = t["revenue_30d_pct"]
+            takeaway = (
+                f"Revenue trending {_dir(rev_pct)} {abs(rev_pct):.1f}% over "
+                f"the last 30 days; weekly trajectory is "
+                f"{t['revenue_trend_shape']}."
+            )
+            CP.render_time_series_own_multi(
+                {
+                    "weeks":  t["weeks"],
+                    "series": [{"name": "Revenue", "values": t["revenue"]}],
+                    "y_label": "Weekly revenue ($)",
+                },
+                title="Revenue trajectory",
+                takeaway=takeaway,
+                height=300,
+            )
+
+    # Card 2.2 — Transaction trajectory (takeaway combines basket signal)
+    with cols[1]:
+        with st.container(border=True):
+            CP.render_ask_about_this(
+                key=f"ask_about_txn_traj_{merchant_id}",
+                specialist="anomaly",
+                prefill="What's driving the change in transaction count?",
+            )
+            txn_pct = t["txn_30d_pct"]
+            bas_pct = t["basket_30d_pct"]
+            takeaway = (
+                f"Transactions {_dir(txn_pct)} {abs(txn_pct):.1f}%; "
+                f"basket value {_dir(bas_pct)} {abs(bas_pct):.1f}% — your "
+                f"topline is driven primarily by {t['txn_growth_driver']}."
+            )
+            CP.render_time_series_own_multi(
+                {
+                    "weeks":  t["weeks"],
+                    "series": [{"name": "Transactions",
+                                 "values": t["transactions"]}],
+                    "y_label": "Weekly transactions",
+                },
+                title="Transaction trajectory",
+                takeaway=takeaway,
+                height=300,
+            )
+
+    # Card 2.3 — Hour × DOW heatmap (Pattern 3 own-only sequential)
+    with cols[2]:
+        with st.container(border=True):
+            CP.render_ask_about_this(
+                key=f"ask_about_hour_dow_{merchant_id}",
+                specialist="trade",
+                prefill="What does my hour-by-day pattern tell me about my customer base?",
+            )
+            h = D.hour_dow_heatmap_card(merchant_id)
+            wd_we_phrase = (
+                f"{h['wd_we_higher']} traffic is {h['wd_we_ratio']}% higher "
+                "than the inverse"
+                if h["wd_we_ratio"] > 0
+                else "weekday and weekend traffic are roughly even"
+            )
+            takeaway = (
+                f"Peak: {h['peak_dow']} {h['peak_hr']:02d}:00 "
+                f"({h['peak_val']:,} txns). "
+                f"Slowest: {h['slow_dow']} {h['slow_hr']:02d}:00 "
+                f"({h['slow_val']:,}). {wd_we_phrase}."
+            )
+            CP.render_heatmap(
+                h,
+                title="Hour × day-of-week traffic",
+                takeaway=takeaway,
+                mode="own_only_sequential",
+                height=300,
+            )
+
+
 def render_kpi_strip(merchant_id: str, filters: dict) -> None:  # noqa: ARG001
     """Phase 4.4 KPI strip: 5 Pattern 8 callouts in a row — Revenue,
     Transactions, Avg basket, Unique customers, Anomaly count. Each

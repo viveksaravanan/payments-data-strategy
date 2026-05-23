@@ -265,6 +265,9 @@ def render_time_series_own_multi(
             connectgaps=False,
         ))
 
+    # Hide the legend for single-series renders — the lone label
+    # adds vertical clutter without disambiguating anything.
+    show_legend = len(series) > 1
     fig.update_layout(
         xaxis_title=None,
         yaxis_title=data.get("y_label", ""),
@@ -273,7 +276,7 @@ def render_time_series_own_multi(
         paper_bgcolor="white",
         margin=dict(l=48, r=24, t=24, b=40),
         height=height,
-        showlegend=True,
+        showlegend=show_legend,
         legend=dict(
             orientation="h",
             yanchor="bottom", y=1.02,
@@ -519,8 +522,9 @@ def render_heatmap(
       over-performing (blue). Cell text overlays the ratio formatted
       as percent of baseline. Used by T-A3 (day-of-week × daypart)
       and R-A3 (day-of-week × week).
-    - ``"own_only_sequential"`` — Phase 4.4 work (Card 2.3). Not
-      yet implemented.
+    - ``"own_only_sequential"`` — light → brand-color scale over raw
+      counts. Used by Card 2.3 (hour × day-of-week traffic
+      heatmap). No comparison axis — pure volume heat.
     """
     if mode == "cross_merchant_diverging":
         _render_heatmap_cross_merchant_diverging(
@@ -529,6 +533,11 @@ def render_heatmap(
         return
     if mode == "own_only_diverging":
         _render_heatmap_own_only_diverging(
+            data, title=title, takeaway=takeaway, height=height,
+        )
+        return
+    if mode == "own_only_sequential":
+        _render_heatmap_own_only_sequential(
             data, title=title, takeaway=takeaway, height=height,
         )
         return
@@ -670,6 +679,59 @@ def _render_heatmap_own_only_diverging(
         height=height or max(280, 30 * len(rows) + 80),
     )
     fig.update_xaxes(tickfont=dict(size=11), side="top")
+    fig.update_yaxes(tickfont=dict(size=11), automargin=True,
+                     autorange="reversed")
+    _render_card_header(title, takeaway)
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def _render_heatmap_own_only_sequential(
+    data: dict,
+    *,
+    title: str,
+    takeaway: str,
+    height: int | None,
+) -> None:
+    """Pattern 3 own-only sequential — light → brand-color scale over
+    raw integer counts. No comparison axis, no diverging treatment.
+    Used by Card 2.3 (hour × day-of-week heatmap)."""
+    rows = data["rows"]
+    cols = data["cols"]
+    cells = data["cells"]
+    if not rows or not cols:
+        _render_card_header(title, takeaway)
+        st.caption("_No data available for this view._")
+        return
+
+    flat = [v for row in cells for v in row if v is not None]
+    vmax = max(flat) if flat else 1.0
+    fig = go.Figure(go.Heatmap(
+        z=cells,
+        x=cols,
+        y=rows,
+        colorscale=[
+            [0.0, "#FFFFFF"],
+            [0.15, "#D8E2EE"],   # ACCENT_SOFT
+            [1.0, ACCENT],
+        ],
+        zmin=0,
+        zmax=vmax,
+        hoverongaps=False,
+        hovertemplate="<b>%{y} · %{x}</b><br>%{z:,} txns<extra></extra>",
+        colorbar=dict(
+            thickness=10,
+            outlinewidth=0,
+            tickformat=",",
+        ),
+        xgap=1, ygap=1,
+    ))
+    fig.update_layout(
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        margin=dict(l=64, r=20, t=20, b=24),
+        height=height or max(260, 28 * len(rows) + 80),
+    )
+    fig.update_xaxes(tickfont=dict(size=10), side="top")
     fig.update_yaxes(tickfont=dict(size=11), automargin=True,
                      autorange="reversed")
     _render_card_header(title, takeaway)
