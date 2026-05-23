@@ -145,6 +145,7 @@ def render_time_series_vs_peers(
     show_peers: bool = True,
     own_label: str = "You",
     height: int = 360,
+    ask_about_this: dict | None = None,
 ) -> None:
     """Pattern 1 — line chart with own merchant + optional peer overlays.
 
@@ -243,7 +244,7 @@ def render_time_series_vs_peers(
 
     # Title + takeaway above the chart. The chart helper renders both
     # so callers don't have to coordinate spacing.
-    _render_card_header(title, takeaway)
+    _render_card_header(title, takeaway, ask_about_this=ask_about_this)
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -281,6 +282,7 @@ def render_time_series_own_multi(
     title: str,
     takeaway: str,
     height: int = 360,
+    ask_about_this: dict | None = None,
 ) -> None:
     """Pattern 1, own-only multi-series mode.
 
@@ -298,7 +300,7 @@ def render_time_series_own_multi(
     weeks = data.get("weeks") or []
     series = data.get("series") or []
     if not weeks or not series:
-        _render_card_header(title, takeaway)
+        _render_card_header(title, takeaway, ask_about_this=ask_about_this)
         st.caption("_No data available for this view._")
         return
 
@@ -339,7 +341,7 @@ def render_time_series_own_multi(
     fig.update_xaxes(showgrid=False, zeroline=False, tickfont=dict(size=10))
     fig.update_yaxes(showgrid=True, gridcolor=GRID_LINE, zeroline=False,
                      tickfont=dict(size=10))
-    _render_card_header(title, takeaway)
+    _render_card_header(title, takeaway, ask_about_this=ask_about_this)
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -347,9 +349,29 @@ def render_time_series_own_multi(
 # Pattern 2 — Cross-merchant comparison, single dimension
 # ---------------------------------------------------------------------------
 
-def _render_card_header(title: str, takeaway: str) -> None:
-    """Standard title + takeaway-subtitle block above a chart."""
-    st.markdown(f"**{title}**")
+def _render_card_header(
+    title: str,
+    takeaway: str,
+    ask_about_this: dict | None = None,
+) -> None:
+    """Standard title + takeaway-subtitle block above a chart.
+
+    When ``ask_about_this`` is provided, the title and the affordance
+    icon render on the same horizontal row — title-left, icon-right —
+    matching Pattern 8's KPI header rhythm so every dashboard card
+    has the same affordance position regardless of chart pattern.
+
+    ``ask_about_this`` schema: ``{key, specialist, prefill}`` —
+    forwarded to ``render_ask_about_this``.
+    """
+    if ask_about_this:
+        head_l, head_r = st.columns([0.84, 0.16], gap="small")
+        with head_l:
+            st.markdown(f"**{title}**")
+        with head_r:
+            render_ask_about_this(**ask_about_this)
+    else:
+        st.markdown(f"**{title}**")
     if takeaway:
         st.markdown(
             f"<p style='color:{TAKEAWAY_GRAY};font-size:13px;"
@@ -420,6 +442,7 @@ def render_cross_merchant_comparison(
     mode: str = "standard",
     own_color: str = ACCENT,
     height: int | None = None,
+    ask_about_this: dict | None = None,
 ) -> None:
     """Pattern 2 — horizontal-bar comparison across a single dimension.
 
@@ -440,14 +463,17 @@ def render_cross_merchant_comparison(
       ``panel_b_title``, ``panel_b_data``.
     """
     if mode == "two_panel":
-        _render_two_panel(data, title=title, takeaway=takeaway, height=height)
+        _render_two_panel(data, title=title, takeaway=takeaway,
+                          height=height, ask_about_this=ask_about_this)
         return
     if mode == "diverging":
-        _render_diverging(data, title=title, takeaway=takeaway, height=height)
+        _render_diverging(data, title=title, takeaway=takeaway,
+                          height=height, ask_about_this=ask_about_this)
         return
     if mode == "standard":
         _render_standard(data, title=title, takeaway=takeaway,
-                         own_color=own_color, height=height)
+                         own_color=own_color, height=height,
+                         ask_about_this=ask_about_this)
         return
     raise ValueError(f"Unknown render_cross_merchant_comparison mode: {mode!r}")
 
@@ -484,7 +510,8 @@ def _series_traces_for_panel(panel: dict) -> list[go.Bar]:
 
 
 def _render_two_panel(data: dict, *, title: str, takeaway: str,
-                       height: int | None) -> None:
+                       height: int | None,
+                       ask_about_this: dict | None = None) -> None:
     pa = data["panel_a_data"]
     pb = data["panel_b_data"]
     # Row-height proportional to category count so each bar has roughly
@@ -528,12 +555,13 @@ def _render_two_panel(data: dict, *, title: str, takeaway: str,
     fig.update_xaxes(showgrid=True, gridcolor=GRID_LINE,
                      ticksuffix="%", tickfont=dict(size=10))
     fig.update_yaxes(showgrid=False, tickfont=dict(size=11), automargin=True)
-    _render_card_header(title, takeaway)
+    _render_card_header(title, takeaway, ask_about_this=ask_about_this)
     st.plotly_chart(fig, use_container_width=True)
 
 
 def _render_diverging(data: dict, *, title: str, takeaway: str,
-                       height: int | None) -> None:
+                       height: int | None,
+                       ask_about_this: dict | None = None) -> None:
     cats = data["categories"]
     deltas = data["deltas"]
     colors = [
@@ -560,12 +588,13 @@ def _render_diverging(data: dict, *, title: str, takeaway: str,
                      ticksuffix="pp", tickfont=dict(size=10))
     fig.update_yaxes(showgrid=False, tickfont=dict(size=11),
                      automargin=True, autorange="reversed")
-    _render_card_header(title, takeaway)
+    _render_card_header(title, takeaway, ask_about_this=ask_about_this)
     st.plotly_chart(fig, use_container_width=True)
 
 
 def _render_standard(data: dict, *, title: str, takeaway: str,
-                      own_color: str, height: int | None) -> None:
+                      own_color: str, height: int | None,
+                      ask_about_this: dict | None = None) -> None:
     fig = go.Figure()
     for trace in _series_traces_for_panel(data):
         fig.add_trace(trace)
@@ -584,7 +613,7 @@ def _render_standard(data: dict, *, title: str, takeaway: str,
     fig.update_xaxes(showgrid=True, gridcolor=GRID_LINE, tickfont=dict(size=10))
     fig.update_yaxes(showgrid=False, tickfont=dict(size=11),
                      automargin=True, autorange="reversed")
-    _render_card_header(title, takeaway)
+    _render_card_header(title, takeaway, ask_about_this=ask_about_this)
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -599,6 +628,7 @@ def render_heatmap(
     takeaway: str,
     mode: str = "cross_merchant_diverging",
     height: int | None = None,
+    ask_about_this: dict | None = None,
 ) -> None:
     """Pattern 3 — heatmap with three modes.
 
@@ -625,16 +655,19 @@ def render_heatmap(
     if mode == "cross_merchant_diverging":
         _render_heatmap_cross_merchant_diverging(
             data, title=title, takeaway=takeaway, height=height,
+            ask_about_this=ask_about_this,
         )
         return
     if mode == "own_only_diverging":
         _render_heatmap_own_only_diverging(
             data, title=title, takeaway=takeaway, height=height,
+            ask_about_this=ask_about_this,
         )
         return
     if mode == "own_only_sequential":
         _render_heatmap_own_only_sequential(
             data, title=title, takeaway=takeaway, height=height,
+            ask_about_this=ask_about_this,
         )
         return
     raise NotImplementedError(
@@ -648,12 +681,13 @@ def _render_heatmap_cross_merchant_diverging(
     title: str,
     takeaway: str,
     height: int | None,
+    ask_about_this: dict | None = None,
 ) -> None:
     rows = data["rows"]
     cols = data["cols"]
     cells = data["cells"]
     if not rows or not cols:
-        _render_card_header(title, takeaway)
+        _render_card_header(title, takeaway, ask_about_this=ask_about_this)
         st.caption("_No data available for this view._")
         return
 
@@ -709,7 +743,7 @@ def _render_heatmap_cross_merchant_diverging(
     fig.update_yaxes(tickfont=dict(size=11), automargin=True,
                      autorange="reversed")
 
-    _render_card_header(title, takeaway)
+    _render_card_header(title, takeaway, ask_about_this=ask_about_this)
     st.plotly_chart(fig, use_container_width=True)
     # Cells suppressed by k<5 enter the matrix as ``None``; if any
     # exist, surface the privacy footnote so the merchant knows the
@@ -724,12 +758,13 @@ def _render_heatmap_own_only_diverging(
     title: str,
     takeaway: str,
     height: int | None,
+    ask_about_this: dict | None = None,
 ) -> None:
     rows = data["rows"]
     cols = data["cols"]
     cells = data["cells"]
     if not rows or not cols:
-        _render_card_header(title, takeaway)
+        _render_card_header(title, takeaway, ask_about_this=ask_about_this)
         st.caption("_No data available for this view._")
         return
 
@@ -784,7 +819,7 @@ def _render_heatmap_own_only_diverging(
     fig.update_xaxes(tickfont=dict(size=11), side="top")
     fig.update_yaxes(tickfont=dict(size=11), automargin=True,
                      autorange="reversed")
-    _render_card_header(title, takeaway)
+    _render_card_header(title, takeaway, ask_about_this=ask_about_this)
     st.plotly_chart(fig, use_container_width=True)
     if data.get("suppressed_count", 0) > 0:
         _render_card_footnote(K5_SUPPRESSION_FOOTNOTE)
@@ -796,6 +831,7 @@ def _render_heatmap_own_only_sequential(
     title: str,
     takeaway: str,
     height: int | None,
+    ask_about_this: dict | None = None,
 ) -> None:
     """Pattern 3 own-only sequential — light → brand-color scale over
     raw integer counts. No comparison axis, no diverging treatment.
@@ -804,7 +840,7 @@ def _render_heatmap_own_only_sequential(
     cols = data["cols"]
     cells = data["cells"]
     if not rows or not cols:
-        _render_card_header(title, takeaway)
+        _render_card_header(title, takeaway, ask_about_this=ask_about_this)
         st.caption("_No data available for this view._")
         return
 
@@ -836,7 +872,7 @@ def _render_heatmap_own_only_sequential(
     fig.update_xaxes(tickfont=dict(size=10), side="top")
     fig.update_yaxes(tickfont=dict(size=11), automargin=True,
                      autorange="reversed")
-    _render_card_header(title, takeaway)
+    _render_card_header(title, takeaway, ask_about_this=ask_about_this)
     st.plotly_chart(fig, use_container_width=True)
     if data.get("suppressed_count", 0) > 0:
         _render_card_footnote(K5_SUPPRESSION_FOOTNOTE)
@@ -852,6 +888,7 @@ def render_horizontal_bars_own(
     title: str,
     takeaway: str,
     height: int | None = None,
+    ask_about_this: dict | None = None,
 ) -> None:
     """Pattern 2, own-only horizontal bars with optional reference line
     and outlier highlighting. Used by T-P3 (per-store ticket spread),
@@ -872,7 +909,7 @@ def render_horizontal_bars_own(
     labels = data.get("labels") or []
     values = data.get("values") or []
     if not labels or not values or len(labels) != len(values):
-        _render_card_header(title, takeaway)
+        _render_card_header(title, takeaway, ask_about_this=ask_about_this)
         st.caption("_No data available for this view._")
         return
 
@@ -925,7 +962,7 @@ def render_horizontal_bars_own(
     )
     fig.update_yaxes(showgrid=False, tickfont=dict(size=10),
                      automargin=True, autorange="reversed")
-    _render_card_header(title, takeaway)
+    _render_card_header(title, takeaway, ask_about_this=ask_about_this)
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -935,6 +972,7 @@ def render_horizontal_bars_grouped(
     title: str,
     takeaway: str,
     height: int | None = None,
+    ask_about_this: dict | None = None,
 ) -> None:
     """Pattern 2, multi-series grouped horizontal bars. Used by R-P3
     (ticket-band split: share of transactions + share of revenue per
@@ -954,7 +992,7 @@ def render_horizontal_bars_grouped(
     labels = data.get("labels") or []
     series = data.get("series") or []
     if not labels or not series:
-        _render_card_header(title, takeaway)
+        _render_card_header(title, takeaway, ask_about_this=ask_about_this)
         st.caption("_No data available for this view._")
         return
 
@@ -993,7 +1031,7 @@ def render_horizontal_bars_grouped(
     )
     fig.update_yaxes(showgrid=False, tickfont=dict(size=10),
                      automargin=True, autorange="reversed")
-    _render_card_header(title, takeaway)
+    _render_card_header(title, takeaway, ask_about_this=ask_about_this)
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -1007,6 +1045,7 @@ def render_scatter_with_peers(
     title: str,
     takeaway: str,
     height: int | None = None,
+    ask_about_this: dict | None = None,
 ) -> None:
     """Pattern 4 — scatter plot with optional reference lines.
 
@@ -1026,7 +1065,7 @@ def render_scatter_with_peers(
     """
     points = data.get("points") or []
     if not points:
-        _render_card_header(title, takeaway)
+        _render_card_header(title, takeaway, ask_about_this=ask_about_this)
         st.caption("_No data available for this view._")
         return
 
@@ -1109,7 +1148,7 @@ def render_scatter_with_peers(
     fig.update_yaxes(showgrid=True, gridcolor=GRID_LINE, zeroline=False,
                      tickfont=dict(size=10))
 
-    _render_card_header(title, takeaway)
+    _render_card_header(title, takeaway, ask_about_this=ask_about_this)
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -1124,6 +1163,7 @@ def render_waterfall(
     takeaway: str,
     mode: str = "cross_merchant",
     height: int | None = None,
+    ask_about_this: dict | None = None,
 ) -> None:
     """Pattern 5 — waterfall decomposition with driver bars.
 
@@ -1157,6 +1197,7 @@ def render_waterfall(
         # the caller's data shape + takeaway text.
         _render_waterfall_cross_merchant(
             data, title=title, takeaway=takeaway, height=height,
+            ask_about_this=ask_about_this,
         )
         return
     raise NotImplementedError(
@@ -1170,10 +1211,11 @@ def _render_waterfall_cross_merchant(
     title: str,
     takeaway: str,
     height: int | None,
+    ask_about_this: dict | None = None,
 ) -> None:
     drivers = data.get("drivers") or []
     if not drivers:
-        _render_card_header(title, takeaway)
+        _render_card_header(title, takeaway, ask_about_this=ask_about_this)
         st.caption("_No data available for this view._")
         return
 
@@ -1232,7 +1274,7 @@ def _render_waterfall_cross_merchant(
     fig.update_yaxes(showgrid=True, gridcolor=GRID_LINE, zeroline=False,
                      ticksuffix="pp", tickfont=dict(size=10))
 
-    _render_card_header(title, takeaway)
+    _render_card_header(title, takeaway, ask_about_this=ask_about_this)
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -1368,6 +1410,7 @@ def render_neighborhood_map(
     takeaway: str,
     mode: str = "diverging",
     height: int = 460,
+    ask_about_this: dict | None = None,
 ) -> None:
     """Pattern 6 — Folium neighborhood-polygon map.
 
@@ -1407,7 +1450,7 @@ def render_neighborhood_map(
     peer_stores = data.get("peer_stores") or []
     map_key     = data.get("map_key", "map")
 
-    _render_card_header(title, takeaway)
+    _render_card_header(title, takeaway, ask_about_this=ask_about_this)
 
     if not polygons:
         st.caption("_No neighborhoods with data to map._")
@@ -1532,6 +1575,7 @@ def render_table_with_drilldown(
     title: str,
     takeaway: str,
     height: int | None = None,
+    ask_about_this: dict | None = None,
 ) -> None:
     """Pattern 9 — sortable table with optional diverging-color cues on
     a ratio column. Streamlit-native ``st.dataframe`` (sortable in-place
@@ -1556,7 +1600,7 @@ def render_table_with_drilldown(
     """
     import pandas as pd
 
-    _render_card_header(title, takeaway)
+    _render_card_header(title, takeaway, ask_about_this=ask_about_this)
 
     rows    = data.get("rows") or []
     columns = data.get("columns") or []

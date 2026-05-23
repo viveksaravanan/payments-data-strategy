@@ -94,14 +94,14 @@ def render_customers_section(merchant_id: str, filters: dict) -> None:  # noqa: 
     # Card 5.1 — New vs returning
     with cols[0]:
         with st.container(border=True):
-            CP.render_ask_about_this(
-                key=f"ask_about_new_ret_{merchant_id}",
-                specialist="demand",
-                prefill=(
+            ask_5_1 = {
+                "key":        f"ask_about_new_ret_{merchant_id}",
+                "specialist": "demand",
+                "prefill":    (
                     "What's the composition of my customer base this "
                     "week — are new customers growing or my base growing?"
                 ),
-            )
+            }
             nvr = D.new_vs_returning(merchant_id)
             if nvr["total_count"] == 0:
                 st.caption("_No customer activity in the recent week._")
@@ -127,19 +127,20 @@ def render_customers_section(merchant_id: str, filters: dict) -> None:  # noqa: 
                     title="New vs returning customers this week",
                     takeaway=takeaway,
                     height=260,
+                    ask_about_this=ask_5_1,
                 )
 
     # Card 5.2 — Transactions per customer
     with cols[1]:
         with st.container(border=True):
-            CP.render_ask_about_this(
-                key=f"ask_about_freq_{merchant_id}",
-                specialist="demand",
-                prefill=(
+            ask_5_2 = {
+                "key":        f"ask_about_freq_{merchant_id}",
+                "specialist": "demand",
+                "prefill":    (
                     "What does my customer frequency distribution "
                     "tell me about loyalty?"
                 ),
-            )
+            }
             freq = D.transactions_per_customer(merchant_id)
             if not freq["labels"]:
                 st.caption("_No customer-frequency data._")
@@ -161,16 +162,17 @@ def render_customers_section(merchant_id: str, filters: dict) -> None:  # noqa: 
                     title="Transactions per customer (90d)",
                     takeaway=takeaway,
                     height=260,
+                    ask_about_this=ask_5_2,
                 )
 
     # Card 5.3 — Customer home geography
     with cols[2]:
         with st.container(border=True):
-            CP.render_ask_about_this(
-                key=f"ask_about_home_geo_{merchant_id}",
-                specialist="trade",
-                prefill="Where do my customers live relative to my stores?",
-            )
+            ask_5_3 = {
+                "key":        f"ask_about_home_geo_{merchant_id}",
+                "specialist": "trade",
+                "prefill":    "Where do my customers live relative to my stores?",
+            }
             chart_data = D.customer_home_density(merchant_id)
             nbhds = chart_data["neighborhoods"]
             if not nbhds:
@@ -218,6 +220,7 @@ def render_customers_section(merchant_id: str, filters: dict) -> None:  # noqa: 
                     takeaway=takeaway,
                     mode="sequential",
                     height=300,
+                    ask_about_this=ask_5_3,
                 )
 
 
@@ -253,11 +256,11 @@ def render_catalog_section(merchant_id: str, filters: dict) -> None:  # noqa: AR
                 "TJX": ("What does my category mix look like? Where am I "
                          "concentrated?"),
             }
-            CP.render_ask_about_this(
-                key=f"ask_about_cat_mix_{merchant_id}",
-                specialist="demand",
-                prefill=prefill_by_segment.get(merchant_id, prefill_by_segment["KRG"]),
-            )
+            ask_4_1 = {
+                "key":        f"ask_about_cat_mix_{merchant_id}",
+                "specialist": "demand",
+                "prefill":    prefill_by_segment.get(merchant_id, prefill_by_segment["KRG"]),
+            }
             chart_data = D.category_share_own(merchant_id, top_n=8)
             if not chart_data["labels"]:
                 st.caption("_No category-share data available._")
@@ -280,6 +283,7 @@ def render_catalog_section(merchant_id: str, filters: dict) -> None:  # noqa: AR
                     title="Category mix",
                     takeaway=takeaway,
                     height=360,
+                    ask_about_this=ask_4_1,
                 )
 
     # Card 4.2 — SKU performance with top/bottom toggle
@@ -316,11 +320,11 @@ def render_catalog_section(merchant_id: str, filters: dict) -> None:  # noqa: AR
                     "TBL": "Are any menu items spiking or dropping unusually?",
                     "TJX": "Are any categories spiking or dropping unusually?",
                 }.get(merchant_id, "Which SKUs are spiking or dropping unusually?")
-            CP.render_ask_about_this(
-                key=f"ask_about_sku_{merchant_id}",
-                specialist=ask_specialist,
-                prefill=ask_prefill,
-            )
+            ask_4_2 = {
+                "key":        f"ask_about_sku_{merchant_id}",
+                "specialist": ask_specialist,
+                "prefill":    ask_prefill,
+            }
 
             chart_data = D.sku_performance(merchant_id)
             all_rows = chart_data["rows"]
@@ -369,6 +373,7 @@ def render_catalog_section(merchant_id: str, filters: dict) -> None:  # noqa: AR
                         CP._render_card_header(
                             "SKU performance",
                             "No SKU-level decliners in the recent week.",
+                            ask_about_this=ask_4_2,
                         )
                         CP.render_empty_state(
                             "Every SKU is within 15% of its first-4-week "
@@ -397,6 +402,7 @@ def render_catalog_section(merchant_id: str, filters: dict) -> None:  # noqa: AR
                     title="SKU performance",
                     takeaway=takeaway,
                     height=330,
+                    ask_about_this=ask_4_2,
                 )
 
 
@@ -415,15 +421,15 @@ def render_geography_section(merchant_id: str, filters: dict) -> None:  # noqa: 
     # Card 3.1 — Neighborhood performance map
     with cols[0]:
         with st.container(border=True):
-            CP.render_ask_about_this(
-                key=f"ask_about_geo_map_{merchant_id}",
-                specialist="trade",
-                prefill=(
+            ask_3_1 = {
+                "key":        f"ask_about_geo_map_{merchant_id}",
+                "specialist": "trade",
+                "prefill":    (
                     "Which of my neighborhoods are over- or "
                     "under-performing, and is the issue mine or the "
                     "market's?"
                 ),
-            )
+            }
             chart_data = D.neighborhood_performance(merchant_id)
             nbhds = chart_data["neighborhoods"]
             if not nbhds:
@@ -472,18 +478,19 @@ def render_geography_section(merchant_id: str, filters: dict) -> None:  # noqa: 
                     takeaway=takeaway,
                     mode="diverging",
                     height=420,
+                    ask_about_this=ask_3_1,
                 )
 
     # Card 3.2 — Store performance distribution
     with cols[1]:
         with st.container(border=True):
-            CP.render_ask_about_this(
-                key=f"ask_about_store_perf_{merchant_id}",
-                specialist="anomaly",
-                prefill=(
+            ask_3_2 = {
+                "key":        f"ask_about_store_perf_{merchant_id}",
+                "specialist": "anomaly",
+                "prefill":    (
                     "Which stores are showing unusual traffic this week?"
                 ),
-            )
+            }
             # Grocers carry the peer-neighborhood column via the A2
             # helper; TBL / TJX have no same-segment peers so use the
             # leaner own-only variant. Both produce the same row
@@ -530,6 +537,7 @@ def render_geography_section(merchant_id: str, filters: dict) -> None:  # noqa: 
                     title="Store performance distribution",
                     takeaway=takeaway,
                     height=360,
+                    ask_about_this=ask_3_2,
                 )
 
 
@@ -551,11 +559,11 @@ def render_performance_section(merchant_id: str, filters: dict) -> None:  # noqa
     # Card 2.1 — Revenue trajectory
     with cols[0]:
         with st.container(border=True):
-            CP.render_ask_about_this(
-                key=f"ask_about_rev_traj_{merchant_id}",
-                specialist="anomaly",
-                prefill="What's behind the revenue trajectory I'm seeing?",
-            )
+            ask_2_1 = {
+                "key":        f"ask_about_rev_traj_{merchant_id}",
+                "specialist": "anomaly",
+                "prefill":    "What's behind the revenue trajectory I'm seeing?",
+            }
             rev_pct = t["revenue_30d_pct"]
             takeaway = (
                 f"Revenue trending {_dir(rev_pct)} {abs(rev_pct):.1f}% over "
@@ -571,16 +579,17 @@ def render_performance_section(merchant_id: str, filters: dict) -> None:  # noqa
                 title="Revenue trajectory",
                 takeaway=takeaway,
                 height=300,
+                ask_about_this=ask_2_1,
             )
 
     # Card 2.2 — Transaction trajectory (takeaway combines basket signal)
     with cols[1]:
         with st.container(border=True):
-            CP.render_ask_about_this(
-                key=f"ask_about_txn_traj_{merchant_id}",
-                specialist="anomaly",
-                prefill="What's driving the change in transaction count?",
-            )
+            ask_2_2 = {
+                "key":        f"ask_about_txn_traj_{merchant_id}",
+                "specialist": "anomaly",
+                "prefill":    "What's driving the change in transaction count?",
+            }
             txn_pct = t["txn_30d_pct"]
             bas_pct = t["basket_30d_pct"]
             takeaway = (
@@ -598,16 +607,17 @@ def render_performance_section(merchant_id: str, filters: dict) -> None:  # noqa
                 title="Transaction trajectory",
                 takeaway=takeaway,
                 height=300,
+                ask_about_this=ask_2_2,
             )
 
     # Card 2.3 — Hour × DOW heatmap (Pattern 3 own-only sequential)
     with cols[2]:
         with st.container(border=True):
-            CP.render_ask_about_this(
-                key=f"ask_about_hour_dow_{merchant_id}",
-                specialist="trade",
-                prefill="What does my hour-by-day pattern tell me about my customer base?",
-            )
+            ask_2_3 = {
+                "key":        f"ask_about_hour_dow_{merchant_id}",
+                "specialist": "trade",
+                "prefill":    "What does my hour-by-day pattern tell me about my customer base?",
+            }
             h = D.hour_dow_heatmap_card(merchant_id)
             wd_we_phrase = (
                 f"{h['wd_we_higher']} traffic is {h['wd_we_ratio']}% higher "
@@ -627,6 +637,7 @@ def render_performance_section(merchant_id: str, filters: dict) -> None:  # noqa
                 takeaway=takeaway,
                 mode="own_only_sequential",
                 height=300,
+                ask_about_this=ask_2_3,
             )
 
 
