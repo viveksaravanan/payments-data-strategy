@@ -65,6 +65,17 @@ PEER_DISPLAY = {
 }
 
 
+# Reused footnote for cards whose computation depends on knowing
+# which customer made a transaction. v3's synthetic data attaches a
+# customer_id to every transaction (100% coverage); in real-world
+# deployment, this slice is only loyalty-enrolled / billing-known.
+CUSTOMER_COVERAGE_FOOTNOTE = (
+    "Based on transactions tied to a known customer. "
+    "In production, this would cover only customers with "
+    "loyalty enrollment or consistent billing address."
+)
+
+
 def peer_display(label: str) -> str:
     """Convert an internal peer id (``peer_a``) to its user-facing
     display form (``Peer A``). Unknown labels fall through unchanged."""
@@ -198,6 +209,19 @@ def _render_card_header(title: str, takeaway: str) -> None:
             f"{takeaway}</p>",
             unsafe_allow_html=True,
         )
+
+
+def _render_card_footnote(footnote: str) -> None:
+    """Small muted footnote below a chart. Used for data-coverage
+    caveats that apply to a specific card but aren't part of its
+    headline takeaway."""
+    if not footnote:
+        return
+    st.markdown(
+        f"<p style='color:#9CA3AF;font-size:12px;margin:4px 0 0 0;'>"
+        f"{footnote}</p>",
+        unsafe_allow_html=True,
+    )
 
 
 def render_cross_merchant_comparison(
@@ -977,6 +1001,8 @@ def render_neighborhood_map(
         returned_objects=[],
         key=f"map_{map_key}",
     )
+
+    _render_card_footnote(data.get("footnote", ""))
 
 
 # ---------------------------------------------------------------------------

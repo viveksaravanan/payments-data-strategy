@@ -2046,12 +2046,14 @@ def customer_home_density(merchant_id: str) -> dict:
         for r in own_stores_df.itertuples()
     ]
 
+    from . import chart_patterns as CP
     return {
         "neighborhoods":        out,
         "underserved":          [r["name"] for r in underserved],
         "pct_underserved":      pct_underserved,
         "densest_underserved":  densest,
         "own_markers":          own_markers,
+        "footnote":             CP.CUSTOMER_COVERAGE_FOOTNOTE,
     }
 
 
@@ -2189,6 +2191,7 @@ def expansion_opportunity(merchant_id: str) -> dict:
         "top_peer_signal":   peer_signal,
         "own_markers":       own_markers,
         "peer_markers":      peer_markers,
+        "footnote":          CP.CUSTOMER_COVERAGE_FOOTNOTE,
     }
 
 
