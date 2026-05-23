@@ -231,6 +231,40 @@ def _render_d4(merchant_id: str) -> None:
     )
 
 
+def _render_d7(merchant_id: str) -> None:
+    """D7: revenue gap decomposition vs peer-mean (Pattern 5 waterfall)."""
+    chart_data = D.revenue_gap_decomposition(merchant_id)
+    if not chart_data["drivers"] or not chart_data.get("has_peers"):
+        st.caption("_No peer data available for revenue-gap decomposition._")
+        return
+
+    gap_pct = chart_data["total_gap_pct"]
+    dom     = chart_data["dominant_driver"].lower()
+    dom_pp  = chart_data["dominant_pp"]
+    secondary = chart_data.get("secondary") or []
+
+    if not secondary:
+        takeaway = (
+            f"Of your {gap_pct:+.1f}% revenue gap vs peers, {dom} "
+            f"contributes {dom_pp:+.1f}pp; other drivers are within noise."
+        )
+    else:
+        sec_phrase = ", ".join(
+            f"{name.lower()} {pp:+.1f}pp" for name, pp in secondary
+        )
+        takeaway = (
+            f"Of your {gap_pct:+.1f}% revenue gap vs peers, {dom} is the "
+            f"largest driver at {dom_pp:+.1f}pp; {sec_phrase} also material."
+        )
+
+    CP.render_waterfall(
+        chart_data,
+        title="Revenue gap decomposition vs peer-mean",
+        takeaway=takeaway,
+        mode="cross_merchant",
+    )
+
+
 def _render_d3(merchant_id: str) -> None:
     """D3: basket-mix fingerprint vs peer-average (Pattern 2 diverging)."""
     chart_data = D.basket_mix_vs_peers(merchant_id)
@@ -258,6 +292,7 @@ QUESTION_RENDERERS: dict[str, Callable[[str], None]] = {
     "P3": _render_p3,
     "D3": _render_d3,
     "D4": _render_d4,
+    "D7": _render_d7,
 }
 
 

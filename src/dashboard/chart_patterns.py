@@ -596,6 +596,121 @@ def render_scatter_with_peers(
 
 
 # ---------------------------------------------------------------------------
+# Pattern 5 — Decomposition / waterfall
+# ---------------------------------------------------------------------------
+
+def render_waterfall(
+    data: dict,
+    *,
+    title: str,
+    takeaway: str,
+    mode: str = "cross_merchant",
+    height: int | None = None,
+) -> None:
+    """Pattern 5 — waterfall decomposition with driver bars.
+
+    Modes:
+
+    - ``"cross_merchant"`` — own-vs-peer gap decomposed into driver
+      contributions. Each driver bar shows its sign-aware pp
+      contribution to the gap; a final ``"total"`` bar shows the
+      cumulative gap. Used by D7.
+    - ``"own_vs_own_baseline"`` — Phase 4.3 work (T-D3, R-D3 for the
+      TBL/TJX viewers). Not yet implemented.
+
+    ``data`` keys for ``cross_merchant`` mode:
+
+        drivers: list of dicts, each with
+            ``label`` (str)         — driver name (e.g., "Traffic")
+            ``contribution`` (float) — sign-aware pp contribution
+            ``own`` (float, optional) — raw own driver value (hover)
+            ``peer`` (float, optional) — raw peer-mean value (hover)
+        total_label: label for the cumulative bar (default "Total gap").
+        y_label:     y-axis label (default "Contribution to gap (pp)").
+    """
+    if mode == "cross_merchant":
+        _render_waterfall_cross_merchant(
+            data, title=title, takeaway=takeaway, height=height,
+        )
+        return
+    raise NotImplementedError(
+        f"render_waterfall mode {mode!r} not implemented "
+        f"(Phase 4.2d implements cross_merchant only)."
+    )
+
+
+def _render_waterfall_cross_merchant(
+    data: dict,
+    *,
+    title: str,
+    takeaway: str,
+    height: int | None,
+) -> None:
+    drivers = data.get("drivers") or []
+    if not drivers:
+        _render_card_header(title, takeaway)
+        st.caption("_No data available for this view._")
+        return
+
+    total_label = data.get("total_label", "Total gap")
+    y_label     = data.get("y_label", "Contribution to gap (pp)")
+
+    # Waterfall x-axis: one entry per driver, plus a final cumulative
+    # "Total gap" column. ``measure=relative`` makes each bar a delta on
+    # the running total; ``measure=total`` resets the bar to absolute
+    # cumulative position (so the final bar reads as the summed gap).
+    x        = [d["label"] for d in drivers] + [total_label]
+    y        = [float(d["contribution"]) for d in drivers] + [0.0]
+    measure  = ["relative"] * len(drivers) + ["total"]
+    text     = [f"{d['contribution']:+.1f}pp" for d in drivers]
+    text    += [f"{sum(float(d['contribution']) for d in drivers):+.1f}pp"]
+
+    # Per-bar hover with raw own / peer values when provided.
+    customdata = [
+        [d.get("own", ""), d.get("peer", "")] for d in drivers
+    ] + [["", ""]]
+    hover = (
+        "<b>%{x}</b><br>"
+        "Contribution: %{text}<br>"
+        "Own: %{customdata[0]}<br>"
+        "Peer: %{customdata[1]}<extra></extra>"
+    )
+
+    fig = go.Figure(go.Waterfall(
+        name="Gap decomposition",
+        orientation="v",
+        measure=measure,
+        x=x,
+        y=y,
+        text=text,
+        textposition="outside",
+        customdata=customdata,
+        hovertemplate=hover,
+        connector=dict(line=dict(color=BASELINE_LINE, width=1, dash="dot")),
+        increasing=dict(marker=dict(color=ACCENT)),
+        decreasing=dict(marker=dict(color=DIVERGING_LOW)),
+        totals=dict(marker=dict(color=PEER_AGGREGATE)),
+    ))
+    fig.add_hline(y=0, line_dash="dot", line_color=BASELINE_LINE)
+
+    fig.update_layout(
+        xaxis_title=None,
+        yaxis_title=y_label,
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        margin=dict(l=64, r=24, t=24, b=40),
+        height=height or 380,
+        showlegend=False,
+    )
+    fig.update_xaxes(showgrid=False, zeroline=False, tickfont=dict(size=11))
+    fig.update_yaxes(showgrid=True, gridcolor=GRID_LINE, zeroline=False,
+                     ticksuffix="pp", tickfont=dict(size=10))
+
+    _render_card_header(title, takeaway)
+    st.plotly_chart(fig, use_container_width=True)
+
+
+# ---------------------------------------------------------------------------
 # Takeaway-subtitle templating
 # ---------------------------------------------------------------------------
 

@@ -1535,6 +1535,220 @@ def category_share_vs_peer_share(merchant_id: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# D7 — Revenue gap decomposition (Pattern 5 waterfall)
+# ---------------------------------------------------------------------------
+#
+# Decomposes own-vs-peer-mean revenue gap into driver contributions via
+# the panel-level identity ``R = N × B × P`` where
+#
+#     N = transaction count
+#     B = items per transaction (total_qty / N)
+#     P = $ per item            (total_revenue / total_qty)
+#
+# Since the identity is exact, ``log(R_own / R_peer)`` decomposes
+# exactly into ``log(N_own/N_peer) + log(B_own/B_peer) +
+# log(P_own/P_peer)``. Each log-share, multiplied by the % revenue
+# gap, gives that driver's pp contribution. Mix and Residual are
+# placeholder 0-bars in this implementation — sub-decomposing the
+# Ticket factor into mix vs. within-category price effects is deferred
+# to Phase 4.3.
+#
+# Peer transaction count is recovered from the lake by filtering to
+# ``line_id = 1`` rows (the generator assigns line_id starting at 1
+# for the first line of every transaction; counting first-line rows
+# per peer gives the exact peer txn count without needing
+# transaction-level lake exposure).
+
+# Noise threshold (pp) below which secondary drivers are described as
+# "within noise" in the takeaway rather than called out by name.
+_D7_NOISE_PP = 3.0
+
+
+@st.cache_data(ttl=3600)
+def revenue_gap_decomposition(merchant_id: str) -> dict:
+    """Decompose own-vs-peer-mean revenue gap into driver contributions
+    (Traffic / Basket / Ticket / Mix / Residual). Data shape for
+    Pattern 5 cross_merchant mode (D7).
+
+    Peer baseline is the simple mean of peer_a's and peer_b's per-
+    merchant aggregates. Drivers Mix and Residual are returned as
+    0-valued bars — see module-level comment for the deferred
+    sub-decomposition.
+
+    Returns a dict shaped for ``render_waterfall`` plus takeaway
+    metadata. Returns an empty-shape dict (``drivers: []``) for
+    merchants without same-segment peers in the panel (TBL, TJX).
+    """
+    import math
+
+    # Same-segment-peer guard: TBL / TJX have no peer_a/peer_b in their
+    # lake at all (the lake_transactions_<viewer> view excludes the
+    # viewer, and TBL is the only QSR / TJX is the only off-price
+    # retail in the panel). Skip the SQL entirely for these viewers.
+    if not has_same_segment_peers(merchant_id):
+        return {
+            "drivers":          [],
+            "total_label":      "Total gap",
+            "y_label":          "Contribution to gap (pp)",
+            "total_gap_pct":    0.0,
+            "dominant_driver":  "—",
+            "dominant_pp":      0.0,
+            "has_peers":        False,
+        }
+
+    lake_t = f"lake_transactions_{merchant_id}"
+
+    with _conn() as c:
+        own = c.execute(
+            """
+            SELECT COUNT(DISTINCT t.txn_id) AS n_txns,
+                   SUM(i.qty)               AS total_items,
+                   SUM(i.line_total)        AS total_revenue
+            FROM tenant_transactions t
+            JOIN tenant_transaction_items i ON i.txn_id = t.txn_id
+            WHERE t.merchant_id = ?
+            """,
+            (merchant_id,),
+        ).fetchone()
+
+        # ``line_id = 1`` recovers the true peer transaction count
+        # without needing to expose txn_id from the lake; first-line
+        # rows are 1:1 with original transactions per the generator
+        # (transactions.py:858).
+        peer_n_rows = c.execute(
+            f"""
+            SELECT peer_id, COUNT(*) AS n_txns
+            FROM {lake_t}
+            WHERE peer_segment = 'grocery'
+              AND peer_id IN ('peer_a', 'peer_b')
+              AND line_id = 1
+            GROUP BY peer_id
+            """,
+        ).fetchall()
+
+        peer_ir_rows = c.execute(
+            f"""
+            SELECT peer_id,
+                   SUM(qty)        AS total_items,
+                   SUM(line_total) AS total_revenue
+            FROM {lake_t}
+            WHERE peer_segment = 'grocery'
+              AND peer_id IN ('peer_a', 'peer_b')
+            GROUP BY peer_id
+            """,
+        ).fetchall()
+
+    N_own, I_own, R_own = own
+    if not N_own or not I_own or not R_own:
+        return {
+            "drivers": [], "total_label": "Total gap",
+            "y_label": "Contribution to gap (pp)",
+            "total_gap_pct": 0.0, "dominant_driver": "—",
+            "dominant_pp": 0.0, "has_peers": False,
+        }
+    N_own = int(N_own); I_own = float(I_own); R_own = float(R_own)
+
+    peer_n = {pid: int(n) for pid, n in peer_n_rows}
+    peer_i = {pid: float(i) for pid, i, _ in peer_ir_rows}
+    peer_r = {pid: float(r) for pid, _, r in peer_ir_rows}
+
+    # Peers with complete data only.
+    valid_peers = [
+        p for p in ("peer_a", "peer_b")
+        if peer_n.get(p, 0) > 0 and peer_i.get(p, 0) > 0 and peer_r.get(p, 0) > 0
+    ]
+    if not valid_peers:
+        return {
+            "drivers": [], "total_label": "Total gap",
+            "y_label": "Contribution to gap (pp)",
+            "total_gap_pct": 0.0, "dominant_driver": "—",
+            "dominant_pp": 0.0, "has_peers": False,
+        }
+
+    N_peer = sum(peer_n[p] for p in valid_peers) / len(valid_peers)
+    I_peer = sum(peer_i[p] for p in valid_peers) / len(valid_peers)
+    R_peer = sum(peer_r[p] for p in valid_peers) / len(valid_peers)
+
+    B_own = I_own / N_own
+    P_own = R_own / I_own
+    B_peer = I_peer / N_peer
+    P_peer = R_peer / I_peer
+
+    # Log-decomposition: log(R_own/R_peer) = log(N_own/N_peer) +
+    # log(B_own/B_peer) + log(P_own/P_peer), exact at the panel level.
+    # Each driver's pp contribution is expressed as
+    # ``100 × log(driver_ratio)``. For small gaps these match arithmetic
+    # percentage differences closely; for larger gaps the log form is
+    # preferred because the three drivers sum exactly to the total gap
+    # (no leftover cross-term).
+    log_R = math.log(R_own / R_peer)
+    log_N = math.log(N_own / N_peer)
+    log_B = math.log(B_own / B_peer)
+    log_P = math.log(P_own / P_peer)
+
+    gap_pct    = round(log_R * 100, 1)
+    traffic_pp = round(log_N * 100, 1)
+    basket_pp  = round(log_B * 100, 1)
+    ticket_pp  = round(log_P * 100, 1)
+    mix_pp      = 0.0
+    residual_pp = 0.0
+
+    drivers = [
+        {
+            "label":        "Traffic",
+            "contribution": traffic_pp,
+            "own":          f"{N_own:,} txns",
+            "peer":         f"{N_peer:,.0f} txns",
+        },
+        {
+            "label":        "Basket",
+            "contribution": basket_pp,
+            "own":          f"{B_own:.2f} items/txn",
+            "peer":         f"{B_peer:.2f} items/txn",
+        },
+        {
+            "label":        "Ticket",
+            "contribution": ticket_pp,
+            "own":          f"${P_own:.2f}/item",
+            "peer":         f"${P_peer:.2f}/item",
+        },
+        {
+            "label":        "Mix",
+            "contribution": mix_pp,
+            "own":          "(deferred)",
+            "peer":         "(deferred)",
+        },
+        {
+            "label":        "Residual",
+            "contribution": residual_pp,
+            "own":          "(deferred)",
+            "peer":         "(deferred)",
+        },
+    ]
+
+    # Dominant driver = largest absolute contribution. The takeaway is
+    # adaptive: when only one driver is above the noise floor we call
+    # the rest "within noise"; otherwise we name the runner-ups so the
+    # subtitle stays faithful to the data (avoids the "noise" claim
+    # when offsetting drivers are material).
+    ranked = sorted(drivers[:3], key=lambda d: abs(d["contribution"]),
+                     reverse=True)
+    dom = ranked[0]
+    secondary = [d for d in ranked[1:] if abs(d["contribution"]) >= _D7_NOISE_PP]
+
+    return {
+        "drivers":         drivers,
+        "total_label":     "Total gap",
+        "y_label":         "Contribution to gap (pp)",
+        "total_gap_pct":   round(gap_pct, 1),
+        "dominant_driver": dom["label"],
+        "dominant_pp":     dom["contribution"],
+        "secondary":       [(d["label"], d["contribution"]) for d in secondary],
+        "has_peers":       True,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Compatibility shims for placeholders.py and earlier views (no-op now)
 # ---------------------------------------------------------------------------
 
