@@ -197,6 +197,98 @@ def render_time_series_vs_peers(
 
 
 # ---------------------------------------------------------------------------
+# Pattern 1 — Time-series, own-only multi-series mode
+# ---------------------------------------------------------------------------
+#
+# Used by TBL/TJX questions whose comparison axis is not a peer cohort
+# but a within-merchant breakdown (per-daypart, per-category). Same
+# Plotly machinery as ``render_time_series_vs_peers`` but takes an
+# arbitrary list of own series with distinct line styles.
+
+# Light → dark brand-family palette for own multi-series modes. Anchors
+# at the existing ACCENT so the visual identity stays consistent with
+# the cross-merchant charts.
+_OWN_SERIES_COLORS = [
+    "#0F4C81",  # ACCENT
+    "#3A6FA5",
+    "#6F8FB8",
+    "#9CB3CC",
+    "#C8D5E2",
+    "#3D2EAD",  # deeper accent for the fifth series
+    "#5C4FC0",
+    "#8B82D6",
+]
+_OWN_SERIES_DASHES = [
+    "solid", "dash", "dot", "dashdot",
+    "longdash", "longdashdot", "solid", "dash",
+]
+
+
+def render_time_series_own_multi(
+    data: dict,
+    *,
+    title: str,
+    takeaway: str,
+    height: int = 360,
+) -> None:
+    """Pattern 1, own-only multi-series mode.
+
+    ``data`` keys:
+
+        weeks:    list of week-start ISO dates.
+        series:   list of dicts, each with
+            ``name`` (str)        — legend label
+            ``values`` (list)     — y-values aligned to ``weeks``
+            ``color`` (str, opt.) — Plotly color (defaults to a
+                                    brand-family palette by index)
+            ``dash`` (str, opt.)  — Plotly dash style (defaults vary)
+        y_label:  str — y-axis label (e.g., ``"Mean ticket ($)"``).
+    """
+    weeks = data.get("weeks") or []
+    series = data.get("series") or []
+    if not weeks or not series:
+        _render_card_header(title, takeaway)
+        st.caption("_No data available for this view._")
+        return
+
+    fig = go.Figure()
+    for idx, s in enumerate(series):
+        color = s.get("color") or _OWN_SERIES_COLORS[idx % len(_OWN_SERIES_COLORS)]
+        dash  = s.get("dash")  or _OWN_SERIES_DASHES[idx % len(_OWN_SERIES_DASHES)]
+        fig.add_trace(go.Scatter(
+            x=weeks,
+            y=s["values"],
+            mode="lines+markers",
+            name=s["name"],
+            line=dict(color=color, dash=dash, width=2),
+            marker=dict(size=5, color=color),
+            connectgaps=False,
+        ))
+
+    fig.update_layout(
+        xaxis_title=None,
+        yaxis_title=data.get("y_label", ""),
+        hovermode="x unified",
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        margin=dict(l=48, r=24, t=24, b=40),
+        height=height,
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom", y=1.02,
+            xanchor="left",   x=0,
+            font=dict(size=10),
+        ),
+    )
+    fig.update_xaxes(showgrid=False, zeroline=False, tickfont=dict(size=10))
+    fig.update_yaxes(showgrid=True, gridcolor=GRID_LINE, zeroline=False,
+                     tickfont=dict(size=10))
+    _render_card_header(title, takeaway)
+    st.plotly_chart(fig, use_container_width=True)
+
+
+# ---------------------------------------------------------------------------
 # Pattern 2 — Cross-merchant comparison, single dimension
 # ---------------------------------------------------------------------------
 
@@ -421,8 +513,12 @@ def render_heatmap(
       ``cells`` (2D list[float|None] aligned to rows × cols).
       ``None`` cells render transparent (k=5 suppression).
 
-    - ``"own_only_diverging"`` — Phase 4.3 work (T-A3, R-A3). Not
-      yet implemented.
+    - ``"own_only_diverging"`` — diverging red-white-blue scale with
+      white at parity (ratio = 1.0). Cells are ratios of recent-week
+      to first-4w baseline; <1.0 = under-performing (red), >1.0 =
+      over-performing (blue). Cell text overlays the ratio formatted
+      as percent of baseline. Used by T-A3 (day-of-week × daypart)
+      and R-A3 (day-of-week × week).
     - ``"own_only_sequential"`` — Phase 4.4 work (Card 2.3). Not
       yet implemented.
     """
@@ -431,9 +527,13 @@ def render_heatmap(
             data, title=title, takeaway=takeaway, height=height,
         )
         return
+    if mode == "own_only_diverging":
+        _render_heatmap_own_only_diverging(
+            data, title=title, takeaway=takeaway, height=height,
+        )
+        return
     raise NotImplementedError(
-        f"render_heatmap mode {mode!r} not implemented "
-        f"(Phase 4.2b implements cross_merchant_diverging only)."
+        f"render_heatmap mode {mode!r} not implemented."
     )
 
 
@@ -503,6 +603,161 @@ def _render_heatmap_cross_merchant_diverging(
     fig.update_yaxes(tickfont=dict(size=11), automargin=True,
                      autorange="reversed")
 
+    _render_card_header(title, takeaway)
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def _render_heatmap_own_only_diverging(
+    data: dict,
+    *,
+    title: str,
+    takeaway: str,
+    height: int | None,
+) -> None:
+    rows = data["rows"]
+    cols = data["cols"]
+    cells = data["cells"]
+    if not rows or not cols:
+        _render_card_header(title, takeaway)
+        st.caption("_No data available for this view._")
+        return
+
+    # Cells are ratios (1.0 = baseline). Symmetric range AROUND 1.0
+    # so red/blue saturate equally for under/over deviation.
+    flat = [v for row in cells for v in row if v is not None]
+    if flat:
+        max_dev = max(abs(v - 1.0) for v in flat)
+    else:
+        max_dev = 0.2  # default 20% range if everything is None
+    # Floor at 0.10 so tiny ratios don't fully saturate the color.
+    max_dev = max(max_dev, 0.10)
+    zmin = 1.0 - max_dev
+    zmax = 1.0 + max_dev
+
+    text = [
+        [f"{v * 100:.0f}%" if v is not None else "—" for v in row]
+        for row in cells
+    ]
+
+    fig = go.Figure(go.Heatmap(
+        z=cells,
+        x=cols,
+        y=rows,
+        text=text,
+        texttemplate="%{text}",
+        textfont=dict(size=11, color="#1A1F2E"),
+        colorscale=[
+            [0.0, DIVERGING_LOW],
+            [0.5, DIVERGING_MID],
+            [1.0, DIVERGING_HIGH],
+        ],
+        zmid=1.0,
+        zmin=zmin,
+        zmax=zmax,
+        hoverongaps=False,
+        hovertemplate="<b>%{y} × %{x}</b><br>%{text} of baseline<extra></extra>",
+        colorbar=dict(
+            tickformat=".0%",
+            thickness=10,
+            outlinewidth=0,
+        ),
+        xgap=2, ygap=2,
+    ))
+    fig.update_layout(
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        margin=dict(l=80, r=20, t=20, b=24),
+        height=height or max(280, 30 * len(rows) + 80),
+    )
+    fig.update_xaxes(tickfont=dict(size=11), side="top")
+    fig.update_yaxes(tickfont=dict(size=11), automargin=True,
+                     autorange="reversed")
+    _render_card_header(title, takeaway)
+    st.plotly_chart(fig, use_container_width=True)
+
+
+# ---------------------------------------------------------------------------
+# Pattern 2 — Horizontal bars, own-only mode
+# ---------------------------------------------------------------------------
+
+def render_horizontal_bars_own(
+    data: dict,
+    *,
+    title: str,
+    takeaway: str,
+    height: int | None = None,
+) -> None:
+    """Pattern 2, own-only horizontal bars with optional reference line
+    and outlier highlighting. Used by T-P3 (per-store ticket spread),
+    T-D1 (own category share), R-D1, R-P3 (ticket-band split).
+
+    ``data`` keys:
+
+        labels: list of y-axis labels.
+        values: list of x-axis values aligned to ``labels``.
+        x_label, y_label:  optional axis labels.
+        ref_line:          optional float — vertical reference line.
+        ref_label:         optional str — annotation for ref line.
+        highlight:         optional list[bool] — True rows render in a
+                           darker accent shade.
+        value_format:      optional Plotly tickformat (e.g., ``"$,.2f"``).
+        hover_template:    optional Plotly hovertemplate string.
+    """
+    labels = data.get("labels") or []
+    values = data.get("values") or []
+    if not labels or not values or len(labels) != len(values):
+        _render_card_header(title, takeaway)
+        st.caption("_No data available for this view._")
+        return
+
+    highlight = data.get("highlight") or [False] * len(labels)
+    bar_colors = [
+        "#072744" if h else ACCENT  # darker accent for outliers
+        for h in highlight
+    ]
+
+    hover = data.get("hover_template") or (
+        "<b>%{y}</b><br>%{x}<extra></extra>"
+    )
+    bar_kwargs = dict(
+        y=labels,
+        x=values,
+        orientation="h",
+        marker=dict(color=bar_colors),
+        hovertemplate=hover,
+    )
+    if data.get("customdata") is not None:
+        bar_kwargs["customdata"] = data["customdata"]
+    fig = go.Figure(go.Bar(**bar_kwargs))
+
+    ref = data.get("ref_line")
+    if ref is not None:
+        fig.add_vline(
+            x=float(ref),
+            line_dash="dot",
+            line_color=BASELINE_LINE,
+            annotation_text=data.get("ref_label"),
+            annotation_position="top",
+            annotation_font_size=10,
+            annotation_font_color="rgba(75, 85, 99, 0.85)",
+        )
+
+    fig.update_layout(
+        xaxis_title=data.get("x_label"),
+        yaxis_title=None,
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        margin=dict(l=80, r=24, t=20, b=32),
+        height=height or max(220, 22 * len(labels) + 80),
+        showlegend=False,
+    )
+    fig.update_xaxes(
+        showgrid=True, gridcolor=GRID_LINE, zeroline=False,
+        tickformat=data.get("value_format"),
+        tickfont=dict(size=10),
+    )
+    fig.update_yaxes(showgrid=False, tickfont=dict(size=10),
+                     automargin=True, autorange="reversed")
     _render_card_header(title, takeaway)
     st.plotly_chart(fig, use_container_width=True)
 
@@ -642,8 +897,12 @@ def render_waterfall(
       contributions. Each driver bar shows its sign-aware pp
       contribution to the gap; a final ``"total"`` bar shows the
       cumulative gap. Used by D7.
-    - ``"own_vs_own_baseline"`` — Phase 4.3 work (T-D3, R-D3 for the
-      TBL/TJX viewers). Not yet implemented.
+    - ``"own_vs_own_baseline"`` — own-vs-own decomposition: recent
+      week vs first-4w baseline. Drivers are Traffic, Basket, Ticket,
+      Mix, Residual (no Stores — store count is held constant inside
+      a single merchant across baseline and recent windows). Used by
+      T-D3 and R-D3. Visually identical waterfall shape; only the
+      data narrative differs (the takeaway is composed by the caller).
 
     ``data`` keys for ``cross_merchant`` mode:
 
@@ -655,14 +914,17 @@ def render_waterfall(
         total_label: label for the cumulative bar (default "Total gap").
         y_label:     y-axis label (default "Contribution to gap (pp)").
     """
-    if mode == "cross_merchant":
+    if mode in ("cross_merchant", "own_vs_own_baseline"):
+        # The renderer shape is identical for both modes — driver
+        # bars then a cumulative ``total`` bar. The semantic
+        # difference (vs-peer gap vs vs-baseline change) lives in
+        # the caller's data shape + takeaway text.
         _render_waterfall_cross_merchant(
             data, title=title, takeaway=takeaway, height=height,
         )
         return
     raise NotImplementedError(
-        f"render_waterfall mode {mode!r} not implemented "
-        f"(Phase 4.2d implements cross_merchant only)."
+        f"render_waterfall mode {mode!r} not implemented."
     )
 
 

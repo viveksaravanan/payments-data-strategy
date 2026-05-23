@@ -307,6 +307,270 @@ def _render_d3(merchant_id: str) -> None:
     )
 
 
+def _render_t_p1(merchant_id: str) -> None:
+    """T-P1 (TBL): mean ticket trend per daypart (Pattern 1 own-multi)."""
+    chart_data = D.tbl_daypart_ticket_trends(merchant_id)
+    if not chart_data["series"]:
+        st.caption("_No daypart-trend data available._")
+        return
+    top_dp   = chart_data["top_daypart"]
+    top_pct  = chart_data["top_pct"]
+    top_dir  = chart_data["top_direction"]
+    bot_dp   = chart_data["bottom_daypart"]
+    bot_pct  = chart_data["bottom_pct"]
+    bot_dir  = chart_data["bottom_direction"]
+    takeaway = (
+        f"Your {top_dp.lower()} ticket is {top_dir} {abs(top_pct):.1f}% "
+        f"over 90 days; {bot_dp.lower()} is {bot_dir} {abs(bot_pct):.1f}%."
+    )
+    CP.render_time_series_own_multi(
+        chart_data,
+        title="Average ticket by daypart, weekly",
+        takeaway=takeaway,
+    )
+
+
+def _render_t_p2(merchant_id: str) -> None:
+    """T-P2 (TBL): per-category unit price trends (Pattern 1 own-multi)."""
+    chart_data = D.category_unit_price_trends(merchant_id, top_n=6)
+    if not chart_data["series"]:
+        st.caption("_No category-price data available._")
+        return
+    takeaway = (
+        f"{chart_data['top_category']} prices are {chart_data['top_direction']} "
+        f"{abs(chart_data['top_pct']):.1f}% over 90 days; next-largest shift "
+        f"{chart_data['next_category']} at {chart_data['next_direction']} "
+        f"{abs(chart_data['next_pct']):.1f}%."
+    )
+    CP.render_time_series_own_multi(
+        chart_data,
+        title="Mean unit price by category, weekly",
+        takeaway=takeaway,
+    )
+
+
+def _render_t_p3(merchant_id: str) -> None:
+    """T-P3 (TBL): per-store mean-ticket distribution (Pattern 2 own-bars)."""
+    chart_data = D.per_store_mean_ticket(merchant_id)
+    if not chart_data["labels"]:
+        st.caption("_No store ticket data available._")
+        return
+    takeaway = (
+        f"Your highest-ticket store is {chart_data['top_store']} at "
+        f"${chart_data['top_value']:.2f}; lowest is {chart_data['bottom_store']} "
+        f"at ${chart_data['bottom_value']:.2f}; range is "
+        f"${chart_data['range_value']:.2f}."
+    )
+    CP.render_horizontal_bars_own(
+        chart_data,
+        title="Mean ticket by store",
+        takeaway=takeaway,
+    )
+
+
+def _render_t_a1(merchant_id: str) -> None:
+    """T-A1 (TBL): per-store recent-vs-baseline traffic anomalies (Pattern 9)."""
+    chart_data = D.store_anomalies_own_only(merchant_id)
+    rows = chart_data["rows"]
+    if not rows:
+        st.caption("_No stores with enough baseline data to evaluate._")
+        return
+    n_flag = chart_data["n_flagged"]
+    n_under = chart_data["n_under"]
+    n_over  = chart_data["n_over"]
+    top = chart_data["top"]
+    if n_flag == 0:
+        takeaway = "All your stores are within 15% of your panel baseline."
+    elif n_under == 0:
+        takeaway = (
+            f"{n_flag} of your stores are running >15% above baseline; "
+            f"{top['store_id']} ({top['neighborhood']}) shows the largest "
+            f"swing ({top['deviation_pct']:+.1f}%)."
+        )
+    elif n_over == 0:
+        takeaway = (
+            f"{n_flag} of your stores are running >15% below baseline; "
+            f"{top['store_id']} ({top['neighborhood']}) shows the largest "
+            f"swing ({top['deviation_pct']:+.1f}%)."
+        )
+    else:
+        takeaway = (
+            f"{n_flag} stores deviate from baseline by >15% "
+            f"({n_under} under, {n_over} over); "
+            f"{top['store_id']} ({top['neighborhood']}) shows the largest "
+            f"swing ({top['deviation_pct']:+.1f}%)."
+        )
+    CP.render_table_with_drilldown(
+        {
+            "rows": rows,
+            "columns": [
+                {"key": "store_id",      "label": "Store",        "kind": "text"},
+                {"key": "neighborhood",  "label": "Neighborhood", "kind": "text"},
+                {"key": "baseline",      "label": "Baseline (txns/wk)", "kind": "float"},
+                {"key": "recent",        "label": "Recent (txns)", "kind": "int"},
+                {"key": "deviation_pct", "label": "Δ vs baseline", "kind": "pct", "diverging": True},
+            ],
+        },
+        title="Per-store traffic vs your first-4-week baseline",
+        takeaway=takeaway,
+    )
+
+
+def _render_t_a2(merchant_id: str) -> None:
+    """T-A2 (TBL): per-SKU recent-vs-baseline volume anomalies (Pattern 9)."""
+    chart_data = D.sku_anomalies(merchant_id, top_n=25)
+    rows = chart_data["rows"]
+    if not rows:
+        st.caption("_No SKU-volume data in the recent window._")
+        return
+    n_flag = chart_data["n_flagged"]
+    spike  = chart_data["top_spike"]
+    drop   = chart_data["top_drop"]
+
+    if n_flag == 0:
+        takeaway = (
+            "No menu items deviate from baseline by >15% in the recent week."
+        )
+    else:
+        parts = []
+        if spike is not None:
+            parts.append(
+                f"largest spike: {spike['sku_name']} "
+                f"({spike['deviation_pct']:+.1f}%)"
+            )
+        if drop is not None:
+            parts.append(
+                f"largest drop: {drop['sku_name']} "
+                f"({drop['deviation_pct']:+.1f}%)"
+            )
+        takeaway = (
+            f"{n_flag} menu item{'s' if n_flag != 1 else ''} deviate from "
+            f"baseline by >15%; " + "; ".join(parts) + "."
+        )
+    CP.render_table_with_drilldown(
+        {
+            "rows": rows,
+            "columns": [
+                {"key": "sku_name",      "label": "Menu item",     "kind": "text"},
+                {"key": "category",      "label": "Category",      "kind": "text"},
+                {"key": "baseline",      "label": "Baseline (lines/wk)", "kind": "float"},
+                {"key": "recent",        "label": "Recent (lines)", "kind": "int"},
+                {"key": "deviation_pct", "label": "Δ vs baseline", "kind": "pct", "diverging": True},
+            ],
+        },
+        title="Top menu-item volume deviations vs your first-4-week baseline",
+        takeaway=takeaway,
+    )
+
+
+def _render_t_a3(merchant_id: str) -> None:
+    """T-A3 (TBL): day-of-week × daypart ratio heatmap (Pattern 3 own-only)."""
+    chart_data = D.day_daypart_heatmap(merchant_id)
+    weakest = chart_data["weakest"]
+    strongest = chart_data["strongest"]
+    if weakest is None or strongest is None:
+        takeaway = "Insufficient daypart-level data to score this week."
+    else:
+        w_val, w_dow, w_dp = weakest
+        s_val, s_dow, s_dp = strongest
+        takeaway = (
+            f"Weakest day-daypart this week: {w_dow} {w_dp.lower()} at "
+            f"{w_val * 100:.0f}% of baseline; strongest: {s_dow} "
+            f"{s_dp.lower()} at {s_val * 100:.0f}%."
+        )
+    CP.render_heatmap(
+        chart_data,
+        title="Day × daypart recent-week vs first-4-week baseline",
+        takeaway=takeaway,
+        mode="own_only_diverging",
+    )
+
+
+def _render_t_d1(merchant_id: str) -> None:
+    """T-D1 (TBL): menu-category share bars (Pattern 2 own-bars)."""
+    chart_data = D.category_share_own(merchant_id, top_n=8)
+    if not chart_data["labels"]:
+        st.caption("_No category-share data available._")
+        return
+    names = ", ".join(chart_data["top3_names"])
+    takeaway = (
+        f"Top 3 categories ({names}) account for "
+        f"{chart_data['top3_pct']:.1f}% of revenue."
+    )
+    CP.render_horizontal_bars_own(
+        chart_data,
+        title="Category share of revenue",
+        takeaway=takeaway,
+    )
+
+
+def _render_t_d2(merchant_id: str) -> None:
+    """T-D2 (TBL): category share trajectory (Pattern 1 own-multi)."""
+    chart_data = D.category_share_trajectory(merchant_id, top_n=6)
+    if not chart_data["series"]:
+        st.caption("_No category-share trajectory data available._")
+        return
+    grow = chart_data["growing_category"]
+    grow_pp = chart_data["growing_pp"]
+    dec = chart_data["declining_category"]
+    dec_pp = chart_data["declining_pp"]
+    if grow != "—" and dec != "—":
+        takeaway = (
+            f"{grow} share is up {grow_pp:+.1f}pp over 90 days; "
+            f"{dec} is down {dec_pp:+.1f}pp."
+        )
+    elif grow != "—":
+        takeaway = (
+            f"{grow} share is up {grow_pp:+.1f}pp over 90 days; "
+            "no category is materially declining."
+        )
+    elif dec != "—":
+        takeaway = (
+            f"{dec} share is down {dec_pp:+.1f}pp over 90 days; "
+            "no category is materially growing."
+        )
+    else:
+        takeaway = "Category shares are flat across the 90-day window."
+    CP.render_time_series_own_multi(
+        chart_data,
+        title="Category share of revenue, weekly",
+        takeaway=takeaway,
+    )
+
+
+def _render_t_d3(merchant_id: str) -> None:
+    """T-D3 (TBL): revenue-change decomposition (Pattern 5 own-vs-own)."""
+    chart_data = D.revenue_change_decomposition_own(merchant_id)
+    if not chart_data.get("has_data"):
+        st.caption("_Insufficient data to decompose this week's change._")
+        return
+    change = chart_data["total_change_pct"]
+    direction = "up" if change > 0 else ("down" if change < 0 else "flat")
+    dom_name = chart_data["dominant_driver"].lower()
+    dom_pp = chart_data["dominant_pp"]
+    tied = chart_data.get("tied_with") or []
+    if not tied:
+        takeaway = (
+            f"Revenue {direction} {abs(change):.1f}% vs your first-4-week "
+            f"baseline; {dom_name} contributes {dom_pp:+.1f}pp."
+        )
+    else:
+        both_names = [dom_name] + [n.lower() for n, _ in tied]
+        pps        = [dom_pp]   + [pp for _, pp in tied]
+        names      = " + ".join(both_names)
+        magnitudes = " / ".join(f"{pp:+.1f}pp" for pp in pps)
+        takeaway = (
+            f"Revenue {direction} {abs(change):.1f}% vs baseline; "
+            f"{names} together drive the change ({magnitudes})."
+        )
+    CP.render_waterfall(
+        chart_data,
+        title="Revenue change drivers vs first-4-week baseline",
+        takeaway=takeaway,
+        mode="own_vs_own_baseline",
+    )
+
+
 def _render_a2(merchant_id: str) -> None:
     """A2: per-store recent-vs-baseline traffic table (Pattern 9)."""
     chart_data = D.store_anomalies(merchant_id)
@@ -593,6 +857,16 @@ QUESTION_RENDERERS: dict[str, Callable[[str], None]] = {
     "T1": _render_t1,
     "T2": _render_t2,
     "T4": _render_t4,
+    # TBL (4.3a)
+    "T-P1": _render_t_p1,
+    "T-P2": _render_t_p2,
+    "T-P3": _render_t_p3,
+    "T-A1": _render_t_a1,
+    "T-A2": _render_t_a2,
+    "T-A3": _render_t_a3,
+    "T-D1": _render_t_d1,
+    "T-D2": _render_t_d2,
+    "T-D3": _render_t_d3,
 }
 
 

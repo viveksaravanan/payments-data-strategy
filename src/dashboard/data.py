@@ -2551,6 +2551,773 @@ def category_anomalies(merchant_id: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Phase 4.3 — TBL / TJX question data (own-only)
+# ---------------------------------------------------------------------------
+#
+# TBL (QSR) and TJX (off-price retail) have no same-segment peers in
+# the panel, so their pricing / anomaly / demand questions are all
+# tenant-only. Recent-vs-baseline questions share the A2/A3 baseline
+# convention: recent = last full Mon-Sun week (May 18 – 24), baseline
+# = first 4 weeks of the panel (Mar 2 – 23). The 15% deviation floor
+# is reused for store / SKU / category anomaly flags.
+
+# Dayparts for QSR (TBL). Hour buckets are 00-23 from
+# ``SUBSTR(txn_ts, 12, 2)``. The boundaries match common QSR daypart
+# definitions: late-night / breakfast / lunch / afternoon / dinner.
+# Kept to five for chart readability in the 35 % chat panel.
+_QSR_DAYPARTS: list[tuple[str, list[int]]] = [
+    ("Late night", [0, 1, 2, 3, 4]),
+    ("Breakfast",  [5, 6, 7, 8, 9, 10]),
+    ("Lunch",      [11, 12, 13, 14]),
+    ("Afternoon",  [15, 16, 17]),
+    ("Dinner",     [18, 19, 20, 21, 22, 23]),
+]
+_QSR_HOUR_TO_DAYPART: dict[int, str] = {
+    h: dp for dp, hours in _QSR_DAYPARTS for h in hours
+}
+_QSR_DAYPART_ORDER = [dp for dp, _ in _QSR_DAYPARTS]
+
+_DAY_OF_WEEK_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+_DOW_FROM_SQLITE = {
+    "1": "Mon", "2": "Tue", "3": "Wed", "4": "Thu",
+    "5": "Fri", "6": "Sat", "0": "Sun",
+}
+
+
+def _full_weeks(merchant_id: str) -> list[str]:
+    """Return the 12 full Mon-Sun week-start ISO dates that the
+    A1/A2/A3 anomaly questions also use."""
+    return [
+        "2026-03-02", "2026-03-09", "2026-03-16", "2026-03-23",
+        "2026-03-30", "2026-04-06", "2026-04-13", "2026-04-20",
+        "2026-04-27", "2026-05-04", "2026-05-11", "2026-05-18",
+    ]
+
+
+# ---------------------------------------------------------------------------
+# T-P1 — Daypart × week mean ticket trends
+# ---------------------------------------------------------------------------
+
+@st.cache_data(ttl=3600)
+def tbl_daypart_ticket_trends(merchant_id: str) -> dict:
+    """Weekly mean transaction value per QSR daypart over the 12-week
+    full-weeks window. Pattern 1 own-multi shape.
+
+    Returns ``{weeks, series, y_label, top_daypart, bottom_daypart,
+    top_pct, bottom_pct, top_direction, bottom_direction}`` — the
+    bottom-of-card takeaway names the daypart with the largest ticket
+    drift (positive or negative).
+    """
+    weeks = _full_weeks(merchant_id)
+    week_lo = weeks[0]
+    week_hi = weeks[-1]
+
+    with _conn() as c:
+        rows = c.execute(
+            """
+            SELECT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+                   CAST(SUBSTR(t.txn_ts, 12, 2) AS INTEGER) AS hr,
+                   AVG(t.txn_total) AS mean_ticket
+            FROM tenant_transactions t
+            WHERE t.merchant_id = ?
+              AND DATE(t.txn_ts, 'weekday 0', '-6 days')
+                  BETWEEN ? AND ?
+            GROUP BY week, hr
+            """,
+            (merchant_id, week_lo, week_hi),
+        ).fetchall()
+
+    # Aggregate hours into dayparts. Per (week, daypart), simple mean
+    # of the hour-level means weighted by row count isn't available
+    # without a count column — but for the demo, mean-of-means is
+    # close enough at hour granularity within a daypart band.
+    by_wd: dict[tuple[str, str], list[float]] = {}
+    for week, hr, mean_ticket in rows:
+        dp = _QSR_HOUR_TO_DAYPART.get(int(hr))
+        if dp is None:
+            continue
+        by_wd.setdefault((week, dp), []).append(float(mean_ticket))
+    series_values: dict[str, list[float | None]] = {
+        dp: [] for dp in _QSR_DAYPART_ORDER
+    }
+    for w in weeks:
+        for dp in _QSR_DAYPART_ORDER:
+            vals = by_wd.get((w, dp))
+            series_values[dp].append(
+                round(sum(vals) / len(vals), 2) if vals else None
+            )
+
+    # Daypart-level drift = (last_known - first_known) / first_known.
+    # Use the first and last non-None values per series for robustness.
+    drifts: list[tuple[str, float]] = []
+    for dp, vals in series_values.items():
+        nv = [v for v in vals if v is not None]
+        if len(nv) >= 2 and nv[0] > 0:
+            drifts.append((dp, round((nv[-1] / nv[0] - 1) * 100, 1)))
+    drifts.sort(key=lambda d: abs(d[1]), reverse=True)
+    top_dp, top_pct = drifts[0] if drifts else ("—", 0.0)
+    if len(drifts) > 1:
+        bottom_dp, bottom_pct = drifts[1]
+    else:
+        bottom_dp, bottom_pct = ("—", 0.0)
+
+    def _direction(pct: float) -> str:
+        return "up" if pct > 0 else ("down" if pct < 0 else "flat")
+
+    return {
+        "weeks":  weeks,
+        "series": [
+            {"name": dp, "values": series_values[dp]}
+            for dp in _QSR_DAYPART_ORDER
+        ],
+        "y_label":         "Mean ticket ($)",
+        "top_daypart":     top_dp,
+        "top_pct":         top_pct,
+        "top_direction":   _direction(top_pct),
+        "bottom_daypart":  bottom_dp,
+        "bottom_pct":      bottom_pct,
+        "bottom_direction":_direction(bottom_pct),
+    }
+
+
+# ---------------------------------------------------------------------------
+# T-P2 — Per-category weekly mean unit price
+# ---------------------------------------------------------------------------
+
+@st.cache_data(ttl=3600)
+def category_unit_price_trends(merchant_id: str, top_n: int = 6) -> dict:
+    """Weekly mean unit price per top-revenue category. Pattern 1
+    own-multi. Used by T-P2 (TBL) and R-P1 (TJX, similar shape but
+    framed as "ticket trends across categories"). Returns top
+    ``top_n`` categories by total revenue across the 12-week window.
+    """
+    weeks = _full_weeks(merchant_id)
+    week_lo = weeks[0]
+    week_hi = weeks[-1]
+
+    with _conn() as c:
+        cat_rows = c.execute(
+            """
+            SELECT p.category, SUM(i.line_total) AS rev
+            FROM tenant_transaction_items i
+            JOIN tenant_products p     ON p.sku    = i.sku
+            JOIN tenant_transactions t ON t.txn_id = i.txn_id
+            WHERE t.merchant_id = ?
+              AND DATE(t.txn_ts, 'weekday 0', '-6 days')
+                  BETWEEN ? AND ?
+            GROUP BY p.category
+            ORDER BY rev DESC
+            LIMIT ?
+            """,
+            (merchant_id, week_lo, week_hi, int(top_n)),
+        ).fetchall()
+        top_cats = [r[0] for r in cat_rows]
+        if not top_cats:
+            return {"weeks": [], "series": [], "y_label": "Mean unit price ($)",
+                    "top_category": "—", "top_pct": 0.0, "top_direction": "flat",
+                    "next_category": "—", "next_pct": 0.0, "next_direction": "flat"}
+
+        ph = ",".join("?" for _ in top_cats)
+        price_rows = c.execute(
+            f"""
+            SELECT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+                   p.category,
+                   AVG(i.unit_price) AS mean_price
+            FROM tenant_transaction_items i
+            JOIN tenant_products p     ON p.sku    = i.sku
+            JOIN tenant_transactions t ON t.txn_id = i.txn_id
+            WHERE t.merchant_id = ?
+              AND p.category IN ({ph})
+              AND DATE(t.txn_ts, 'weekday 0', '-6 days') BETWEEN ? AND ?
+            GROUP BY week, p.category
+            """,
+            [merchant_id, *top_cats, week_lo, week_hi],
+        ).fetchall()
+
+    by_wc: dict[tuple[str, str], float] = {
+        (w, c_): round(float(p), 3) for w, c_, p in price_rows
+    }
+    series_values: dict[str, list[float | None]] = {c_: [] for c_ in top_cats}
+    for w in weeks:
+        for c_ in top_cats:
+            series_values[c_].append(by_wc.get((w, c_)))
+
+    drifts: list[tuple[str, float]] = []
+    for c_, vals in series_values.items():
+        nv = [v for v in vals if v is not None]
+        if len(nv) >= 2 and nv[0] > 0:
+            drifts.append((c_, round((nv[-1] / nv[0] - 1) * 100, 1)))
+    drifts.sort(key=lambda d: abs(d[1]), reverse=True)
+    top_c, top_pct = drifts[0] if drifts else ("—", 0.0)
+    next_c, next_pct = drifts[1] if len(drifts) > 1 else ("—", 0.0)
+
+    def _dir(p: float) -> str:
+        return "up" if p > 0 else ("down" if p < 0 else "flat")
+
+    return {
+        "weeks":  weeks,
+        "series": [{"name": c_, "values": series_values[c_]} for c_ in top_cats],
+        "y_label":         "Mean unit price ($)",
+        "top_category":    top_c,
+        "top_pct":         top_pct,
+        "top_direction":   _dir(top_pct),
+        "next_category":   next_c,
+        "next_pct":        next_pct,
+        "next_direction":  _dir(next_pct),
+    }
+
+
+# ---------------------------------------------------------------------------
+# T-P3 — Per-store mean ticket distribution
+# ---------------------------------------------------------------------------
+
+@st.cache_data(ttl=3600)
+def per_store_mean_ticket(merchant_id: str) -> dict:
+    """Per-store mean transaction value over the 12-week window with a
+    chain-mean reference line and >1σ outlier highlighting. Pattern 2
+    own-only-bars shape. Used by T-P3.
+    """
+    with _conn() as c:
+        rows = c.execute(
+            """
+            SELECT t.store_id, s.neighborhood,
+                   AVG(t.txn_total) AS mean_ticket,
+                   COUNT(*)         AS n_txns
+            FROM tenant_transactions t
+            JOIN tenant_stores s ON s.store_id = t.store_id
+            WHERE t.merchant_id = ?
+            GROUP BY t.store_id, s.neighborhood
+            ORDER BY mean_ticket DESC
+            """,
+            (merchant_id,),
+        ).fetchall()
+
+    if not rows:
+        return {
+            "labels": [], "values": [], "ref_line": 0.0, "ref_label": "",
+            "highlight": [], "x_label": "Mean ticket ($)",
+            "top_store": "—", "top_value": 0.0,
+            "bottom_store": "—", "bottom_value": 0.0,
+            "range_value": 0.0,
+        }
+
+    vals = [float(r[2]) for r in rows]
+    mean = sum(vals) / len(vals)
+    var  = sum((v - mean) ** 2 for v in vals) / len(vals)
+    std  = var ** 0.5
+
+    labels = []
+    values = []
+    highlight = []
+    hover_lines = []
+    for store_id, nb, mt, n in rows:
+        labels.append(f"{store_id}")
+        values.append(round(float(mt), 2))
+        highlight.append(abs(float(mt) - mean) > std)
+        hover_lines.append(
+            f"<b>{store_id}</b><br>{nb}<br>"
+            f"Mean ticket: ${float(mt):.2f}<br>"
+            f"{int(n):,} txns"
+        )
+
+    top_store = rows[0][0]; top_value = float(rows[0][2])
+    bottom_store = rows[-1][0]; bottom_value = float(rows[-1][2])
+    return {
+        "labels":    labels,
+        "values":    values,
+        "x_label":   "Mean ticket ($)",
+        "ref_line":  round(mean, 2),
+        "ref_label": f"Chain mean ${mean:.2f}",
+        "highlight": highlight,
+        "value_format": "$,.2f",
+        "hover_template": "%{customdata}<extra></extra>",
+        "customdata": hover_lines,
+        "top_store":    top_store,
+        "top_value":    round(top_value, 2),
+        "bottom_store": bottom_store,
+        "bottom_value": round(bottom_value, 2),
+        "range_value":  round(top_value - bottom_value, 2),
+    }
+
+
+# ---------------------------------------------------------------------------
+# T-A1 / R-A1 — Per-store recent-vs-baseline (no peer column)
+# ---------------------------------------------------------------------------
+
+@st.cache_data(ttl=3600)
+def store_anomalies_own_only(merchant_id: str) -> dict:
+    """Per-store deviation table for merchants without same-segment
+    peers. Same first-4w baseline as A2; no peer-neighborhood column.
+    """
+    with _conn() as c:
+        own_rows = c.execute(
+            """
+            WITH weekly AS (
+                SELECT t.store_id,
+                       DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+                       COUNT(DISTINCT t.txn_id) AS n_txns
+                FROM tenant_transactions t
+                WHERE t.merchant_id = ?
+                  AND DATE(t.txn_ts, 'weekday 0', '-6 days')
+                      BETWEEN ? AND ?
+                GROUP BY t.store_id, week
+            )
+            SELECT s.store_id, s.neighborhood,
+                   SUM(CASE WHEN w.week = ?
+                            THEN w.n_txns ELSE 0 END) AS recent,
+                   SUM(CASE WHEN w.week BETWEEN ? AND ?
+                            THEN w.n_txns ELSE 0 END) * 1.0 / 4
+                        AS baseline
+            FROM tenant_stores s
+            LEFT JOIN weekly w ON w.store_id = s.store_id
+            WHERE s.merchant_id = ?
+            GROUP BY s.store_id, s.neighborhood
+            """,
+            (
+                merchant_id,
+                _A_BASELINE_WEEK_START, _A_RECENT_WEEK_START,
+                _A_RECENT_WEEK_START,
+                _A_BASELINE_WEEK_START, _A_BASELINE_WEEK_END,
+                merchant_id,
+            ),
+        ).fetchall()
+
+    rows: list[dict] = []
+    for store_id, nb, recent, baseline in own_rows:
+        recent_f   = float(recent or 0)
+        baseline_f = float(baseline or 0)
+        if baseline_f <= 0:
+            continue
+        dev = round((recent_f / baseline_f - 1) * 100, 1)
+        rows.append({
+            "store_id":      store_id,
+            "neighborhood":  nb,
+            "baseline":      round(baseline_f, 1),
+            "recent":        int(recent_f),
+            "deviation_pct": dev,
+            "flag":          abs(dev) >= _A_DEVIATION_THRESHOLD,
+        })
+
+    rows.sort(key=lambda r: abs(r["deviation_pct"]), reverse=True)
+    flagged = [r for r in rows if r["flag"]]
+    n_under = sum(1 for r in flagged if r["deviation_pct"] < 0)
+    n_over  = sum(1 for r in flagged if r["deviation_pct"] > 0)
+    top = rows[0] if rows else None
+
+    return {
+        "rows":      rows,
+        "n_flagged": len(flagged),
+        "n_under":   n_under,
+        "n_over":    n_over,
+        "top":       top,
+    }
+
+
+# ---------------------------------------------------------------------------
+# T-A2 — Per-SKU anomaly table
+# ---------------------------------------------------------------------------
+
+@st.cache_data(ttl=3600)
+def sku_anomalies(merchant_id: str, top_n: int = 25) -> dict:
+    """Per-SKU recent-vs-baseline volume deviation. Returns the top
+    ``top_n`` by absolute deviation so the table stays scannable in
+    the 35 % chat panel (TBL has ~60 SKUs total).
+    """
+    with _conn() as c:
+        rows = c.execute(
+            """
+            WITH weekly AS (
+                SELECT p.sku, p.name AS sku_name, p.category,
+                       DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+                       COUNT(*) AS n_lines
+                FROM tenant_transaction_items i
+                JOIN tenant_products p     ON p.sku    = i.sku
+                JOIN tenant_transactions t ON t.txn_id = i.txn_id
+                WHERE t.merchant_id = ?
+                  AND DATE(t.txn_ts, 'weekday 0', '-6 days')
+                      BETWEEN ? AND ?
+                GROUP BY p.sku, week
+            )
+            SELECT sku, sku_name, category,
+                   SUM(CASE WHEN week = ? THEN n_lines ELSE 0 END) AS recent,
+                   SUM(CASE WHEN week BETWEEN ? AND ? THEN n_lines ELSE 0 END)
+                        * 1.0 / 4 AS baseline
+            FROM weekly
+            GROUP BY sku, sku_name, category
+            """,
+            (
+                merchant_id,
+                _A_BASELINE_WEEK_START, _A_RECENT_WEEK_START,
+                _A_RECENT_WEEK_START,
+                _A_BASELINE_WEEK_START, _A_BASELINE_WEEK_END,
+            ),
+        ).fetchall()
+
+    out: list[dict] = []
+    for sku, name, cat, recent, baseline in rows:
+        baseline_f = float(baseline or 0)
+        recent_f   = float(recent or 0)
+        if baseline_f <= 0 and recent_f <= 0:
+            continue
+        if baseline_f <= 0:
+            # New SKU (or zero baseline) — surface but don't compute %
+            dev = None
+            flag = recent_f > 0
+        else:
+            dev = round((recent_f / baseline_f - 1) * 100, 1)
+            flag = abs(dev) >= _A_DEVIATION_THRESHOLD
+        out.append({
+            "sku":           sku,
+            "sku_name":      name,
+            "category":      cat,
+            "baseline":      round(baseline_f, 1),
+            "recent":        int(recent_f),
+            "deviation_pct": dev,
+            "flag":          flag,
+        })
+
+    out.sort(key=lambda r: abs(r["deviation_pct"] or 0), reverse=True)
+    out = out[:top_n]
+
+    n_flagged = sum(1 for r in out if r["flag"])
+    spikes = [r for r in out if r["deviation_pct"] and r["deviation_pct"] > 0]
+    drops  = [r for r in out if r["deviation_pct"] and r["deviation_pct"] < 0]
+    return {
+        "rows":      out,
+        "n_flagged": n_flagged,
+        "top_spike": spikes[0] if spikes else None,
+        "top_drop":  drops[0]  if drops  else None,
+    }
+
+
+# ---------------------------------------------------------------------------
+# T-A3 — Day-of-week × daypart heatmap (ratios)
+# ---------------------------------------------------------------------------
+
+@st.cache_data(ttl=3600)
+def day_daypart_heatmap(merchant_id: str) -> dict:
+    """Day-of-week × QSR-daypart recent-vs-baseline ratio cells. Cells
+    are ``recent_count / baseline_avg`` (1.0 = on baseline). Cells
+    with fewer than 5 transactions in the recent window are returned
+    as ``None`` (per-cell suppression, consistent with the k=5
+    convention applied elsewhere)."""
+    with _conn() as c:
+        rows = c.execute(
+            """
+            SELECT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+                   STRFTIME('%w', t.txn_ts)               AS dow_num,
+                   CAST(SUBSTR(t.txn_ts, 12, 2) AS INTEGER) AS hr,
+                   COUNT(DISTINCT t.txn_id)               AS n_txns
+            FROM tenant_transactions t
+            WHERE t.merchant_id = ?
+              AND DATE(t.txn_ts, 'weekday 0', '-6 days')
+                  BETWEEN ? AND ?
+            GROUP BY week, dow_num, hr
+            """,
+            (
+                merchant_id,
+                _A_BASELINE_WEEK_START, _A_RECENT_WEEK_START,
+            ),
+        ).fetchall()
+
+    recent_by_cell: dict[tuple[str, str], int] = {}
+    baseline_by_cell: dict[tuple[str, str], list[int]] = {}
+    for week, dow_num, hr, n in rows:
+        dow = _DOW_FROM_SQLITE.get(dow_num)
+        dp  = _QSR_HOUR_TO_DAYPART.get(int(hr))
+        if not dow or not dp:
+            continue
+        key = (dow, dp)
+        if week == _A_RECENT_WEEK_START:
+            recent_by_cell[key] = recent_by_cell.get(key, 0) + int(n)
+        elif _A_BASELINE_WEEK_START <= week <= _A_BASELINE_WEEK_END:
+            baseline_by_cell.setdefault(key, []).append(int(n))
+
+    cells: list[list[float | None]] = []
+    cells_meta: list[list[tuple[int, float] | None]] = []
+    for dow in _DAY_OF_WEEK_ORDER:
+        row_vals = []
+        row_meta = []
+        for dp in _QSR_DAYPART_ORDER:
+            recent = recent_by_cell.get((dow, dp), 0)
+            base_list = baseline_by_cell.get((dow, dp), [])
+            base_avg = (sum(base_list) / 4) if base_list else 0.0
+            if recent < 5 or base_avg <= 0:
+                row_vals.append(None)
+                row_meta.append(None)
+            else:
+                ratio = recent / base_avg
+                row_vals.append(round(ratio, 3))
+                row_meta.append((recent, round(base_avg, 1)))
+        cells.append(row_vals)
+        cells_meta.append(row_meta)
+
+    # Identify weakest + strongest cells
+    flat: list[tuple[float, str, str]] = []
+    for i, dow in enumerate(_DAY_OF_WEEK_ORDER):
+        for j, dp in enumerate(_QSR_DAYPART_ORDER):
+            v = cells[i][j]
+            if v is not None:
+                flat.append((v, dow, dp))
+    if flat:
+        weakest = min(flat, key=lambda r: r[0])
+        strongest = max(flat, key=lambda r: r[0])
+    else:
+        weakest = strongest = None
+
+    return {
+        "rows":  _DAY_OF_WEEK_ORDER,
+        "cols":  _QSR_DAYPART_ORDER,
+        "cells": cells,
+        "weakest":   weakest,
+        "strongest": strongest,
+    }
+
+
+# ---------------------------------------------------------------------------
+# T-D1 / R-D1 — Category share bars
+# ---------------------------------------------------------------------------
+
+@st.cache_data(ttl=3600)
+def category_share_own(merchant_id: str, top_n: int = 8) -> dict:
+    """Per-category share of own revenue. Top ``top_n`` categories;
+    smaller categories rolled into "Other". Pattern 2 own-only-bars.
+    """
+    with _conn() as c:
+        rows = c.execute(
+            """
+            SELECT p.category, SUM(i.line_total) AS rev
+            FROM tenant_transaction_items i
+            JOIN tenant_products p     ON p.sku    = i.sku
+            JOIN tenant_transactions t ON t.txn_id = i.txn_id
+            WHERE t.merchant_id = ?
+            GROUP BY p.category
+            ORDER BY rev DESC
+            """,
+            (merchant_id,),
+        ).fetchall()
+
+    if not rows:
+        return {"labels": [], "values": [], "top3_names": [], "top3_pct": 0.0,
+                "x_label": "Share of revenue (%)"}
+
+    total = sum(float(r[1]) for r in rows) or 1.0
+    top = rows[:top_n]
+    rest = rows[top_n:]
+    labels = [r[0] for r in top]
+    values = [round(float(r[1]) / total * 100, 1) for r in top]
+    if rest:
+        other_rev = sum(float(r[1]) for r in rest)
+        labels.append("Other")
+        values.append(round(other_rev / total * 100, 1))
+
+    top3 = top[:3]
+    top3_names = [r[0] for r in top3]
+    top3_pct = round(sum(float(r[1]) for r in top3) / total * 100, 1)
+
+    return {
+        "labels":     labels,
+        "values":     values,
+        "x_label":    "Share of revenue (%)",
+        "value_format": ".1f",
+        "top3_names": top3_names,
+        "top3_pct":   top3_pct,
+    }
+
+
+# ---------------------------------------------------------------------------
+# T-D2 / R-D2 — Category share trajectory
+# ---------------------------------------------------------------------------
+
+@st.cache_data(ttl=3600)
+def category_share_trajectory(merchant_id: str, top_n: int = 6) -> dict:
+    """Weekly per-category share of own revenue over the 12-week
+    window. Pattern 1 own-multi. Highlights the most-rising and
+    most-falling categories for the takeaway.
+    """
+    weeks = _full_weeks(merchant_id)
+    week_lo = weeks[0]; week_hi = weeks[-1]
+
+    with _conn() as c:
+        cat_rows = c.execute(
+            """
+            SELECT p.category, SUM(i.line_total) AS rev
+            FROM tenant_transaction_items i
+            JOIN tenant_products p     ON p.sku    = i.sku
+            JOIN tenant_transactions t ON t.txn_id = i.txn_id
+            WHERE t.merchant_id = ?
+            GROUP BY p.category
+            ORDER BY rev DESC
+            LIMIT ?
+            """,
+            (merchant_id, int(top_n)),
+        ).fetchall()
+        top_cats = [r[0] for r in cat_rows]
+        if not top_cats:
+            return {"weeks": [], "series": [], "y_label": "Share of revenue (%)",
+                    "growing_category": "—", "growing_pp": 0.0,
+                    "declining_category": "—", "declining_pp": 0.0}
+        ph = ",".join("?" for _ in top_cats)
+        wk_rows = c.execute(
+            f"""
+            SELECT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+                   p.category,
+                   SUM(i.line_total) AS rev
+            FROM tenant_transaction_items i
+            JOIN tenant_products p     ON p.sku    = i.sku
+            JOIN tenant_transactions t ON t.txn_id = i.txn_id
+            WHERE t.merchant_id = ?
+              AND DATE(t.txn_ts, 'weekday 0', '-6 days') BETWEEN ? AND ?
+            GROUP BY week, p.category
+            """,
+            (merchant_id, week_lo, week_hi),
+        ).fetchall()
+        wk_total_rows = c.execute(
+            """
+            SELECT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+                   SUM(i.line_total) AS rev
+            FROM tenant_transaction_items i
+            JOIN tenant_transactions t ON t.txn_id = i.txn_id
+            WHERE t.merchant_id = ?
+              AND DATE(t.txn_ts, 'weekday 0', '-6 days') BETWEEN ? AND ?
+            GROUP BY week
+            """,
+            (merchant_id, week_lo, week_hi),
+        ).fetchall()
+
+    wk_total = {w: float(r) for w, r in wk_total_rows}
+    cell = {(w, c_): float(r) for w, c_, r in wk_rows}
+    series_values: dict[str, list[float | None]] = {c_: [] for c_ in top_cats}
+    for w in weeks:
+        tot = wk_total.get(w, 0.0)
+        for c_ in top_cats:
+            rev = cell.get((w, c_), 0.0)
+            series_values[c_].append(
+                round(rev / tot * 100, 2) if tot > 0 else None
+            )
+
+    # First vs last non-None share → category drift in pp.
+    drifts: list[tuple[str, float]] = []
+    for c_, vals in series_values.items():
+        nv = [v for v in vals if v is not None]
+        if len(nv) >= 2:
+            drifts.append((c_, round(nv[-1] - nv[0], 2)))
+    drifts.sort(key=lambda d: d[1], reverse=True)
+    growing = drifts[0] if drifts and drifts[0][1] > 0 else None
+    declining = drifts[-1] if drifts and drifts[-1][1] < 0 else None
+
+    return {
+        "weeks":  weeks,
+        "series": [{"name": c_, "values": series_values[c_]} for c_ in top_cats],
+        "y_label":   "Share of revenue (%)",
+        "growing_category":   growing[0]  if growing   else "—",
+        "growing_pp":         growing[1]  if growing   else 0.0,
+        "declining_category": declining[0] if declining else "—",
+        "declining_pp":       declining[1] if declining else 0.0,
+    }
+
+
+# ---------------------------------------------------------------------------
+# T-D3 / R-D3 — Recent-week revenue change decomposition
+# ---------------------------------------------------------------------------
+
+_D_TIE_PP = 2.0  # same threshold as D7 cross_merchant
+
+
+@st.cache_data(ttl=3600)
+def revenue_change_decomposition_own(merchant_id: str) -> dict:
+    """Own-vs-own decomposition of recent-week revenue vs first-4w
+    baseline-week. Pattern 5 own_vs_own_baseline.
+
+    Identity R = N × B × P (store count constant within a merchant
+    across the baseline → recent window). Drivers Mix / Residual are
+    0-valued placeholders matching D7's convention.
+    """
+    import math
+
+    with _conn() as c:
+        recent = c.execute(
+            """
+            SELECT COUNT(DISTINCT t.txn_id) AS n_txns,
+                   SUM(i.qty)               AS items,
+                   SUM(i.line_total)        AS revenue
+            FROM tenant_transactions t
+            JOIN tenant_transaction_items i ON i.txn_id = t.txn_id
+            WHERE t.merchant_id = ?
+              AND DATE(t.txn_ts, 'weekday 0', '-6 days') = ?
+            """,
+            (merchant_id, _A_RECENT_WEEK_START),
+        ).fetchone()
+        # Baseline = mean weekly aggregates across the first 4 weeks
+        # (sum / 4).
+        baseline = c.execute(
+            """
+            SELECT COUNT(DISTINCT t.txn_id) * 1.0 / 4 AS n_txns,
+                   SUM(i.qty)              * 1.0 / 4 AS items,
+                   SUM(i.line_total)       * 1.0 / 4 AS revenue
+            FROM tenant_transactions t
+            JOIN tenant_transaction_items i ON i.txn_id = t.txn_id
+            WHERE t.merchant_id = ?
+              AND DATE(t.txn_ts, 'weekday 0', '-6 days') BETWEEN ? AND ?
+            """,
+            (merchant_id, _A_BASELINE_WEEK_START, _A_BASELINE_WEEK_END),
+        ).fetchone()
+
+    N_r, I_r, R_r = recent
+    N_b, I_b, R_b = baseline
+    if not all([N_r, I_r, R_r, N_b, I_b, R_b]):
+        return {"drivers": [], "total_label": "Δ this week",
+                "y_label": "Contribution (pp)",
+                "total_change_pct": 0.0, "dominant_driver": "—",
+                "dominant_pp": 0.0, "tied_with": [], "has_data": False}
+    N_r = int(N_r); N_b = float(N_b)
+    I_r = float(I_r); I_b = float(I_b)
+    R_r = float(R_r); R_b = float(R_b)
+
+    B_r = I_r / N_r; B_b = I_b / N_b
+    P_r = R_r / I_r; P_b = R_b / I_b
+
+    log_R  = math.log(R_r / R_b)
+    log_N  = math.log(N_r / N_b)
+    log_B  = math.log(B_r / B_b)
+    log_P  = math.log(P_r / P_b)
+
+    change_pct = round(log_R * 100, 1)
+    drivers = [
+        {"label": "Traffic", "contribution": round(log_N * 100, 1),
+         "own": f"{N_r:,} txns", "peer": f"{N_b:,.0f} (baseline)"},
+        {"label": "Basket",  "contribution": round(log_B * 100, 1),
+         "own": f"{B_r:.2f} items/txn", "peer": f"{B_b:.2f} (baseline)"},
+        {"label": "Ticket",  "contribution": round(log_P * 100, 1),
+         "own": f"${P_r:.2f}/item", "peer": f"${P_b:.2f} (baseline)"},
+        {"label": "Mix",     "contribution": 0.0,
+         "own": "(deferred)", "peer": "(deferred)"},
+        {"label": "Residual","contribution": 0.0,
+         "own": "(deferred)", "peer": "(deferred)"},
+    ]
+
+    real = drivers[:3]
+    ranked = sorted(real, key=lambda d: abs(d["contribution"]), reverse=True)
+    dom = ranked[0]
+    tied = [
+        (d["label"], d["contribution"])
+        for d in ranked[1:]
+        if abs(abs(dom["contribution"]) - abs(d["contribution"])) <= _D_TIE_PP
+    ]
+
+    return {
+        "drivers":         drivers,
+        "total_label":     "Δ this week",
+        "y_label":         "Contribution (pp)",
+        "total_change_pct": change_pct,
+        "dominant_driver":  dom["label"],
+        "dominant_pp":      dom["contribution"],
+        "tied_with":        tied,
+        "has_data":         True,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Compatibility shims for placeholders.py and earlier views (no-op now)
 # ---------------------------------------------------------------------------
 
