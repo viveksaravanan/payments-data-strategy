@@ -317,6 +317,33 @@ R-A1, R-A2, R-P2.
 
 ---
 
+## Implementation gotchas for lake queries
+
+When a chart needs **transaction counts** (not item or line counts)
+against the materialized lake tables, filter to `WHERE line_id = 1`.
+The lake's `lake_transactions_<viewer>` tables store one row per
+transaction line, not per transaction — `lake_txn_id` is hashed from
+`(txn_id, line_id)` together, so `COUNT(DISTINCT lake_txn_id)` returns
+the line count, not the original transaction count.
+
+The generator (`src/generate/transactions.py`) assigns `line_id`
+starting at 1 for the first line of every transaction. First-line rows
+are 1:1 with original transactions, so `COUNT(*) … WHERE line_id = 1
+GROUP BY peer_id` recovers the exact peer transaction count without
+needing to expose `txn_id` from the lake.
+
+This affects any pattern computing per-merchant traffic, basket size,
+or any metric whose denominator is "number of transactions" (not
+"number of lines"). Pattern 1 (time-series, where peer transaction
+counts are normalized to baseline), Pattern 5 (waterfall, where the
+``R = S × (N/S) × B × P`` decomposition needs the true `N`), and
+Pattern 9 (table, when peer-side rows are per-merchant aggregates)
+are all candidates. Pattern 3 (heatmap of per-category prices) and
+Pattern 4 (scatter using line counts as size) operate on line-level
+metrics directly and don't need the filter.
+
+---
+
 For the questions that anchor on each pattern — what they ask, the
 SQL shape behind them, the therefore-test, the rubric assessment —
 see `V3_QUESTIONS.md` Section 3.

@@ -232,37 +232,59 @@ def _render_d4(merchant_id: str) -> None:
 
 
 def _render_d7(merchant_id: str) -> None:
-    """D7: revenue gap decomposition vs peer-mean (Pattern 5 waterfall)."""
+    """D7: per-peer revenue gap decomposition (Pattern 5 waterfall × 2).
+
+    Renders one waterfall per same-segment peer (peer_a + peer_b)
+    stacked vertically. Each waterfall has six driver bars (Stores,
+    Traffic/store, Basket, Ticket, Mix, Residual) — Stores isolated as
+    the strategic / slow lever, the next three as per-store
+    operational drivers. The takeaway names Stores explicitly and
+    then the dominant per-store driver (or a joint pair when two
+    per-store drivers sit within 2pp of each other — KRG↔WDX hits
+    this zone).
+    """
     chart_data = D.revenue_gap_decomposition(merchant_id)
-    if not chart_data["drivers"] or not chart_data.get("has_peers"):
+    if not chart_data.get("has_peers"):
         st.caption("_No peer data available for revenue-gap decomposition._")
         return
 
-    gap_pct = chart_data["total_gap_pct"]
-    dom     = chart_data["dominant_driver"].lower()
-    dom_pp  = chart_data["dominant_pp"]
-    secondary = chart_data.get("secondary") or []
+    for peer_label in ("peer_a", "peer_b"):
+        decomp = chart_data["per_peer"].get(peer_label)
+        if not decomp:
+            continue
 
-    if not secondary:
+        gap_pct   = decomp["total_gap_pct"]
+        stores_pp = decomp["stores_pp"]
+        dom_name  = decomp["dominant_per_store"]
+        dom_pp    = decomp["dominant_pp"]
+        tied      = decomp.get("tied_with") or []
+
+        if not tied:
+            per_store_phrase = (
+                f"{dom_name.lower()} dominates at {dom_pp:+.1f}pp"
+            )
+        else:
+            # Joint pair (or triple): name leader + each tied driver.
+            both     = [(dom_name, dom_pp)] + tied
+            names    = " + ".join(n.lower() for n, _ in both)
+            magnitudes = " / ".join(f"{pp:+.1f}pp" for _, pp in both)
+            per_store_phrase = (
+                f"{names} together drive the per-store gap ({magnitudes})"
+            )
+
         takeaway = (
-            f"Of your {gap_pct:+.1f}% revenue gap vs peers, {dom} "
-            f"contributes {dom_pp:+.1f}pp; other drivers are within noise."
-        )
-    else:
-        sec_phrase = ", ".join(
-            f"{name.lower()} {pp:+.1f}pp" for name, pp in secondary
-        )
-        takeaway = (
-            f"Of your {gap_pct:+.1f}% revenue gap vs peers, {dom} is the "
-            f"largest driver at {dom_pp:+.1f}pp; {sec_phrase} also material."
+            f"Stores contribute {stores_pp:+.1f}pp; "
+            f"among per-store drivers, {per_store_phrase}."
         )
 
-    CP.render_waterfall(
-        chart_data,
-        title="Revenue gap decomposition vs peer-mean",
-        takeaway=takeaway,
-        mode="cross_merchant",
-    )
+        peer_name = CP.peer_display(peer_label)
+        title = f"vs {peer_name} ({gap_pct:+.1f}pp gap)"
+        CP.render_waterfall(
+            decomp,
+            title=title,
+            takeaway=takeaway,
+            mode="cross_merchant",
+        )
 
 
 def _render_d3(merchant_id: str) -> None:
