@@ -1382,45 +1382,69 @@ def render_chat_panel(merchant_id: str) -> None:
     is_running = bool(state.agent_running)
     expanded = state.chat_state == "expanded"
 
-    # -- Header row: title (left), expand toggle + clear + close
-    # (right). Three icon-buttons in narrow columns. ⤢/⤡ toggles
-    # between side and expanded modes; 🗑 clears the merchant's
-    # history; ✕ closes the drawer (returns to edge-tab state). --
-    h1, h2, h3, h4 = st.columns([0.55, 0.15, 0.15, 0.15], gap="small")
-    with h1:
-        # Sparkles avatar + title — purple circle with ✨ glyph, matched
-        # to the edge-tab icon and the per-card affordances so the chat
-        # surface reads as one visual family.
-        st.markdown(
-            '<div style="display:flex;align-items:center;gap:8px;'
-            'margin:4px 0 8px 0;">'
-            '  <div style="width:32px;height:32px;border-radius:50%;'
-            'background:#EEEDFE;display:flex;align-items:center;'
-            'justify-content:center;font-size:16px;color:#534AB7;">✨</div>'
-            '  <div style="font-size:16px;font-weight:600;color:var(--text);">'
-            'Ask the data</div>'
-            '</div>',
-            unsafe_allow_html=True,
-        )
-    with h2:
-        toggle_icon = "⤡" if expanded else "⤢"
-        toggle_help = (
-            "Wait for current response…" if is_running
-            else ("Collapse chat" if expanded else "Expand chat")
-        )
+    # -- Expand toggle on the middle-left edge of the panel. Rendered
+    # into a Streamlit container with a unique key so CSS can position
+    # it ``position: absolute; left: -16px; top: 50%`` (half-outside
+    # the panel's left border). The container itself sits inside the
+    # panel overlay's DOM tree but visually overhangs to the left. --
+    with st.container(key="chat_expand_edge"):
+        chevron = "›" if expanded else "‹"
         if st.button(
-            toggle_icon,
-            key=f"expand_btn_{merchant_id}",
-            help=toggle_help,
-            use_container_width=True,
+            chevron,
+            key=f"expand_edge_btn_{merchant_id}",
+            help=("Collapse chat" if expanded else "Expand chat"),
             disabled=is_running,
             type="secondary",
+            use_container_width=True,
         ):
             state.chat_state = "side" if expanded else "expanded"
             st.rerun()
-    with h3:
+
+    # -- Header row: avatar + title (left), Clear chat + X close
+    # (right). The expand button moved out of the header to a round
+    # button on the middle-left edge of the panel (rendered after
+    # the panel content via a CSS-positioned ``st.container``). --
+    merchant_name = D.MERCHANT_NAME.get(merchant_id, merchant_id)
+    specialist_label = A.AGENT_LABELS.get(state.active_agent, state.active_agent)
+    h1, h2, h3 = st.columns([0.65, 0.22, 0.13], gap="small")
+    with h1:
+        # Avatar (purple circle) + title + subtitle on the same row.
+        # Inline SVG sparkles glyph — controlled #534AB7 color, no
+        # emoji-rendering inconsistency across platforms. The button
+        # labels below still use the ✦ Unicode glyph (button labels
+        # can't carry HTML / SVG) styled to the same purple — the
+        # avatar is the one place we can use real SVG.
+        st.markdown(
+            f"""
+            <div style="display:flex;align-items:center;gap:10px;
+                 margin:4px 0 6px 0;">
+              <div style="width:32px;height:32px;border-radius:50%;
+                   background:#EEEDFE;display:flex;align-items:center;
+                   justify-content:center;flex-shrink:0;">
+                <svg width="16" height="16" viewBox="0 0 24 24"
+                     fill="#534AB7" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 0 L13.5 8.5 L22 10 L13.5 11.5 L12 20
+                           L10.5 11.5 L2 10 L10.5 8.5 Z"/>
+                  <path d="M19 14 L19.7 16.3 L22 17 L19.7 17.7
+                           L19 20 L18.3 17.7 L16 17 L18.3 16.3 Z"/>
+                </svg>
+              </div>
+              <div style="display:flex;flex-direction:column;
+                   line-height:1.15;">
+                <div style="font-size:15px;font-weight:600;
+                     color:var(--text);">Ask the data</div>
+                <div style="font-size:11px;color:var(--text-muted);
+                     letter-spacing:0.02em;">
+                  {merchant_name} · {specialist_label}
+                </div>
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with h2:
         if st.button(
-            "🗑",
+            "Clear chat",
             key=f"clear_btn_{merchant_id}",
             help="Wait for current response…" if is_running else "Clear chat history",
             use_container_width=True,
@@ -1429,7 +1453,7 @@ def render_chat_panel(merchant_id: str) -> None:
         ):
             reset_history(merchant_id)
             st.rerun()
-    with h4:
+    with h3:
         if st.button(
             "✕",
             key=f"close_btn_{merchant_id}",
@@ -1441,24 +1465,20 @@ def render_chat_panel(merchant_id: str) -> None:
             state.chat_state = "closed"
             st.rerun()
 
-    # -- Agent selector — Phase 4.5 final fix-up swaps ``st.selectbox``
-    # for ``st.radio`` so the widget is purely select-only (no
-    # type-ahead filter that feels editable). The radio renders as
-    # four horizontal pills matching the chip aesthetic the design
-    # doc calls for. ``label_visibility="collapsed"`` drops the
-    # accessibility label visually; it's still in the DOM for
-    # screen readers. --
+    # -- Agent selector — back to ``st.selectbox`` (the radio aesthetic
+    # was generic Streamlit default; the dropdown is cleaner). The
+    # 4-item list makes the type-ahead filter a non-issue in practice
+    # — the committed value is always one of the four specialists. --
     agent_ids = ["demand", "pricing", "anomaly", "trade"]
     agent_labels = {a: A.AGENT_LABELS[a] for a in agent_ids}
-    chosen = st.radio(
+    chosen = st.selectbox(
         "Specialist agent",
         options=agent_ids,
         format_func=lambda a: agent_labels[a],
         index=agent_ids.index(state.active_agent),
-        key=f"agent_radio_{merchant_id}",
+        key=f"agent_select_{merchant_id}",
         disabled=is_running,
         label_visibility="collapsed",
-        horizontal=True,
     )
     if chosen != state.active_agent and not is_running:
         state.active_agent = chosen
@@ -1500,8 +1520,9 @@ def render_chat_panel(merchant_id: str) -> None:
 
     st.markdown("---")
 
-    # -- Reserve scrollable chat history container --
-    chat_box = st.container(height=700, border=True)
+    # -- Reserve scrollable chat history container. CSS overrides
+    # the fixed height to flex inside the viewport-fitting panel. --
+    chat_box = st.container(height=320, border=True, key="chat_history")
 
     st.markdown("---")
 

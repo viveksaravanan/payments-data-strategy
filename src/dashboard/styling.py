@@ -136,7 +136,10 @@ _CSS = """
     /* Phase 4.5 final fix-up: 22 × 22 px (was 28 × 28). Equalizes the
        hover background between KPI cards (narrow 5-up columns) and
        chart cards (wider 3-up / 2-up columns) — the smaller circle
-       reads as proportionally consistent across both contexts. */
+       reads as proportionally consistent across both contexts.
+       Phase 4.5 polish: glyph color is the AI-identity purple
+       #534AB7 so the ✦ sparkle reads as a controlled monochrome
+       icon (the ✨ emoji rendered platform-yellow). */
     width: 22px !important;
     height: 22px !important;
     max-width: 22px !important;
@@ -146,18 +149,20 @@ _CSS = """
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    font-size: 12px !important;
+    font-size: 13px !important;
     line-height: 1 !important;
     border-radius: 50% !important;
     border-color: transparent !important;
     background: transparent !important;
-    opacity: 0.45;
+    color: #534AB7 !important;
+    opacity: 0.55;
     transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease;
   }
   div[class*="st-key-ask_about_"] button:hover {
     opacity: 1.0 !important;
-    background: var(--accent-soft) !important;
-    border-color: var(--accent-soft) !important;
+    background: #EEEDFE !important;
+    border-color: #EEEDFE !important;
+    color: #534AB7 !important;
   }
   div[class*="st-key-ask_about_"] button:disabled {
     opacity: 0.25 !important;
@@ -388,7 +393,11 @@ _CSS = """
     border-left: 1px solid var(--border);
     box-shadow: -8px 0 24px rgba(15, 31, 46, 0.10);
     z-index: 998;
-    overflow-y: auto;
+    /* overflow visible so the middle-left expand chevron can
+       overhang the panel's left edge (position: absolute on the
+       chevron). Internal scrolling is delegated to the
+       ``chat_history`` container which has its own max-height. */
+    overflow: visible !important;
     padding: 16px 20px 16px 20px;
     transition: width 0.3s ease, max-width 0.3s ease;
   }
@@ -420,14 +429,92 @@ _CSS = """
     border: 1px solid var(--border) !important;
     border-right: none !important;
     box-shadow: -3px 0 8px rgba(15, 31, 46, 0.10) !important;
-    font-size: 20px !important;
-    line-height: 1.2 !important;
-    color: var(--accent) !important;
+    font-size: 22px !important;
+    line-height: 1 !important;
+    color: #534AB7 !important;
     transition: background 0.15s ease, color 0.15s ease;
   }
   div[class*="st-key-chat_edge_tab"] button:hover {
-    background: var(--accent-soft) !important;
-    color: var(--accent) !important;
+    background: #EEEDFE !important;
+    color: #534AB7 !important;
+  }
+
+  /* Phase 4.5 polish — chat panel viewport sizing.
+     The chat-history container ("chat_history") inside the panel had
+     a fixed 320px height; allow it to grow to fill the available
+     space inside the panel, so the panel reads as one continuous
+     pane fitting the viewport. */
+  div[class*="st-key-chat_history"] {
+    height: auto !important;
+    max-height: calc(100vh - 380px) !important;
+  }
+
+  /* Middle-left expand button — round chevron half-overhanging the
+     panel's left edge. Driven by ``state.chat_state`` (toggle
+     between side / expanded). */
+  div[class*="st-key-chat_expand_edge"] {
+    position: absolute !important;
+    left: -16px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 32px !important;
+    z-index: 1000;
+  }
+  div[class*="st-key-chat_expand_edge"] button {
+    width: 32px !important;
+    height: 32px !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    background: #FFFFFF !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: -2px 2px 6px rgba(15, 31, 46, 0.12) !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+    color: #534AB7 !important;
+  }
+  div[class*="st-key-chat_expand_edge"] button:hover {
+    background: #EEEDFE !important;
+    color: #534AB7 !important;
+  }
+
+  /* Chat panel header buttons:
+     - "Clear chat" is a small text pill (no icon)
+     - ✕ close button has no border / square background — bare glyph
+       with a hover-only soft purple background. */
+  div[class*="st-key-clear_btn_"] button {
+    font-size: 12px !important;
+    padding: 6px 12px !important;
+    min-height: 0 !important;
+    border-radius: 14px !important;
+    background: transparent !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text-2) !important;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  div[class*="st-key-clear_btn_"] button:hover {
+    background: #EEEDFE !important;
+    border-color: #EEEDFE !important;
+    color: #534AB7 !important;
+  }
+  div[class*="st-key-close_btn_"] button {
+    width: 28px !important;
+    height: 28px !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin-left: auto !important;
+    border-radius: 50% !important;
+    background: transparent !important;
+    border: none !important;
+    font-size: 16px !important;
+    line-height: 1 !important;
+    color: var(--text-muted) !important;
+    box-shadow: none !important;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  div[class*="st-key-close_btn_"] button:hover {
+    background: #EEEDFE !important;
+    color: #534AB7 !important;
   }
 
   /* Backdrop — dimmed click-catcher behind the panel when expanded.

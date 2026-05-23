@@ -231,7 +231,7 @@ if state.chat_state == "expanded":
 # when the panel is closed. Clicking opens the side-mode drawer.
 if state.chat_state == "closed":
     with st.container(key="chat_edge_tab"):
-        if st.button("✨", key="chat_edge_open", help="Open the chat panel"):
+        if st.button("✦", key="chat_edge_open", help="Open the chat panel"):
             state.chat_state = "side"
             st.rerun()
 
