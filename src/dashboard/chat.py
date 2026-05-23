@@ -1417,10 +1417,10 @@ def render_chat_panel(merchant_id: str) -> None:
             """
             <div style="display:flex;align-items:center;gap:10px;
                  margin:4px 0 6px 0;">
-              <div style="width:32px;height:32px;border-radius:50%;
+              <div style="width:36px;height:36px;border-radius:50%;
                    background:#EEEDFE;display:flex;align-items:center;
                    justify-content:center;flex-shrink:0;">
-                <svg width="16" height="16" viewBox="0 0 24 24"
+                <svg width="20" height="20" viewBox="0 0 24 24"
                      fill="#534AB7" xmlns="http://www.w3.org/2000/svg">
                   <path d="M12 0 L13.5 8.5 L22 10 L13.5 11.5 L12 20
                            L10.5 11.5 L2 10 L10.5 8.5 Z"/>
@@ -1428,7 +1428,7 @@ def render_chat_panel(merchant_id: str) -> None:
                            L19 20 L18.3 17.7 L16 17 L18.3 16.3 Z"/>
                 </svg>
               </div>
-              <div style="font-size:15px;font-weight:600;
+              <div style="font-size:16px;font-weight:600;
                    color:var(--text);">Ask the data</div>
             </div>
             """,

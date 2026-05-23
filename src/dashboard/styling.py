@@ -133,29 +133,26 @@ _CSS = """
      fill ``use_container_width=True``, making the hover background
      wider than the icon. */
   div[class*="st-key-ask_about_"] button {
-    /* Phase 4.5 polish: 28 × 28 (up from 22) with the canonical
-       sparkles SVG rendered as a CSS background-image. The button's
-       text label (✦ glyph) is hidden via ``font-size: 0`` — the
-       glyph remains in the DOM for screen-reader fallback but the
-       SVG bg-image is what's painted. This unifies the icon
-       rendering across edge tab + 15 card affordances + panel
-       header (panel header uses inline SVG because st.markdown
-       supports it). Light purple soft hover, AI-identity color
-       #534AB7 throughout. */
-    width: 28px !important;
-    height: 28px !important;
-    max-width: 28px !important;
+    /* Phase 4.5 final: 32 × 32 (up from 28) with 20 × 20 SVG inside
+       — bigger, more discoverable, matches the panel-header avatar
+       size. Canonical sparkles SVG rendered as a CSS background-
+       image (Streamlit button labels can't carry inline SVG). The
+       ✦ glyph in the button label is hidden via ``font-size: 0`` —
+       remains in the DOM for screen-reader fallback. */
+    width: 32px !important;
+    height: 32px !important;
+    max-width: 32px !important;
     min-height: 0 !important;
     padding: 0 !important;
     margin-left: auto !important;
     border-radius: 50% !important;
     border-color: transparent !important;
     background-color: transparent !important;
-    background-image: url("data:image/svg+xml;utf8,%3Csvg width='16' height='16' viewBox='0 0 24 24' fill='%23534AB7' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 0 L13.5 8.5 L22 10 L13.5 11.5 L12 20 L10.5 11.5 L2 10 L10.5 8.5 Z'/%3E%3Cpath d='M19 14 L19.7 16.3 L22 17 L19.7 17.7 L19 20 L18.3 17.7 L16 17 L18.3 16.3 Z'/%3E%3C/svg%3E") !important;
+    background-image: url("data:image/svg+xml;utf8,%3Csvg width='20' height='20' viewBox='0 0 24 24' fill='%23534AB7' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 0 L13.5 8.5 L22 10 L13.5 11.5 L12 20 L10.5 11.5 L2 10 L10.5 8.5 Z'/%3E%3Cpath d='M19 14 L19.7 16.3 L22 17 L19.7 17.7 L19 20 L18.3 17.7 L16 17 L18.3 16.3 Z'/%3E%3C/svg%3E") !important;
     background-repeat: no-repeat !important;
     background-position: center !important;
-    background-size: 16px 16px !important;
-    font-size: 0 !important;  /* hide the ✦ fallback glyph */
+    background-size: 20px 20px !important;
+    font-size: 0 !important;
     line-height: 1 !important;
     color: transparent !important;
     opacity: 0.65;
@@ -395,16 +392,50 @@ _CSS = """
     border-left: 1px solid var(--border);
     box-shadow: -8px 0 24px rgba(15, 31, 46, 0.10);
     z-index: 998;
-    /* overflow-y: auto so panel content can scroll if it exceeds
-       viewport height — the prior ``overflow: visible`` setting
-       was pushing the text-input area off the bottom of the viewport
-       on shorter displays. The middle-left expand chevron is
-       positioned via ``position: fixed`` (relative to the viewport)
-       so it isn't clipped by this overflow. */
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
+    /* Phase 4.5 final: ``overflow: hidden`` (was ``auto``). The panel
+       itself does NOT scroll — only the chat-history container
+       inside it scrolls internally. Layout below makes the panel a
+       flex column so the history fills the remaining space after
+       the fixed-size header / selectbox / suggestions / input row.
+       Without this restructure, the panel scrolled and the input
+       row could fall below the viewport. */
+    overflow: hidden !important;
     padding: 16px 20px 16px 20px;
     transition: width 0.3s ease, max-width 0.3s ease;
+  }
+  /* Make the panel's inner Streamlit ``stVerticalBlock`` a flex
+     column at full height so each top-level widget (the
+     ``element-container`` rows) participates in flex layout. */
+  div[class*="st-key-chat_panel_overlay"] > div[data-testid="stVerticalBlock"] {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    gap: 6px !important;
+  }
+  /* The chat-history container is the only flex-grow row — fills
+     whatever room is left after the fixed-size rows above and the
+     pinned input row below. ``:has()`` finds the
+     ``element-container`` whose direct child is the keyed history
+     container. ``min-height: 0`` is essential — without it, flex
+     children default to min-content size and the panel grows
+     past the viewport, restoring panel-level scroll. */
+  div[class*="st-key-chat_panel_overlay"] > div[data-testid="stVerticalBlock"] >
+    div[data-testid="element-container"]:has(> div[class*="st-key-chat_history"]) {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+  /* The history container itself fills its now-flex-grown
+     element-container parent and provides the internal scroll. */
+  div[class*="st-key-chat_history"] {
+    height: 100% !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+  }
+  /* Compact spacing on the fixed-size header / selectbox / suggested-
+     question rows so the chat-history flex-grow has room to breathe. */
+  div[class*="st-key-chat_panel_overlay"] hr {
+    margin: 4px 0 !important;
   }
   body.chat-expanded div[class*="st-key-chat_panel_overlay"] {
     width: 90vw;
@@ -427,17 +458,17 @@ _CSS = """
   }
   div[class*="st-key-chat_edge_tab"] button {
     /* Same canonical sparkles SVG as the affordance buttons +
-       panel-header avatar — unified visual identity. The ✦ glyph
-       in the button label is hidden via font-size: 0. */
-    width: 48px !important;
-    height: 72px !important;
+       panel-header avatar — unified visual identity. Phase 4.5
+       final: SVG bumped 24 → 28 px for better visibility. */
+    width: 52px !important;
+    height: 80px !important;
     padding: 0 !important;
     border-radius: 8px 0 0 8px !important;
     background-color: #FFFFFF !important;
-    background-image: url("data:image/svg+xml;utf8,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='%23534AB7' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 0 L13.5 8.5 L22 10 L13.5 11.5 L12 20 L10.5 11.5 L2 10 L10.5 8.5 Z'/%3E%3Cpath d='M19 14 L19.7 16.3 L22 17 L19.7 17.7 L19 20 L18.3 17.7 L16 17 L18.3 16.3 Z'/%3E%3C/svg%3E") !important;
+    background-image: url("data:image/svg+xml;utf8,%3Csvg width='28' height='28' viewBox='0 0 24 24' fill='%23534AB7' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 0 L13.5 8.5 L22 10 L13.5 11.5 L12 20 L10.5 11.5 L2 10 L10.5 8.5 Z'/%3E%3Cpath d='M19 14 L19.7 16.3 L22 17 L19.7 17.7 L19 20 L18.3 17.7 L16 17 L18.3 16.3 Z'/%3E%3C/svg%3E") !important;
     background-repeat: no-repeat !important;
     background-position: center !important;
-    background-size: 24px 24px !important;
+    background-size: 28px 28px !important;
     border: 1px solid var(--border) !important;
     border-right: none !important;
     box-shadow: -3px 0 8px rgba(15, 31, 46, 0.10) !important;
@@ -468,30 +499,32 @@ _CSS = """
      visible regardless of the panel's overflow-y scrolling. */
   div[class*="st-key-chat_expand_edge"] {
     position: fixed !important;
-    right: calc(40vw - 22px);  /* center on the panel's left edge */
+    right: calc(40vw - 24px);  /* center on the panel's left edge */
     top: 50% !important;
     transform: translateY(-50%) !important;
-    width: 44px !important;
+    width: 48px !important;
     z-index: 1000;
     transition: right 0.3s ease;
   }
   body.chat-expanded div[class*="st-key-chat_expand_edge"] {
-    right: calc(90vw - 22px);
+    right: calc(90vw - 24px);
   }
   body.chat-closed div[class*="st-key-chat_expand_edge"] {
     display: none !important;
   }
-  /* Phase 4.5 polish: bigger 44 × 44 chevron (was 32 × 32). */
+  /* Phase 4.5 final: bigger 48 × 48 chevron (was 44) with 24 px
+     glyph (was 20) — clearer affordance for the side ↔ expanded
+     toggle. */
   div[class*="st-key-chat_expand_edge"] button {
-    width: 44px !important;
-    height: 44px !important;
+    width: 48px !important;
+    height: 48px !important;
     min-height: 0 !important;
     padding: 0 !important;
     border-radius: 50% !important;
     background: #FFFFFF !important;
     border: 1px solid var(--border) !important;
     box-shadow: -2px 2px 8px rgba(15, 31, 46, 0.15) !important;
-    font-size: 20px !important;
+    font-size: 24px !important;
     line-height: 1 !important;
     color: #534AB7 !important;
   }
@@ -560,20 +593,27 @@ _CSS = """
     pointer-events: none;  /* purely visual — click-to-close not wired in this commit */
   }
 
-  /* Phase 4.5 final — Variant B chat input.
-     The wrapper container (``chat_input_row``) is styled as one
-     rounded white pill with a 1 px border + subtle shadow. The
-     ``st.text_area`` inside is restyled to be borderless / shadowless
-     so it reads as the pill's interior. The "Send" button (a single
-     ``›`` glyph) is positioned absolutely on the right side of the
-     pill as a 32 × 32 purple circle. */
+  /* Phase 4.5 final — Variant B rounded input pill.
+
+     Streamlit renders each widget into its own ``.element-container``,
+     so the textarea and the Send button are siblings in the DOM
+     (not nested). To make the Send button appear INSIDE the pill on
+     its right edge, the button's element-container is absolutely
+     positioned over the textarea's element-container via the
+     ``:has()`` selector targeting the button's keyed wrapper. The
+     pill wrapper itself is ``position: relative`` to anchor the
+     absolute positioning.
+
+     Padding-right on the pill (48 px) reserves space for the
+     overlaid 32 × 32 button + an 8 px gutter so the textarea text
+     never collides with the arrow. */
   div[class*="st-key-chat_input_row"] {
     position: relative !important;
     background: #FFFFFF !important;
     border: 1px solid var(--border) !important;
-    border-radius: 24px !important;
-    padding: 4px 48px 4px 16px !important;  /* right padding = arrow + gutter */
-    margin-top: 8px !important;
+    border-radius: 22px !important;
+    padding: 4px 48px 4px 14px !important;
+    margin-top: 4px !important;
     box-shadow: 0 1px 3px rgba(15, 31, 46, 0.04);
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
@@ -581,63 +621,87 @@ _CSS = """
     border-color: #534AB7 !important;
     box-shadow: 0 0 0 3px rgba(83, 74, 183, 0.12);
   }
-  /* Textarea inside the pill — borderless, transparent bg, no
-     resize handle, no scrollbar at rest. */
+
+  /* Strip Streamlit's textarea chrome so the textarea reads as the
+     pill's interior — no border, no shadow, no background. */
+  div[class*="st-key-chat_input_row"] [data-testid="stTextArea"],
+  div[class*="st-key-chat_input_row"] [data-testid="stTextArea"] > div,
+  div[class*="st-key-chat_input_row"] [data-testid="stTextAreaRootElement"] {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
   div[class*="st-key-chat_input_row"] textarea {
     border: none !important;
     outline: none !important;
     box-shadow: none !important;
     background: transparent !important;
-    padding: 8px 4px !important;
-    font-size: 14px !important;
-    line-height: 1.4 !important;
+    padding: 8px 0 !important;
+    min-height: 28px !important;
+    max-height: 80px !important;
+    font-size: 13.5px !important;
+    line-height: 1.45 !important;
     resize: none !important;
-    min-height: 0 !important;
+    font-family: inherit !important;
   }
   div[class*="st-key-chat_input_row"] textarea:focus {
     border: none !important;
     outline: none !important;
     box-shadow: none !important;
   }
-  /* Send button — small purple circle on the right edge of the
-     pill, vertically centered. */
-  div[class*="st-key-chat_input_row"] div[class*="st-key-chat_send_"] {
+  /* Hide Streamlit's label spacer ``label_visibility="collapsed"``
+     leaves behind. */
+  div[class*="st-key-chat_input_row"] [data-testid="stWidgetLabel"] {
+    display: none !important;
+  }
+
+  /* Send button — absolutely position its ENTIRE
+     ``.element-container`` wrapper so it overlays the pill's right
+     edge. ``:has()`` targets the element-container whose direct
+     child is the button's keyed wrapper. */
+  div[class*="st-key-chat_input_row"] div[data-testid="stVerticalBlock"] >
+    div[data-testid="element-container"]:has(> div[class*="st-key-chat_send_"]) {
     position: absolute !important;
     right: 8px !important;
     top: 50% !important;
     transform: translateY(-50%) !important;
     width: 32px !important;
+    margin: 0 !important;
+    padding: 0 !important;
     z-index: 5;
   }
+  /* The button itself — 32 × 32 purple circle. ``font-size: 0`` hides
+     the ``›`` glyph fallback; the white SVG arrow renders via
+     background-image. */
   div[class*="st-key-chat_input_row"] div[class*="st-key-chat_send_"] button {
     width: 32px !important;
     height: 32px !important;
+    min-width: 32px !important;
     min-height: 0 !important;
     padding: 0 !important;
     border-radius: 50% !important;
-    background: #534AB7 !important;
+    background-color: #534AB7 !important;
+    background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 19V5'/%3E%3Cpath d='M5 12 L12 5 L19 12'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: 16px 16px !important;
     border: none !important;
-    color: #FFFFFF !important;
-    font-size: 20px !important;
+    color: transparent !important;
+    font-size: 0 !important;
     line-height: 1 !important;
-    font-weight: 600 !important;
     box-shadow: 0 1px 3px rgba(83, 74, 183, 0.30);
-    transition: background 0.15s ease, transform 0.1s ease;
+    transition: background-color 0.15s ease, transform 0.1s ease;
   }
   div[class*="st-key-chat_input_row"] div[class*="st-key-chat_send_"] button:hover {
-    background: #443B9F !important;
+    background-color: #443B9F !important;
     transform: translateY(-1px);
   }
   div[class*="st-key-chat_input_row"] div[class*="st-key-chat_send_"] button:disabled {
-    background: var(--text-muted) !important;
+    background-color: var(--text-muted) !important;
     cursor: not-allowed;
     transform: none;
-  }
-  /* Suppress the Streamlit textarea label area + counter inside the
-     pill — ``label_visibility="collapsed"`` hides the label text
-     but Streamlit still reserves a small spacer; flatten it. */
-  div[class*="st-key-chat_input_row"] [data-testid="stWidgetLabel"] {
-    display: none !important;
   }
 
   /* Mobile responsiveness — drawer becomes a bottom sheet at narrow

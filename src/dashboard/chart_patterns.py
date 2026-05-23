@@ -1708,15 +1708,22 @@ def render_ask_about_this(
 ) -> None:
     """Per-card "Ask about this" affordance.
 
-    Clicking sets three pieces of session state and triggers a rerun:
+    Phase 4.5 final: clicking now sets only two pieces of session
+    state and triggers a rerun:
         - ``chat_input_prefill`` — the templated question text. The
           chat panel's text-area widget reads this on render and uses
           it as the initial value.
-        - ``active_agent``       — snaps the specialist switcher to
-          the routed specialist (per V3_DASHBOARD_DESIGN.md §5.5).
         - ``chat_state``         — opens the drawer in side-panel
-          mode if it was closed; leaves it alone if already open in
-          side or expanded mode.
+          mode if it was closed; leaves it alone if already open.
+
+    The previous behaviour also set ``state.active_agent = specialist``
+    so the dropdown would snap to the routed specialist. Removed —
+    the orchestrator routes the question text to the appropriate
+    specialist at query time, so forcing a UI specialist switch on
+    affordance click felt presumptuous when the user might want to
+    keep the current specialist's context. The ``specialist``
+    parameter stays in the signature for backward compatibility but
+    is no longer applied.
 
     Disabled while an agent is mid-dispatch — clicking during a stream
     would otherwise queue a second dispatch behind the running one.
@@ -1731,7 +1738,6 @@ def render_ask_about_this(
         use_container_width=True,
     ):
         state.chat_input_prefill = prefill
-        state.active_agent = specialist
         if state.get("chat_state", "closed") == "closed":
             state.chat_state = "side"
         st.rerun()
