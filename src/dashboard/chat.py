@@ -307,6 +307,174 @@ def _render_d3(merchant_id: str) -> None:
     )
 
 
+def _render_t1(merchant_id: str) -> None:
+    """T1: per-neighborhood performance map (Pattern 6 diverging)."""
+    chart_data = D.neighborhood_performance(merchant_id)
+    nbhds = chart_data["neighborhoods"]
+    if not nbhds:
+        st.caption("_No store footprint to map._")
+        return
+
+    weakest   = chart_data["weakest"]
+    strongest = chart_data["strongest"]
+
+    # Adaptive takeaway (P1-style):
+    #   - clear under-performer beyond noise floor → name it + peer signal
+    #   - all neighborhoods within noise floor of baseline → on-baseline phrasing
+    #   - all over-baseline → name strongest with positive framing
+    noise = 5.0
+    if weakest and weakest["own_delta_pct"] is not None and weakest["own_delta_pct"] < -noise:
+        signal = weakest["peer_signal"]
+        signal_phrase = {
+            "market-wide":   "peers co-decline; suggests market-wide",
+            "operational":   "peers stable; suggests operational",
+            "market-wide (positive)": "peers also above; market-wide",
+            "operational (positive)": "peers stable; operational lift",
+            "on baseline":   "peer signal flat",
+            "limited peer footprint": "limited peer footprint for signal",
+            "limited own footprint":  "limited own footprint",
+        }.get(signal, signal)
+        takeaway = (
+            f"{weakest['name']} under-performs by "
+            f"{abs(weakest['own_delta_pct']):.1f}%; {signal_phrase}."
+        )
+    elif strongest and strongest["own_delta_pct"] is not None and strongest["own_delta_pct"] > noise:
+        # Mirror case: all above-baseline; name the strongest.
+        takeaway = (
+            f"All neighborhoods at or above your panel baseline; "
+            f"{strongest['name']} leads at +{strongest['own_delta_pct']:.1f}%."
+        )
+    else:
+        takeaway = (
+            "Every neighborhood is within "
+            f"{noise:.0f}% of your panel baseline of "
+            f"{chart_data['own_baseline']:.0f} txns/store."
+        )
+
+    polygons = []
+    for n in nbhds:
+        v = n["own_delta_pct"]
+        tip = (
+            f"<b>{n['name']}</b><br>"
+            f"Own: {n['own_n_txns']:,} txns / {n['own_n_stores']} stores<br>"
+            f"Δ vs baseline: "
+            f"{('—' if v is None else f'{v:+.1f}%')}<br>"
+            f"Peer signal: {n['peer_signal']}"
+        )
+        polygons.append({"name": n["name"], "value": v, "tooltip": tip})
+
+    CP.render_neighborhood_map(
+        {
+            "polygons":     polygons,
+            "own_stores":   chart_data["own_markers"],
+            "peer_stores":  [],
+            "value_label":  "Δ vs your baseline (%)",
+            "map_key":      f"t1_{merchant_id}",
+        },
+        title="Per-neighborhood performance vs your baseline",
+        takeaway=takeaway,
+        mode="diverging",
+    )
+
+
+def _render_t2(merchant_id: str) -> None:
+    """T2: customer-home density map (Pattern 6 sequential)."""
+    chart_data = D.customer_home_density(merchant_id)
+    nbhds = chart_data["neighborhoods"]
+    if not nbhds:
+        st.caption("_No customer-home data to map._")
+        return
+
+    pct = chart_data["pct_underserved"]
+    densest = chart_data["densest_underserved"]
+    if densest is not None:
+        takeaway = (
+            f"{pct:.1f}% of your customers live in neighborhoods without a "
+            f"same-merchant store; densest under-served area is "
+            f"{densest['name']} ({densest['n_customers']} customers)."
+        )
+    else:
+        takeaway = (
+            "Every neighborhood with your customers also has at least one "
+            "of your stores — no under-served neighborhoods in the panel."
+        )
+
+    polygons = []
+    for n in nbhds:
+        tip = (
+            f"<b>{n['name']}</b><br>"
+            f"{n['n_customers']:,} home customers<br>"
+            f"{n['own_n_stores']} own store(s)"
+            + ("<br><i>under-served</i>" if n["is_underserved"] else "")
+        )
+        polygons.append({
+            "name":    n["name"],
+            "value":   n["n_customers"],
+            "tooltip": tip,
+        })
+
+    CP.render_neighborhood_map(
+        {
+            "polygons":    polygons,
+            "own_stores":  chart_data["own_markers"],
+            "peer_stores": [],
+            "value_label": "Customers (count)",
+            "map_key":     f"t2_{merchant_id}",
+        },
+        title="Where your customers live (vs where your stores sit)",
+        takeaway=takeaway,
+        mode="sequential",
+    )
+
+
+def _render_t4(merchant_id: str) -> None:
+    """T4: expansion-opportunity map (Pattern 6 score)."""
+    chart_data = D.expansion_opportunity(merchant_id)
+    nbhds = chart_data["neighborhoods"]
+    if not nbhds:
+        st.caption("_No customer-activity data to score._")
+        return
+
+    top    = chart_data["top"]
+    signal = chart_data["top_peer_signal"]
+
+    if top:
+        takeaway = (
+            f"Top expansion opportunity: {top['name']} "
+            f"(score {top['score']:.1f}); {top['peer_n_stores']} peer "
+            f"store(s) suggests {signal}."
+        )
+    else:
+        takeaway = "No scored neighborhoods in the panel."
+
+    polygons = []
+    for n in nbhds:
+        tip = (
+            f"<b>{n['name']}</b><br>"
+            f"Score: {n['score']:.1f}<br>"
+            f"Customer activity: {n['n_txns']:,} txns<br>"
+            f"Own stores: {n['own_n_stores']} · Peer stores: {n['peer_n_stores']}"
+        )
+        polygons.append({
+            "name":    n["name"],
+            "value":   n["score"],
+            "tooltip": tip,
+        })
+
+    CP.render_neighborhood_map(
+        {
+            "polygons":    polygons,
+            "own_stores":  chart_data["own_markers"],
+            "peer_stores": chart_data["peer_markers"],
+            "value_label": "Expansion score",
+            "map_key":     f"t4_{merchant_id}",
+        },
+        title="Neighborhood expansion opportunities",
+        takeaway=takeaway,
+        mode="score",
+    )
+
+
 QUESTION_RENDERERS: dict[str, Callable[[str], None]] = {
     "A1": _render_a1,
     "P1": _render_p1,
@@ -315,6 +483,9 @@ QUESTION_RENDERERS: dict[str, Callable[[str], None]] = {
     "D3": _render_d3,
     "D4": _render_d4,
     "D7": _render_d7,
+    "T1": _render_t1,
+    "T2": _render_t2,
+    "T4": _render_t4,
 }
 
 

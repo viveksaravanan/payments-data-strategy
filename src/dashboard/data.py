@@ -1767,6 +1767,432 @@ def revenue_gap_decomposition(merchant_id: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# T1 / T2 / T4 — Trade-area question data (Pattern 6 maps)
+# ---------------------------------------------------------------------------
+#
+# T1: per-neighborhood own-vs-baseline performance ratio + peer-co-decline
+#     signal. Diverging color over neighborhood polygons; brand-color
+#     store markers overlaid.
+# T2: per-neighborhood customer-home density (from
+#     ``tenant_customers.home_zip5``, restricted to customers with at
+#     least one transaction at this merchant). Sequential color over
+#     polygons; own store markers overlaid.
+# T4: per-neighborhood expansion-opportunity score = customer-activity
+#     numerator / (own_store_count + 1). Peer store markers overlaid
+#     for competitive context.
+#
+# ZIP-to-neighborhood mapping is duplicated from ``src/generate/
+# parameters.py`` rather than imported across the dashboard ↔ generate
+# boundary; the mapping is static and small.
+
+_ZIP_TO_NEIGHBORHOOD: dict[str, str] = {
+    "28202": "Uptown / Center City",
+    "28203": "Dilworth",
+    "28205": "Plaza Midwood",
+    "28206": "NoDa",
+    "28210": "SouthPark",
+    "28211": "SouthPark",
+    "28213": "University City",
+    "28223": "University City",
+    "28277": "Ballantyne",
+    "28104": "Matthews",
+    "28105": "Matthews",
+    "28078": "Huntersville",
+    "28134": "Pineville",
+    "28025": "Concord",
+    "28027": "Concord",
+    "28115": "Mooresville",
+    "28117": "Mooresville",
+}
+
+# Magnitude (pp) below which a neighborhood is treated as on-baseline
+# in T1's takeaway phrasing rather than called out as under- or
+# over-performing. Adaptive logic in `_render_t1` uses this floor.
+_T1_BASELINE_NOISE_PP = 5.0
+
+
+@st.cache_data(ttl=3600)
+def neighborhood_performance(merchant_id: str) -> dict:
+    """Per-neighborhood own-vs-baseline transaction-rate ratio, plus
+    a peer-co-decline signal from the same-segment peers in the lake.
+    Data shape for Pattern 6 ``diverging`` mode (T1).
+
+    Returns a dict::
+
+        {
+            "neighborhoods": list of dicts with name, own_delta_pct,
+                             peer_delta_pct, peer_signal, n_stores,
+                             n_txns, peer_n_stores, vmin, vmax;
+            "weakest":       the most-under-performing neighborhood
+                             (or None when all are on baseline);
+            "strongest":     the most-over-performing neighborhood;
+            "own_baseline":  own panel txns-per-store baseline.
+        }
+    """
+    lake_t = f"lake_transactions_{merchant_id}"
+    lake_s = f"lake_stores_{merchant_id}"
+
+    own_stores_df = stores_for(merchant_id)
+
+    with _conn() as c:
+        # Own per-neighborhood txn count + store count.
+        own_rows = c.execute(
+            """
+            SELECT s.neighborhood,
+                   COUNT(DISTINCT t.txn_id) AS n_txns,
+                   COUNT(DISTINCT s.store_id) AS n_stores
+            FROM tenant_stores s
+            LEFT JOIN tenant_transactions t ON t.store_id = s.store_id
+            WHERE s.merchant_id = ?
+            GROUP BY s.neighborhood
+            """,
+            (merchant_id,),
+        ).fetchall()
+
+        # Peer per-neighborhood txn count (line_id=1 trick recovers
+        # true txn count from the per-line lake table — see
+        # chart_patterns.md "Implementation gotchas for lake queries").
+        peer_txn_rows = []
+        peer_store_rows = []
+        if has_same_segment_peers(merchant_id):
+            peer_txn_rows = c.execute(
+                f"""
+                SELECT ls.neighborhood, COUNT(*) AS n_txns
+                FROM {lake_t} lt
+                JOIN {lake_s} ls ON ls.lake_store_id = lt.lake_store_id
+                WHERE lt.peer_segment = 'grocery'
+                  AND lt.peer_id IN ('peer_a', 'peer_b')
+                  AND lt.line_id = 1
+                GROUP BY ls.neighborhood
+                """,
+            ).fetchall()
+            peer_store_rows = c.execute(
+                f"""
+                SELECT neighborhood, COUNT(*) AS n_stores
+                FROM {lake_s}
+                WHERE peer_segment = 'grocery'
+                  AND peer_id IN ('peer_a', 'peer_b')
+                GROUP BY neighborhood
+                """,
+            ).fetchall()
+
+    own_by_nb = {n: (int(t or 0), int(s)) for n, t, s in own_rows}
+    peer_txn_by_nb = {n: int(t) for n, t in peer_txn_rows}
+    peer_store_by_nb = {n: int(s) for n, s in peer_store_rows}
+
+    total_own_txns = sum(t for t, _ in own_by_nb.values())
+    total_own_stores = sum(s for _, s in own_by_nb.values())
+    own_baseline = (total_own_txns / total_own_stores) if total_own_stores else 0.0
+
+    total_peer_txns = sum(peer_txn_by_nb.values())
+    total_peer_stores = sum(peer_store_by_nb.values())
+    peer_baseline = (
+        (total_peer_txns / total_peer_stores) if total_peer_stores else 0.0
+    )
+
+    neighborhoods = []
+    for nb, (n_txns, n_stores) in own_by_nb.items():
+        if n_stores == 0 or own_baseline == 0:
+            own_delta = None
+        else:
+            own_per_store = n_txns / n_stores
+            own_delta = round((own_per_store / own_baseline - 1) * 100, 1)
+
+        peer_t = peer_txn_by_nb.get(nb, 0)
+        peer_s = peer_store_by_nb.get(nb, 0)
+        if peer_s == 0 or peer_baseline == 0:
+            peer_delta = None
+        else:
+            peer_delta = round(
+                ((peer_t / peer_s) / peer_baseline - 1) * 100, 1
+            )
+
+        if own_delta is None:
+            peer_signal = "limited own footprint"
+        elif peer_delta is None:
+            peer_signal = "limited peer footprint"
+        elif own_delta < -_T1_BASELINE_NOISE_PP and peer_delta < -_T1_BASELINE_NOISE_PP:
+            peer_signal = "market-wide"
+        elif own_delta < -_T1_BASELINE_NOISE_PP:
+            peer_signal = "operational"
+        elif own_delta > _T1_BASELINE_NOISE_PP and peer_delta > _T1_BASELINE_NOISE_PP:
+            peer_signal = "market-wide (positive)"
+        elif own_delta > _T1_BASELINE_NOISE_PP:
+            peer_signal = "operational (positive)"
+        else:
+            peer_signal = "on baseline"
+
+        neighborhoods.append({
+            "name":           nb,
+            "own_delta_pct":  own_delta,
+            "peer_delta_pct": peer_delta,
+            "own_n_stores":   n_stores,
+            "own_n_txns":     n_txns,
+            "peer_n_stores":  peer_s,
+            "peer_signal":    peer_signal,
+        })
+
+    ranked = [n for n in neighborhoods if n["own_delta_pct"] is not None]
+    ranked.sort(key=lambda n: n["own_delta_pct"])
+    weakest   = ranked[0]  if ranked else None
+    strongest = ranked[-1] if ranked else None
+
+    # Build own store markers for overlay (one per row of stores_for).
+    own_markers = [
+        {
+            "lat": float(r.latitude),
+            "lon": float(r.longitude),
+            "tooltip": (
+                f"<b>{r.store_id}</b><br>{r.neighborhood}<br>"
+                f"{int(r.n_txns_90d):,} txns"
+            ),
+        }
+        for r in own_stores_df.itertuples()
+    ]
+
+    return {
+        "neighborhoods": neighborhoods,
+        "weakest":       weakest,
+        "strongest":     strongest,
+        "own_baseline":  round(own_baseline, 1),
+        "own_markers":   own_markers,
+    }
+
+
+@st.cache_data(ttl=3600)
+def customer_home_density(merchant_id: str) -> dict:
+    """Per-neighborhood customer-home counts restricted to this
+    merchant's actual customer base, plus an under-served flag for
+    neighborhoods with customers but no own store. Data for T2.
+
+    Returns::
+
+        {
+            "neighborhoods": list of dicts with
+                name, n_customers, own_n_stores, is_underserved;
+            "underserved":   list of under-served names (no own store);
+            "pct_underserved": share of merchant's customers living in
+                               neighborhoods without a same-merchant
+                               store;
+            "densest_underserved": name + count of the highest-customer
+                                   under-served neighborhood (or None);
+            "own_markers": list[{lat, lon, tooltip}] for the overlay.
+        }
+    """
+    with _conn() as c:
+        rows = c.execute(
+            """
+            SELECT c.home_zip5, COUNT(DISTINCT c.customer_id) AS n
+            FROM tenant_customers c
+            WHERE c.customer_id IN (
+                SELECT DISTINCT customer_id FROM tenant_transactions
+                WHERE merchant_id = ?
+            )
+            GROUP BY c.home_zip5
+            """,
+            (merchant_id,),
+        ).fetchall()
+        own_store_rows = c.execute(
+            """
+            SELECT neighborhood, COUNT(*) AS n
+            FROM tenant_stores
+            WHERE merchant_id = ?
+            GROUP BY neighborhood
+            """,
+            (merchant_id,),
+        ).fetchall()
+
+    # Roll zip5 counts up to neighborhoods.
+    counts: dict[str, int] = {}
+    for z, n in rows:
+        nb = _ZIP_TO_NEIGHBORHOOD.get(z)
+        if not nb:
+            continue
+        counts[nb] = counts.get(nb, 0) + int(n)
+    own_store_by_nb = {n: int(s) for n, s in own_store_rows}
+
+    total = sum(counts.values()) or 1
+    underserved_count = 0
+    out: list[dict] = []
+    for nb, n in counts.items():
+        own_s = own_store_by_nb.get(nb, 0)
+        is_under = own_s == 0
+        if is_under:
+            underserved_count += n
+        out.append({
+            "name":         nb,
+            "n_customers":  n,
+            "own_n_stores": own_s,
+            "is_underserved": is_under,
+        })
+
+    pct_underserved = round(underserved_count / total * 100, 1)
+
+    # Densest under-served = neighborhood with most customers and no own store.
+    underserved = sorted(
+        [r for r in out if r["is_underserved"]],
+        key=lambda r: r["n_customers"],
+        reverse=True,
+    )
+    densest = underserved[0] if underserved else None
+
+    own_stores_df = stores_for(merchant_id)
+    own_markers = [
+        {
+            "lat": float(r.latitude),
+            "lon": float(r.longitude),
+            "tooltip": f"<b>{r.store_id}</b><br>{r.neighborhood}",
+        }
+        for r in own_stores_df.itertuples()
+    ]
+
+    return {
+        "neighborhoods":        out,
+        "underserved":          [r["name"] for r in underserved],
+        "pct_underserved":      pct_underserved,
+        "densest_underserved":  densest,
+        "own_markers":          own_markers,
+    }
+
+
+@st.cache_data(ttl=3600)
+def expansion_opportunity(merchant_id: str) -> dict:
+    """Per-neighborhood expansion-opportunity score for T4.
+
+    Score = customer_activity_from_neighborhood / (own_store_count + 1)
+
+    Customer activity is the total transaction count of customers who
+    home-live in the neighborhood (counted at this merchant only — the
+    expansion question is about *this merchant's* customer base
+    travelling outside their home neighborhood, not about all panel
+    customers). Higher score → more demand-side activity relative to
+    own supply-side footprint → expansion candidate.
+
+    Peer store counts (from the lake, same-segment only) are surfaced
+    as a secondary signal: a high-score neighborhood with many peer
+    stores is "peer-dense" (competitive expansion); few peer stores is
+    "peers under-represented" (open market).
+
+    Returns top-N neighborhoods plus an under-/over-represented
+    classification for the takeaway.
+    """
+    lake_s = f"lake_stores_{merchant_id}"
+
+    with _conn() as c:
+        cust_rows = c.execute(
+            """
+            SELECT c.home_zip5, COUNT(t.txn_id) AS n_txns
+            FROM tenant_customers c
+            JOIN tenant_transactions t ON t.customer_id = c.customer_id
+            WHERE t.merchant_id = ?
+            GROUP BY c.home_zip5
+            """,
+            (merchant_id,),
+        ).fetchall()
+        own_store_rows = c.execute(
+            """
+            SELECT neighborhood, COUNT(*) AS n
+            FROM tenant_stores WHERE merchant_id = ?
+            GROUP BY neighborhood
+            """,
+            (merchant_id,),
+        ).fetchall()
+        peer_store_rows = []
+        if has_same_segment_peers(merchant_id):
+            peer_store_rows = c.execute(
+                f"""
+                SELECT neighborhood, COUNT(*) AS n
+                FROM {lake_s}
+                WHERE peer_segment = 'grocery'
+                  AND peer_id IN ('peer_a', 'peer_b')
+                GROUP BY neighborhood
+                """,
+            ).fetchall()
+
+    # Roll customer txn activity to neighborhoods.
+    activity: dict[str, int] = {}
+    for z, n in cust_rows:
+        nb = _ZIP_TO_NEIGHBORHOOD.get(z)
+        if not nb:
+            continue
+        activity[nb] = activity.get(nb, 0) + int(n)
+    own_store_by_nb = {n: int(s) for n, s in own_store_rows}
+    peer_store_by_nb = {n: int(s) for n, s in peer_store_rows}
+
+    # Score every neighborhood we have any customer-activity for.
+    scored = []
+    for nb, n_txns in activity.items():
+        own_s  = own_store_by_nb.get(nb, 0)
+        peer_s = peer_store_by_nb.get(nb, 0)
+        score  = n_txns / (own_s + 1)
+        scored.append({
+            "name":         nb,
+            "score":        round(score, 1),
+            "n_txns":       n_txns,
+            "own_n_stores": own_s,
+            "peer_n_stores": peer_s,
+        })
+    scored.sort(key=lambda r: r["score"], reverse=True)
+
+    top = scored[0] if scored else None
+    if top:
+        # Peer-density classification: compare top's peer store count
+        # to the panel-wide peer-store mean across neighborhoods that
+        # have at least one peer store. Two grocers × ~22 stores ÷ 12
+        # neighborhoods ≈ 3.7 peer stores/neighborhood; use 3 as the
+        # heuristic threshold.
+        peer_signal = (
+            "peer-dense" if top["peer_n_stores"] >= 3
+            else "peers under-represented"
+        )
+    else:
+        peer_signal = "—"
+
+    own_stores_df = stores_for(merchant_id)
+    own_markers = [
+        {
+            "lat": float(r.latitude),
+            "lon": float(r.longitude),
+            "tooltip": f"<b>{r.store_id}</b><br>{r.neighborhood}",
+        }
+        for r in own_stores_df.itertuples()
+    ]
+
+    # Peer markers: the lake doesn't expose per-store coords, so place
+    # one circle per peer store at the neighborhood centroid plus
+    # deterministic jitter. Distinct shape (hollow gray) communicates
+    # "peer" at a glance.
+    import hashlib
+    peer_markers = []
+    for nb, count in peer_store_by_nb.items():
+        # Re-import the centroid table from chart_patterns (avoids
+        # duplicating the ZIP centroid set in data.py).
+        from . import chart_patterns as CP
+        c0 = CP.neighborhood_centroid(nb)
+        if c0 is None:
+            continue
+        for k in range(count):
+            # Deterministic jitter from name+index so the same call
+            # site produces the same coords across reruns.
+            seed = int(hashlib.sha256(f"{nb}-{k}".encode()).hexdigest()[:8], 16)
+            dlat = ((seed & 0xFFFF) / 0xFFFF - 0.5) * 0.02
+            dlon = (((seed >> 16) & 0xFFFF) / 0xFFFF - 0.5) * 0.02
+            peer_markers.append({
+                "lat": c0[0] + dlat,
+                "lon": c0[1] + dlon,
+                "tooltip": f"<b>Peer store</b><br>{nb}",
+            })
+
+    return {
+        "neighborhoods":     scored,
+        "top":               top,
+        "top_peer_signal":   peer_signal,
+        "own_markers":       own_markers,
+        "peer_markers":      peer_markers,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Compatibility shims for placeholders.py and earlier views (no-op now)
 # ---------------------------------------------------------------------------
 

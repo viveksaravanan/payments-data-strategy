@@ -21,9 +21,12 @@ Phase 4.1 implements Pattern 1 only. Subsequent phases add the rest.
 """
 from __future__ import annotations
 
+import folium
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import streamlit as st
+from branca.colormap import LinearColormap
+from streamlit_folium import st_folium
 
 
 # Plotly needs Python-string colors (CSS variables can't reach the
@@ -708,6 +711,272 @@ def _render_waterfall_cross_merchant(
 
     _render_card_header(title, takeaway)
     st.plotly_chart(fig, use_container_width=True)
+
+
+# ---------------------------------------------------------------------------
+# Pattern 6 — Geographic map (Folium)
+# ---------------------------------------------------------------------------
+#
+# Synthetic neighborhood polygons built from ZIP centroids. Each
+# neighborhood gets a hexagonal hull around the mean of its panel-ZIP
+# centroids, padded by the max centroid-to-mean distance plus a
+# fixed buffer — single-ZIP neighborhoods land on a uniform hexagon,
+# multi-ZIP ones expand to cover all member ZIPs. Coords are
+# duplicated from ``src/generate/metro.py``'s private centroid table
+# rather than imported across the dashboard ↔ generate boundary;
+# the centroid set is static and small.
+
+CLT_CENTER = (35.227, -80.843)
+
+_ZIP_CENTROIDS: dict[str, tuple[float, float]] = {
+    "28202": (35.2271, -80.8431),  # Uptown
+    "28203": (35.2096, -80.8534),  # Dilworth
+    "28205": (35.2229, -80.8128),  # Plaza Midwood
+    "28206": (35.2440, -80.8189),  # NoDa
+    "28210": (35.1597, -80.8607),  # SouthPark south
+    "28211": (35.1700, -80.8200),  # SouthPark east
+    "28213": (35.3144, -80.7625),  # University City west
+    "28223": (35.3056, -80.7331),  # University City east (UNCC)
+    "28277": (35.0589, -80.8462),  # Ballantyne
+    "28104": (35.0890, -80.7000),  # Matthews west
+    "28105": (35.1170, -80.7100),  # Matthews east
+    "28078": (35.4107, -80.8420),  # Huntersville
+    "28134": (35.0824, -80.8923),  # Pineville
+    "28025": (35.4087, -80.5790),  # Concord west
+    "28027": (35.3970, -80.6800),  # Concord east
+    "28115": (35.5840, -80.8100),  # Mooresville south
+    "28117": (35.5800, -80.9100),  # Mooresville north
+}
+
+_NEIGHBORHOOD_ZIPS: dict[str, list[str]] = {
+    "Uptown / Center City": ["28202"],
+    "Plaza Midwood":        ["28205"],
+    "NoDa":                 ["28206"],
+    "Dilworth":             ["28203"],
+    "SouthPark":            ["28210", "28211"],
+    "Ballantyne":           ["28277"],
+    "University City":      ["28213", "28223"],
+    "Matthews":             ["28104", "28105"],
+    "Huntersville":         ["28078"],
+    "Pineville":            ["28134"],
+    "Concord":              ["28025", "28027"],
+    "Mooresville":          ["28115", "28117"],
+}
+
+# Fixed buffer added around each neighborhood's centroid radius (in
+# degrees, ~1.4 km at this latitude). Small enough that adjacent
+# neighborhoods don't overlap visibly; large enough that single-ZIP
+# polygons read as polygons rather than dots.
+_POLYGON_BUFFER_DEG = 0.013
+
+
+def _hex_vertices(center: tuple[float, float], radius: float) -> list[list[float]]:
+    """Six-vertex hexagon around `center` with the given radius (in
+    degrees). Returned as ``[[lat, lon], ...]`` for Folium."""
+    import math
+    lat, lon = center
+    # Latitude scale: 1 deg lat ≈ 111 km. Longitude scale at 35°N:
+    # 1 deg lon ≈ 91 km. Adjust the lon radius to compensate so the
+    # hexagon reads as visually circular rather than stretched
+    # east-west.
+    lon_scale = 111.0 / 91.0
+    verts = []
+    for k in range(6):
+        ang = math.radians(60 * k + 30)  # offset so a flat side faces north
+        verts.append([
+            lat + radius * math.sin(ang),
+            lon + radius * lon_scale * math.cos(ang),
+        ])
+    return verts
+
+
+def _neighborhood_polygons() -> dict[str, list[list[float]]]:
+    """Compute the hexagonal hull for every panel neighborhood. Cached
+    at module load time so map renders don't recompute on every rerun."""
+    out: dict[str, list[list[float]]] = {}
+    for nbhd, zips in _NEIGHBORHOOD_ZIPS.items():
+        centroids = [_ZIP_CENTROIDS[z] for z in zips]
+        if len(centroids) == 1:
+            center = centroids[0]
+            radius = _POLYGON_BUFFER_DEG
+        else:
+            lat_c = sum(c[0] for c in centroids) / len(centroids)
+            lon_c = sum(c[1] for c in centroids) / len(centroids)
+            center = (lat_c, lon_c)
+            # Max distance from mean to any member centroid → expand
+            # to cover all ZIPs in the neighborhood.
+            max_d = max(
+                ((c[0] - lat_c) ** 2 + (c[1] - lon_c) ** 2) ** 0.5
+                for c in centroids
+            )
+            radius = max_d + _POLYGON_BUFFER_DEG
+        out[nbhd] = _hex_vertices(center, radius)
+    return out
+
+
+_POLYGON_CACHE = _neighborhood_polygons()
+
+
+def neighborhood_polygon(name: str) -> list[list[float]] | None:
+    """Return the precomputed hexagonal hull vertices for a panel
+    neighborhood, or ``None`` if the name isn't in the panel."""
+    return _POLYGON_CACHE.get(name)
+
+
+def neighborhood_centroid(name: str) -> tuple[float, float] | None:
+    """Mean ZIP centroid for a panel neighborhood — used to place
+    aggregate peer-store markers (the lake doesn't expose per-store
+    coords, so peer markers land on the neighborhood centroid with
+    jitter)."""
+    zips = _NEIGHBORHOOD_ZIPS.get(name)
+    if not zips:
+        return None
+    centroids = [_ZIP_CENTROIDS[z] for z in zips]
+    return (
+        sum(c[0] for c in centroids) / len(centroids),
+        sum(c[1] for c in centroids) / len(centroids),
+    )
+
+
+def render_neighborhood_map(
+    data: dict,
+    *,
+    title: str,
+    takeaway: str,
+    mode: str = "diverging",
+    height: int = 460,
+) -> None:
+    """Pattern 6 — Folium neighborhood-polygon map.
+
+    Modes:
+
+    - ``"diverging"`` — value-based colormap (red ↔ white ↔ blue)
+      centered at 0. Used by T1 (per-neighborhood performance vs own
+      panel baseline; red = under-performing, blue = over).
+    - ``"sequential"`` — light → brand-color scale. Used by T2
+      (customer-home density; darker = more customers from that
+      neighborhood).
+    - ``"score"`` — light → brand-color scale, higher = better
+      opportunity. Used by T4 (expansion-opportunity score).
+
+    ``data`` keys:
+
+        polygons: list of dicts, each with
+            ``name`` (str)     — neighborhood name
+            ``value`` (float|None) — metric value driving the color
+            ``tooltip`` (str)  — HTML hover content
+        own_stores:  list of dicts with ``lat``, ``lon``, ``tooltip``
+        peer_stores: optional list of dicts with ``lat``, ``lon``,
+                     ``tooltip`` (T4 only — placed at neighborhood
+                     centroids with jitter; the lake doesn't expose
+                     per-store coords).
+        vmin, vmax:    floats anchoring the color scale; ``vmid`` for
+                       diverging mode (defaults to 0).
+        value_label:   short legend label.
+        map_key:       Streamlit key suffix so per-question map keys
+                       stay distinct.
+    """
+    if mode not in ("diverging", "sequential", "score"):
+        raise ValueError(f"Unknown render_neighborhood_map mode: {mode!r}")
+
+    polygons    = data.get("polygons") or []
+    own_stores  = data.get("own_stores") or []
+    peer_stores = data.get("peer_stores") or []
+    map_key     = data.get("map_key", "map")
+
+    _render_card_header(title, takeaway)
+
+    if not polygons:
+        st.caption("_No neighborhoods with data to map._")
+        return
+
+    fmap = folium.Map(
+        location=CLT_CENTER,
+        zoom_start=10,
+        tiles="CartoDB positron",
+        control_scale=True,
+    )
+
+    values = [p["value"] for p in polygons if p.get("value") is not None]
+    if not values:
+        # No coloring is meaningful; render polygons in a neutral fill.
+        cmap = None
+    else:
+        vmin = float(data.get("vmin", min(values)))
+        vmax = float(data.get("vmax", max(values)))
+        if mode == "diverging":
+            vabs = max(abs(vmin), abs(vmax), 1.0)
+            cmap = LinearColormap(
+                [DIVERGING_LOW, DIVERGING_MID, DIVERGING_HIGH],
+                vmin=-vabs, vmax=vabs,
+            )
+        else:
+            # sequential / score share the same accent-light → accent
+            # ramp; "score" mode floors at 0 implicitly because
+            # opportunity scores are non-negative.
+            lo = 0.0 if mode == "score" else vmin
+            cmap = LinearColormap(["#D8E2EE", ACCENT], vmin=lo,
+                                   vmax=max(vmax, lo + 1e-9))
+        cmap.caption = data.get("value_label", "")
+
+    for p in polygons:
+        verts = neighborhood_polygon(p["name"])
+        if not verts:
+            continue
+        val = p.get("value")
+        if val is None or cmap is None:
+            fill_color = "#E5E7EB"
+            fill_opacity = 0.18
+        else:
+            fill_color = cmap(val)
+            fill_opacity = 0.65
+        folium.Polygon(
+            locations=verts,
+            color="#4B5563",
+            weight=1,
+            fill=True,
+            fill_color=fill_color,
+            fill_opacity=fill_opacity,
+            tooltip=folium.Tooltip(p.get("tooltip", p["name"]), sticky=True),
+        ).add_to(fmap)
+
+    for s in own_stores:
+        folium.CircleMarker(
+            location=[s["lat"], s["lon"]],
+            radius=5,
+            color=ACCENT,
+            weight=1.2,
+            fill=True,
+            fill_color=ACCENT,
+            fill_opacity=0.92,
+            tooltip=s.get("tooltip", ""),
+        ).add_to(fmap)
+
+    for s in peer_stores:
+        # Peer markers use a distinct shape (square via DivIcon would be
+        # heavier; a hollow gray circle reads as peer at glance and
+        # stays cheap to render).
+        folium.CircleMarker(
+            location=[s["lat"], s["lon"]],
+            radius=4,
+            color=PEER_AGGREGATE,
+            weight=1.0,
+            fill=True,
+            fill_color="#FFFFFF",
+            fill_opacity=0.85,
+            tooltip=s.get("tooltip", ""),
+        ).add_to(fmap)
+
+    if cmap is not None:
+        cmap.add_to(fmap)
+
+    st_folium(
+        fmap,
+        height=height,
+        use_container_width=True,
+        returned_objects=[],
+        key=f"map_{map_key}",
+    )
 
 
 # ---------------------------------------------------------------------------
