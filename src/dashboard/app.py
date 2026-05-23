@@ -211,8 +211,7 @@ else:
         views.render_performance_section(mid, filters)
         views.render_geography_section(mid, filters)
         views.render_catalog_section(mid, filters)
-        views.render_time_patterns(mid, filters)
-        views.render_customer_engagement(mid, filters)
+        views.render_customers_section(mid, filters)
 
     with chat_col:
         chat.render_chat_panel(mid)

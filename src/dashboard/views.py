@@ -80,6 +80,150 @@ def render_kpi_row(merchant_id: str, filters: dict) -> None:
     render_kpi_strip(merchant_id, filters)
 
 
+def render_customers_section(merchant_id: str, filters: dict) -> None:  # noqa: ARG001
+    """Phase 4.4 Section 5 — Customers. Three cards in an equal-width row:
+
+    - Card 5.1 New vs returning (Pattern 2 own-bars, with trend delta).
+    - Card 5.2 Transactions per customer (Pattern 2 own-bars, 5
+      visit-count buckets with cohort revenue share in the takeaway).
+    - Card 5.3 Customer home geography (Pattern 6 sequential mode,
+      reuses ``customer_home_density`` from 4.2e, includes the
+      customer-coverage footnote).
+    """
+    from . import chart_patterns as CP
+
+    cols = st.columns(3, gap="small")
+
+    # Card 5.1 — New vs returning
+    with cols[0]:
+        with st.container(border=True):
+            CP.render_ask_about_this(
+                key=f"ask_about_new_ret_{merchant_id}",
+                specialist="demand",
+                prefill=(
+                    "What's the composition of my customer base this "
+                    "week — are new customers growing or my base growing?"
+                ),
+            )
+            nvr = D.new_vs_returning(merchant_id)
+            if nvr["total_count"] == 0:
+                st.caption("_No customer activity in the recent week._")
+            else:
+                direction = (
+                    "up" if nvr["new_pct_delta_pp"] > 0
+                    else "down" if nvr["new_pct_delta_pp"] < 0
+                    else "flat"
+                )
+                takeaway = (
+                    f"{nvr['new_pct']:.0f}% of this week's customers "
+                    f"are new; {nvr['returning_pct']:.0f}% are returning. "
+                    f"New-customer share is {direction} "
+                    f"{abs(nvr['new_pct_delta_pp']):.1f}pp vs prior 4 weeks."
+                )
+                CP.render_horizontal_bars_own(
+                    {
+                        "labels": ["Returning", "New"],
+                        "values": [nvr["returning_count"], nvr["new_count"]],
+                        "x_label": "Customers",
+                        "value_format": ",.0f",
+                    },
+                    title="New vs returning customers this week",
+                    takeaway=takeaway,
+                    height=260,
+                )
+
+    # Card 5.2 — Transactions per customer
+    with cols[1]:
+        with st.container(border=True):
+            CP.render_ask_about_this(
+                key=f"ask_about_freq_{merchant_id}",
+                specialist="demand",
+                prefill=(
+                    "What does my customer frequency distribution "
+                    "tell me about loyalty?"
+                ),
+            )
+            freq = D.transactions_per_customer(merchant_id)
+            if not freq["labels"]:
+                st.caption("_No customer-frequency data._")
+            else:
+                if freq["top_cohort"] == "11+":
+                    cohort_phrase = "Your top cohort (11+ visits in 90 days)"
+                else:
+                    cohort_phrase = f"Your top cohort ({freq['top_cohort']} visits in 90 days)"
+                takeaway = (
+                    f"{cohort_phrase} is {freq['top_cohort_cust_pct']:.0f}% of "
+                    f"your customers but generates "
+                    f"{freq['top_cohort_rev_pct']:.0f}% of revenue. "
+                    f"{freq['n_one_visit']:,} customer"
+                    f"{'s' if freq['n_one_visit'] != 1 else ''} "
+                    "shopped just once."
+                )
+                CP.render_horizontal_bars_own(
+                    freq,
+                    title="Transactions per customer (90d)",
+                    takeaway=takeaway,
+                    height=260,
+                )
+
+    # Card 5.3 — Customer home geography
+    with cols[2]:
+        with st.container(border=True):
+            CP.render_ask_about_this(
+                key=f"ask_about_home_geo_{merchant_id}",
+                specialist="trade",
+                prefill="Where do my customers live relative to my stores?",
+            )
+            chart_data = D.customer_home_density(merchant_id)
+            nbhds = chart_data["neighborhoods"]
+            if not nbhds:
+                st.caption("_No customer-home data to map._")
+            else:
+                # Pct living in served neighborhoods = 100 - pct_underserved.
+                pct_served = round(100 - chart_data["pct_underserved"], 1)
+                densest = chart_data["densest_underserved"]
+                if densest is not None:
+                    takeaway = (
+                        f"{pct_served:.0f}% of your customers live in "
+                        "neighborhoods where you have at least one store. "
+                        f"Densest customer area without a nearby store: "
+                        f"{densest['name']} ({densest['n_customers']:,} customers)."
+                    )
+                else:
+                    takeaway = (
+                        f"{pct_served:.0f}% of your customers live in "
+                        "neighborhoods where you have at least one store; "
+                        "no under-served neighborhoods in the panel."
+                    )
+                polygons = []
+                for n in nbhds:
+                    tip = (
+                        f"<b>{n['name']}</b><br>"
+                        f"{n['n_customers']:,} home customers<br>"
+                        f"{n['own_n_stores']} own store(s)"
+                        + ("<br><i>under-served</i>" if n["is_underserved"] else "")
+                    )
+                    polygons.append({
+                        "name":    n["name"],
+                        "value":   n["n_customers"],
+                        "tooltip": tip,
+                    })
+                CP.render_neighborhood_map(
+                    {
+                        "polygons":    polygons,
+                        "own_stores":  chart_data["own_markers"],
+                        "peer_stores": [],
+                        "value_label": "Customers (count)",
+                        "map_key":     f"5_3_{merchant_id}",
+                        "footnote":    chart_data.get("footnote", ""),
+                    },
+                    title="Customer home geography",
+                    takeaway=takeaway,
+                    mode="sequential",
+                    height=300,
+                )
+
+
 def render_catalog_section(merchant_id: str, filters: dict) -> None:  # noqa: ARG001
     """Phase 4.4 Section 4 — Catalog. Two cards in a 40/60 row:
 
@@ -588,334 +732,9 @@ def render_kpi_strip(merchant_id: str, filters: dict) -> None:  # noqa: ARG001
         )
 
 
-# ---------------------------------------------------------------------------
-# Map — gradient color by 90-day txn volume, highlight selected stores
-# ---------------------------------------------------------------------------
 
-CLT_CENTER = [35.227, -80.843]
-
-
-def render_map(merchant_id: str, filters: dict) -> None:
-    """Charlotte basemap with own-merchant stores colored by 90-day
-    transaction volume. Stores selected in the filter render at full
-    opacity + larger radius; unselected stores are dimmed."""
-    stores = D.stores_for(merchant_id).copy()
-    selected = set(filters.get("stores") or [])
-
-    fmap = folium.Map(
-        location=CLT_CENTER,
-        zoom_start=10,
-        tiles="CartoDB positron",
-        control_scale=True,
-    )
-
-    if stores.empty:
-        st.markdown('<div class="panel-card" style="padding: 8px;">', unsafe_allow_html=True)
-        st_folium(fmap, height=440, use_container_width=True,
-                  returned_objects=[], key=f"map_{merchant_id}")
-        st.markdown('</div>', unsafe_allow_html=True)
-        return
-
-    # Color scale from light to accent. Anchored to this merchant's
-    # observed range so the gradient stays meaningful as we switch
-    # merchants.
-    vmin = float(stores["n_txns_90d"].min())
-    vmax = float(stores["n_txns_90d"].max())
-    cmap = LinearColormap([ACCENT_LIGHT, ACCENT], vmin=vmin, vmax=max(vmax, vmin + 1))
-
-    # Radius scaling — base 4px → 12px depending on volume share. If a
-    # filter restricts the visible set, selected stores get +3px to
-    # reinforce the highlight.
-    def _radius(n: float) -> float:
-        share = (n - vmin) / (vmax - vmin) if vmax > vmin else 0.5
-        return 4 + 8 * share
-
-    for r in stores.itertuples():
-        n = float(r.n_txns_90d)
-        color = cmap(n)
-        is_selected = r.store_id in selected if selected else True
-        radius = _radius(n) + (3 if (selected and is_selected) else 0)
-        opacity = 0.92 if is_selected else 0.20
-        weight = 1.5 if is_selected else 0.5
-        folium.CircleMarker(
-            location=[r.latitude, r.longitude],
-            radius=radius,
-            color=color,
-            weight=weight,
-            fill=True,
-            fill_color=color,
-            fill_opacity=opacity,
-            tooltip=(
-                f"<b>{r.store_id}</b><br>"
-                f"{r.neighborhood}<br>"
-                f"{r.n_txns_90d:,} txns (90d)<br>"
-                f"${r.revenue_90d:,.0f} revenue (90d)"
-            ),
-        ).add_to(fmap)
-
-    # Map title row showing selection state
-    title_html = (
-        f'<div class="panel-card">'
-        f'<div class="panel-title">Stores by 90-day transaction volume</div>'
-        f'<div class="panel-sub">'
-    )
-    if selected:
-        title_html += f'{len(selected)} of {len(stores)} stores selected (filtered)'
-    else:
-        title_html += f'All {len(stores)} stores · hover any marker for store-level metrics'
-    title_html += "</div>"
-    st.markdown(title_html, unsafe_allow_html=True)
-    st_folium(
-        fmap,
-        height=420,
-        use_container_width=True,
-        returned_objects=[],
-        key=f"map_{merchant_id}_{tuple(sorted(selected))}",
-    )
-    st.markdown('</div>', unsafe_allow_html=True)
-
-
-# ---------------------------------------------------------------------------
-# Insights panel — sparkline + top SKUs
-# ---------------------------------------------------------------------------
-
-def render_insights_panel(merchant_id: str, filters: dict) -> None:
-    fk = D._filters_key(filters)
-    color = D.MERCHANT_COLOR[merchant_id]
-
-    # -- Daily volume sparkline --
-    df = D.daily_volume(merchant_id, fk)
-    st.markdown('<div class="panel-card">'
-                '<div class="panel-title">Daily transactions</div>',
-                unsafe_allow_html=True)
-    if df.empty:
-        st.caption("No transactions in this filter.")
-    else:
-        fig = go.Figure(go.Scatter(
-            x=df["day"], y=df["n"],
-            mode="lines",
-            line={"color": color, "width": 1.5},
-            hovertemplate="%{x}<br>%{y:,} txns<extra></extra>",
-            fill="tozeroy",
-            fillcolor="rgba(15, 76, 129, 0.08)",
-        ))
-        fig.update_layout(**_plotly_layout(
-            height=120,
-            margin={"l": 24, "r": 8, "t": 4, "b": 24},
-            xaxis={"showgrid": False, "linecolor": BORDER, "ticks": "",
-                    "tickfont": {"size": 10, "color": TEXT_MUTED},
-                    "tickformat": "%b %d", "nticks": 4},
-            yaxis={"showgrid": False, "showticklabels": False,
-                    "linecolor": "rgba(0,0,0,0)"},
-            showlegend=False,
-        ))
-        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # -- Top 5 SKUs --
-    skus = D.top_skus(merchant_id, fk, n=5)
-    st.markdown('<div class="panel-card">'
-                '<div class="panel-title">Top 5 SKUs by revenue</div>',
-                unsafe_allow_html=True)
-    if skus.empty:
-        st.caption("No matching SKUs in this filter.")
-    else:
-        fig = go.Figure(go.Bar(
-            x=skus["revenue"].iloc[::-1],
-            y=skus["name"].iloc[::-1],
-            orientation="h",
-            marker={"color": color},
-            hovertemplate="<b>%{y}</b><br>$%{x:,.0f}<extra></extra>",
-        ))
-        fig.update_layout(**_plotly_layout(
-            height=200,
-            margin={"l": 8, "r": 16, "t": 4, "b": 28},
-            xaxis={"showgrid": True, "tickprefix": "$", "tickformat": ",.0f",
-                    "tickfont": {"size": 10}},
-            yaxis={"showgrid": False, "tickfont": {"size": 11},
-                    "automargin": True},
-        ))
-        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-
-# Phase 4.4d removed:
-#   render_category_mix       → replaced by Card 4.1 in render_catalog_section
-#   render_store_performance  → replaced by Card 3.2 in render_geography_section
-#   render_payment_intelligence (+ _render_payment_method, _render_card_network,
-#       _render_entry_mode_trend, _render_wallet_adoption) — out of scope per
-#       V3_PHASE4_AUDIT.md Section 5 (payment intelligence is NOT IN V3)
-
-
-# ---------------------------------------------------------------------------
-# Time Patterns — hour × day-of-week heatmap
-# ---------------------------------------------------------------------------
-
-# SQLite's strftime('%w', …) yields 0=Sunday … 6=Saturday. The heatmap
-# is read top-to-bottom as Monday → Sunday for executive convention.
-_DOW_ORDER       = [1, 2, 3, 4, 5, 6, 0]   # Mon, Tue, …, Sun
-_DOW_LABELS      = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-
-
-def render_time_patterns(merchant_id: str, filters: dict) -> None:
-    """24×7 heatmap showing when the merchant is busiest."""
-    grid = D.hour_dow_heatmap(merchant_id, D._filters_key(filters))
-    st.markdown(
-        '<div style="font-size:13px;letter-spacing:0.06em;text-transform:uppercase;'
-        'color:var(--accent);font-weight:600;margin:14px 0 6px;">Time patterns</div>'
-        '<div style="font-size:12.5px;color:var(--text-muted);margin:0 0 10px;">'
-        'Verifone captures full timestamps on every transaction, enabling '
-        'operational planning at hour-by-day granularity.'
-        '</div>',
-        unsafe_allow_html=True,
-    )
-    st.markdown('<div class="panel-card">'
-                '<div class="panel-title">Transactions by hour of day &times; day of week</div>',
-                unsafe_allow_html=True)
-    if grid.empty or grid.values.sum() == 0:
-        st.caption("No data in this filter.")
-        st.markdown('</div>', unsafe_allow_html=True)
-        return
-    # Reorder rows to Mon → Sun
-    z = grid.reindex(index=_DOW_ORDER).values
-    fig = go.Figure(go.Heatmap(
-        z=z,
-        x=[f"{h:02d}" for h in range(24)],
-        y=_DOW_LABELS,
-        colorscale=[[0, "#FFFFFF"], [0.5, ACCENT_LIGHT], [1, ACCENT]],
-        hovertemplate="<b>%{y} %{x}:00</b><br>%{z:,} txns<extra></extra>",
-        colorbar={"thickness": 12, "outlinewidth": 0,
-                   "tickfont": {"size": 10, "color": TEXT_MUTED}},
-    ))
-    fig.update_layout(**_plotly_layout(
-        height=260,
-        margin={"l": 36, "r": 24, "t": 4, "b": 32},
-        xaxis={"side": "bottom", "tickfont": {"size": 10},
-                "showgrid": False, "linecolor": BORDER},
-        yaxis={"tickfont": {"size": 11}, "showgrid": False, "linecolor": BORDER,
-                "autorange": "reversed"},
-    ))
-    st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-
-# ---------------------------------------------------------------------------
-# Customer Engagement — observable metrics only
-# ---------------------------------------------------------------------------
-
-def render_customer_engagement(merchant_id: str, filters: dict) -> None:
-    """Replaces the prior Customer Insights expander. All metrics are
-    derivable from observable transaction data (no synthetic-construct
-    affinity types or behavioral segments)."""
-    eng = D.customer_engagement(merchant_id, D._filters_key(filters))
-
-    with st.expander("Customer Engagement", expanded=False):
-        c1, c2 = st.columns(2)
-        with c1:
-            _render_txn_freq(eng.get("txn_freq", pd.DataFrame()))
-        with c2:
-            _render_recency(eng.get("recency", {}))
-        c3, c4 = st.columns(2)
-        with c3:
-            _render_revenue_concentration(eng.get("revenue_concentration", {}))
-        with c4:
-            _render_promo_redemption(eng.get("top_promos", pd.DataFrame()))
-
-
-def _ci_card_open(title: str, sub: str = "") -> None:
-    sub_html = f'<div class="panel-sub">{sub}</div>' if sub else ""
-    st.markdown(
-        f'<div class="panel-card" style="height: 100%;">'
-        f'<div class="panel-title">{title}</div>{sub_html}',
-        unsafe_allow_html=True,
-    )
-
-
-def _ci_card_close() -> None:
-    st.markdown("</div>", unsafe_allow_html=True)
-
-
-def _hbar(df: pd.DataFrame, x_col: str, y_col: str, color: str = ACCENT,
-          height: int = 220, x_fmt: str = ",.0f", x_prefix: str = "",
-          x_suffix: str = "") -> None:
-    fig = go.Figure(go.Bar(
-        x=df[x_col].iloc[::-1],
-        y=df[y_col].iloc[::-1],
-        orientation="h",
-        marker={"color": color},
-        hovertemplate=f"<b>%{{y}}</b><br>{x_prefix}%{{x:{x_fmt}}}{x_suffix}<extra></extra>",
-    ))
-    fig.update_layout(**_plotly_layout(
-        height=height,
-        margin={"l": 8, "r": 16, "t": 4, "b": 28},
-        xaxis={"showgrid": True, "tickprefix": x_prefix, "tickformat": x_fmt,
-                "ticksuffix": x_suffix, "tickfont": {"size": 10}},
-        yaxis={"showgrid": False, "tickfont": {"size": 11}, "automargin": True},
-    ))
-    st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
-
-
-def _render_txn_freq(df: pd.DataFrame) -> None:
-    _ci_card_open("Transactions per customer",
-                   "How concentrated is engagement?")
-    if df.empty:
-        st.caption("No data in this filter.")
-    else:
-        df = df.rename(columns={"bucket": "Transactions"})
-        _hbar(df, "n_customers", "Transactions", color=ACCENT)
-    _ci_card_close()
-
-
-def _render_recency(rec: dict) -> None:
-    _ci_card_open("Customer recency",
-                   "Active in last 30 days vs lapsed")
-    total  = rec.get("total_customers", 0)
-    active = rec.get("active_30d", 0)
-    lapsed = rec.get("lapsed_30d", 0)
-    active_pct = rec.get("active_pct", 0.0)
-    lapsed_pct = 100.0 - active_pct if total else 0.0
-    html = (
-        '<div style="display:flex;justify-content:space-around;gap:12px;padding:18px 4px 8px;">'
-        '  <div style="text-align:center;">'
-        f'    <div style="font-size:26px;font-weight:600;color:var(--accent);font-variant-numeric:tabular-nums;">{active:,}</div>'
-        f'    <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);">Active (last 30d)</div>'
-        f'    <div style="font-size:12px;color:var(--text-2);margin-top:2px;">{active_pct:.1f}%</div>'
-        '  </div>'
-        '  <div style="text-align:center;">'
-        f'    <div style="font-size:26px;font-weight:600;color:var(--text-muted);font-variant-numeric:tabular-nums;">{lapsed:,}</div>'
-        f'    <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);">Lapsed (30d+)</div>'
-        f'    <div style="font-size:12px;color:var(--text-2);margin-top:2px;">{lapsed_pct:.1f}%</div>'
-        '  </div>'
-        '</div>'
-        f'<div style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:4px;">'
-        f'Total customers: {total:,}</div>'
-    )
-    st.markdown(html, unsafe_allow_html=True)
-    _ci_card_close()
-
-
-def _render_revenue_concentration(rc: dict) -> None:
-    _ci_card_open("Revenue concentration",
-                   "Share of revenue from top customers")
-    top10 = rc.get("pct_top10", 0.0) or 0.0
-    top20 = rc.get("pct_top20", 0.0) or 0.0
-    top50 = rc.get("pct_top50", 0.0) or 0.0
-    df = pd.DataFrame({
-        "Cohort":     ["Top 10%", "Top 20%", "Top 50%"],
-        "Rev share":  [top10, top20, top50],
-    })
-    _hbar(df, "Rev share", "Cohort", color="#3A6FA5",
-           x_fmt=".1f", x_suffix="%")
-    _ci_card_close()
-
-
-def _render_promo_redemption(df: pd.DataFrame) -> None:
-    _ci_card_open("Top promos by redemption rate",
-                   "% of customers who redeemed each promo")
-    if df.empty:
-        st.caption("No promo redemptions in this filter.")
-    else:
-        df = df.rename(columns={"promo_name": "Promo"})
-        _hbar(df, "redemption_rate_pct", "Promo",
-               color="#5B7B58", x_fmt=".1f", x_suffix="%")
-    _ci_card_close()
+# Phase 4.4e removed the v2.5 dashboard carry-overs:
+#   render_map, render_insights_panel        → obsoleted by Section 3 (Card 3.1)
+#   render_time_patterns                      → obsoleted by Card 2.3 in Section 2
+#   render_customer_engagement (+ 4 sub-helpers and the _ci_*/_hbar
+#       primitives they used) → obsoleted by Section 5

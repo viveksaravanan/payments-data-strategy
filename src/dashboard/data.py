@@ -138,89 +138,9 @@ def categories_for(merchant_id: str) -> list[str]:
     return df["category"].tolist()
 
 
-# ---------------------------------------------------------------------------
-# KPI block — switches between transaction-level and line-item-level
-# queries depending on whether a category filter is active.
-# ---------------------------------------------------------------------------
-
-@st.cache_data(ttl=3600)
-def kpi_block(merchant_id: str, filters_key: tuple) -> dict:  # noqa: ARG001
-    """4 KPI totals + 30-day-vs-prior-30-day deltas, scoped to the
-    current filters. The 30-day windows are anchored to PANEL_END
-    regardless of the date filter (so the "vs prior 30d" arrow has
-    a fixed meaning); filters still apply to both windows."""
-    filters = _unpack_filters_key(filters_key)
-    last_end, last_start   = PANEL_END, date(2026, 4, 30)
-    prior_end, prior_start = date(2026, 4, 29), date(2026, 3, 31)
-
-    has_cat = _has_category_filter(filters)
-    txn_where, txn_params = _txn_where(filters)
-    cat_where, cat_params = _category_where(filters)
-
-    def _totals(start: date | None, end: date | None) -> tuple[float, int, int]:
-        """Returns (revenue, transactions, customers) for the slice
-        bounded by (start, end). If start/end are None, the slice is
-        the full filter (i.e. the panel totals)."""
-        if has_cat:
-            # Line-item path: revenue = sum(line_total), transactions
-            # = distinct txn_id with at least one matching item,
-            # customers = distinct customer_id of those transactions.
-            base_sql = """
-            SELECT COALESCE(SUM(i.line_total), 0) AS revenue,
-                   COUNT(DISTINCT t.txn_id)       AS txns,
-                   COUNT(DISTINCT t.customer_id)  AS customers
-            FROM tenant_transaction_items i
-            JOIN tenant_transactions t ON t.txn_id = i.txn_id
-            JOIN tenant_products p     ON p.sku    = i.sku
-            WHERE t.merchant_id = ?
-            """
-            params: list = [merchant_id]
-            if txn_where:
-                base_sql += f" AND {txn_where}"
-                params.extend(txn_params)
-            base_sql += f" AND {cat_where}"
-            params.extend(cat_params)
-        else:
-            # Transaction path: revenue = sum(txn_total), transactions
-            # = distinct txn_id, customers = distinct customer_id.
-            base_sql = """
-            SELECT COALESCE(SUM(t.txn_total), 0) AS revenue,
-                   COUNT(DISTINCT t.txn_id)     AS txns,
-                   COUNT(DISTINCT t.customer_id) AS customers
-            FROM tenant_transactions t
-            WHERE t.merchant_id = ?
-            """
-            params = [merchant_id]
-            if txn_where:
-                base_sql += f" AND {txn_where}"
-                params.extend(txn_params)
-        if start and end:
-            base_sql += " AND DATE(t.txn_ts) BETWEEN ? AND ?"
-            params.extend([start.isoformat(), end.isoformat()])
-        with _conn() as c:
-            return c.execute(base_sql, params).fetchone()
-
-    rev_all, txns_all, cust_all = _totals(None, None)
-    rev_last,  txns_last,  cust_last  = _totals(last_start, last_end)
-    rev_prior, txns_prior, cust_prior = _totals(prior_start, prior_end)
-
-    avg_all   = rev_all  / txns_all  if txns_all  else 0.0
-    avg_last  = rev_last / txns_last if txns_last else 0.0
-    avg_prior = rev_prior / txns_prior if txns_prior else 0.0
-
-    def _delta(a: float, b: float) -> float | None:
-        return (a - b) / b if b else None
-
-    return {
-        "revenue":           rev_all,
-        "transactions":      txns_all,
-        "avg_transaction":   avg_all,
-        "active_customers":  cust_all,
-        "revenue_delta":          _delta(rev_last, rev_prior),
-        "transactions_delta":     _delta(txns_last, txns_prior),
-        "avg_transaction_delta":  _delta(avg_last, avg_prior),
-        "active_customers_delta": _delta(cust_last, cust_prior),
-    }
+# Phase 4.4e removed ``kpi_block`` — replaced by ``kpi_strip`` (Phase
+# 4.4a). The v2.5 ``render_kpi_row`` shim now delegates directly to
+# ``render_kpi_strip``.
 
 
 def _unpack_filters_key(key: tuple) -> dict:
@@ -238,72 +158,9 @@ def _unpack_filters_key(key: tuple) -> dict:
     return out
 
 
-# ---------------------------------------------------------------------------
-# Sparkline + top SKUs
-# ---------------------------------------------------------------------------
-
-@st.cache_data(ttl=3600)
-def daily_volume(merchant_id: str, filters_key: tuple) -> pd.DataFrame:
-    """Daily transaction counts, filtered. Uses the same line-item path
-    when categories are filtered so the count reflects only days where
-    a matching item was sold."""
-    filters = _unpack_filters_key(filters_key)
-    txn_where, txn_params = _txn_where(filters)
-    cat_where, cat_params = _category_where(filters)
-    if _has_category_filter(filters):
-        sql = """
-        SELECT DATE(t.txn_ts) AS day, COUNT(DISTINCT t.txn_id) AS n
-        FROM tenant_transaction_items i
-        JOIN tenant_transactions t ON t.txn_id = i.txn_id
-        JOIN tenant_products p     ON p.sku    = i.sku
-        WHERE t.merchant_id = ?
-        """
-        params = [merchant_id]
-        if txn_where:
-            sql += f" AND {txn_where}"
-            params.extend(txn_params)
-        sql += f" AND {cat_where} GROUP BY DATE(t.txn_ts) ORDER BY day"
-        params.extend(cat_params)
-    else:
-        sql = """
-        SELECT DATE(t.txn_ts) AS day, COUNT(*) AS n
-        FROM tenant_transactions t
-        WHERE t.merchant_id = ?
-        """
-        params = [merchant_id]
-        if txn_where:
-            sql += f" AND {txn_where}"
-            params.extend(txn_params)
-        sql += " GROUP BY DATE(t.txn_ts) ORDER BY day"
-    with _conn() as c:
-        return pd.read_sql_query(sql, c, params=params)
-
-
-@st.cache_data(ttl=3600)
-def top_skus(merchant_id: str, filters_key: tuple, n: int = 5) -> pd.DataFrame:
-    """Top-N SKUs by revenue. Always uses the line-item path; category
-    filter (if any) restricts to those categories."""
-    filters = _unpack_filters_key(filters_key)
-    txn_where, txn_params = _txn_where(filters)
-    cat_where, cat_params = _category_where(filters)
-    sql = """
-    SELECT p.name, ROUND(SUM(i.line_total), 2) AS revenue
-    FROM tenant_transaction_items i
-    JOIN tenant_transactions t ON t.txn_id = i.txn_id
-    JOIN tenant_products p     ON p.sku    = i.sku
-    WHERE t.merchant_id = ?
-    """
-    params = [merchant_id]
-    if txn_where:
-        sql += f" AND {txn_where}"
-        params.extend(txn_params)
-    if cat_where:
-        sql += f" AND {cat_where}"
-        params.extend(cat_params)
-    sql += " GROUP BY p.name ORDER BY revenue DESC LIMIT ?"
-    params.append(n)
-    with _conn() as c:
-        return pd.read_sql_query(sql, c, params=params)
+# Phase 4.4e removed ``daily_volume`` and ``top_skus`` — the v2.5
+# ``render_insights_panel`` that called them is gone (Card 2.1 +
+# Card 4.2 cover the same ground).
 
 
 # Phase 4.4d removed ``category_mix`` (replaced by ``category_share_own``)
@@ -311,171 +168,8 @@ def top_skus(merchant_id: str, filters_key: tuple, n: int = 5) -> pd.DataFrame:
 # ``store_anomalies_own_only``).
 
 
-# ---------------------------------------------------------------------------
-# Customer Engagement — observable metrics only (no synthetic constructs)
-#
-# Replaces the prior "Customer Insights" expander, which surfaced
-# `grocer_affinity_type` and `behavioral_segment` (constructs from the
-# v2.5 generator, not fields a real merchant's POS / analytics platform
-# would expose). The four blocks below are derivable from any merchant's
-# transaction stream.
-# ---------------------------------------------------------------------------
-
-# Anchor for the "last 30 days" recency window — fixed to PANEL_END so
-# the metric has a stable meaning regardless of the date filter.
-_LAST_30_START = date(2026, 4, 30)
-
-
-@st.cache_data(ttl=3600)
-def customer_engagement(merchant_id: str, filters_key: tuple) -> dict:
-    """Four observable customer-engagement blocks:
-      - txn_freq:           distribution of transaction count per customer
-      - recency:            active in last 30d vs lapsed 30d+
-      - revenue_concentration: top-decile share of revenue
-      - top_promos:         promo redemption rate (% of customers)
-    """
-    filters = _unpack_filters_key(filters_key)
-    txn_where, txn_params = _txn_where(filters)
-    cat_where, cat_params = _category_where(filters)
-    has_cat = _has_category_filter(filters)
-
-    # Choose the base relation: tenant_transactions if no category filter;
-    # otherwise the item-joined view so the engagement metrics align with
-    # the rest of the dashboard's filter semantics.
-    if has_cat:
-        base_join = (
-            "FROM tenant_transaction_items i "
-            "JOIN tenant_transactions t ON t.txn_id = i.txn_id "
-            "JOIN tenant_products p     ON p.sku    = i.sku"
-        )
-    else:
-        base_join = "FROM tenant_transactions t"
-
-    where_clauses = ["t.merchant_id = ?"]
-    base_params: list = [merchant_id]
-    if txn_where:
-        where_clauses.append(txn_where)
-        base_params.extend(txn_params)
-    if cat_where:
-        where_clauses.append(cat_where)
-        base_params.extend(cat_params)
-    base_where = " AND ".join(where_clauses)
-
-    out: dict = {}
-    with _conn() as c:
-        # --- Block 1: transactions-per-customer distribution -------------
-        sql = f"""
-        WITH per_cust AS (
-            SELECT t.customer_id, COUNT(DISTINCT t.txn_id) AS n
-            {base_join} WHERE {base_where}
-            GROUP BY t.customer_id
-        )
-        SELECT
-            CASE
-                WHEN n = 1 THEN '1'
-                WHEN n BETWEEN 2 AND 3 THEN '2–3'
-                WHEN n BETWEEN 4 AND 6 THEN '4–6'
-                WHEN n BETWEEN 7 AND 10 THEN '7–10'
-                ELSE '11+'
-            END AS bucket,
-            COUNT(*) AS n_customers
-        FROM per_cust
-        GROUP BY bucket
-        ORDER BY MIN(n)
-        """
-        out["txn_freq"] = pd.read_sql_query(sql, c, params=base_params)
-
-        # --- Block 2: recency (active in last 30 days vs lapsed) ---------
-        recency_sql = f"""
-        SELECT
-            COUNT(DISTINCT CASE WHEN DATE(t.txn_ts) >= ? THEN t.customer_id END) AS active_30d,
-            COUNT(DISTINCT t.customer_id) AS total_customers
-        {base_join} WHERE {base_where}
-        """
-        active, total = c.execute(
-            recency_sql, [_LAST_30_START.isoformat(), *base_params],
-        ).fetchone()
-        active = int(active or 0)
-        total  = int(total  or 0)
-        lapsed = max(0, total - active)
-        out["recency"] = {
-            "active_30d":      active,
-            "lapsed_30d":      lapsed,
-            "total_customers": total,
-            "active_pct":      (100.0 * active / total) if total else 0.0,
-        }
-
-        # --- Block 3: revenue concentration (top-decile share) -----------
-        rev_value = "i.line_total" if has_cat else "t.txn_total"
-        sql = f"""
-        WITH cust AS (
-            SELECT t.customer_id, SUM({rev_value}) AS rev
-            {base_join} WHERE {base_where}
-            GROUP BY t.customer_id
-        ),
-        ranked AS (
-            SELECT customer_id, rev,
-                   ROW_NUMBER() OVER (ORDER BY rev DESC) AS rn,
-                   COUNT(*) OVER ()  AS total_n,
-                   SUM(rev) OVER ()  AS total_rev
-            FROM cust
-        )
-        SELECT
-            ROUND(100.0 * SUM(CASE WHEN rn <= total_n * 0.10 THEN rev ELSE 0 END) / NULLIF(total_rev,0), 1) AS pct_top10,
-            ROUND(100.0 * SUM(CASE WHEN rn <= total_n * 0.20 THEN rev ELSE 0 END) / NULLIF(total_rev,0), 1) AS pct_top20,
-            ROUND(100.0 * SUM(CASE WHEN rn <= total_n * 0.50 THEN rev ELSE 0 END) / NULLIF(total_rev,0), 1) AS pct_top50
-        FROM ranked
-        """
-        row = c.execute(sql, base_params).fetchone() or (0, 0, 0)
-        out["revenue_concentration"] = {
-            "pct_top10": row[0] or 0.0,
-            "pct_top20": row[1] or 0.0,
-            "pct_top50": row[2] or 0.0,
-        }
-
-        # --- Block 4: top promos by redemption rate ----------------------
-        # "Redemption rate" = distinct customers who redeemed the promo /
-        # distinct customers active in the filter window. Two queries
-        # (denominator + per-promo numerator) are run separately and
-        # joined in pandas — avoids the bind-count brittleness of nested
-        # CTEs with repeated parameter sets.
-        denom_sql = f"""
-            SELECT COUNT(DISTINCT t.customer_id) AS n
-            FROM tenant_transactions t WHERE t.merchant_id = ?
-        """
-        denom_params: list = [merchant_id]
-        if txn_where:
-            denom_sql += f" AND {txn_where}"
-            denom_params.extend(txn_params)
-        denominator = c.execute(denom_sql, denom_params).fetchone()[0] or 0
-
-        promo_sql = """
-        SELECT pr.promo_name,
-               COUNT(DISTINCT t.customer_id) AS unique_redeemers
-        FROM tenant_transaction_items i
-        JOIN tenant_transactions t ON t.txn_id = i.txn_id
-        JOIN tenant_promotions pr  ON pr.promo_id = i.promo_id AND pr.sku = i.sku
-        WHERE t.merchant_id = ?
-        """
-        promo_params: list = [merchant_id]
-        if txn_where:
-            promo_sql += f" AND {txn_where}"
-            promo_params.extend(txn_params)
-        promo_sql += """
-            GROUP BY pr.promo_name
-            ORDER BY unique_redeemers DESC
-            LIMIT 5
-        """
-        promos = pd.read_sql_query(promo_sql, c, params=promo_params)
-        if denominator and not promos.empty:
-            promos["redemption_rate_pct"] = (
-                100.0 * promos["unique_redeemers"] / denominator
-            ).round(1)
-        else:
-            promos["redemption_rate_pct"] = 0.0
-        out["top_promos"] = promos
-
-    return out
+# Phase 4.4e removed ``customer_engagement`` — Section 5
+# (``render_customers_section``) replaces it card-by-card.
 
 
 # Phase 4.4d removed payment-intelligence helpers (``payment_method_mix``,
@@ -2323,6 +2017,188 @@ def category_anomalies(merchant_id: str) -> dict:
         "top":                 top,
         "top_direction":       direction,
         "peer_signal_for_top": peer_signal_for_top,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Phase 4.4 — Section 5 helpers (Customers, Cards 5.1 + 5.2)
+# ---------------------------------------------------------------------------
+#
+# Card 5.3 (Customer home geography) reuses ``customer_home_density``
+# from 4.2e — the helper already returns the right shape plus the
+# customer-coverage footnote constant. No new helper needed there.
+
+_RECENT_WEEK = "2026-05-18"
+_PRIOR_4W_STARTS = ["2026-04-20", "2026-04-27", "2026-05-04", "2026-05-11"]
+
+
+def _new_pct_for_week(c, merchant_id: str, week_start: str) -> float:
+    """Helper: % of that week's distinct customers whose first txn
+    with this merchant was that same week. Called by
+    ``new_vs_returning`` for the recent week and each of the four
+    baseline weeks to compute the new-share trend."""
+    row = c.execute(
+        """
+        WITH this_week AS (
+            SELECT DISTINCT customer_id
+            FROM tenant_transactions
+            WHERE merchant_id = ?
+              AND DATE(txn_ts, 'weekday 0', '-6 days') = ?
+        ),
+        first_week AS (
+            SELECT customer_id,
+                   MIN(DATE(txn_ts, 'weekday 0', '-6 days')) AS first_wk
+            FROM tenant_transactions
+            WHERE merchant_id = ?
+            GROUP BY customer_id
+        )
+        SELECT
+            SUM(CASE WHEN fw.first_wk =  ? THEN 1 ELSE 0 END) AS new_count,
+            SUM(CASE WHEN fw.first_wk <  ? THEN 1 ELSE 0 END) AS returning_count
+        FROM this_week tw
+        JOIN first_week fw ON fw.customer_id = tw.customer_id
+        """,
+        (merchant_id, week_start, merchant_id, week_start, week_start),
+    ).fetchone()
+    new_count = int(row[0] or 0)
+    returning_count = int(row[1] or 0)
+    total = new_count + returning_count
+    return (new_count / total * 100) if total else 0.0
+
+
+@st.cache_data(ttl=3600)
+def new_vs_returning(
+    merchant_id: str,
+    *,
+    week_start: str = _RECENT_WEEK,
+) -> dict:
+    """Card 5.1 data — classify this-week's distinct customers as new
+    (first txn was this week) or returning (prior txn exists earlier
+    in the panel).
+
+    Returns counts, percentages, and a ``new_pct_delta_pp`` showing
+    how the new-customer share moved vs the prior 4-week mean
+    new-share.
+    """
+    with _conn() as c:
+        row = c.execute(
+            """
+            WITH this_week AS (
+                SELECT DISTINCT customer_id
+                FROM tenant_transactions
+                WHERE merchant_id = ?
+                  AND DATE(txn_ts, 'weekday 0', '-6 days') = ?
+            ),
+            first_week AS (
+                SELECT customer_id,
+                       MIN(DATE(txn_ts, 'weekday 0', '-6 days')) AS first_wk
+                FROM tenant_transactions
+                WHERE merchant_id = ?
+                GROUP BY customer_id
+            )
+            SELECT
+                SUM(CASE WHEN fw.first_wk =  ? THEN 1 ELSE 0 END) AS new_count,
+                SUM(CASE WHEN fw.first_wk <  ? THEN 1 ELSE 0 END) AS returning_count
+            FROM this_week tw
+            JOIN first_week fw ON fw.customer_id = tw.customer_id
+            """,
+            (merchant_id, week_start, merchant_id, week_start, week_start),
+        ).fetchone()
+        new_count       = int(row[0] or 0)
+        returning_count = int(row[1] or 0)
+        total           = new_count + returning_count
+
+        # Prior 4-week mean new-share for the trend delta.
+        prior_new_pcts = [
+            _new_pct_for_week(c, merchant_id, wk)
+            for wk in _PRIOR_4W_STARTS
+        ]
+
+    new_pct       = (new_count       / total * 100) if total else 0.0
+    returning_pct = (returning_count / total * 100) if total else 0.0
+    prior_new_mean = (
+        sum(prior_new_pcts) / len(prior_new_pcts) if prior_new_pcts else 0.0
+    )
+    new_pct_delta_pp = round(new_pct - prior_new_mean, 1)
+
+    return {
+        "new_count":         new_count,
+        "returning_count":   returning_count,
+        "total_count":       total,
+        "new_pct":           round(new_pct, 1),
+        "returning_pct":     round(returning_pct, 1),
+        "new_pct_delta_pp":  new_pct_delta_pp,
+        "week_start":        week_start,
+    }
+
+
+@st.cache_data(ttl=3600)
+def transactions_per_customer(merchant_id: str) -> dict:
+    """Card 5.2 data — distribution of customers across visit-count
+    buckets over the 90-day window plus per-bucket revenue share so
+    the takeaway can name the top cohort's customer % and revenue %.
+
+    Buckets: ``1``, ``2-3``, ``4-6``, ``7-10``, ``11+`` visits.
+    """
+    with _conn() as c:
+        rows = c.execute(
+            """
+            WITH per_cust AS (
+                SELECT t.customer_id,
+                       COUNT(DISTINCT t.txn_id) AS n,
+                       SUM(t.txn_total)         AS rev
+                FROM tenant_transactions t
+                WHERE t.merchant_id = ?
+                GROUP BY t.customer_id
+            )
+            SELECT
+                CASE
+                    WHEN n = 1 THEN '1'
+                    WHEN n BETWEEN 2 AND 3 THEN '2-3'
+                    WHEN n BETWEEN 4 AND 6 THEN '4-6'
+                    WHEN n BETWEEN 7 AND 10 THEN '7-10'
+                    ELSE '11+'
+                END AS bucket,
+                COUNT(*) AS n_customers,
+                SUM(rev) AS rev,
+                MIN(n)   AS sort_key
+            FROM per_cust
+            GROUP BY bucket
+            ORDER BY sort_key
+            """,
+            (merchant_id,),
+        ).fetchall()
+
+    if not rows:
+        return {
+            "labels": [], "values": [], "top_cohort": "—",
+            "top_cohort_cust_pct": 0.0, "top_cohort_rev_pct": 0.0,
+            "n_one_visit": 0,
+        }
+
+    labels = [r[0] for r in rows]
+    counts = [int(r[1]) for r in rows]
+    revs   = [float(r[2] or 0) for r in rows]
+    total_cust = sum(counts) or 1
+    total_rev  = sum(revs)   or 1.0
+
+    # Top cohort = the 11+ bucket if present, otherwise the highest
+    # bucket available. The design's takeaway template is anchored to
+    # "top cohort", so naming it consistently across viewers matters.
+    top_idx = labels.index("11+") if "11+" in labels else len(labels) - 1
+    top_cust_pct = round(counts[top_idx] / total_cust * 100, 1)
+    top_rev_pct  = round(revs[top_idx]   / total_rev  * 100, 1)
+    n_one_visit  = counts[labels.index("1")] if "1" in labels else 0
+
+    return {
+        "labels":   labels,
+        "values":   counts,
+        "x_label":  "Customers",
+        "value_format": ",.0f",
+        "top_cohort":          labels[top_idx],
+        "top_cohort_cust_pct": top_cust_pct,
+        "top_cohort_rev_pct":  top_rev_pct,
+        "n_one_visit":         n_one_visit,
     }
 
 
