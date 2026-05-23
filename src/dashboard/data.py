@@ -2193,6 +2193,361 @@ def expansion_opportunity(merchant_id: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# A2 / A3 — Recent-vs-baseline anomaly tables (Pattern 9)
+# ---------------------------------------------------------------------------
+#
+# Recent = last full Mon-Sun week in the panel (Mon May 18 → Sun May 24,
+# 2026). Baseline = mean weekly count over the FIRST four full weeks
+# (Mar 2, 9, 16, 23) — same anchor A1's trajectory chart uses, so the
+# UC decline calibrated in Phase 1.6 reads consistently across A1, A2,
+# A3, and T1. A purely-trailing baseline would put the UC trough
+# *inside* the baseline window and make recovering stores read positive
+# — the cross-question story would lose its through-line. Deviation =
+# (recent / baseline - 1) × 100; flagged when
+# ``abs(deviation) >= 15``. A2 operates per own store with a peer-
+# neighborhood corroboration column; A3 operates per category with an
+# aggregate peer-category column.
+#
+# Recent-week and baseline-window bounds match the A1 trajectory chart's
+# week binning (``DATE(t.txn_ts, 'weekday 0', '-6 days')`` rounds each
+# timestamp to its containing Mon-Sun week's Monday).
+
+_A_RECENT_WEEK_START   = "2026-05-18"
+_A_BASELINE_WEEK_START = "2026-03-02"  # first of the four baseline weeks
+_A_BASELINE_WEEK_END   = "2026-03-23"  # last  of the four baseline weeks (inclusive)
+_A_DEVIATION_THRESHOLD = 15.0          # pp; magnitude required to flag
+
+
+def _peer_neighborhood_recent_vs_baseline(
+    conn,
+    merchant_id: str,
+) -> dict[str, tuple[float, float]]:
+    """Return ``{neighborhood: (peer_recent_per_store, peer_baseline_per_store_per_week)}``
+    for the same-segment peers visible from this viewer's lake.
+    Used to compute A2's peer-neighborhood ratio column.
+
+    Uses ``WHERE line_id = 1`` so peer counts are true transactions
+    rather than line items (see chart_patterns.md "Implementation
+    gotchas for lake queries").
+    """
+    if not has_same_segment_peers(merchant_id):
+        return {}
+    lake_t = f"lake_transactions_{merchant_id}"
+    lake_s = f"lake_stores_{merchant_id}"
+
+    rows = conn.execute(
+        f"""
+        WITH peer_weekly AS (
+            SELECT ls.neighborhood,
+                   DATE(lt.txn_date, 'weekday 0', '-6 days') AS week,
+                   COUNT(*) AS n_txns
+            FROM {lake_t} lt
+            JOIN {lake_s} ls ON ls.lake_store_id = lt.lake_store_id
+            WHERE lt.peer_segment = 'grocery'
+              AND lt.peer_id IN ('peer_a', 'peer_b')
+              AND lt.line_id = 1
+              AND DATE(lt.txn_date, 'weekday 0', '-6 days')
+                  BETWEEN ? AND ?
+            GROUP BY ls.neighborhood, week
+        ),
+        peer_store_counts AS (
+            SELECT neighborhood, COUNT(*) AS n_stores
+            FROM {lake_s}
+            WHERE peer_segment = 'grocery'
+              AND peer_id IN ('peer_a', 'peer_b')
+            GROUP BY neighborhood
+        )
+        SELECT pw.neighborhood,
+               SUM(CASE WHEN pw.week = ? THEN pw.n_txns ELSE 0 END) AS recent,
+               SUM(CASE WHEN pw.week BETWEEN ? AND ? THEN pw.n_txns ELSE 0 END)
+                    * 1.0 / 4                                       AS baseline,
+               psc.n_stores
+        FROM peer_weekly pw
+        JOIN peer_store_counts psc ON psc.neighborhood = pw.neighborhood
+        GROUP BY pw.neighborhood, psc.n_stores
+        """,
+        (
+            _A_BASELINE_WEEK_START, _A_RECENT_WEEK_START,
+            _A_RECENT_WEEK_START,
+            _A_BASELINE_WEEK_START, _A_BASELINE_WEEK_END,
+        ),
+    ).fetchall()
+
+    out: dict[str, tuple[float, float]] = {}
+    for nb, recent, baseline, n_stores in rows:
+        n = int(n_stores) if n_stores else 0
+        if n <= 0:
+            continue
+        out[nb] = (float(recent) / n, float(baseline) / n)
+    return out
+
+
+@st.cache_data(ttl=3600)
+def store_anomalies(merchant_id: str) -> dict:
+    """Per-store recent-vs-baseline traffic deviation, with a peer-
+    neighborhood corroboration column. Data shape for Pattern 9 (A2).
+
+    Returns::
+
+        {
+            "rows": list of dicts with
+                store_id, neighborhood, baseline, recent, deviation_pct,
+                peer_deviation_pct (or None), flag (bool);
+            "n_flagged":              total stores ≥15% off baseline;
+            "n_under":                of those, stores below baseline;
+            "n_over":                 of those, stores above baseline;
+            "n_co_flagged":           flagged stores whose peer-
+                                      neighborhood is also ≥15% off
+                                      baseline same direction;
+            "top":                    row with largest |deviation|;
+            "peer_signal_for_top":    short text "peers also down X%" /
+                                      "peers flat" / "limited peer footprint".
+        }
+    """
+    with _conn() as c:
+        own_rows = c.execute(
+            """
+            WITH weekly AS (
+                SELECT t.store_id,
+                       DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+                       COUNT(DISTINCT t.txn_id) AS n_txns
+                FROM tenant_transactions t
+                WHERE t.merchant_id = ?
+                  AND DATE(t.txn_ts, 'weekday 0', '-6 days')
+                      BETWEEN ? AND ?
+                GROUP BY t.store_id, week
+            )
+            SELECT s.store_id, s.neighborhood,
+                   SUM(CASE WHEN w.week = ?
+                            THEN w.n_txns ELSE 0 END) AS recent,
+                   SUM(CASE WHEN w.week BETWEEN ? AND ?
+                            THEN w.n_txns ELSE 0 END) * 1.0 / 4
+                        AS baseline
+            FROM tenant_stores s
+            LEFT JOIN weekly w ON w.store_id = s.store_id
+            WHERE s.merchant_id = ?
+            GROUP BY s.store_id, s.neighborhood
+            """,
+            (
+                merchant_id,
+                _A_BASELINE_WEEK_START, _A_RECENT_WEEK_START,
+                _A_RECENT_WEEK_START,
+                _A_BASELINE_WEEK_START, _A_BASELINE_WEEK_END,
+                merchant_id,
+            ),
+        ).fetchall()
+        peer_by_nb = _peer_neighborhood_recent_vs_baseline(c, merchant_id)
+
+    rows: list[dict] = []
+    for store_id, nb, recent, baseline in own_rows:
+        recent_f   = float(recent or 0)
+        baseline_f = float(baseline or 0)
+        if baseline_f <= 0:
+            continue  # need a baseline to compute deviation
+        dev = round((recent_f / baseline_f - 1) * 100, 1)
+
+        peer = peer_by_nb.get(nb)
+        if peer is not None and peer[1] > 0:
+            peer_dev = round((peer[0] / peer[1] - 1) * 100, 1)
+        else:
+            peer_dev = None
+
+        rows.append({
+            "store_id":           store_id,
+            "neighborhood":       nb,
+            "baseline":           round(baseline_f, 1),
+            "recent":             int(recent_f),
+            "deviation_pct":      dev,
+            "peer_deviation_pct": peer_dev,
+            "flag":               abs(dev) >= _A_DEVIATION_THRESHOLD,
+        })
+
+    # Sort by absolute deviation descending so the most-flagged rows
+    # land at the top by default.
+    rows.sort(key=lambda r: abs(r["deviation_pct"]), reverse=True)
+
+    flagged = [r for r in rows if r["flag"]]
+    n_under = sum(1 for r in flagged if r["deviation_pct"] < 0)
+    n_over  = sum(1 for r in flagged if r["deviation_pct"] > 0)
+
+    # Co-flagged = own and peer-neighborhood both ≥ threshold same direction.
+    def _co(r: dict) -> bool:
+        if r["peer_deviation_pct"] is None:
+            return False
+        if abs(r["peer_deviation_pct"]) < _A_DEVIATION_THRESHOLD:
+            return False
+        return (r["deviation_pct"] < 0) == (r["peer_deviation_pct"] < 0)
+    n_co_flagged = sum(1 for r in flagged if _co(r))
+
+    top = rows[0] if rows else None
+    if top is None:
+        peer_signal_for_top = "—"
+    elif top["peer_deviation_pct"] is None:
+        peer_signal_for_top = "limited peer footprint"
+    elif _co(top):
+        peer_signal_for_top = (
+            f"peer-neighborhood stores also off by "
+            f"{top['peer_deviation_pct']:+.1f}%"
+        )
+    else:
+        peer_signal_for_top = (
+            f"peer-neighborhood stores roughly flat "
+            f"({top['peer_deviation_pct']:+.1f}%)"
+        )
+
+    return {
+        "rows":                rows,
+        "n_flagged":           len(flagged),
+        "n_under":             n_under,
+        "n_over":              n_over,
+        "n_co_flagged":        n_co_flagged,
+        "top":                 top,
+        "peer_signal_for_top": peer_signal_for_top,
+    }
+
+
+@st.cache_data(ttl=3600)
+def category_anomalies(merchant_id: str) -> dict:
+    """Per-category recent-vs-baseline line-volume deviation with an
+    optional peer-category corroboration column. Pattern 9 (A3).
+
+    "Volume" = count of line items in the recent week vs the 4-week
+    baseline mean — directly comparable across own and peer because
+    both sides are line-level in the materialized tables.
+
+    Returns::
+
+        {
+            "rows":           list per category with own/peer
+                              deviation_pct and flag bool;
+            "n_flagged":      categories at or beyond ±15%;
+            "top":            row with largest |own_deviation_pct|;
+            "top_direction":  "spike" / "drop" / "neutral";
+            "peer_signal_for_top": short text.
+        }
+    """
+    lake_t = f"lake_transactions_{merchant_id}"
+
+    with _conn() as c:
+        own_rows = c.execute(
+            """
+            WITH weekly AS (
+                SELECT p.category,
+                       DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+                       COUNT(*) AS n_lines
+                FROM tenant_transaction_items i
+                JOIN tenant_products p     ON p.sku    = i.sku
+                JOIN tenant_transactions t ON t.txn_id = i.txn_id
+                WHERE t.merchant_id = ?
+                  AND DATE(t.txn_ts, 'weekday 0', '-6 days')
+                      BETWEEN ? AND ?
+                GROUP BY p.category, week
+            )
+            SELECT category,
+                   SUM(CASE WHEN week = ? THEN n_lines ELSE 0 END) AS recent,
+                   SUM(CASE WHEN week BETWEEN ? AND ? THEN n_lines ELSE 0 END)
+                        * 1.0 / 4 AS baseline
+            FROM weekly
+            GROUP BY category
+            """,
+            (
+                merchant_id,
+                _A_BASELINE_WEEK_START, _A_RECENT_WEEK_START,
+                _A_RECENT_WEEK_START,
+                _A_BASELINE_WEEK_START, _A_BASELINE_WEEK_END,
+            ),
+        ).fetchall()
+
+        peer_rows = []
+        if has_same_segment_peers(merchant_id):
+            peer_rows = c.execute(
+                f"""
+                WITH weekly AS (
+                    SELECT category,
+                           DATE(txn_date, 'weekday 0', '-6 days') AS week,
+                           COUNT(*) AS n_lines
+                    FROM {lake_t}
+                    WHERE peer_segment = 'grocery'
+                      AND peer_id IN ('peer_a', 'peer_b')
+                      AND DATE(txn_date, 'weekday 0', '-6 days')
+                          BETWEEN ? AND ?
+                    GROUP BY category, week
+                )
+                SELECT category,
+                       SUM(CASE WHEN week = ? THEN n_lines ELSE 0 END) AS recent,
+                       SUM(CASE WHEN week BETWEEN ? AND ? THEN n_lines ELSE 0 END)
+                            * 1.0 / 4 AS baseline
+                FROM weekly
+                GROUP BY category
+                """,
+                (
+                    _A_BASELINE_WEEK_START, _A_RECENT_WEEK_START,
+                    _A_RECENT_WEEK_START,
+                    _A_BASELINE_WEEK_START, _A_BASELINE_WEEK_END,
+                ),
+            ).fetchall()
+
+    peer_by_cat = {
+        cat: (float(rec), float(base))
+        for cat, rec, base in peer_rows if base and float(base) > 0
+    }
+
+    rows: list[dict] = []
+    for cat, recent, baseline in own_rows:
+        recent_f   = float(recent or 0)
+        baseline_f = float(baseline or 0)
+        if baseline_f <= 0:
+            continue
+        dev = round((recent_f / baseline_f - 1) * 100, 1)
+        pr  = peer_by_cat.get(cat)
+        peer_dev = round((pr[0] / pr[1] - 1) * 100, 1) if pr else None
+        rows.append({
+            "category":           cat,
+            "baseline":           round(baseline_f, 1),
+            "recent":             int(recent_f),
+            "deviation_pct":      dev,
+            "peer_deviation_pct": peer_dev,
+            "flag":               abs(dev) >= _A_DEVIATION_THRESHOLD,
+        })
+
+    rows.sort(key=lambda r: abs(r["deviation_pct"]), reverse=True)
+    flagged = [r for r in rows if r["flag"]]
+    top = rows[0] if rows else None
+
+    if top is None:
+        direction = "neutral"
+        peer_signal_for_top = "—"
+    else:
+        if top["deviation_pct"] > _A_DEVIATION_THRESHOLD:
+            direction = "spike"
+        elif top["deviation_pct"] < -_A_DEVIATION_THRESHOLD:
+            direction = "drop"
+        else:
+            direction = "neutral"
+        if top["peer_deviation_pct"] is None:
+            peer_signal_for_top = "no peer category data"
+        elif abs(top["peer_deviation_pct"]) >= _A_DEVIATION_THRESHOLD and \
+             (top["deviation_pct"] < 0) == (top["peer_deviation_pct"] < 0):
+            peer_signal_for_top = (
+                f"peers see the same direction "
+                f"({top['peer_deviation_pct']:+.1f}%) — market-wide"
+            )
+        else:
+            peer_signal_for_top = (
+                f"peers roughly flat ({top['peer_deviation_pct']:+.1f}%) "
+                "— store-specific"
+            )
+
+    return {
+        "rows":                rows,
+        "n_flagged":           len(flagged),
+        "top":                 top,
+        "top_direction":       direction,
+        "peer_signal_for_top": peer_signal_for_top,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Compatibility shims for placeholders.py and earlier views (no-op now)
 # ---------------------------------------------------------------------------
 

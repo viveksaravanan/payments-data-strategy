@@ -980,6 +980,94 @@ def render_neighborhood_map(
 
 
 # ---------------------------------------------------------------------------
+# Pattern 9 — Table with drilldown
+# ---------------------------------------------------------------------------
+
+def render_table_with_drilldown(
+    data: dict,
+    *,
+    title: str,
+    takeaway: str,
+    height: int | None = None,
+) -> None:
+    """Pattern 9 — sortable table with optional diverging-color cues on
+    a ratio column. Streamlit-native ``st.dataframe`` (sortable in-place
+    by clicking column headers).
+
+    ``data`` keys:
+
+        rows: list of dicts, one per row.
+        columns: list of column dicts, each with
+            ``key``    (str)  — dict key in ``rows``
+            ``label``  (str)  — header displayed
+            ``kind``   (str)  — one of ``"text"``, ``"int"``, ``"float"``,
+                                ``"pct"``, ``"ratio"`` (for formatting)
+            ``diverging`` (bool, optional) — colour cells red/white/blue
+                              around zero. Only meaningful for ``"pct"``.
+        empty_caption: str shown when ``rows`` is empty (otherwise a
+                       generic fallback).
+
+    Rendering uses pandas ``Styler`` for the diverging colour fill and
+    ``st.dataframe`` for the sortable table. The dataframe inherits
+    Streamlit's default click-to-sort behaviour without additional code.
+    """
+    import pandas as pd
+
+    _render_card_header(title, takeaway)
+
+    rows    = data.get("rows") or []
+    columns = data.get("columns") or []
+    if not rows:
+        st.caption(data.get("empty_caption", "_No rows to display._"))
+        return
+
+    # Order columns explicitly so the table reads as declared.
+    keys = [c["key"] for c in columns]
+    df = pd.DataFrame(rows)[keys]
+    df = df.rename(columns={c["key"]: c["label"] for c in columns})
+
+    # Per-column formatter built from ``kind``.
+    fmt: dict[str, str] = {}
+    for c in columns:
+        kind = c.get("kind", "text")
+        label = c["label"]
+        if kind == "int":
+            fmt[label] = "{:,.0f}"
+        elif kind == "float":
+            fmt[label] = "{:,.1f}"
+        elif kind == "pct":
+            fmt[label] = "{:+.1f}%"
+        elif kind == "ratio":
+            fmt[label] = "{:.2f}"
+
+    diverging_labels = [
+        c["label"] for c in columns if c.get("diverging") and c.get("kind") == "pct"
+    ]
+
+    styler = df.style.format(fmt, na_rep="—")
+    if diverging_labels:
+        # Symmetric color range around zero so red and blue saturate
+        # equally regardless of the actual data range.
+        for lbl in diverging_labels:
+            col = pd.to_numeric(df[lbl], errors="coerce").dropna()
+            if not col.empty:
+                vabs = max(abs(col.min()), abs(col.max()), 1.0)
+                styler = styler.background_gradient(
+                    cmap="RdBu",
+                    subset=[lbl],
+                    vmin=-vabs,
+                    vmax=vabs,
+                )
+
+    st.dataframe(
+        styler,
+        use_container_width=True,
+        hide_index=True,
+        height=height,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Takeaway-subtitle templating
 # ---------------------------------------------------------------------------
 

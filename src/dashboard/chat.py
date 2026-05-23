@@ -307,6 +307,109 @@ def _render_d3(merchant_id: str) -> None:
     )
 
 
+def _render_a2(merchant_id: str) -> None:
+    """A2: per-store recent-vs-baseline traffic table (Pattern 9)."""
+    chart_data = D.store_anomalies(merchant_id)
+    rows = chart_data["rows"]
+    if not rows:
+        st.caption("_No stores with enough baseline data to evaluate._")
+        return
+
+    n_flag = chart_data["n_flagged"]
+    n_under = chart_data["n_under"]
+    n_over  = chart_data["n_over"]
+    top     = chart_data["top"]
+    peer    = chart_data["peer_signal_for_top"]
+
+    # Adaptive takeaway:
+    #   - 0 flagged → "all stores within ±15%"
+    #   - all flagged same direction → name the direction
+    #   - mixed → name count + top by magnitude + peer signal
+    if n_flag == 0:
+        takeaway = "All your stores are within 15% of your panel baseline."
+    elif n_under == 0:
+        takeaway = (
+            f"{n_flag} of your stores are running >15% above baseline; "
+            f"{top['store_id']} ({top['neighborhood']}) shows the largest "
+            f"swing ({top['deviation_pct']:+.1f}%); {peer}."
+        )
+    elif n_over == 0:
+        takeaway = (
+            f"{n_flag} of your stores are running >15% below baseline; "
+            f"{top['store_id']} ({top['neighborhood']}) shows the largest "
+            f"swing ({top['deviation_pct']:+.1f}%); {peer}."
+        )
+    else:
+        takeaway = (
+            f"{n_flag} stores deviate from baseline by >15% "
+            f"({n_under} under, {n_over} over); "
+            f"{top['store_id']} ({top['neighborhood']}) shows the largest "
+            f"swing ({top['deviation_pct']:+.1f}%); {peer}."
+        )
+
+    CP.render_table_with_drilldown(
+        {
+            "rows": rows,
+            "columns": [
+                {"key": "store_id",           "label": "Store",         "kind": "text"},
+                {"key": "neighborhood",       "label": "Neighborhood",  "kind": "text"},
+                {"key": "baseline",           "label": "Baseline (txns/wk)", "kind": "float"},
+                {"key": "recent",             "label": "Recent (txns)", "kind": "int"},
+                {"key": "deviation_pct",      "label": "Δ vs baseline", "kind": "pct", "diverging": True},
+                {"key": "peer_deviation_pct", "label": "Peer-nbhd Δ",   "kind": "pct", "diverging": True},
+            ],
+            "empty_caption": "_No stores with enough baseline data to evaluate._",
+        },
+        title="Per-store traffic vs your first-4-week baseline",
+        takeaway=takeaway,
+    )
+
+
+def _render_a3(merchant_id: str) -> None:
+    """A3: per-category recent-vs-baseline volume table (Pattern 9)."""
+    chart_data = D.category_anomalies(merchant_id)
+    rows = chart_data["rows"]
+    if not rows:
+        st.caption("_No category-volume data in the recent window._")
+        return
+
+    n_flag = chart_data["n_flagged"]
+    top    = chart_data["top"]
+    direction = chart_data["top_direction"]
+    peer   = chart_data["peer_signal_for_top"]
+
+    if n_flag == 0:
+        takeaway = (
+            "No category-level anomalies in the recent week — every "
+            "category is within 15% of your baseline."
+        )
+    else:
+        word = "spikes" if direction == "spike" else (
+            "drops" if direction == "drop" else "swings"
+        )
+        takeaway = (
+            f"{n_flag} categor{'y' if n_flag == 1 else 'ies'} show recent "
+            f"volume off baseline by >15%; {top['category']} {word} the "
+            f"most ({top['deviation_pct']:+.1f}%); {peer}."
+        )
+
+    CP.render_table_with_drilldown(
+        {
+            "rows": rows,
+            "columns": [
+                {"key": "category",           "label": "Category",      "kind": "text"},
+                {"key": "baseline",           "label": "Baseline (lines/wk)", "kind": "float"},
+                {"key": "recent",             "label": "Recent (lines)", "kind": "int"},
+                {"key": "deviation_pct",      "label": "Δ vs baseline", "kind": "pct", "diverging": True},
+                {"key": "peer_deviation_pct", "label": "Peer Δ",         "kind": "pct", "diverging": True},
+            ],
+            "empty_caption": "_No category-volume data in the recent window._",
+        },
+        title="Per-category recent-week volume vs your first-4-week baseline",
+        takeaway=takeaway,
+    )
+
+
 def _render_t1(merchant_id: str) -> None:
     """T1: per-neighborhood performance map (Pattern 6 diverging)."""
     chart_data = D.neighborhood_performance(merchant_id)
@@ -477,6 +580,8 @@ def _render_t4(merchant_id: str) -> None:
 
 QUESTION_RENDERERS: dict[str, Callable[[str], None]] = {
     "A1": _render_a1,
+    "A2": _render_a2,
+    "A3": _render_a3,
     "P1": _render_p1,
     "P2": _render_p2,
     "P3": _render_p3,
