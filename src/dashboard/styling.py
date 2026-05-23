@@ -123,12 +123,28 @@ _CSS = """
 
   /* "Ask about this" affordance — small icon-style button. Targets
      Streamlit's per-widget st-key-* class so the button renders
-     compactly inside the KPI card header row. */
+     compactly inside the KPI card header row.
+
+     Phase 4.5 fix-up: the button is constrained to a fixed 28 × 28 px
+     square pushed to the right edge of its column, so the hover
+     background paints a small circle centered exactly on the icon
+     instead of a wide pill that drifts left of the icon. Without
+     ``max-width`` + ``margin-left: auto`` the button stretched to
+     fill ``use_container_width=True``, making the hover background
+     wider than the icon. */
   div[class*="st-key-ask_about_"] button {
-    padding: 2px 6px !important;
+    width: 28px !important;
+    height: 28px !important;
+    max-width: 28px !important;
     min-height: 0 !important;
+    padding: 0 !important;
+    margin-left: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     font-size: 14px !important;
-    line-height: 1.2 !important;
+    line-height: 1 !important;
+    border-radius: 50% !important;
     border-color: transparent !important;
     background: transparent !important;
     opacity: 0.45;
@@ -142,6 +158,14 @@ _CSS = """
   div[class*="st-key-ask_about_"] button:disabled {
     opacity: 0.25 !important;
     cursor: not-allowed;
+  }
+  /* Pull the affordance button's parent column flush to the right
+     within the card header so the icon sits cleanly at the top-right
+     corner, matching the design doc's Section 5.1 placement. */
+  div[class*="st-key-ask_about_"] {
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
   }
 
   /* Generic card primitive */
