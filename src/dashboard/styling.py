@@ -133,36 +133,38 @@ _CSS = """
      fill ``use_container_width=True``, making the hover background
      wider than the icon. */
   div[class*="st-key-ask_about_"] button {
-    /* Phase 4.5 final fix-up: 22 × 22 px (was 28 × 28). Equalizes the
-       hover background between KPI cards (narrow 5-up columns) and
-       chart cards (wider 3-up / 2-up columns) — the smaller circle
-       reads as proportionally consistent across both contexts.
-       Phase 4.5 polish: glyph color is the AI-identity purple
-       #534AB7 so the ✦ sparkle reads as a controlled monochrome
-       icon (the ✨ emoji rendered platform-yellow). */
-    width: 22px !important;
-    height: 22px !important;
-    max-width: 22px !important;
+    /* Phase 4.5 polish: 28 × 28 (up from 22) with the canonical
+       sparkles SVG rendered as a CSS background-image. The button's
+       text label (✦ glyph) is hidden via ``font-size: 0`` — the
+       glyph remains in the DOM for screen-reader fallback but the
+       SVG bg-image is what's painted. This unifies the icon
+       rendering across edge tab + 15 card affordances + panel
+       header (panel header uses inline SVG because st.markdown
+       supports it). Light purple soft hover, AI-identity color
+       #534AB7 throughout. */
+    width: 28px !important;
+    height: 28px !important;
+    max-width: 28px !important;
     min-height: 0 !important;
     padding: 0 !important;
     margin-left: auto !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    font-size: 13px !important;
-    line-height: 1 !important;
     border-radius: 50% !important;
     border-color: transparent !important;
-    background: transparent !important;
-    color: #534AB7 !important;
-    opacity: 0.55;
-    transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    background-color: transparent !important;
+    background-image: url("data:image/svg+xml;utf8,%3Csvg width='16' height='16' viewBox='0 0 24 24' fill='%23534AB7' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 0 L13.5 8.5 L22 10 L13.5 11.5 L12 20 L10.5 11.5 L2 10 L10.5 8.5 Z'/%3E%3Cpath d='M19 14 L19.7 16.3 L22 17 L19.7 17.7 L19 20 L18.3 17.7 L16 17 L18.3 16.3 Z'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: 16px 16px !important;
+    font-size: 0 !important;  /* hide the ✦ fallback glyph */
+    line-height: 1 !important;
+    color: transparent !important;
+    opacity: 0.65;
+    transition: opacity 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
   }
   div[class*="st-key-ask_about_"] button:hover {
     opacity: 1.0 !important;
-    background: #EEEDFE !important;
+    background-color: #EEEDFE !important;
     border-color: #EEEDFE !important;
-    color: #534AB7 !important;
   }
   div[class*="st-key-ask_about_"] button:disabled {
     opacity: 0.25 !important;
@@ -393,11 +395,14 @@ _CSS = """
     border-left: 1px solid var(--border);
     box-shadow: -8px 0 24px rgba(15, 31, 46, 0.10);
     z-index: 998;
-    /* overflow visible so the middle-left expand chevron can
-       overhang the panel's left edge (position: absolute on the
-       chevron). Internal scrolling is delegated to the
-       ``chat_history`` container which has its own max-height. */
-    overflow: visible !important;
+    /* overflow-y: auto so panel content can scroll if it exceeds
+       viewport height — the prior ``overflow: visible`` setting
+       was pushing the text-input area off the bottom of the viewport
+       on shorter displays. The middle-left expand chevron is
+       positioned via ``position: fixed`` (relative to the viewport)
+       so it isn't clipped by this overflow. */
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
     padding: 16px 20px 16px 20px;
     transition: width 0.3s ease, max-width 0.3s ease;
   }
@@ -421,22 +426,28 @@ _CSS = """
     width: 56px !important;
   }
   div[class*="st-key-chat_edge_tab"] button {
+    /* Same canonical sparkles SVG as the affordance buttons +
+       panel-header avatar — unified visual identity. The ✦ glyph
+       in the button label is hidden via font-size: 0. */
     width: 48px !important;
     height: 72px !important;
-    padding: 8px 4px !important;
+    padding: 0 !important;
     border-radius: 8px 0 0 8px !important;
-    background: #FFFFFF !important;
+    background-color: #FFFFFF !important;
+    background-image: url("data:image/svg+xml;utf8,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='%23534AB7' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 0 L13.5 8.5 L22 10 L13.5 11.5 L12 20 L10.5 11.5 L2 10 L10.5 8.5 Z'/%3E%3Cpath d='M19 14 L19.7 16.3 L22 17 L19.7 17.7 L19 20 L18.3 17.7 L16 17 L18.3 16.3 Z'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: 24px 24px !important;
     border: 1px solid var(--border) !important;
     border-right: none !important;
     box-shadow: -3px 0 8px rgba(15, 31, 46, 0.10) !important;
-    font-size: 22px !important;
+    font-size: 0 !important;
     line-height: 1 !important;
-    color: #534AB7 !important;
-    transition: background 0.15s ease, color 0.15s ease;
+    color: transparent !important;
+    transition: background-color 0.15s ease;
   }
   div[class*="st-key-chat_edge_tab"] button:hover {
-    background: #EEEDFE !important;
-    color: #534AB7 !important;
+    background-color: #EEEDFE !important;
   }
 
   /* Phase 4.5 polish — chat panel viewport sizing.
@@ -449,27 +460,38 @@ _CSS = """
     max-height: calc(100vh - 380px) !important;
   }
 
-  /* Middle-left expand button — round chevron half-overhanging the
-     panel's left edge. Driven by ``state.chat_state`` (toggle
-     between side / expanded). */
+  /* Middle-left expand button — round chevron anchored to the
+     viewport (``position: fixed``) at the panel's left edge.
+     Anchored via ``right`` so it tracks the panel width as it
+     transitions between side (40 vw) and expanded (90 vw).
+     Using fixed positioning instead of absolute keeps the chevron
+     visible regardless of the panel's overflow-y scrolling. */
   div[class*="st-key-chat_expand_edge"] {
-    position: absolute !important;
-    left: -16px !important;
+    position: fixed !important;
+    right: calc(40vw - 22px);  /* center on the panel's left edge */
     top: 50% !important;
     transform: translateY(-50%) !important;
-    width: 32px !important;
+    width: 44px !important;
     z-index: 1000;
+    transition: right 0.3s ease;
   }
+  body.chat-expanded div[class*="st-key-chat_expand_edge"] {
+    right: calc(90vw - 22px);
+  }
+  body.chat-closed div[class*="st-key-chat_expand_edge"] {
+    display: none !important;
+  }
+  /* Phase 4.5 polish: bigger 44 × 44 chevron (was 32 × 32). */
   div[class*="st-key-chat_expand_edge"] button {
-    width: 32px !important;
-    height: 32px !important;
+    width: 44px !important;
+    height: 44px !important;
     min-height: 0 !important;
     padding: 0 !important;
     border-radius: 50% !important;
     background: #FFFFFF !important;
     border: 1px solid var(--border) !important;
-    box-shadow: -2px 2px 6px rgba(15, 31, 46, 0.12) !important;
-    font-size: 18px !important;
+    box-shadow: -2px 2px 8px rgba(15, 31, 46, 0.15) !important;
+    font-size: 20px !important;
     line-height: 1 !important;
     color: #534AB7 !important;
   }
@@ -482,7 +504,17 @@ _CSS = """
      - "Clear chat" is a small text pill (no icon)
      - ✕ close button has no border / square background — bare glyph
        with a hover-only soft purple background. */
+  /* Phase 4.5 polish: fixed 96 px width so the pill doesn't stretch
+     when the panel transitions from 40 vw → 90 vw. The wrapper rule
+     right-aligns the constrained-width button within its column. */
+  div[class*="st-key-clear_btn_"] {
+    display: flex !important;
+    justify-content: flex-end !important;
+  }
   div[class*="st-key-clear_btn_"] button {
+    width: 96px !important;
+    max-width: 96px !important;
+    flex: 0 0 96px !important;
     font-size: 12px !important;
     padding: 6px 12px !important;
     min-height: 0 !important;

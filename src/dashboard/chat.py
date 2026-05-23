@@ -1404,18 +1404,17 @@ def render_chat_panel(merchant_id: str) -> None:
     # (right). The expand button moved out of the header to a round
     # button on the middle-left edge of the panel (rendered after
     # the panel content via a CSS-positioned ``st.container``). --
-    merchant_name = D.MERCHANT_NAME.get(merchant_id, merchant_id)
-    specialist_label = A.AGENT_LABELS.get(state.active_agent, state.active_agent)
     h1, h2, h3 = st.columns([0.65, 0.22, 0.13], gap="small")
     with h1:
-        # Avatar (purple circle) + title + subtitle on the same row.
-        # Inline SVG sparkles glyph — controlled #534AB7 color, no
-        # emoji-rendering inconsistency across platforms. The button
-        # labels below still use the ✦ Unicode glyph (button labels
-        # can't carry HTML / SVG) styled to the same purple — the
-        # avatar is the one place we can use real SVG.
+        # Avatar (purple circle) + title — canonical sparkles SVG in
+        # #534AB7 on #EEEDFE soft fill. The subtitle line below the
+        # title (was "{merchant} · {specialist}") was removed in this
+        # commit — the merchant context is established by the
+        # dashboard header, and the active specialist is visible in
+        # the selectbox just below this row, so the subtitle was
+        # duplicative.
         st.markdown(
-            f"""
+            """
             <div style="display:flex;align-items:center;gap:10px;
                  margin:4px 0 6px 0;">
               <div style="width:32px;height:32px;border-radius:50%;
@@ -1429,15 +1428,8 @@ def render_chat_panel(merchant_id: str) -> None:
                            L19 20 L18.3 17.7 L16 17 L18.3 16.3 Z"/>
                 </svg>
               </div>
-              <div style="display:flex;flex-direction:column;
-                   line-height:1.15;">
-                <div style="font-size:15px;font-weight:600;
-                     color:var(--text);">Ask the data</div>
-                <div style="font-size:11px;color:var(--text-muted);
-                     letter-spacing:0.02em;">
-                  {merchant_name} · {specialist_label}
-                </div>
-              </div>
+              <div style="font-size:15px;font-weight:600;
+                   color:var(--text);">Ask the data</div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -1520,9 +1512,10 @@ def render_chat_panel(merchant_id: str) -> None:
 
     st.markdown("---")
 
-    # -- Reserve scrollable chat history container. CSS overrides
-    # the fixed height to flex inside the viewport-fitting panel. --
-    chat_box = st.container(height=320, border=True, key="chat_history")
+    # -- Reserve scrollable chat history container. Compact height so
+    # the panel's text-input + Send button fit within the visible
+    # viewport on 720p+ displays without panel-level scrolling. --
+    chat_box = st.container(height=220, border=True, key="chat_history")
 
     st.markdown("---")
 
