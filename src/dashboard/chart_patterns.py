@@ -762,6 +762,73 @@ def render_horizontal_bars_own(
     st.plotly_chart(fig, use_container_width=True)
 
 
+def render_horizontal_bars_grouped(
+    data: dict,
+    *,
+    title: str,
+    takeaway: str,
+    height: int | None = None,
+) -> None:
+    """Pattern 2, multi-series grouped horizontal bars. Used by R-P3
+    (ticket-band split: share of transactions + share of revenue per
+    band on a common percentage axis).
+
+    ``data`` keys:
+
+        labels: list of y-axis labels (e.g., ticket-band names).
+        series: list of dicts, each with
+            ``name`` (str)      — legend label
+            ``values`` (list)   — x-values aligned to ``labels``
+            ``color`` (str, opt.) — defaults to a brand-family palette
+        x_label: optional axis label.
+        value_format: optional Plotly tickformat (e.g., ``".0%"``,
+                       ``"$,.0f"``).
+    """
+    labels = data.get("labels") or []
+    series = data.get("series") or []
+    if not labels or not series:
+        _render_card_header(title, takeaway)
+        st.caption("_No data available for this view._")
+        return
+
+    fig = go.Figure()
+    for idx, s in enumerate(series):
+        color = s.get("color") or _OWN_SERIES_COLORS[idx % len(_OWN_SERIES_COLORS)]
+        fig.add_trace(go.Bar(
+            y=labels,
+            x=s["values"],
+            orientation="h",
+            name=s["name"],
+            marker=dict(color=color),
+            hovertemplate=f"<b>%{{y}}</b><br>{s['name']}: %{{x}}<extra></extra>",
+        ))
+    fig.update_layout(
+        barmode="group",
+        xaxis_title=data.get("x_label"),
+        yaxis_title=None,
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        margin=dict(l=80, r=24, t=44, b=32),
+        height=height or max(220, 32 * len(labels) + 80),
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom", y=1.04,
+            xanchor="left",   x=0,
+            font=dict(size=10),
+        ),
+    )
+    fig.update_xaxes(
+        showgrid=True, gridcolor=GRID_LINE, zeroline=False,
+        tickformat=data.get("value_format"),
+        tickfont=dict(size=10),
+    )
+    fig.update_yaxes(showgrid=False, tickfont=dict(size=10),
+                     automargin=True, autorange="reversed")
+    _render_card_header(title, takeaway)
+    st.plotly_chart(fig, use_container_width=True)
+
+
 # ---------------------------------------------------------------------------
 # Pattern 4 — Scatter with peer context
 # ---------------------------------------------------------------------------

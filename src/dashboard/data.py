@@ -3318,6 +3318,220 @@ def revenue_change_decomposition_own(merchant_id: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Phase 4.3b — TJX-specific helpers
+# ---------------------------------------------------------------------------
+
+# Ticket bands for R-P3. Ordered ascending so the bar chart reads
+# "smallest band → largest band" top-to-bottom (autorange="reversed"
+# in the helper flips this so smallest sits at the top).
+_TJX_TICKET_BANDS: list[tuple[str, float, float | None]] = [
+    ("$0-50",     0.0,    50.0),
+    ("$50-100",   50.0,   100.0),
+    ("$100-200",  100.0,  200.0),
+    ("$200-500",  200.0,  500.0),
+    ("$500+",     500.0,  None),
+]
+
+
+@st.cache_data(ttl=3600)
+def category_price_spread(merchant_id: str) -> dict:
+    """Per-category min / median / max unit price + spread ratio
+    (max / min). Pattern 9 table shape for R-P2.
+    """
+    with _conn() as c:
+        # SQLite doesn't ship a percentile function, so the median is
+        # computed via two-step sort + index. Cheap given panel size
+        # (TJX category line counts are 8K-10K each).
+        cats = [r[0] for r in c.execute(
+            """
+            SELECT DISTINCT p.category
+            FROM tenant_transaction_items i
+            JOIN tenant_products p ON p.sku = i.sku
+            JOIN tenant_transactions t ON t.txn_id = i.txn_id
+            WHERE t.merchant_id = ?
+            """,
+            (merchant_id,),
+        )]
+        rows: list[dict] = []
+        for cat in cats:
+            prices = [
+                float(r[0]) for r in c.execute(
+                    """
+                    SELECT i.unit_price
+                    FROM tenant_transaction_items i
+                    JOIN tenant_products p ON p.sku = i.sku
+                    JOIN tenant_transactions t ON t.txn_id = i.txn_id
+                    WHERE t.merchant_id = ? AND p.category = ?
+                    ORDER BY i.unit_price
+                    """,
+                    (merchant_id, cat),
+                )
+            ]
+            if not prices:
+                continue
+            mid = len(prices) // 2
+            median = (
+                (prices[mid - 1] + prices[mid]) / 2
+                if len(prices) % 2 == 0 else prices[mid]
+            )
+            p_min = prices[0]
+            p_max = prices[-1]
+            ratio = p_max / p_min if p_min > 0 else float("nan")
+            rows.append({
+                "category":  cat,
+                "min_price": round(p_min, 2),
+                "median_price": round(median, 2),
+                "max_price": round(p_max, 2),
+                "spread_ratio": round(ratio, 1),
+                "n_lines":   len(prices),
+            })
+
+    rows.sort(key=lambda r: r["spread_ratio"], reverse=True)
+    widest = rows[0] if rows else None
+    tightest = rows[-1] if len(rows) > 1 else None
+    return {
+        "rows":     rows,
+        "widest":   widest,
+        "tightest": tightest,
+    }
+
+
+@st.cache_data(ttl=3600)
+def ticket_band_distribution(merchant_id: str) -> dict:
+    """Per-ticket-band transaction count + revenue share. Returns
+    grouped-bars data shape (R-P3). Both metrics expressed as
+    percentages on a common 0-100 scale for clean grouped display.
+    """
+    with _conn() as c:
+        # Each band's lower bound is inclusive, upper bound is exclusive
+        # (open-ended for the top band).
+        agg_rows = []
+        for label, lo, hi in _TJX_TICKET_BANDS:
+            if hi is None:
+                row = c.execute(
+                    """
+                    SELECT COUNT(*), COALESCE(SUM(txn_total), 0)
+                    FROM tenant_transactions
+                    WHERE merchant_id = ? AND txn_total >= ?
+                    """,
+                    (merchant_id, lo),
+                ).fetchone()
+            else:
+                row = c.execute(
+                    """
+                    SELECT COUNT(*), COALESCE(SUM(txn_total), 0)
+                    FROM tenant_transactions
+                    WHERE merchant_id = ?
+                      AND txn_total >= ? AND txn_total < ?
+                    """,
+                    (merchant_id, lo, hi),
+                ).fetchone()
+            agg_rows.append((label, int(row[0]), float(row[1])))
+
+    total_n = sum(r[1] for r in agg_rows) or 1
+    total_rev = sum(r[2] for r in agg_rows) or 1.0
+
+    labels = [r[0] for r in agg_rows]
+    txn_share = [round(r[1] / total_n * 100, 1) for r in agg_rows]
+    rev_share = [round(r[2] / total_rev * 100, 1) for r in agg_rows]
+
+    # Top band = the one with the largest revenue share; informs the
+    # takeaway sentence.
+    top_idx = max(range(len(agg_rows)), key=lambda i: rev_share[i])
+    return {
+        "labels": labels,
+        "series": [
+            {"name": "Share of transactions", "values": txn_share},
+            {"name": "Share of revenue",      "values": rev_share},
+        ],
+        "x_label":      "Share (%)",
+        "value_format": ".0f",
+        "top_band":     agg_rows[top_idx][0],
+        "top_txn_pct":  txn_share[top_idx],
+        "top_rev_pct":  rev_share[top_idx],
+    }
+
+
+@st.cache_data(ttl=3600)
+def day_week_heatmap(merchant_id: str) -> dict:
+    """Day-of-week × week ratio cells for the last 4 weeks vs each
+    day's first-4w baseline mean. Pattern 3 own_only_diverging shape
+    (R-A3). Cells with recent count <5 are suppressed.
+    """
+    # Use the same 4-week-baseline / recent-4-weeks comparison as the
+    # other anomaly questions, but expanded to all 4 recent weeks so
+    # the heatmap surfaces day-of-week patterns across the recent
+    # window (not just the single last week, which would be a 7-cell
+    # strip rather than a 2D heatmap).
+    recent_weeks = ["2026-04-27", "2026-05-04", "2026-05-11", "2026-05-18"]
+    week_lo = "2026-03-02"
+    week_hi = "2026-05-18"
+
+    with _conn() as c:
+        rows = c.execute(
+            """
+            SELECT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+                   STRFTIME('%w', t.txn_ts) AS dow_num,
+                   COUNT(DISTINCT t.txn_id) AS n_txns
+            FROM tenant_transactions t
+            WHERE t.merchant_id = ?
+              AND DATE(t.txn_ts, 'weekday 0', '-6 days')
+                  BETWEEN ? AND ?
+            GROUP BY week, dow_num
+            """,
+            (merchant_id, week_lo, week_hi),
+        ).fetchall()
+
+    # Per-day baseline = mean of (Mar 2, 9, 16, 23) counts.
+    baseline_by_dow: dict[str, list[int]] = {}
+    recent_by_dow_week: dict[tuple[str, str], int] = {}
+    for week, dow_num, n in rows:
+        dow = _DOW_FROM_SQLITE.get(dow_num)
+        if not dow:
+            continue
+        if _A_BASELINE_WEEK_START <= week <= _A_BASELINE_WEEK_END:
+            baseline_by_dow.setdefault(dow, []).append(int(n))
+        if week in recent_weeks:
+            recent_by_dow_week[(dow, week)] = int(n)
+
+    # Format weeks as "May 18" etc. for column labels.
+    from datetime import date
+    col_labels = [
+        date.fromisoformat(w).strftime("%b %-d") for w in recent_weeks
+    ]
+
+    cells: list[list[float | None]] = []
+    for dow in _DAY_OF_WEEK_ORDER:
+        base_list = baseline_by_dow.get(dow, [])
+        base_avg = (sum(base_list) / 4) if base_list else 0.0
+        row_vals = []
+        for w in recent_weeks:
+            n = recent_by_dow_week.get((dow, w), 0)
+            if n < 5 or base_avg <= 0:
+                row_vals.append(None)
+            else:
+                row_vals.append(round(n / base_avg, 3))
+        cells.append(row_vals)
+
+    flat: list[tuple[float, str, str]] = []
+    for i, dow in enumerate(_DAY_OF_WEEK_ORDER):
+        for j, w_label in enumerate(col_labels):
+            v = cells[i][j]
+            if v is not None:
+                flat.append((v, dow, w_label))
+    weakest   = min(flat, key=lambda r: r[0]) if flat else None
+    strongest = max(flat, key=lambda r: r[0]) if flat else None
+
+    return {
+        "rows":      _DAY_OF_WEEK_ORDER,
+        "cols":      col_labels,
+        "cells":     cells,
+        "weakest":   weakest,
+        "strongest": strongest,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Compatibility shims for placeholders.py and earlier views (no-op now)
 # ---------------------------------------------------------------------------
 
