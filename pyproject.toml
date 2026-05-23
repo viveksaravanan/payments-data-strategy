@@ -6,6 +6,7 @@ dependencies = [
     "anthropic>=0.40",
     "faker>=30",
     "folium>=0.16",
+    "matplotlib>=3.8",
     "numpy>=2",
     "pandas>=2",
     "plotly>=5",
