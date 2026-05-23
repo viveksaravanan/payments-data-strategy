@@ -808,7 +808,11 @@ def category_peer_pricing_gaps(merchant_id: str) -> dict:
         "cells":        cells,
         "max_above":    max_above,
         "max_below":    max_below,
-        "n_suppressed": n_suppressed,
+        # Both keys exposed for compatibility — the pattern helper
+        # reads ``suppressed_count``; older callers reading
+        # ``n_suppressed`` continue to work.
+        "n_suppressed":     n_suppressed,
+        "suppressed_count": n_suppressed,
     }
 
 
@@ -2413,23 +2417,39 @@ def hour_dow_heatmap_card(merchant_id: str) -> dict:
     """
     pivot = hour_dow_heatmap(merchant_id, _filters_key({}))
     # Re-order rows Mon..Sun and label them; columns stay 0..23.
-    cells: list[list[int]] = []
+    # k=5 contract: cells with 0 < count < 5 are suppressed (set to
+    # None); cells with count == 0 stay as 0 (no activity, not
+    # privacy-sensitive). The footnote surfaces only when the
+    # 1-to-4-count band actually has entries.
+    cells: list[list[int | None]] = []
+    suppressed = 0
     for dow_sqlite in _HOUR_DOW_SQLITE_ORDER:
         row = pivot.loc[dow_sqlite] if dow_sqlite in pivot.index else None
         if row is None:
             cells.append([0] * 24)
         else:
-            cells.append([int(row[h]) for h in range(24)])
+            row_out: list[int | None] = []
+            for h in range(24):
+                v = int(row[h])
+                if 0 < v < 5:
+                    row_out.append(None)
+                    suppressed += 1
+                else:
+                    row_out.append(v)
+            cells.append(row_out)
 
-    # Peak / slow over all cells (ignore zeros for slow — empty cells
-    # aren't "slow", they're "closed"). For grocers and TBL/TJX alike
-    # there are typically zero-traffic overnight hours; calling
+    # Peak / slow over all cells (ignore zeros and suppressed cells
+    # for slow — empty cells aren't "slow", they're "closed";
+    # suppressed cells aren't comparable). For grocers and TBL/TJX
+    # alike there are typically zero-traffic overnight hours; calling
     # "Tuesday 3am" the slowest is uninformative.
     peak = (0, 0, 0)  # (value, dow_idx, hr)
     slow = (None, 0, 0)
     for i in range(7):
         for h in range(24):
             v = cells[i][h]
+            if v is None:
+                continue
             if v > peak[0]:
                 peak = (v, i, h)
             if v > 0 and (slow[0] is None or v < slow[0]):
@@ -2444,9 +2464,14 @@ def hour_dow_heatmap_card(merchant_id: str) -> dict:
             _HOUR_DOW_DOW_NAMES[slow[1]], slow[2], slow[0]
         )
 
-    # Weekday (Mon-Fri) vs weekend (Sat-Sun) total volume.
-    weekday_total = sum(sum(cells[i]) for i in range(0, 5))
-    weekend_total = sum(sum(cells[i]) for i in range(5, 7))
+    # Weekday (Mon-Fri) vs weekend (Sat-Sun) total volume. Sum only
+    # non-None cells (suppressed cells contribute 1-4 each — a few
+    # below the 5 floor — but excluding them keeps the comparison
+    # honest at the k=5 boundary).
+    def _row_sum(row: list[int | None]) -> int:
+        return sum(v for v in row if v is not None)
+    weekday_total = sum(_row_sum(cells[i]) for i in range(0, 5))
+    weekend_total = sum(_row_sum(cells[i]) for i in range(5, 7))
     if weekend_total > 0 and weekday_total > 0:
         # Per-day average, since weekday has 5 days and weekend has 2.
         wd_avg = weekday_total / 5
@@ -2473,6 +2498,7 @@ def hour_dow_heatmap_card(merchant_id: str) -> dict:
         "slow_val":  slow_val,
         "wd_we_higher": wd_we_higher,
         "wd_we_ratio":  int(wd_we_ratio),
+        "suppressed_count": suppressed,
     }
 
 
@@ -3233,12 +3259,16 @@ def day_daypart_heatmap(merchant_id: str) -> dict:
         cells.append(row_vals)
         cells_meta.append(row_meta)
 
-    # Identify weakest + strongest cells
+    # Identify weakest + strongest cells, plus tally suppressed cells
+    # (None entries from the k<5 floor) for the privacy footnote.
     flat: list[tuple[float, str, str]] = []
+    suppressed = 0
     for i, dow in enumerate(_DAY_OF_WEEK_ORDER):
         for j, dp in enumerate(_QSR_DAYPART_ORDER):
             v = cells[i][j]
-            if v is not None:
+            if v is None:
+                suppressed += 1
+            else:
                 flat.append((v, dow, dp))
     if flat:
         weakest = min(flat, key=lambda r: r[0])
@@ -3252,6 +3282,7 @@ def day_daypart_heatmap(merchant_id: str) -> dict:
         "cells": cells,
         "weakest":   weakest,
         "strongest": strongest,
+        "suppressed_count": suppressed,
     }
 
 
@@ -3695,15 +3726,19 @@ def day_week_heatmap(merchant_id: str) -> dict:
         cells.append(row_vals)
 
     flat: list[tuple[float, str, str]] = []
+    suppressed = 0
     for i, dow in enumerate(_DAY_OF_WEEK_ORDER):
         for j, w_label in enumerate(col_labels):
             v = cells[i][j]
-            if v is not None:
+            if v is None:
+                suppressed += 1
+            else:
                 flat.append((v, dow, w_label))
     weakest   = min(flat, key=lambda r: r[0]) if flat else None
     strongest = max(flat, key=lambda r: r[0]) if flat else None
 
     return {
+        "suppressed_count": suppressed,
         "rows":      _DAY_OF_WEEK_ORDER,
         "cols":      col_labels,
         "cells":     cells,

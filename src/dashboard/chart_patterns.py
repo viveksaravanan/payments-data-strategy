@@ -33,17 +33,67 @@ from streamlit_folium import st_folium
 # library). These mirror the values defined in styling.py — if either
 # moves, both should. Phase 4 close-out can consider consolidating.
 ACCENT          = "#0F4C81"   # own merchant brand color
+ACCENT_SOFT     = "#D8E2EE"   # tinted brand background
 PEER_A          = "#6B7280"   # medium gray
 PEER_B          = "#9CA3AF"   # lighter gray
 PEER_AGGREGATE  = "#4B5563"   # darker gray (for aggregate peer overlays)
 BASELINE_LINE   = "rgba(128, 128, 128, 0.4)"
 GRID_LINE       = "rgba(128, 128, 128, 0.10)"
 
+# Text colors — match the v2.5 ``--text`` / ``--text-2`` / ``--text-muted``
+# CSS vars so Plotly text styling stays in lock-step with the rest of
+# the dashboard. Centralizing these here avoids ad-hoc hex codes
+# scattered through the pattern helpers.
+TEXT           = "#1A1F2E"   # primary text (cell-overlay numerals)
+TEXT_2         = "#4A5161"   # secondary text (point labels, neutral)
+TEXT_MUTED     = "#9CA3AF"   # muted text (footnotes, axis ticks)
+TAKEAWAY_GRAY  = "#4B5563"   # takeaway subtitle color (= --text-2 family)
+NEUTRAL_FILL   = "#E5E7EB"   # tailwind gray-200 — k=5 suppressed cells
+
 # Diverging palette (Pattern 3 heatmaps, Pattern 5 waterfall, Pattern
 # 2 diverging mode for D3-style fingerprints).
 DIVERGING_LOW   = "#C44536"   # red — own below peer / under-indexed
 DIVERGING_MID   = "#FFFFFF"   # white — on baseline
 DIVERGING_HIGH  = "#0F4C81"   # blue — own above peer / over-indexed
+
+# Sequential palette — V3_DASHBOARD_DESIGN.md Section 6.1 multi-stop
+# brand-family gradient. Used by Pattern 6 maps and Pattern 3
+# own-only-sequential mode. Five stops give finer resolution than the
+# previous two-stop ramp.
+SEQUENTIAL_STOPS = [
+    [0.00, "#FFFFFF"],
+    [0.20, "#D8E2EE"],
+    [0.50, "#94B0CC"],
+    [0.80, "#4B7BA6"],
+    [1.00, "#0F4C81"],
+]
+
+
+# ---------------------------------------------------------------------------
+# Standardized hover tooltip — applied to every Plotly figure via
+# ``fig.update_layout(hoverlabel=HOVERLABEL)``. Folium tooltips get
+# matching CSS in styling.py so the two libraries' tooltips read as
+# one visual family.
+# ---------------------------------------------------------------------------
+
+HOVERLABEL = dict(
+    bgcolor="#FFFFFF",
+    bordercolor="#E5E7EB",
+    font=dict(
+        family="-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+        size=13,
+        color="#1F2937",
+    ),
+)
+
+
+# k=5 suppression footnote — when a chart suppresses cells / rows /
+# polygons because the underlying count fell below 5, the rendered
+# card surfaces this short caveat below the chart.
+K5_SUPPRESSION_FOOTNOTE = (
+    "Some elements aggregate fewer than 5 transactions and are "
+    "not shown for privacy."
+)
 
 
 # ---------------------------------------------------------------------------
@@ -168,6 +218,7 @@ def render_time_series_vs_peers(
     )
 
     fig.update_layout(
+        hoverlabel=HOVERLABEL,
         xaxis_title=None,
         yaxis_title="Index (baseline = 100)",
         hovermode="x unified",
@@ -269,6 +320,7 @@ def render_time_series_own_multi(
     # adds vertical clutter without disambiguating anything.
     show_legend = len(series) > 1
     fig.update_layout(
+        hoverlabel=HOVERLABEL,
         xaxis_title=None,
         yaxis_title=data.get("y_label", ""),
         hovermode="x unified",
@@ -300,8 +352,8 @@ def _render_card_header(title: str, takeaway: str) -> None:
     st.markdown(f"**{title}**")
     if takeaway:
         st.markdown(
-            f"<p style='color:#4B5563;font-size:13px;margin:-4px 0 8px 0;'>"
-            f"{takeaway}</p>",
+            f"<p style='color:{TAKEAWAY_GRAY};font-size:13px;"
+            f"margin:-4px 0 8px 0;'>{takeaway}</p>",
             unsafe_allow_html=True,
         )
 
@@ -313,8 +365,30 @@ def _render_card_footnote(footnote: str) -> None:
     if not footnote:
         return
     st.markdown(
-        f"<p style='color:#9CA3AF;font-size:12px;margin:4px 0 0 0;'>"
+        f"<p style='color:{TEXT_MUTED};font-size:12px;margin:4px 0 0 0;'>"
         f"{footnote}</p>",
+        unsafe_allow_html=True,
+    )
+
+
+def render_empty_state(message: str) -> None:
+    """Render an empty-state message in place of chart content.
+
+    Used when a chart has no data to surface (zero anomalies crossing
+    threshold, no under-served neighborhoods, etc.). Maintains card
+    structure (title, takeaway, affordance — those render around the
+    chart helper); replaces the chart area with a centered muted
+    message that matches the takeaway voice (declarative, no
+    hedging).
+
+    Callers typically invoke this after ``_render_card_header`` when
+    the data is empty rather than calling the Plotly/Folium render
+    path.
+    """
+    st.markdown(
+        f"<div style='padding:32px 24px;color:{TEXT_MUTED};"
+        f"font-size:13px;text-align:center;background:#FAFBFC;"
+        f"border-radius:6px;'>{message}</div>",
         unsafe_allow_html=True,
     )
 
@@ -419,6 +493,7 @@ def _render_two_panel(data: dict, *, title: str, takeaway: str,
     fig.add_vline(x=0, line_dash="dot", line_color=BASELINE_LINE, row=1, col=1)
     fig.add_vline(x=0, line_dash="dot", line_color=BASELINE_LINE, row=2, col=1)
     fig.update_layout(
+        hoverlabel=HOVERLABEL,
         barmode="group",
         plot_bgcolor="white",
         paper_bgcolor="white",
@@ -455,6 +530,7 @@ def _render_diverging(data: dict, *, title: str, takeaway: str,
     ))
     fig.add_vline(x=0, line_dash="dot", line_color=BASELINE_LINE)
     fig.update_layout(
+        hoverlabel=HOVERLABEL,
         plot_bgcolor="white",
         paper_bgcolor="white",
         margin=dict(l=80, r=24, t=12, b=32),
@@ -476,6 +552,7 @@ def _render_standard(data: dict, *, title: str, takeaway: str,
         fig.add_trace(trace)
     fig.add_vline(x=0, line_dash="dot", line_color=BASELINE_LINE)
     fig.update_layout(
+        hoverlabel=HOVERLABEL,
         barmode="group",
         plot_bgcolor="white",
         paper_bgcolor="white",
@@ -581,7 +658,7 @@ def _render_heatmap_cross_merchant_diverging(
         y=rows,
         text=text,
         texttemplate="%{text}",
-        textfont=dict(size=11, color="#1A1F2E"),
+        textfont=dict(size=11, color=TEXT),
         colorscale=[
             [0.0, DIVERGING_LOW],
             [0.5, DIVERGING_MID],
@@ -601,6 +678,7 @@ def _render_heatmap_cross_merchant_diverging(
         xgap=2, ygap=2,  # subtle gridlines between cells
     ))
     fig.update_layout(
+        hoverlabel=HOVERLABEL,
         plot_bgcolor="white",
         paper_bgcolor="white",
         margin=dict(l=80, r=20, t=20, b=24),
@@ -614,6 +692,11 @@ def _render_heatmap_cross_merchant_diverging(
 
     _render_card_header(title, takeaway)
     st.plotly_chart(fig, use_container_width=True)
+    # Cells suppressed by k<5 enter the matrix as ``None``; if any
+    # exist, surface the privacy footnote so the merchant knows the
+    # blanks aren't missing data.
+    if data.get("suppressed_count", 0) > 0:
+        _render_card_footnote(K5_SUPPRESSION_FOOTNOTE)
 
 
 def _render_heatmap_own_only_diverging(
@@ -654,7 +737,7 @@ def _render_heatmap_own_only_diverging(
         y=rows,
         text=text,
         texttemplate="%{text}",
-        textfont=dict(size=11, color="#1A1F2E"),
+        textfont=dict(size=11, color=TEXT),
         colorscale=[
             [0.0, DIVERGING_LOW],
             [0.5, DIVERGING_MID],
@@ -673,6 +756,7 @@ def _render_heatmap_own_only_diverging(
         xgap=2, ygap=2,
     ))
     fig.update_layout(
+        hoverlabel=HOVERLABEL,
         plot_bgcolor="white",
         paper_bgcolor="white",
         margin=dict(l=80, r=20, t=20, b=24),
@@ -683,6 +767,8 @@ def _render_heatmap_own_only_diverging(
                      autorange="reversed")
     _render_card_header(title, takeaway)
     st.plotly_chart(fig, use_container_width=True)
+    if data.get("suppressed_count", 0) > 0:
+        _render_card_footnote(K5_SUPPRESSION_FOOTNOTE)
 
 
 def _render_heatmap_own_only_sequential(
@@ -709,11 +795,7 @@ def _render_heatmap_own_only_sequential(
         z=cells,
         x=cols,
         y=rows,
-        colorscale=[
-            [0.0, "#FFFFFF"],
-            [0.15, "#D8E2EE"],   # ACCENT_SOFT
-            [1.0, ACCENT],
-        ],
+        colorscale=SEQUENTIAL_STOPS,
         zmin=0,
         zmax=vmax,
         hoverongaps=False,
@@ -726,6 +808,7 @@ def _render_heatmap_own_only_sequential(
         xgap=1, ygap=1,
     ))
     fig.update_layout(
+        hoverlabel=HOVERLABEL,
         plot_bgcolor="white",
         paper_bgcolor="white",
         margin=dict(l=64, r=20, t=20, b=24),
@@ -736,6 +819,8 @@ def _render_heatmap_own_only_sequential(
                      autorange="reversed")
     _render_card_header(title, takeaway)
     st.plotly_chart(fig, use_container_width=True)
+    if data.get("suppressed_count", 0) > 0:
+        _render_card_footnote(K5_SUPPRESSION_FOOTNOTE)
 
 
 # ---------------------------------------------------------------------------
@@ -805,6 +890,7 @@ def render_horizontal_bars_own(
         )
 
     fig.update_layout(
+        hoverlabel=HOVERLABEL,
         xaxis_title=data.get("x_label"),
         yaxis_title=None,
         plot_bgcolor="white",
@@ -865,6 +951,7 @@ def render_horizontal_bars_grouped(
             hovertemplate=f"<b>%{{y}}</b><br>{s['name']}: %{{x}}<extra></extra>",
         ))
     fig.update_layout(
+        hoverlabel=HOVERLABEL,
         barmode="group",
         xaxis_title=data.get("x_label"),
         yaxis_title=None,
@@ -988,6 +1075,7 @@ def render_scatter_with_peers(
         fig.add_hline(y=y_baseline, line_dash="dot", line_color=BASELINE_LINE)
 
     fig.update_layout(
+        hoverlabel=HOVERLABEL,
         xaxis_title=data["x_label"],
         yaxis_title=data["y_label"],
         plot_bgcolor="white",
@@ -1112,6 +1200,7 @@ def _render_waterfall_cross_merchant(
     fig.add_hline(y=0, line_dash="dot", line_color=BASELINE_LINE)
 
     fig.update_layout(
+        hoverlabel=HOVERLABEL,
         xaxis_title=None,
         yaxis_title=y_label,
         plot_bgcolor="white",
@@ -1326,28 +1415,39 @@ def render_neighborhood_map(
                 vmin=-vabs, vmax=vabs,
             )
         else:
-            # sequential / score share the same accent-light → accent
-            # ramp; "score" mode floors at 0 implicitly because
-            # opportunity scores are non-negative.
+            # sequential / score share the canonical 5-stop brand
+            # ramp defined in ``SEQUENTIAL_STOPS``. "score" mode
+            # floors at 0 since opportunity scores are non-negative;
+            # "sequential" mode floors at the data minimum.
             lo = 0.0 if mode == "score" else vmin
-            cmap = LinearColormap(["#D8E2EE", ACCENT], vmin=lo,
-                                   vmax=max(vmax, lo + 1e-9))
+            hi = max(vmax, lo + 1e-9)
+            # branca's LinearColormap takes a list of color hex codes
+            # and evenly spaces them between ``vmin`` and ``vmax``.
+            ramp_colors = [stop[1] for stop in SEQUENTIAL_STOPS]
+            cmap = LinearColormap(ramp_colors, vmin=lo, vmax=hi)
         cmap.caption = data.get("value_label", "")
 
+    suppressed_count = 0
     for p in polygons:
         verts = neighborhood_polygon(p["name"])
         if not verts:
             continue
         val = p.get("value")
         if val is None or cmap is None:
-            fill_color = "#E5E7EB"
-            fill_opacity = 0.18
+            # k=5 suppression / no-value polygon: light neutral fill,
+            # very low opacity so it reads as "unavailable" rather
+            # than "low". Tooltip carries the explanation if the
+            # caller supplied one.
+            fill_color = NEUTRAL_FILL
+            fill_opacity = 0.20
+            if val is None and p.get("suppressed"):
+                suppressed_count += 1
         else:
             fill_color = cmap(val)
             fill_opacity = 0.65
         folium.Polygon(
             locations=verts,
-            color="#4B5563",
+            color=PEER_AGGREGATE,
             weight=1,
             fill=True,
             fill_color=fill_color,
@@ -1377,7 +1477,7 @@ def render_neighborhood_map(
             color=PEER_AGGREGATE,
             weight=1.0,
             fill=True,
-            fill_color="#FFFFFF",
+            fill_color=DIVERGING_MID,
             fill_opacity=0.85,
             tooltip=s.get("tooltip", ""),
         ).add_to(fmap)
@@ -1394,6 +1494,13 @@ def render_neighborhood_map(
     )
 
     _render_card_footnote(data.get("footnote", ""))
+    # Per-data-helper-reported suppression count (e.g. neighborhoods
+    # whose customer count fell below k=5) overrides the local
+    # ``suppressed`` flag tally. Both paths fall back to the local
+    # count if not explicitly set.
+    n_suppressed = data.get("suppressed_count", suppressed_count)
+    if n_suppressed > 0:
+        _render_card_footnote(K5_SUPPRESSION_FOOTNOTE)
 
 
 # ---------------------------------------------------------------------------
@@ -1515,6 +1622,7 @@ def _render_sparkline(values: list[float], *, color: str = ACCENT) -> None:
         hoverinfo="skip",
     ))
     fig.update_layout(
+        hoverlabel=HOVERLABEL,
         height=38,
         margin=dict(l=0, r=0, t=2, b=0),
         showlegend=False,

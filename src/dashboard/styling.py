@@ -26,6 +26,14 @@ _CSS = """
     --c-tjx:        #5B7B58;
     --good:         #2F855A;
     --bad:          #C44536;
+    /* Phase 4.5 — peer / diverging palette additions (mirror the
+       chart_patterns.py constants of the same name). */
+    --peer-a:           #6B7280;
+    --peer-b:           #9CA3AF;
+    --peer-aggregate:   #4B5563;
+    --diverging-low:    #C44536;
+    --diverging-mid:    #FFFFFF;
+    --diverging-high:   #0F4C81;
   }
 
   /* Streamlit overrides — system fonts, tighter spacing for a dashboard look. */
@@ -294,6 +302,29 @@ _CSS = """
     cursor: not-allowed !important;
     background: transparent !important;
     border-color: var(--border) !important;
+  }
+
+  /* Phase 4.5 — Folium tooltip styling. Mirrors chart_patterns.py
+     HOVERLABEL so Plotly and Folium tooltips read as one visual
+     family (white bg, light-gray border, system font, gray-800
+     text). Targets Leaflet's per-element tooltip class — st_folium
+     renders the underlying Leaflet map directly so this selector
+     reaches the embedded iframe via Leaflet's standard CSS. */
+  .leaflet-tooltip {
+    background-color: #FFFFFF !important;
+    border: 1px solid #E5E7EB !important;
+    border-radius: 4px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.10) !important;
+    color: #1F2937 !important;
+    font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif !important;
+    font-size: 13px !important;
+    padding: 6px 10px !important;
+  }
+  .leaflet-tooltip-top:before,
+  .leaflet-tooltip-bottom:before,
+  .leaflet-tooltip-left:before,
+  .leaflet-tooltip-right:before {
+    border-top-color: #E5E7EB !important;
   }
 </style>
 """
