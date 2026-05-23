@@ -1703,7 +1703,7 @@ def render_ask_about_this(
     key: str,
     specialist: str,
     prefill: str,
-    label: str = "💬",
+    label: str = "✨",
     help_text: str = "Ask the agent about this",
 ) -> None:
     """Per-card "Ask about this" affordance.

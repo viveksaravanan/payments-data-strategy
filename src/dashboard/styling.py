@@ -133,16 +133,20 @@ _CSS = """
      fill ``use_container_width=True``, making the hover background
      wider than the icon. */
   div[class*="st-key-ask_about_"] button {
-    width: 28px !important;
-    height: 28px !important;
-    max-width: 28px !important;
+    /* Phase 4.5 final fix-up: 22 × 22 px (was 28 × 28). Equalizes the
+       hover background between KPI cards (narrow 5-up columns) and
+       chart cards (wider 3-up / 2-up columns) — the smaller circle
+       reads as proportionally consistent across both contexts. */
+    width: 22px !important;
+    height: 22px !important;
+    max-width: 22px !important;
     min-height: 0 !important;
     padding: 0 !important;
     margin-left: auto !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    font-size: 14px !important;
+    font-size: 12px !important;
     line-height: 1 !important;
     border-radius: 50% !important;
     border-color: transparent !important;
@@ -484,7 +488,11 @@ def apply_chat_state_class(chat_state: str) -> None:
     The chat panel CSS responds to ``body.chat-closed`` /
     ``body.chat-side`` / ``body.chat-expanded`` — this helper writes
     the current state to the iframe's ``document.body`` so the CSS
-    transitions fire smoothly on state changes.
+    transitions fire smoothly on state changes. It also installs a
+    one-time global ``keydown`` listener that wires Enter-to-submit
+    on the chat panel's text-area (Shift+Enter still inserts a
+    newline; the listener is guarded by a sentinel flag so reruns
+    don't stack handlers).
     """
     import streamlit.components.v1 as _components
     cls = f"chat-{chat_state}"
@@ -494,6 +502,29 @@ def apply_chat_state_class(chat_state: str) -> None:
           const doc = window.parent.document;
           doc.body.classList.remove('chat-closed', 'chat-side', 'chat-expanded');
           doc.body.classList.add({cls!r});
+
+          // One-time Enter-to-submit binding on the chat-panel
+          // textarea. The sentinel on ``window.parent`` keeps this
+          // idempotent across Streamlit reruns — each rerun re-runs
+          // this script but the conditional ensures only the first
+          // run attaches the listener.
+          if (!window.parent.__chatEnterHandlerInstalled) {{
+            window.parent.__chatEnterHandlerInstalled = true;
+            doc.addEventListener('keydown', function(e) {{
+              if (!e.target || e.target.tagName !== 'TEXTAREA') return;
+              if (e.key !== 'Enter' || e.shiftKey) return;
+              // Only fire on the chat panel's text-area (key starts
+              // with ``chat_input_``), not other textareas on the
+              // page that might exist in future cards.
+              const wrapper = e.target.closest('[class*="st-key-chat_input_"]');
+              if (!wrapper) return;
+              e.preventDefault();
+              const sendBtn = doc.querySelector(
+                '[class*="st-key-chat_send_"] button'
+              );
+              if (sendBtn) sendBtn.click();
+            }});
+          }}
         </script>
         """,
         height=0,

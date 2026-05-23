@@ -1388,7 +1388,20 @@ def render_chat_panel(merchant_id: str) -> None:
     # history; ✕ closes the drawer (returns to edge-tab state). --
     h1, h2, h3, h4 = st.columns([0.55, 0.15, 0.15, 0.15], gap="small")
     with h1:
-        st.markdown("#### Ask the data")
+        # Sparkles avatar + title — purple circle with ✨ glyph, matched
+        # to the edge-tab icon and the per-card affordances so the chat
+        # surface reads as one visual family.
+        st.markdown(
+            '<div style="display:flex;align-items:center;gap:8px;'
+            'margin:4px 0 8px 0;">'
+            '  <div style="width:32px;height:32px;border-radius:50%;'
+            'background:#EEEDFE;display:flex;align-items:center;'
+            'justify-content:center;font-size:16px;color:#534AB7;">✨</div>'
+            '  <div style="font-size:16px;font-weight:600;color:var(--text);">'
+            'Ask the data</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
     with h2:
         toggle_icon = "⤡" if expanded else "⤢"
         toggle_help = (
@@ -1428,20 +1441,24 @@ def render_chat_panel(merchant_id: str) -> None:
             state.chat_state = "closed"
             st.rerun()
 
-    # -- Agent selector (disabled during a run so an agent switch can't
-    # abort the in-flight dispatch). label_visibility="collapsed" drops
-    # the "Specialist agent" sub-label — the dropdown content is
-    # self-explanatory. The label string is kept for screen readers. --
+    # -- Agent selector — Phase 4.5 final fix-up swaps ``st.selectbox``
+    # for ``st.radio`` so the widget is purely select-only (no
+    # type-ahead filter that feels editable). The radio renders as
+    # four horizontal pills matching the chip aesthetic the design
+    # doc calls for. ``label_visibility="collapsed"`` drops the
+    # accessibility label visually; it's still in the DOM for
+    # screen readers. --
     agent_ids = ["demand", "pricing", "anomaly", "trade"]
     agent_labels = {a: A.AGENT_LABELS[a] for a in agent_ids}
-    chosen = st.selectbox(
+    chosen = st.radio(
         "Specialist agent",
         options=agent_ids,
         format_func=lambda a: agent_labels[a],
         index=agent_ids.index(state.active_agent),
-        key=f"agent_select_{merchant_id}",
+        key=f"agent_radio_{merchant_id}",
         disabled=is_running,
         label_visibility="collapsed",
+        horizontal=True,
     )
     if chosen != state.active_agent and not is_running:
         state.active_agent = chosen
