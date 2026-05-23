@@ -69,6 +69,11 @@ state.setdefault("merchant_id", "KRG")
 state.setdefault("filters_by_merchant", {})
 state.setdefault("chat_messages_by_merchant", {})
 state.setdefault("active_agent", "pricing")
+# Phase 4.5 follow-up: chat panel is now a fixed-position overlay
+# drawer with three states. ``chat_expanded`` from earlier phases is
+# subsumed by this state machine — kept for backward compat but
+# treated as deprecated.
+state.setdefault("chat_state", "closed")  # "closed" | "side" | "expanded"
 state.setdefault("chat_expanded", False)
 
 
@@ -118,8 +123,15 @@ def _on_merchant_change() -> None:
     """Called by the merchant selectbox. Per-merchant state (filters,
     chat history) is keyed by merchant_id and preserved across switches —
     no clearing here. The dict-by-merchant in session_state IS the
-    isolation boundary."""
-    return
+    isolation boundary.
+
+    What DOES clear on switch: the affordance prefill text. A prefill
+    set from a card on the previous merchant ("Why is University City
+    declining? Are peers seeing the same drop?") doesn't make sense
+    after switching to a different merchant — drop it so the textarea
+    renders empty on the new viewer.
+    """
+    st.session_state.chat_input_prefill = ""
 
 
 # ---------------------------------------------------------------------------
@@ -155,64 +167,79 @@ with header_col2:
 filters = _filters()
 mid = state.merchant_id
 
-# Filter row + dashboard views are skipped entirely when the chat panel
-# is expanded — the chat is then the only thing on the page.
-if not state.chat_expanded:
-    f_col1, f_col2, f_col3 = st.columns([1.2, 1.6, 1.6])
-    with f_col1:
-        date_range = st.date_input(
-            "Date range",
-            value=(filters["date_start"], filters["date_end"]),
-            min_value=D.PANEL_START,
-            max_value=D.PANEL_END,
-            key=f"date_{mid}",
-        )
-        if isinstance(date_range, tuple) and len(date_range) == 2:
-            filters["date_start"], filters["date_end"] = date_range
-    with f_col2:
-        own_stores_df = D.stores_for(mid)
-        chosen_stores = st.multiselect(
-            f"Stores ({len(own_stores_df)})",
-            options=own_stores_df["store_id"].tolist(),
-            default=filters["stores"] if filters["stores"] else [],
-            placeholder="All stores",
-            key=f"stores_{mid}",
-        )
-        filters["stores"] = chosen_stores
-    with f_col3:
-        cats = D.categories_for(mid)
-        chosen_cats = st.multiselect(
-            f"Categories ({len(cats)})",
-            options=cats,
-            default=filters["categories"] if filters["categories"] else [],
-            placeholder="All categories",
-            key=f"cats_{mid}",
-        )
-        filters["categories"] = chosen_cats
+# Phase 4.5 follow-up: dashboard always renders at full width. The chat
+# panel is a fixed-position overlay drawer (closed / side / expanded)
+# rather than a permanent right-rail column.
 
-    st.markdown("<hr style='margin: 8px 0 12px;'/>", unsafe_allow_html=True)
+f_col1, f_col2, f_col3 = st.columns([1.2, 1.6, 1.6])
+with f_col1:
+    date_range = st.date_input(
+        "Date range",
+        value=(filters["date_start"], filters["date_end"]),
+        min_value=D.PANEL_START,
+        max_value=D.PANEL_END,
+        key=f"date_{mid}",
+    )
+    if isinstance(date_range, tuple) and len(date_range) == 2:
+        filters["date_start"], filters["date_end"] = date_range
+with f_col2:
+    own_stores_df = D.stores_for(mid)
+    chosen_stores = st.multiselect(
+        f"Stores ({len(own_stores_df)})",
+        options=own_stores_df["store_id"].tolist(),
+        default=filters["stores"] if filters["stores"] else [],
+        placeholder="All stores",
+        key=f"stores_{mid}",
+    )
+    filters["stores"] = chosen_stores
+with f_col3:
+    cats = D.categories_for(mid)
+    chosen_cats = st.multiselect(
+        f"Categories ({len(cats)})",
+        options=cats,
+        default=filters["categories"] if filters["categories"] else [],
+        placeholder="All categories",
+        key=f"cats_{mid}",
+    )
+    filters["categories"] = chosen_cats
+
+st.markdown("<hr style='margin: 8px 0 12px;'/>", unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------------------
-# Layout — split (dashboard + chat) or full-width chat when expanded
+# Layout — dashboard always full-width; chat is an overlay drawer
 # ---------------------------------------------------------------------------
 
-if state.chat_expanded:
-    # Full-width chat: dashboard column entirely hidden. Bubbles, charts,
-    # tables, suggestions, and chat_input naturally render at full
-    # viewport width.
+# Drive the body-level class that controls drawer width.
+styling.apply_chat_state_class(state.chat_state)
+
+views.render_kpi_strip(mid, filters)
+views.render_performance_section(mid, filters)
+views.render_geography_section(mid, filters)
+views.render_catalog_section(mid, filters)
+views.render_customers_section(mid, filters)
+
+# Backdrop only renders when expanded — the markdown is purely
+# decorative since Streamlit's iframe sandbox blocks click-outside JS
+# from updating session_state reliably. Documented deviation: the
+# expanded-mode backdrop dims the dashboard but doesn't close the
+# panel on click; use the X / collapse buttons.
+if state.chat_state == "expanded":
+    st.markdown('<div class="chat-backdrop"></div>', unsafe_allow_html=True)
+
+# Edge tab: a small floating button on the right edge, only shown
+# when the panel is closed. Clicking opens the side-mode drawer.
+if state.chat_state == "closed":
+    with st.container(key="chat_edge_tab"):
+        if st.button("💬", key="chat_edge_open", help="Open the chat panel"):
+            state.chat_state = "side"
+            st.rerun()
+
+# Chat panel: rendered into a container whose key the CSS targets
+# with ``position: fixed`` to overlay the dashboard. The container
+# always renders; CSS hides it via ``body.chat-closed`` so the
+# Streamlit widget state inside (input, history, etc.) survives state
+# transitions without re-instantiating.
+with st.container(key="chat_panel_overlay"):
     chat.render_chat_panel(mid)
     _render_telemetry_footer()
-else:
-    dash_col, chat_col = st.columns([65, 35], gap="medium")
-
-    with dash_col:
-        views.render_kpi_strip(mid, filters)
-        views.render_performance_section(mid, filters)
-        views.render_geography_section(mid, filters)
-        views.render_catalog_section(mid, filters)
-        views.render_customers_section(mid, filters)
-
-    with chat_col:
-        chat.render_chat_panel(mid)
-        _render_telemetry_footer()

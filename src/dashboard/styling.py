@@ -350,6 +350,125 @@ _CSS = """
   .leaflet-tooltip-right:before {
     border-top-color: #E5E7EB !important;
   }
+
+  /* -----------------------------------------------------------------
+     Phase 4.5 follow-up — Chat panel overlay drawer.
+
+     The chat panel is rendered into a Streamlit container with a
+     stable key suffix (``chat_panel_overlay``). The CSS below
+     promotes that container into a position:fixed right-side drawer
+     so the dashboard column can use the full viewport width.
+
+     Three states live in ``state.chat_state``:
+       - "closed"   → drawer hidden; edge tab visible on right edge
+       - "side"     → drawer at 40 vw
+       - "expanded" → drawer at 90 vw with dim backdrop
+
+     Width is varied by a body-level class (``body.chat-side`` /
+     ``body.chat-expanded``) so a single CSS selector responds to the
+     state change. ``transition: width 0.3s ease`` makes the resize
+     smooth between side ↔ expanded.
+
+     Click-outside-to-close: NOT implemented in this commit — Streamlit
+     reruns interrupt JS bridges. Use the explicit X button in the
+     panel header.
+  ----------------------------------------------------------------- */
+  div[class*="st-key-chat_panel_overlay"] {
+    position: fixed !important;
+    top: 56px;
+    right: 0;
+    bottom: 0;
+    width: 40vw;
+    max-width: 720px;
+    background: #FFFFFF;
+    border-left: 1px solid var(--border);
+    box-shadow: -8px 0 24px rgba(15, 31, 46, 0.10);
+    z-index: 998;
+    overflow-y: auto;
+    padding: 16px 20px 16px 20px;
+    transition: width 0.3s ease, max-width 0.3s ease;
+  }
+  body.chat-expanded div[class*="st-key-chat_panel_overlay"] {
+    width: 90vw;
+    max-width: none;
+  }
+  body.chat-closed div[class*="st-key-chat_panel_overlay"] {
+    display: none !important;
+  }
+
+  /* Edge tab — small floating button on the right edge of the
+     viewport, shown only when ``state.chat_state == "closed"``. Click
+     opens the drawer in side mode. */
+  div[class*="st-key-chat_edge_tab"] {
+    position: fixed !important;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 997;
+    width: 56px !important;
+  }
+  div[class*="st-key-chat_edge_tab"] button {
+    width: 48px !important;
+    height: 72px !important;
+    padding: 8px 4px !important;
+    border-radius: 8px 0 0 8px !important;
+    background: #FFFFFF !important;
+    border: 1px solid var(--border) !important;
+    border-right: none !important;
+    box-shadow: -3px 0 8px rgba(15, 31, 46, 0.10) !important;
+    font-size: 20px !important;
+    line-height: 1.2 !important;
+    color: var(--accent) !important;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  div[class*="st-key-chat_edge_tab"] button:hover {
+    background: var(--accent-soft) !important;
+    color: var(--accent) !important;
+  }
+
+  /* Backdrop — dimmed click-catcher behind the panel when expanded.
+     Implemented as a markdown div with ``position: fixed`` that sits
+     between the dashboard (z-index: 0) and the panel (z-index: 998). */
+  .chat-backdrop {
+    position: fixed;
+    top: 0; right: 0; bottom: 0; left: 0;
+    background: rgba(15, 31, 46, 0.45);
+    z-index: 997;
+    pointer-events: none;  /* purely visual — click-to-close not wired in this commit */
+  }
+
+  /* Mobile responsiveness — drawer becomes a bottom sheet at narrow
+     viewports. */
+  @media (max-width: 768px) {
+    div[class*="st-key-chat_panel_overlay"] {
+      top: auto !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      width: 100vw !important;
+      max-width: none !important;
+      height: 75vh !important;
+      border-left: none !important;
+      border-top: 1px solid var(--border) !important;
+      box-shadow: 0 -8px 24px rgba(15, 31, 46, 0.10) !important;
+    }
+    body.chat-expanded div[class*="st-key-chat_panel_overlay"] {
+      height: 95vh !important;
+    }
+    div[class*="st-key-chat_edge_tab"] {
+      right: 16px !important;
+      top: auto !important;
+      bottom: 16px !important;
+      transform: none !important;
+    }
+    div[class*="st-key-chat_edge_tab"] button {
+      width: 56px !important;
+      height: 56px !important;
+      border-radius: 50% !important;
+      border: 1px solid var(--border) !important;
+      box-shadow: 0 4px 12px rgba(15, 31, 46, 0.15) !important;
+    }
+  }
 </style>
 """
 
@@ -357,3 +476,25 @@ _CSS = """
 def inject() -> None:
     """Inject the dashboard's CSS into the current Streamlit page."""
     st.markdown(_CSS, unsafe_allow_html=True)
+
+
+def apply_chat_state_class(chat_state: str) -> None:
+    """Toggle a body-level class to drive the chat-drawer width.
+
+    The chat panel CSS responds to ``body.chat-closed`` /
+    ``body.chat-side`` / ``body.chat-expanded`` — this helper writes
+    the current state to the iframe's ``document.body`` so the CSS
+    transitions fire smoothly on state changes.
+    """
+    import streamlit.components.v1 as _components
+    cls = f"chat-{chat_state}"
+    _components.html(
+        f"""
+        <script>
+          const doc = window.parent.document;
+          doc.body.classList.remove('chat-closed', 'chat-side', 'chat-expanded');
+          doc.body.classList.add({cls!r});
+        </script>
+        """,
+        height=0,
+    )

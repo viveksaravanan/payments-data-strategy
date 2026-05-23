@@ -1708,10 +1708,15 @@ def render_ask_about_this(
 ) -> None:
     """Per-card "Ask about this" affordance.
 
-    Clicking sets ``state.chat_input_prefill`` + ``state.active_agent``
-    (the existing two-state plumbing from Phase 4.1). The chat panel's
-    confirm-to-send card picks the prefill up on the next rerun; the
-    specialist switcher snaps to ``specialist``.
+    Clicking sets three pieces of session state and triggers a rerun:
+        - ``chat_input_prefill`` — the templated question text. The
+          chat panel's text-area widget reads this on render and uses
+          it as the initial value.
+        - ``active_agent``       — snaps the specialist switcher to
+          the routed specialist (per V3_DASHBOARD_DESIGN.md §5.5).
+        - ``chat_state``         — opens the drawer in side-panel
+          mode if it was closed; leaves it alone if already open in
+          side or expanded mode.
 
     Disabled while an agent is mid-dispatch — clicking during a stream
     would otherwise queue a second dispatch behind the running one.
@@ -1727,6 +1732,8 @@ def render_ask_about_this(
     ):
         state.chat_input_prefill = prefill
         state.active_agent = specialist
+        if state.get("chat_state", "closed") == "closed":
+            state.chat_state = "side"
         st.rerun()
 
 

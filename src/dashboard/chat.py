@@ -1364,14 +1364,14 @@ def _render_live_turn(
 def render_chat_panel(merchant_id: str) -> None:
     state = st.session_state
     state.setdefault("active_agent", "pricing")
-    state.setdefault("chat_expanded", False)
+    state.setdefault("chat_state", "closed")
     state.setdefault("agent_running", False)
     state.setdefault("pending_dispatch", None)
-    # Phase 4.1: Ask-about-this affordance pre-fills the chat with a
-    # context-aware question. Streamlit's st.chat_input doesn't accept
-    # a value= argument, so the prefill is rendered as a "confirm to
-    # send" card above the input rather than injected into the field.
-    state.setdefault("chat_input_prefill", None)
+    # Phase 4.5 follow-up: the affordance prefill is now injected
+    # directly into the text-input widget (no separate confirm-to-send
+    # card). ``chat_input_prefill`` carries the text from the
+    # ask-about-this click to the next rerun's text-area initial value.
+    state.setdefault("chat_input_prefill", "")
     history = _ensure_history(merchant_id)
 
     # When an agent is mid-dispatch (i.e. we're inside the run that will
@@ -1380,23 +1380,21 @@ def render_chat_panel(merchant_id: str) -> None:
     # buttons are blocked browser-side, so the streaming `_render_live_turn`
     # below can't be aborted mid-stream.
     is_running = bool(state.agent_running)
+    expanded = state.chat_state == "expanded"
 
-    # -- Header row: title (left), expand toggle + clear-history (right) --
-    # The expand and clear buttons share narrow columns so they read as
-    # compact icon affordances. Keys use the merchant_id suffix; CSS in
-    # styling.py targets `st-key-expand_btn_*` / `st-key-clear_btn_*` to
-    # apply the smaller padding + accent / danger hover tints, plus the
-    # explicit disabled fade.
-    h1, h2, h3 = st.columns([0.7, 0.15, 0.15], gap="small")
+    # -- Header row: title (left), expand toggle + clear + close
+    # (right). Three icon-buttons in narrow columns. ⤢/⤡ toggles
+    # between side and expanded modes; 🗑 clears the merchant's
+    # history; ✕ closes the drawer (returns to edge-tab state). --
+    h1, h2, h3, h4 = st.columns([0.55, 0.15, 0.15, 0.15], gap="small")
     with h1:
         st.markdown("#### Ask the data")
     with h2:
-        expanded = state.chat_expanded
         toggle_icon = "⤡" if expanded else "⤢"
-        if is_running:
-            toggle_help = "Wait for current response…"
-        else:
-            toggle_help = "Collapse chat" if expanded else "Expand chat"
+        toggle_help = (
+            "Wait for current response…" if is_running
+            else ("Collapse chat" if expanded else "Expand chat")
+        )
         if st.button(
             toggle_icon,
             key=f"expand_btn_{merchant_id}",
@@ -1405,12 +1403,7 @@ def render_chat_panel(merchant_id: str) -> None:
             disabled=is_running,
             type="secondary",
         ):
-            state.chat_expanded = not expanded
-            # Tell the next run to scroll the parent window to the top
-            # — without this the user lands wherever the document was
-            # scrolled when they clicked the icon, which is often the
-            # bottom of the prior layout.
-            state.scroll_to_top_pending = True
+            state.chat_state = "side" if expanded else "expanded"
             st.rerun()
     with h3:
         if st.button(
@@ -1422,6 +1415,17 @@ def render_chat_panel(merchant_id: str) -> None:
             type="secondary",
         ):
             reset_history(merchant_id)
+            st.rerun()
+    with h4:
+        if st.button(
+            "✕",
+            key=f"close_btn_{merchant_id}",
+            help="Close chat panel",
+            use_container_width=True,
+            disabled=is_running,
+            type="secondary",
+        ):
+            state.chat_state = "closed"
             st.rerun()
 
     # -- Agent selector (disabled during a run so an agent switch can't
@@ -1484,55 +1488,41 @@ def render_chat_panel(merchant_id: str) -> None:
 
     st.markdown("---")
 
-    # -- Pending-question card (confirm-to-send for the Ask-about-this
-    # affordance). Streamlit's st.chat_input has no value= parameter,
-    # so we surface the templated question as a small card with Send /
-    # Cancel buttons. The chat_input below stays as the free-form input.
-    prefill = state.chat_input_prefill
-    if prefill is not None:
-        with st.container(border=True):
-            st.caption("Confirm to send:")
-            st.markdown(prefill)
-            cs, cc = st.columns([1, 1])
-            with cs:
-                if st.button(
-                    "Send",
-                    key=f"prefill_send_{merchant_id}",
-                    type="primary",
-                    disabled=is_running,
-                    use_container_width=True,
-                ):
-                    state.pending_dispatch = {
-                        "kind":     "free",
-                        "question": prefill,
-                    }
-                    state.chat_input_prefill = None
-                    state.agent_running = True
-                    st.rerun()
-            with cc:
-                if st.button(
-                    "Cancel",
-                    key=f"prefill_cancel_{merchant_id}",
-                    disabled=is_running,
-                    use_container_width=True,
-                ):
-                    state.chat_input_prefill = None
-                    st.rerun()
-
-    # -- Free-form input at the bottom (rendered before container fill
-    # so it appears visually below the container) --
-    free_q = st.chat_input(
+    # -- Free-form input — Phase 4.5 follow-up swaps ``st.chat_input``
+    # for ``st.text_area`` + Send button because ``st.chat_input``
+    # cannot accept a programmatic initial value. The affordance flow
+    # sets ``state.chat_input_prefill`` which becomes the textarea's
+    # initial value on the next rerun; user can edit or send. --
+    prefill = state.chat_input_prefill or ""
+    # Re-key the textarea per (merchant_id, prefill-hash) so a fresh
+    # prefill from an affordance click forces the widget to remount
+    # with the new ``value=`` — without the re-key, Streamlit keeps
+    # the prior textarea content and ignores the value kwarg.
+    input_key = f"chat_input_{merchant_id}_{hash(prefill) & 0xFFFF:04x}"
+    free_q = st.text_area(
         "Ask anything…",
-        key=f"chat_input_{merchant_id}",
+        value=prefill,
+        key=input_key,
+        height=80,
         disabled=is_running,
+        label_visibility="collapsed",
+        placeholder="Ask anything…",
     )
-    if free_q and free_q.strip() and not is_running:
-        state.pending_dispatch = {
-            "kind":     "free",
-            "question": free_q.strip(),
-        }
-        state.agent_running = True
-        st.rerun()
+    if st.button(
+        "Send",
+        key=f"chat_send_{merchant_id}",
+        type="primary",
+        disabled=is_running,
+        use_container_width=True,
+    ):
+        if free_q and free_q.strip():
+            state.pending_dispatch = {
+                "kind":     "free",
+                "question": free_q.strip(),
+            }
+            state.chat_input_prefill = ""
+            state.agent_running = True
+            st.rerun()
 
     # -- Fill the chat container --
     with chat_box:
