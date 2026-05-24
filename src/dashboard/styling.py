@@ -412,17 +412,28 @@ _CSS = """
     height: 100% !important;
     gap: 6px !important;
   }
-  /* The chat-history container is the dominant row — sized to
-     60% of the panel height per the latest design ask, with
-     ``flex-grow`` to absorb any additional slack if the header
-     rows shrink. ``min-height: 0`` is essential — without it,
-     flex children default to min-content size and the panel
-     grows past the viewport, restoring panel-level scroll. */
+  /* The chat-history container fills whatever room remains after
+     the fixed-size rows (header / selectbox / description / pills)
+     take what they need, and the input row at the bottom keeps
+     its locked height. ``min-height: 0`` is essential — without
+     it, flex children default to min-content sizing and the
+     panel overflows when content exceeds 100 vh, pushing the
+     input row below the visible viewport. */
   div[class*="st-key-chat_panel_overlay"] > div[data-testid="stVerticalBlock"] >
     div[data-testid="element-container"]:has(> div[class*="st-key-chat_history"]) {
-    flex: 1 1 60% !important;
-    min-height: 60% !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
     overflow: hidden !important;
+  }
+  /* Apply ``min-height: 0`` to ALL element-containers in the
+     panel — without this, individual rows refuse to shrink
+     below their content size and the panel overflows when one
+     specialist has longer pill text than another. The
+     ``flex-shrink: 0`` on the input row (below) keeps it from
+     being squeezed despite this rule. */
+  div[class*="st-key-chat_panel_overlay"] > div[data-testid="stVerticalBlock"] >
+    div[data-testid="element-container"] {
+    min-height: 0 !important;
   }
   /* The history container itself fills its now-flex-grown
      element-container parent and provides the internal scroll. */
@@ -654,11 +665,11 @@ _CSS = """
     margin-bottom: 0 !important;
   }
   div[class*="st-key-chat_panel_overlay"] div[class*="st-key-q_"] button {
-    font-size: 13px !important;
-    padding: 6px 12px !important;
+    font-size: 9px !important;
+    padding: 3px 8px !important;
     min-height: 0 !important;
-    border-radius: 6px !important;
-    line-height: 1.35 !important;
+    border-radius: 5px !important;
+    line-height: 1.3 !important;
     text-align: left !important;
     justify-content: flex-start !important;
     background: var(--surface) !important;
