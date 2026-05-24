@@ -17,7 +17,7 @@ QUESTIONS: dict[str, dict[str, list[dict]]] = {
             },
             {
                 "id":      "P2",
-                "text":    "How does my pricing positioning compare across my staple categories vs my non-food categories?",
+                "text":    "How does my pricing position compare across my staple vs non-food categories?",
                 "pattern": "pattern_2_comparison",
             },
             {
@@ -46,7 +46,7 @@ QUESTIONS: dict[str, dict[str, list[dict]]] = {
         "demand": [
             {
                 "id":      "D3",
-                "text":    "What does my basket-mix look like compared to peers? Where am I over-indexed or under-indexed?",
+                "text":    "What does my basket-mix look like compared to peers? Where am I over or under indexed?",
                 "pattern": "pattern_2_comparison",
             },
             {
