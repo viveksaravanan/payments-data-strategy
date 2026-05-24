@@ -622,24 +622,24 @@ _CSS = """
      types — overflow-y handles longer text. Keeps the input
      visually pinned to the bottom of the panel. */
   div[class*="st-key-chat_input_row"] textarea {
-    height: 68px !important;
-    min-height: 68px !important;
-    max-height: 68px !important;
-    font-size: 13px !important;
+    height: 45px !important;
+    min-height: 45px !important;
+    max-height:45px !important;
+    font-size: 16px !important;
     line-height: 1.4 !important;
     resize: none !important;
     overflow-y: auto !important;
   }
   /* Send button — full-height purple pill matching the textarea. */
   div[class*="st-key-chat_input_row"] div[class*="st-key-chat_send_"] button {
-    height: 68px !important;
-    min-height: 68px !important;
+    height: 45px !important;
+    min-height: 45px !important;
     padding: 0 !important;
     border-radius: 8px !important;
     background-color: #534AB7 !important;
     color: #FFFFFF !important;
     border: none !important;
-    font-size: 13px !important;
+    font-size: 16px !important;
     font-weight: 600 !important;
     box-shadow: 0 1px 3px rgba(83, 74, 183, 0.30);
     transition: background-color 0.15s ease;
@@ -654,23 +654,25 @@ _CSS = """
   }
 
   /* Suggested-question pills — always visible (the auto-collapse
-     toggle was removed). Font set slightly bigger than the
-     agent description caption (which renders ~12 px) so the
-     pills read as the primary entry-points, and gap tightened
-     to 2 px between pills. */
-  div[class*="st-key-chat_panel_overlay"] div[class*="st-key-q_"] {
-    margin-bottom: 2px !important;
-  }
-  div[class*="st-key-chat_panel_overlay"] div[class*="st-key-q_"]:last-child {
+     toggle was removed). The pill-to-pill spacing override
+     targets the ``element-container`` layer that Streamlit's
+     ``stVerticalBlock`` flex gap actually spaces — setting
+     margin on the inner ``st-key-q_*`` wrapper doesn't work
+     because flex gap is applied one DOM layer up. Adjust the
+     ``margin-bottom`` value in the rule below to widen/narrow
+     pill-to-pill spacing. */
+  div[class*="st-key-chat_panel_overlay"] > div[data-testid="stVerticalBlock"] >
+    div[data-testid="element-container"]:has(> div[class*="st-key-q_"]) {
+    margin-top: 0 !important;
     margin-bottom: 0 !important;
   }
   div[class*="st-key-chat_panel_overlay"] div[class*="st-key-q_"] button {
     font-size: 9px !important;
-    padding: 3px 8px !important;
+    padding: 2px 6px !important;
     min-height: 0 !important;
     border-radius: 5px !important;
-    line-height: 1.3 !important;
-    text-align: left !important;
+    line-height: 1.2 !important;
+    text-align: center !important;
     justify-content: flex-start !important;
     background: var(--surface) !important;
     border: 1px solid var(--border) !important;
