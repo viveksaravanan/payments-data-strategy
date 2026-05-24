@@ -1470,7 +1470,7 @@ def render_chat_panel(merchant_id: str) -> None:
         )
     with h2:
         if st.button(
-            "Clear chat",
+            "Clear",
             key=f"clear_btn_{merchant_id}",
             help="Wait for current response…" if is_running else "Clear chat history",
             use_container_width=True,
@@ -1510,11 +1510,7 @@ def render_chat_panel(merchant_id: str) -> None:
         state.active_agent = chosen
         # Do NOT reset chat history on agent switch.
 
-    # -- Description --
-    st.caption(A.AGENT_DESCRIPTIONS[state.active_agent])
     agent_label = A.AGENT_LABELS[state.active_agent]
-
-    st.markdown("---")
 
     # Suggested questions — always shown. The previous
     # auto-collapse logic (``suggestions_open_by_merchant``,
