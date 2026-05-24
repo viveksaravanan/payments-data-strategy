@@ -343,6 +343,12 @@ def uc_decline_trajectory(merchant_id: str, filters: dict | None = None) -> dict
     with fewer than 5 peer transactions in UC return ``None`` for that
     peer slot in that week.
     """
+    return _uc_decline_trajectory_cached(merchant_id, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _uc_decline_trajectory_cached(merchant_id: str, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     from datetime import date
 
     lake_t = f"lake_transactions_{merchant_id}"
@@ -538,6 +544,12 @@ def staple_vs_nonfood_pricing(merchant_id: str, filters: dict | None = None) -> 
     Cells with peer line count < 5 (k-anon, Phase 1.5) are returned
     as ``None`` so the chart helper omits the bar.
     """
+    return _staple_vs_nonfood_pricing_cached(merchant_id, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _staple_vs_nonfood_pricing_cached(merchant_id: str, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     extra_where, extra_params = _own_filters_sql(filters)
 
     lake_t = f"lake_transactions_{merchant_id}"
@@ -658,6 +670,12 @@ def basket_mix_vs_peers(merchant_id: str, filters: dict | None = None) -> dict:
     Returns categories sorted by ``delta_pp`` descending so the chart
     reads "most over-indexed" at top, "most under-indexed" at bottom.
     """
+    return _basket_mix_vs_peers_cached(merchant_id, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _basket_mix_vs_peers_cached(merchant_id: str, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     extra_where, extra_params = _own_filters_sql(filters)
 
     lake_t = f"lake_transactions_{merchant_id}"
@@ -777,6 +795,12 @@ def category_peer_pricing_gaps(merchant_id: str, filters: dict | None = None) ->
         max_below:            same shape for the widest negative gap
         n_suppressed:         count of cells suppressed for k<5
     """
+    return _category_peer_pricing_gaps_cached(merchant_id, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _category_peer_pricing_gaps_cached(merchant_id: str, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     lake_t = f"lake_transactions_{merchant_id}"
 
     # Date + stores filter applied to OWN-side price aggregates.
@@ -890,6 +914,12 @@ def category_pricing_leverage(merchant_id: str, filters: dict | None = None) -> 
     per-category mean unit price. Categories where both peers fall
     below the k=5 floor are skipped entirely (no useful comparison).
     """
+    return _category_pricing_leverage_cached(merchant_id, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _category_pricing_leverage_cached(merchant_id: str, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     extra_where, extra_params = _own_filters_sql(filters)
 
     lake_t = f"lake_transactions_{merchant_id}"
@@ -989,6 +1019,12 @@ def category_share_vs_peer_share(merchant_id: str, filters: dict | None = None) 
     positioning. Below the line: own under-indexes (peers carry more
     of that category). Above the line: own over-indexes.
     """
+    return _category_share_vs_peer_share_cached(merchant_id, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _category_share_vs_peer_share_cached(merchant_id: str, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     extra_where, extra_params = _own_filters_sql(filters)
 
     lake_t = f"lake_transactions_{merchant_id}"
@@ -1136,6 +1172,12 @@ def revenue_gap_decomposition(merchant_id: str, filters: dict | None = None) -> 
     Empty (``has_peers: False``) for merchants without same-segment
     peers (TBL, TJX).
     """
+    return _revenue_gap_decomposition_cached(merchant_id, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _revenue_gap_decomposition_cached(merchant_id: str, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     import math
 
     if not has_same_segment_peers(merchant_id):
@@ -1362,6 +1404,12 @@ def neighborhood_performance(merchant_id: str, filters: dict | None = None) -> d
             "own_baseline":  own panel txns-per-store baseline.
         }
     """
+    return _neighborhood_performance_cached(merchant_id, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _neighborhood_performance_cached(merchant_id: str, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     extra_where, extra_params = _own_filters_sql(filters)
 
     lake_t = f"lake_transactions_{merchant_id}"
@@ -1513,9 +1561,15 @@ def customer_home_density(merchant_id: str, filters: dict | None = None) -> dict
             "own_markers": list[{lat, lon, tooltip}] for the overlay.
         }
     """
+    return _customer_home_density_cached(merchant_id, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _customer_home_density_cached(merchant_id: str, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     # Stores filter narrows the customer set to "customers who shopped
     # at the selected stores" — date filter narrows to that window.
-    f = filters or {}
+    f = filters
     extra_where = ""
     extra_params: list = []
     if f.get("date_start"):
@@ -1634,6 +1688,12 @@ def expansion_opportunity(merchant_id: str, filters: dict | None = None) -> dict
     Returns top-N neighborhoods plus an under-/over-represented
     classification for the takeaway.
     """
+    return _expansion_opportunity_cached(merchant_id, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _expansion_opportunity_cached(merchant_id: str, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     extra_where, extra_params = _own_filters_sql(filters)
 
     lake_s = f"lake_stores_{merchant_id}"
@@ -1864,13 +1924,19 @@ def store_anomalies(merchant_id: str, filters: dict | None = None) -> dict:
                                       "peers flat" / "limited peer footprint".
         }
     """
+    return _store_anomalies_cached(merchant_id, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _store_anomalies_cached(merchant_id: str, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     # Stores filter applies to OWN-side: the user's selection restricts
     # which stores appear in the recent/baseline rollup. Date filter is
     # NOT additionally applied here because recent/baseline use fixed
     # week anchors (_A_RECENT_WEEK_START / _A_BASELINE_WEEK_*); the
     # caller's date_range narrows context for other helpers but the
     # anomaly comparison stays week-anchored. Peer overlay unchanged.
-    f = filters or {}
+    f = filters
     store_extra_where = ""
     store_extra_params: list = []
     if f.get("stores"):
@@ -2005,6 +2071,12 @@ def category_anomalies(merchant_id: str, filters: dict | None = None) -> dict:
             "peer_signal_for_top": short text.
         }
     """
+    return _category_anomalies_cached(merchant_id, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _category_anomalies_cached(merchant_id: str, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     extra_where, extra_params = _own_filters_sql(filters)
 
     lake_t = f"lake_transactions_{merchant_id}"
@@ -2205,10 +2277,16 @@ def new_vs_returning(
     how the new-customer share moved vs the prior 4-week mean
     new-share.
     """
+    return _new_vs_returning_cached(merchant_id, week_start, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _new_vs_returning_cached(merchant_id: str, week_start: str, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     # ``tenant_transactions`` queries here use unaliased ``txn_ts`` /
     # ``store_id``; the standard ``_own_filters_sql`` returns
     # ``t.``-prefixed fragments, so build the WHERE manually.
-    f = filters or {}
+    f = filters
     extra_where = ""
     extra_params: list = []
     if f.get("date_start"):
@@ -2282,6 +2360,12 @@ def transactions_per_customer(merchant_id: str, filters: dict | None = None) -> 
 
     Buckets: ``1``, ``2-3``, ``4-6``, ``7-10``, ``11+`` visits.
     """
+    return _transactions_per_customer_cached(merchant_id, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _transactions_per_customer_cached(merchant_id: str, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     extra_where, extra_params = _own_filters_sql(filters)
 
     with _conn() as c:
@@ -2359,6 +2443,12 @@ def sku_performance(merchant_id: str, filters: dict | None = None) -> dict:
     Returns all SKUs (no top-N cap) so the renderer can sort + slice
     per view without re-querying.
     """
+    return _sku_performance_cached(merchant_id, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _sku_performance_cached(merchant_id: str, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     extra_where, extra_params = _own_filters_sql(filters)
 
     with _conn() as c:
@@ -2444,6 +2534,12 @@ def performance_trajectory(merchant_id: str, filters: dict | None = None) -> dic
                                    "both" | "neither, mixed",
         }
     """
+    return _performance_trajectory_cached(merchant_id, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _performance_trajectory_cached(merchant_id: str, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     extra_where, extra_params = _own_filters_sql(filters)
 
     weeks = [
@@ -2703,7 +2799,13 @@ def kpi_strip(merchant_id: str, filters: dict | None = None) -> dict:
             "anomaly":          {...},
         }
     """
-    f = filters or {}
+    return _kpi_strip_cached(merchant_id, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _kpi_strip_cached(merchant_id: str, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
+    f = filters
     date_start, date_end = _resolve_dates(f)
     extra_where, extra_params = _own_filters_sql(f)
 
@@ -3038,6 +3140,12 @@ def tbl_daypart_ticket_trends(merchant_id: str, filters: dict | None = None) -> 
     bottom-of-card takeaway names the daypart with the largest ticket
     drift (positive or negative).
     """
+    return _tbl_daypart_ticket_trends_cached(merchant_id, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _tbl_daypart_ticket_trends_cached(merchant_id: str, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     extra_where, extra_params = _own_filters_sql(filters)
 
     weeks = _full_weeks(merchant_id, filters=filters)
@@ -3124,6 +3232,12 @@ def category_unit_price_trends(
     framed as "ticket trends across categories"). Returns top
     ``top_n`` categories by total revenue across the 12-week window.
     """
+    return _category_unit_price_trends_cached(merchant_id, top_n, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _category_unit_price_trends_cached(merchant_id: str, top_n: int, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     extra_where, extra_params = _own_filters_sql(filters)
 
     weeks = _full_weeks(merchant_id, filters=filters)
@@ -3211,6 +3325,12 @@ def per_store_mean_ticket(merchant_id: str, filters: dict | None = None) -> dict
     chain-mean reference line and >1σ outlier highlighting. Pattern 2
     own-only-bars shape. Used by T-P3.
     """
+    return _per_store_mean_ticket_cached(merchant_id, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _per_store_mean_ticket_cached(merchant_id: str, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     extra_where, extra_params = _own_filters_sql(filters)
 
     with _conn() as c:
@@ -3284,7 +3404,13 @@ def store_anomalies_own_only(merchant_id: str, filters: dict | None = None) -> d
     """Per-store deviation table for merchants without same-segment
     peers. Same first-4w baseline as A2; no peer-neighborhood column.
     """
-    f = filters or {}
+    return _store_anomalies_own_only_cached(merchant_id, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _store_anomalies_own_only_cached(merchant_id: str, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
+    f = filters
     store_extra_where = ""
     store_extra_params: list = []
     txn_extra_where = ""
@@ -3371,6 +3497,12 @@ def sku_anomalies(
     ``top_n`` by absolute deviation so the table stays scannable in
     the 35 % chat panel (TBL has ~60 SKUs total).
     """
+    return _sku_anomalies_cached(merchant_id, top_n, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _sku_anomalies_cached(merchant_id: str, top_n: int, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     extra_where, extra_params = _own_filters_sql(filters)
 
     with _conn() as c:
@@ -3450,6 +3582,12 @@ def day_daypart_heatmap(merchant_id: str, filters: dict | None = None) -> dict:
     with fewer than 5 transactions in the recent window are returned
     as ``None`` (per-cell suppression, consistent with the k=5
     convention applied elsewhere)."""
+    return _day_daypart_heatmap_cached(merchant_id, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _day_daypart_heatmap_cached(merchant_id: str, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     extra_where, extra_params = _own_filters_sql(filters)
 
     with _conn() as c:
@@ -3540,6 +3678,12 @@ def category_share_own(
     """Per-category share of own revenue. Top ``top_n`` categories;
     smaller categories rolled into "Other". Pattern 2 own-only-bars.
     """
+    return _category_share_own_cached(merchant_id, top_n, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _category_share_own_cached(merchant_id: str, top_n: int, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     extra_where, extra_params = _own_filters_sql(filters)
 
     with _conn() as c:
@@ -3595,6 +3739,12 @@ def category_share_trajectory(
     window. Pattern 1 own-multi. Highlights the most-rising and
     most-falling categories for the takeaway.
     """
+    return _category_share_trajectory_cached(merchant_id, top_n, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _category_share_trajectory_cached(merchant_id: str, top_n: int, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     extra_where, extra_params = _own_filters_sql(filters)
 
     weeks = _full_weeks(merchant_id, filters=filters)
@@ -3694,6 +3844,12 @@ def revenue_change_decomposition_own(merchant_id: str, filters: dict | None = No
     across the baseline → recent window). Drivers Mix / Residual are
     0-valued placeholders matching D7's convention.
     """
+    return _revenue_change_decomposition_own_cached(merchant_id, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _revenue_change_decomposition_own_cached(merchant_id: str, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     import math
 
     extra_where, extra_params = _own_filters_sql(filters)
@@ -3801,6 +3957,12 @@ def category_price_spread(merchant_id: str, filters: dict | None = None) -> dict
     """Per-category min / median / max unit price + spread ratio
     (max / min). Pattern 9 table shape for R-P2.
     """
+    return _category_price_spread_cached(merchant_id, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _category_price_spread_cached(merchant_id: str, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     extra_where, extra_params = _own_filters_sql(filters)
 
     with _conn() as c:
@@ -3866,10 +4028,16 @@ def ticket_band_distribution(merchant_id: str, filters: dict | None = None) -> d
     grouped-bars data shape (R-P3). Both metrics expressed as
     percentages on a common 0-100 scale for clean grouped display.
     """
+    return _ticket_band_distribution_cached(merchant_id, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _ticket_band_distribution_cached(merchant_id: str, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     # ``tenant_transactions`` is unaliased here, so build the filter
     # WHERE manually (the standard helper returns ``t.``-prefixed
     # fragments).
-    f = filters or {}
+    f = filters
     extra_where = ""
     extra_params: list = []
     if f.get("date_start"):
@@ -3938,6 +4106,12 @@ def day_week_heatmap(merchant_id: str, filters: dict | None = None) -> dict:
     day's first-4w baseline mean. Pattern 3 own_only_diverging shape
     (R-A3). Cells with recent count <5 are suppressed.
     """
+    return _day_week_heatmap_cached(merchant_id, _filters_key(filters or {}))
+
+
+@st.cache_data(ttl=3600)
+def _day_week_heatmap_cached(merchant_id: str, key: tuple) -> dict:
+    filters = _unpack_filters_key(key)
     # Use the same 4-week-baseline / recent-4-weeks comparison as the
     # other anomaly questions, but expanded to all 4 recent weeks so
     # the heatmap surfaces day-of-week patterns across the recent
