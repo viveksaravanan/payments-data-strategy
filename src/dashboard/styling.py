@@ -549,6 +549,23 @@ _CSS = """
   /* Phase 4.5 polish: fixed 96 px width so the pill doesn't stretch
      when the panel transitions from 40 vw → 90 vw. The wrapper rule
      right-aligns the constrained-width button within its column. */
+  /* Header action cluster — Clear + ✕ live in nested ``st.columns``
+     inside a ``chat_header_actions`` container. Pin the cluster
+     flush to the right edge of the header so the buttons sit
+     immediately adjacent to each other and don't drift when the
+     panel transitions 40 vw → 90 vw (the outer column expands
+     but the cluster stays right-anchored with a fixed total
+     width). */
+  div[class*="st-key-chat_header_actions"] {
+    width: 124px !important;          /* 88 Clear + 4 gap + 28 ✕ + 4 slack */
+    max-width: 124px !important;
+    margin-left: auto !important;
+  }
+  div[class*="st-key-chat_header_actions"] div[data-testid="stHorizontalBlock"] {
+    gap: 4px !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+  }
   div[class*="st-key-clear_btn_"] {
     display: flex !important;
     justify-content: flex-end !important;

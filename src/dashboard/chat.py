@@ -1432,16 +1432,14 @@ def render_chat_panel(merchant_id: str) -> None:
             state.chat_state = "side" if expanded else "expanded"
             st.rerun()
 
-    # -- Header row: avatar + title (left), Clear chat + X close
-    # (right). The expand button moved out of the header to a round
-    # button on the middle-left edge of the panel (rendered after
-    # the panel content via a CSS-positioned ``st.container``). --
-    # Phase 4.5 polish: tightened column ratios from [0.65, 0.22, 0.13]
-    # → [0.72, 0.18, 0.10] so the Clear chat + X close columns sit
-    # tighter against the right edge. The button widths are CSS-
-    # pinned (88 px / 28 px) regardless of column allocation; the
-    # tighter ratios just reduce whitespace around them.
-    h1, h2, h3 = st.columns([0.72, 0.18, 0.10], gap="small")
+    # -- Header row: avatar + title (left), Clear+X cluster (right).
+    # The two action buttons live in a single nested column pair so
+    # Clear sits immediately adjacent to X; the cluster is wrapped
+    # in a keyed container so CSS can pin the whole group flush to
+    # the right edge of the header regardless of how the outer
+    # column proportionally resizes when the panel transitions
+    # 40 vw → 90 vw. --
+    h1, h_actions = st.columns([1, 0.30], gap="small")
     with h1:
         # Avatar (purple circle) + title — canonical sparkles SVG in
         # #534AB7 on #EEEDFE soft fill. The subtitle line below the
@@ -1471,28 +1469,31 @@ def render_chat_panel(merchant_id: str) -> None:
             """,
             unsafe_allow_html=True,
         )
-    with h2:
-        if st.button(
-            "Clear",
-            key=f"clear_btn_{merchant_id}",
-            help="Wait for current response…" if is_running else "Clear chat history",
-            use_container_width=True,
-            disabled=is_running,
-            type="secondary",
-        ):
-            reset_history(merchant_id)
-            st.rerun()
-    with h3:
-        if st.button(
-            "✕",
-            key=f"close_btn_{merchant_id}",
-            help="Close chat panel",
-            use_container_width=True,
-            disabled=is_running,
-            type="secondary",
-        ):
-            state.chat_state = "closed"
-            st.rerun()
+    with h_actions:
+        with st.container(key="chat_header_actions"):
+            ha, hb = st.columns([0.78, 0.22], gap="small")
+            with ha:
+                if st.button(
+                    "Clear",
+                    key=f"clear_btn_{merchant_id}",
+                    help="Wait for current response…" if is_running else "Clear chat history",
+                    use_container_width=True,
+                    disabled=is_running,
+                    type="secondary",
+                ):
+                    reset_history(merchant_id)
+                    st.rerun()
+            with hb:
+                if st.button(
+                    "✕",
+                    key=f"close_btn_{merchant_id}",
+                    help="Close chat panel",
+                    use_container_width=True,
+                    disabled=is_running,
+                    type="secondary",
+                ):
+                    state.chat_state = "closed"
+                    st.rerun()
 
     # -- Agent selector — back to ``st.selectbox`` (the radio aesthetic
     # was generic Streamlit default; the dropdown is cleaner). The
