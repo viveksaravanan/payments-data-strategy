@@ -40,7 +40,7 @@ from . import questions as Q
 # ---------------------------------------------------------------------------
 
 def _render_telemetry_inline() -> None:
-    """One-line 8 px cost / token telemetry below the chat input. Only
+    """One-line cost / token telemetry below the chat input. Only
     rendered when at least one LLM call has been made this session."""
     try:
         from src.agents import llm as _llm
@@ -50,8 +50,9 @@ def _render_telemetry_inline() -> None:
     if not (totals and totals.get("calls", 0) > 0):
         return
     st.markdown(
-        f'<div style="font-size:8px;color:var(--text-muted);'
-        f'margin:2px 0 0 0;letter-spacing:0.02em;line-height:1.3;">'
+        f'<div style="font-size:10px;color:var(--text-muted);'
+        f'margin:4px 0 0 0;letter-spacing:0.02em;line-height:1.3;'
+        f'text-align:right;">'
         f'{totals["calls"]} calls · '
         f'{totals["input_tokens"]:,} in / '
         f'{totals["output_tokens"]:,} out · '
@@ -1461,7 +1462,7 @@ def render_chat_panel(merchant_id: str) -> None:
                            L19 20 L18.3 17.7 L16 17 L18.3 16.3 Z"/>
                 </svg>
               </div>
-              <div style="font-size:16px;font-weight:600;
+              <div style="font-size:24px;font-weight:600;
                    color:var(--text);">Ask the data</div>
             </div>
             """,
@@ -1515,67 +1516,22 @@ def render_chat_panel(merchant_id: str) -> None:
 
     st.markdown("---")
 
-    # Suggested questions — auto-collapse logic (Phase 4.5 polish).
-    # When the merchant has no chat history yet, the 3 suggested-
-    # question pills render expanded so the cold-open invites a
-    # click. Once history exists, the pills collapse to a small
-    # "▸ Suggested questions" link to free vertical space for the
-    # conversation; clicking the link expands them with a "▾ Hide
-    # suggestions" toggle.
-    #
-    # State: ``suggestions_open_by_merchant[merchant_id]`` — bool.
-    # Default: True iff the history is empty. Survives reruns. A
-    # specialist switch with non-empty history resets to False
-    # (collapsed) so the merchant isn't forced to re-collapse after
-    # each switch.
-    state.setdefault("suggestions_open_by_merchant", {})
-    state.setdefault("last_active_agent_by_merchant", {})
-    sob = state.suggestions_open_by_merchant
-    laa = state.last_active_agent_by_merchant
-    if merchant_id not in sob:
-        sob[merchant_id] = not bool(history)
-    # If the user just switched specialists and history exists,
-    # collapse the new specialist's suggestions.
-    if laa.get(merchant_id) != state.active_agent and history:
-        sob[merchant_id] = False
-    laa[merchant_id] = state.active_agent
-
-    show_pills = sob[merchant_id]
-
+    # Suggested questions — always shown. The previous
+    # auto-collapse logic (``suggestions_open_by_merchant``,
+    # ``last_active_agent_by_merchant``, ``▾ Hide`` / ``▸ Show``
+    # toggles) was removed: it was broken and added complexity
+    # without enough payoff. The pills stay visible at all times.
     clicked: tuple[str, str] | None = None
-    if show_pills:
-        for q in Q.questions_for(merchant_id, state.active_agent):
-            qid, qtext = q["id"], q["text"]
-            if st.button(
-                qtext,
-                key=f"q_{merchant_id}_{state.active_agent}_{qid}",
-                use_container_width=True,
-                disabled=is_running,
-                type="secondary",
-            ):
-                clicked = (qid, qtext)
-        # "Hide suggestions" toggle (only when pills are expanded
-        # AND history is non-empty — empty history leaves the pills
-        # always-visible since there's nothing to hide them for).
-        if history:
-            if st.button(
-                "▾ Hide suggestions",
-                key=f"hide_suggestions_{merchant_id}",
-                disabled=is_running,
-                type="secondary",
-            ):
-                sob[merchant_id] = False
-                st.rerun()
-    else:
-        # Collapsed state — a one-line link/button to re-expand.
+    for q in Q.questions_for(merchant_id, state.active_agent):
+        qid, qtext = q["id"], q["text"]
         if st.button(
-            "▸ Suggested questions",
-            key=f"show_suggestions_{merchant_id}",
+            qtext,
+            key=f"q_{merchant_id}_{state.active_agent}_{qid}",
+            use_container_width=True,
             disabled=is_running,
             type="secondary",
         ):
-            sob[merchant_id] = True
-            st.rerun()
+            clicked = (qid, qtext)
 
     if clicked is not None and not is_running:
         qid, qtext = clicked
@@ -1603,15 +1559,13 @@ def render_chat_panel(merchant_id: str) -> None:
     # gives the history a substantial vertical share. --
     chat_box = st.container(height=380, border=True, key="chat_history")
 
-    # -- Free-form input (Variant B "rounded pill with inline arrow")
-    # The text-area + Send button are placed in an
-    # ``st.columns([1, 0.13])`` row inside the pill container so
-    # they render side-by-side regardless of Streamlit's internal
-    # widget wrapping (the prior absolute-positioning approach
-    # depended on ``:has()`` selectors matching Streamlit's exact
-    # DOM; columns are more robust). The pill wrapper CSS hides
-    # the column gap + Streamlit's per-widget chrome so the row
-    # reads as one rounded element. --
+    # -- Free-form input — simple text area + Send button to the
+    # right. The whole row is pinned to the bottom of the chat
+    # panel by the flex layout in styling.py (the chat-history
+    # element-container has ``flex: 1 1 auto`` so it grows to
+    # fill all space above this row). The text-area is CSS-locked
+    # to a fixed height so it doesn't move as the user types
+    # (overflow-y: auto handles longer text). --
     prefill = state.chat_input_prefill or ""
     # Re-key the textarea per (merchant_id, prefill-hash) so a fresh
     # prefill from an affordance click forces the widget to remount
@@ -1619,7 +1573,7 @@ def render_chat_panel(merchant_id: str) -> None:
     # the prior textarea content and ignores the value kwarg.
     input_key = f"chat_input_{merchant_id}_{hash(prefill) & 0xFFFF:04x}"
     with st.container(key="chat_input_row"):
-        col_input, col_send = st.columns([1, 0.13], gap="small")
+        col_input, col_send = st.columns([1, 0.18], gap="small")
         with col_input:
             free_q = st.text_area(
                 "Ask anything…",
@@ -1632,11 +1586,11 @@ def render_chat_panel(merchant_id: str) -> None:
             )
         with col_send:
             send_clicked = st.button(
-                "›",
+                "Send",
                 key=f"chat_send_{merchant_id}",
                 type="primary",
                 disabled=is_running,
-                help="Send",
+                use_container_width=True,
             )
         if send_clicked:
             if free_q and free_q.strip():

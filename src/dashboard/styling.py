@@ -412,17 +412,16 @@ _CSS = """
     height: 100% !important;
     gap: 6px !important;
   }
-  /* The chat-history container is the only flex-grow row — fills
-     whatever room is left after the fixed-size rows above and the
-     pinned input row below. ``:has()`` finds the
-     ``element-container`` whose direct child is the keyed history
-     container. ``min-height: 0`` is essential — without it, flex
-     children default to min-content size and the panel grows
-     past the viewport, restoring panel-level scroll. */
+  /* The chat-history container is the dominant row — sized to
+     60% of the panel height per the latest design ask, with
+     ``flex-grow`` to absorb any additional slack if the header
+     rows shrink. ``min-height: 0`` is essential — without it,
+     flex children default to min-content size and the panel
+     grows past the viewport, restoring panel-level scroll. */
   div[class*="st-key-chat_panel_overlay"] > div[data-testid="stVerticalBlock"] >
     div[data-testid="element-container"]:has(> div[class*="st-key-chat_history"]) {
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
+    flex: 1 1 60% !important;
+    min-height: 60% !important;
     overflow: hidden !important;
   }
   /* The history container itself fills its now-flex-grown
@@ -481,14 +480,12 @@ _CSS = """
     background-color: #EEEDFE !important;
   }
 
-  /* Phase 4.5 polish — chat panel viewport sizing.
-     The chat-history container ("chat_history") inside the panel had
-     a fixed 320px height; allow it to grow to fill the available
-     space inside the panel, so the panel reads as one continuous
-     pane fitting the viewport. */
+  /* Chat-history container — fills its 60% flex parent. The
+     element-container above provides the height; the inner
+     container just stretches and scrolls. */
   div[class*="st-key-chat_history"] {
-    height: auto !important;
-    max-height: calc(100vh - 380px) !important;
+    height: 100% !important;
+    max-height: none !important;
   }
 
   /* Middle-left expand button — round chevron anchored to the
@@ -594,114 +591,74 @@ _CSS = """
     pointer-events: none;  /* purely visual — click-to-close not wired in this commit */
   }
 
-  /* Phase 4.5 final — Variant B rounded input pill (column layout).
-
-     The textarea + Send button live in an ``st.columns([1, 0.13])``
-     row inside the pill container — guaranteed side-by-side via
-     Streamlit's column primitive (was previously
-     absolute-positioned, which depended on ``:has()`` matching
-     Streamlit's exact DOM). The pill wrapper CSS hides the column
-     gap + flattens Streamlit's per-widget chrome so the row reads
-     as one rounded element. */
+  /* Simple chat input row — plain text area + Send button at
+     the right. No rounded pill chrome (the prior "Variant B"
+     wrapper styling was removed at the user's request: "keep
+     this simple"). The row sits at the bottom of the panel
+     because the chat-history element-container above has
+     ``flex: 1 1 60%`` and absorbs all the space above. */
   div[class*="st-key-chat_input_row"] {
-    background: #FFFFFF !important;
-    border: 1px solid var(--border) !important;
-    border-radius: 22px !important;
-    padding: 2px 8px 2px 14px !important;
-    margin-top: 4px !important;
-    box-shadow: 0 1px 3px rgba(15, 31, 46, 0.04);
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    margin-top: 6px !important;
+    flex-shrink: 0 !important;
   }
-  div[class*="st-key-chat_input_row"]:focus-within {
-    border-color: #534AB7 !important;
-    box-shadow: 0 0 0 3px rgba(83, 74, 183, 0.12);
-  }
-  /* Tighten the columns gap so the textarea sits flush against the
-     Send button. */
   div[class*="st-key-chat_input_row"] div[data-testid="stHorizontalBlock"] {
-    gap: 4px !important;
-    align-items: center !important;
-  }
-  /* Strip Streamlit's textarea chrome so the textarea reads as the
-     pill's interior — no border, no shadow, no background. */
-  div[class*="st-key-chat_input_row"] [data-testid="stTextArea"],
-  div[class*="st-key-chat_input_row"] [data-testid="stTextArea"] > div,
-  div[class*="st-key-chat_input_row"] [data-testid="stTextAreaRootElement"] {
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-  }
-  div[class*="st-key-chat_input_row"] textarea {
-    border: none !important;
-    outline: none !important;
-    box-shadow: none !important;
-    background: transparent !important;
-    padding: 6px 0 !important;
-    min-height: 28px !important;
-    max-height: 80px !important;
-    font-size: 13px !important;
-    line-height: 1.4 !important;
-    resize: none !important;
-    font-family: inherit !important;
-  }
-  div[class*="st-key-chat_input_row"] textarea:focus {
-    border: none !important;
-    outline: none !important;
-    box-shadow: none !important;
+    align-items: stretch !important;
   }
   div[class*="st-key-chat_input_row"] [data-testid="stWidgetLabel"] {
     display: none !important;
   }
-  /* The button itself — 32 × 32 purple circle with white SVG arrow.
-     ``font-size: 0`` hides the ``›`` glyph fallback. */
+  /* Lock the textarea height so it doesn't grow as the user
+     types — overflow-y handles longer text. Keeps the input
+     visually pinned to the bottom of the panel. */
+  div[class*="st-key-chat_input_row"] textarea {
+    height: 68px !important;
+    min-height: 68px !important;
+    max-height: 68px !important;
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+    resize: none !important;
+    overflow-y: auto !important;
+  }
+  /* Send button — full-height purple pill matching the textarea. */
   div[class*="st-key-chat_input_row"] div[class*="st-key-chat_send_"] button {
-    width: 32px !important;
-    height: 32px !important;
-    min-width: 32px !important;
-    min-height: 0 !important;
+    height: 68px !important;
+    min-height: 68px !important;
     padding: 0 !important;
-    border-radius: 50% !important;
+    border-radius: 8px !important;
     background-color: #534AB7 !important;
-    background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 19V5'/%3E%3Cpath d='M5 12 L12 5 L19 12'/%3E%3C/svg%3E") !important;
-    background-repeat: no-repeat !important;
-    background-position: center !important;
-    background-size: 16px 16px !important;
+    color: #FFFFFF !important;
     border: none !important;
-    color: transparent !important;
-    font-size: 0 !important;
-    line-height: 1 !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
     box-shadow: 0 1px 3px rgba(83, 74, 183, 0.30);
-    transition: background-color 0.15s ease, transform 0.1s ease;
+    transition: background-color 0.15s ease;
   }
   div[class*="st-key-chat_input_row"] div[class*="st-key-chat_send_"] button:hover {
     background-color: #443B9F !important;
-    transform: translateY(-1px);
+    color: #FFFFFF !important;
   }
   div[class*="st-key-chat_input_row"] div[class*="st-key-chat_send_"] button:disabled {
     background-color: var(--text-muted) !important;
     cursor: not-allowed;
-    transform: none;
   }
 
-  /* Phase 4.5 polish — compact suggested-question pills.
-     The 3 suggested-question buttons inside the chat panel.
-     Bumped down to a 10 px font with tight 3 px gaps so the
-     section's total height drops from ~138 px → ~84 px,
-     freeing room for the chat-history flex grow. */
+  /* Suggested-question pills — always visible (the auto-collapse
+     toggle was removed). Font set slightly bigger than the
+     agent description caption (which renders ~12 px) so the
+     pills read as the primary entry-points, and gap tightened
+     to 2 px between pills. */
   div[class*="st-key-chat_panel_overlay"] div[class*="st-key-q_"] {
-    margin-bottom: 3px !important;
+    margin-bottom: 2px !important;
   }
   div[class*="st-key-chat_panel_overlay"] div[class*="st-key-q_"]:last-child {
     margin-bottom: 0 !important;
   }
   div[class*="st-key-chat_panel_overlay"] div[class*="st-key-q_"] button {
-    font-size: 10px !important;
-    padding: 5px 10px !important;
+    font-size: 13px !important;
+    padding: 6px 12px !important;
     min-height: 0 !important;
     border-radius: 6px !important;
-    line-height: 1.4 !important;
+    line-height: 1.35 !important;
     text-align: left !important;
     justify-content: flex-start !important;
     background: var(--surface) !important;
