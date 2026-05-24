@@ -71,6 +71,19 @@ def _filters_key(filters: dict) -> tuple:
     )
 
 
+def _resolve_dates(filters: dict | None) -> tuple[date, date]:
+    """Resolve the filter's date range to a concrete ``(start, end)``
+    pair, defaulting to the full panel range. Used by helpers with
+    a fixed analytical window so they can narrow the window to the
+    user's selection while preserving default behavior."""
+    f = filters or {}
+    start = f.get("date_start") or PANEL_START
+    end   = f.get("date_end")   or PANEL_END
+    return start, end
+
+
+# Filter scope rule: filters["stores"] narrows OWN merchant data only.
+# Peer data is segment-aggregate and not viewer-constrainable.
 def _txn_where(filters: dict) -> tuple[str, list]:
     """WHERE-clause fragments that apply to `tenant_transactions t`
     (no products join). Returns `(clause_text, params)`. Always begins
@@ -101,6 +114,36 @@ def _category_where(filters: dict) -> tuple[str, list]:
 
 def _has_category_filter(filters: dict) -> bool:
     return bool(filters.get("categories"))
+
+
+def _own_filters_sql(filters: dict | None) -> tuple[str, list]:
+    """Returns ``(extra_where, extra_params)`` for direct injection
+    after an existing ``WHERE t.merchant_id = ?`` clause. Applies the
+    date range and (when non-empty) the stores filter against the
+    OWN merchant's transactions. Returns ``("", [])`` for default
+    filters. The clause is pre-prefixed with `` AND `` so callers
+    can use ``f"WHERE t.merchant_id = ?{extra_where}"`` directly.
+
+    Empty ``stores`` list = no constraint (per spec). Category filter
+    requires a products join and is NOT applied here — callers that
+    need category filtering use ``_category_where`` directly.
+    """
+    f = filters or {}
+    parts: list[str] = []
+    params: list = []
+    if f.get("date_start"):
+        parts.append("DATE(t.txn_ts) >= ?")
+        params.append(f["date_start"].isoformat())
+    if f.get("date_end"):
+        parts.append("DATE(t.txn_ts) <= ?")
+        params.append(f["date_end"].isoformat())
+    if f.get("stores"):
+        ph = ",".join("?" for _ in f["stores"])
+        parts.append(f"t.store_id IN ({ph})")
+        params.extend(f["stores"])
+    if not parts:
+        return "", []
+    return " AND " + " AND ".join(parts), params
 
 
 # ---------------------------------------------------------------------------
@@ -272,8 +315,7 @@ _A1_BASELINE_WEEKS  = 4
 _A1_DECLINE_PCT     = 15.0
 
 
-@st.cache_data(ttl=3600)
-def uc_decline_trajectory(merchant_id: str) -> dict:
+def uc_decline_trajectory(merchant_id: str, filters: dict | None = None) -> dict:
     """Weekly transaction trajectory for the merchant's University City
     stores plus same-segment peers (peer_a, peer_b), normalized to a
     4-week baseline. Used by A1.
@@ -306,20 +348,30 @@ def uc_decline_trajectory(merchant_id: str) -> dict:
     lake_t = f"lake_transactions_{merchant_id}"
     lake_s = f"lake_stores_{merchant_id}"
 
+    # Decision 3: filters["stores"] intersects with the merchant's UC
+    # stores. If the user picked stores none of which are in UC, the
+    # OWN query returns nothing and ``_render_a1`` falls into its
+    # existing "no UC stores in the panel" empty-state path with the
+    # peer overlays still rendered (peer overlays are unfiltered per
+    # the scope rule).
+    f = filters or {}
+    own_extra_where, own_extra_params = _own_filters_sql(f)
+
     with _conn() as c:
         own_rows = c.execute(
-            """
+            f"""
             SELECT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
                    COUNT(DISTINCT t.txn_id) AS n
             FROM tenant_transactions t
             JOIN tenant_stores s ON s.store_id = t.store_id
-            WHERE t.merchant_id = ?
+            WHERE t.merchant_id = ?{own_extra_where}
               AND s.neighborhood = 'University City'
               AND DATE(t.txn_ts, 'weekday 0', '-6 days') BETWEEN ? AND ?
             GROUP BY week
             ORDER BY week
             """,
-            (merchant_id, _A1_FULL_WEEK_FIRST, _A1_FULL_WEEK_LAST),
+            (merchant_id, *own_extra_params,
+             _A1_FULL_WEEK_FIRST, _A1_FULL_WEEK_LAST),
         ).fetchall()
 
         peer_rows = c.execute(
@@ -467,8 +519,7 @@ _P2_LOOSE_CATEGORIES = ["BABY", "HOUSEHOLD", "PERSONAL", "PET"]
 _P2_TIER_SYMMETRY_PP = 2.0
 
 
-@st.cache_data(ttl=3600)
-def staple_vs_nonfood_pricing(merchant_id: str) -> dict:
+def staple_vs_nonfood_pricing(merchant_id: str, filters: dict | None = None) -> dict:
     """Per-tier × per-peer pricing comparison for P2 (Pattern 2 two-panel).
 
     Returns a dict shaped for ``render_cross_merchant_comparison(mode='two_panel')``:
@@ -487,6 +538,8 @@ def staple_vs_nonfood_pricing(merchant_id: str) -> dict:
     Cells with peer line count < 5 (k-anon, Phase 1.5) are returned
     as ``None`` so the chart helper omits the bar.
     """
+    extra_where, extra_params = _own_filters_sql(filters)
+
     lake_t = f"lake_transactions_{merchant_id}"
     all_tiers = _P2_TIGHT_CATEGORIES + _P2_LOOSE_CATEGORIES
     placeholders = ",".join("?" * len(all_tiers))
@@ -500,11 +553,11 @@ def staple_vs_nonfood_pricing(merchant_id: str) -> dict:
             FROM tenant_transaction_items i
             JOIN tenant_products p     ON p.sku    = i.sku
             JOIN tenant_transactions t ON t.txn_id = i.txn_id
-            WHERE t.merchant_id = ?
+            WHERE t.merchant_id = ?{extra_where}
               AND p.category IN ({placeholders})
             GROUP BY p.category
             """,
-            (merchant_id, *all_tiers),
+            (merchant_id, *extra_params, *all_tiers),
         ).fetchall()
 
         peer_rows = c.execute(
@@ -592,8 +645,7 @@ def staple_vs_nonfood_pricing(merchant_id: str) -> dict:
 # D3 — Basket-mix fingerprint vs peer average (Pattern 2 diverging)
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=3600)
-def basket_mix_vs_peers(merchant_id: str) -> dict:
+def basket_mix_vs_peers(merchant_id: str, filters: dict | None = None) -> dict:
     """Per-category own-share vs peer-mean-share, surfaced as a
     diverging bar chart for D3 (Pattern 2 diverging mode).
 
@@ -606,19 +658,21 @@ def basket_mix_vs_peers(merchant_id: str) -> dict:
     Returns categories sorted by ``delta_pp`` descending so the chart
     reads "most over-indexed" at top, "most under-indexed" at bottom.
     """
+    extra_where, extra_params = _own_filters_sql(filters)
+
     lake_t = f"lake_transactions_{merchant_id}"
 
     with _conn() as c:
         own_rows = c.execute(
-            """
+            f"""
             SELECT p.category, SUM(i.line_total) AS rev
             FROM tenant_transaction_items i
             JOIN tenant_products p     ON p.sku    = i.sku
             JOIN tenant_transactions t ON t.txn_id = i.txn_id
-            WHERE t.merchant_id = ?
+            WHERE t.merchant_id = ?{extra_where}
             GROUP BY p.category
             """,
-            (merchant_id,),
+            (merchant_id, *extra_params),
         ).fetchall()
 
         peer_rows = c.execute(
@@ -700,8 +754,7 @@ _P1_MIN_PEER_LINES = 5
 _P1_PARITY_THRESHOLD = 0.5
 
 
-@st.cache_data(ttl=3600)
-def category_peer_pricing_gaps(merchant_id: str) -> dict:
+def category_peer_pricing_gaps(merchant_id: str, filters: dict | None = None) -> dict:
     """Per-category × per-peer pricing gap matrix for P1
     (Pattern 3 cross_merchant_diverging).
 
@@ -726,19 +779,23 @@ def category_peer_pricing_gaps(merchant_id: str) -> dict:
     """
     lake_t = f"lake_transactions_{merchant_id}"
 
+    # Date + stores filter applied to OWN-side price aggregates.
+    # Peer side is unfiltered per the scope rule.
+    extra_where, extra_params = _own_filters_sql(filters)
+
     with _conn() as c:
         own_rows = c.execute(
-            """
+            f"""
             SELECT p.category,
                    AVG(i.unit_price) AS mean_price,
                    SUM(i.line_total) AS revenue
             FROM tenant_transaction_items i
             JOIN tenant_products p     ON p.sku    = i.sku
             JOIN tenant_transactions t ON t.txn_id = i.txn_id
-            WHERE t.merchant_id = ?
+            WHERE t.merchant_id = ?{extra_where}
             GROUP BY p.category
             """,
-            (merchant_id,),
+            (merchant_id, *extra_params),
         ).fetchall()
 
         peer_rows = c.execute(
@@ -825,8 +882,7 @@ def category_peer_pricing_gaps(merchant_id: str) -> dict:
 _P3_ABOVE_PARITY_PCT = 0.5
 
 
-@st.cache_data(ttl=3600)
-def category_pricing_leverage(merchant_id: str) -> dict:
+def category_pricing_leverage(merchant_id: str, filters: dict | None = None) -> dict:
     """Per-category x = pricing gap vs peer-average, y = own line
     count, size = own revenue. Data shape for Pattern 4 (P3).
 
@@ -834,11 +890,13 @@ def category_pricing_leverage(merchant_id: str) -> dict:
     per-category mean unit price. Categories where both peers fall
     below the k=5 floor are skipped entirely (no useful comparison).
     """
+    extra_where, extra_params = _own_filters_sql(filters)
+
     lake_t = f"lake_transactions_{merchant_id}"
 
     with _conn() as c:
         own_rows = c.execute(
-            """
+            f"""
             SELECT p.category,
                    AVG(i.unit_price) AS mean_price,
                    COUNT(*)          AS n_lines,
@@ -846,10 +904,10 @@ def category_pricing_leverage(merchant_id: str) -> dict:
             FROM tenant_transaction_items i
             JOIN tenant_products p     ON p.sku    = i.sku
             JOIN tenant_transactions t ON t.txn_id = i.txn_id
-            WHERE t.merchant_id = ?
+            WHERE t.merchant_id = ?{extra_where}
             GROUP BY p.category
             """,
-            (merchant_id,),
+            (merchant_id, *extra_params),
         ).fetchall()
 
         peer_rows = c.execute(
@@ -922,8 +980,7 @@ def category_pricing_leverage(merchant_id: str) -> dict:
 # D4 — Own share vs peer-mean share scatter (Pattern 4)
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=3600)
-def category_share_vs_peer_share(merchant_id: str) -> dict:
+def category_share_vs_peer_share(merchant_id: str, filters: dict | None = None) -> dict:
     """Per-category x = own share of own revenue, y = peer-mean share
     of peer revenue, size = own absolute revenue. Pattern 4 (D4) with
     a 45° parity line.
@@ -932,19 +989,21 @@ def category_share_vs_peer_share(merchant_id: str) -> dict:
     positioning. Below the line: own under-indexes (peers carry more
     of that category). Above the line: own over-indexes.
     """
+    extra_where, extra_params = _own_filters_sql(filters)
+
     lake_t = f"lake_transactions_{merchant_id}"
 
     with _conn() as c:
         own_rows = c.execute(
-            """
+            f"""
             SELECT p.category, SUM(i.line_total) AS rev
             FROM tenant_transaction_items i
             JOIN tenant_products p     ON p.sku    = i.sku
             JOIN tenant_transactions t ON t.txn_id = i.txn_id
-            WHERE t.merchant_id = ?
+            WHERE t.merchant_id = ?{extra_where}
             GROUP BY p.category
             """,
-            (merchant_id,),
+            (merchant_id, *extra_params),
         ).fetchall()
         peer_rows = c.execute(
             f"""
@@ -1055,8 +1114,7 @@ def category_share_vs_peer_share(merchant_id: str) -> dict:
 _D7_PER_STORE_TIE_PP = 2.0
 
 
-@st.cache_data(ttl=3600)
-def revenue_gap_decomposition(merchant_id: str) -> dict:
+def revenue_gap_decomposition(merchant_id: str, filters: dict | None = None) -> dict:
     """Per-peer decomposition of own-vs-peer revenue gap into Stores /
     Traffic-per-store / Basket / Ticket / Mix / Residual driver bars.
 
@@ -1083,12 +1141,14 @@ def revenue_gap_decomposition(merchant_id: str) -> dict:
     if not has_same_segment_peers(merchant_id):
         return {"per_peer": {}, "has_peers": False}
 
+    extra_where, extra_params = _own_filters_sql(filters)
+
     lake_t = f"lake_transactions_{merchant_id}"
     lake_s = f"lake_stores_{merchant_id}"
 
     with _conn() as c:
         own = c.execute(
-            """
+            f"""
             SELECT COUNT(DISTINCT t.txn_id) AS n_txns,
                    SUM(i.qty)               AS total_items,
                    SUM(i.line_total)        AS total_revenue,
@@ -1096,9 +1156,9 @@ def revenue_gap_decomposition(merchant_id: str) -> dict:
                      WHERE merchant_id = ?) AS n_stores
             FROM tenant_transactions t
             JOIN tenant_transaction_items i ON i.txn_id = t.txn_id
-            WHERE t.merchant_id = ?
+            WHERE t.merchant_id = ?{extra_where}
             """,
-            (merchant_id, merchant_id),
+            (merchant_id, merchant_id, *extra_params),
         ).fetchone()
 
         # ``line_id = 1`` filter recovers true peer transaction counts
@@ -1285,8 +1345,7 @@ _ZIP_TO_NEIGHBORHOOD: dict[str, str] = {
 _T1_BASELINE_NOISE_PP = 5.0
 
 
-@st.cache_data(ttl=3600)
-def neighborhood_performance(merchant_id: str) -> dict:
+def neighborhood_performance(merchant_id: str, filters: dict | None = None) -> dict:
     """Per-neighborhood own-vs-baseline transaction-rate ratio, plus
     a peer-co-decline signal from the same-segment peers in the lake.
     Data shape for Pattern 6 ``diverging`` mode (T1).
@@ -1303,6 +1362,8 @@ def neighborhood_performance(merchant_id: str) -> dict:
             "own_baseline":  own panel txns-per-store baseline.
         }
     """
+    extra_where, extra_params = _own_filters_sql(filters)
+
     lake_t = f"lake_transactions_{merchant_id}"
     lake_s = f"lake_stores_{merchant_id}"
 
@@ -1311,16 +1372,16 @@ def neighborhood_performance(merchant_id: str) -> dict:
     with _conn() as c:
         # Own per-neighborhood txn count + store count.
         own_rows = c.execute(
-            """
+            f"""
             SELECT s.neighborhood,
                    COUNT(DISTINCT t.txn_id) AS n_txns,
                    COUNT(DISTINCT s.store_id) AS n_stores
             FROM tenant_stores s
-            LEFT JOIN tenant_transactions t ON t.store_id = s.store_id
+            LEFT JOIN tenant_transactions t ON t.store_id = s.store_id{extra_where}
             WHERE s.merchant_id = ?
             GROUP BY s.neighborhood
             """,
-            (merchant_id,),
+            (*extra_params, merchant_id),
         ).fetchall()
 
         # Peer per-neighborhood txn count (line_id=1 trick recovers
@@ -1433,8 +1494,7 @@ def neighborhood_performance(merchant_id: str) -> dict:
     }
 
 
-@st.cache_data(ttl=3600)
-def customer_home_density(merchant_id: str) -> dict:
+def customer_home_density(merchant_id: str, filters: dict | None = None) -> dict:
     """Per-neighborhood customer-home counts restricted to this
     merchant's actual customer base, plus an under-served flag for
     neighborhoods with customers but no own store. Data for T2.
@@ -1453,27 +1513,50 @@ def customer_home_density(merchant_id: str) -> dict:
             "own_markers": list[{lat, lon, tooltip}] for the overlay.
         }
     """
+    # Stores filter narrows the customer set to "customers who shopped
+    # at the selected stores" — date filter narrows to that window.
+    f = filters or {}
+    extra_where = ""
+    extra_params: list = []
+    if f.get("date_start"):
+        extra_where += " AND DATE(txn_ts) >= ?"
+        extra_params.append(f["date_start"].isoformat())
+    if f.get("date_end"):
+        extra_where += " AND DATE(txn_ts) <= ?"
+        extra_params.append(f["date_end"].isoformat())
+    if f.get("stores"):
+        ph = ",".join("?" for _ in f["stores"])
+        extra_where += f" AND store_id IN ({ph})"
+        extra_params.extend(f["stores"])
+
+    store_extra_where = ""
+    store_extra_params: list = []
+    if f.get("stores"):
+        ph = ",".join("?" for _ in f["stores"])
+        store_extra_where = f" AND store_id IN ({ph})"
+        store_extra_params = list(f["stores"])
+
     with _conn() as c:
         rows = c.execute(
-            """
+            f"""
             SELECT c.home_zip5, COUNT(DISTINCT c.customer_id) AS n
             FROM tenant_customers c
             WHERE c.customer_id IN (
                 SELECT DISTINCT customer_id FROM tenant_transactions
-                WHERE merchant_id = ?
+                WHERE merchant_id = ?{extra_where}
             )
             GROUP BY c.home_zip5
             """,
-            (merchant_id,),
+            (merchant_id, *extra_params),
         ).fetchall()
         own_store_rows = c.execute(
-            """
+            f"""
             SELECT neighborhood, COUNT(*) AS n
             FROM tenant_stores
-            WHERE merchant_id = ?
+            WHERE merchant_id = ?{store_extra_where}
             GROUP BY neighborhood
             """,
-            (merchant_id,),
+            (merchant_id, *store_extra_params),
         ).fetchall()
 
     # Roll zip5 counts up to neighborhoods.
@@ -1531,8 +1614,7 @@ def customer_home_density(merchant_id: str) -> dict:
     }
 
 
-@st.cache_data(ttl=3600)
-def expansion_opportunity(merchant_id: str) -> dict:
+def expansion_opportunity(merchant_id: str, filters: dict | None = None) -> dict:
     """Per-neighborhood expansion-opportunity score for T4.
 
     Score = customer_activity_from_neighborhood / (own_store_count + 1)
@@ -1552,18 +1634,20 @@ def expansion_opportunity(merchant_id: str) -> dict:
     Returns top-N neighborhoods plus an under-/over-represented
     classification for the takeaway.
     """
+    extra_where, extra_params = _own_filters_sql(filters)
+
     lake_s = f"lake_stores_{merchant_id}"
 
     with _conn() as c:
         cust_rows = c.execute(
-            """
+            f"""
             SELECT c.home_zip5, COUNT(t.txn_id) AS n_txns
             FROM tenant_customers c
             JOIN tenant_transactions t ON t.customer_id = c.customer_id
-            WHERE t.merchant_id = ?
+            WHERE t.merchant_id = ?{extra_where}
             GROUP BY c.home_zip5
             """,
-            (merchant_id,),
+            (merchant_id, *extra_params),
         ).fetchall()
         own_store_rows = c.execute(
             """
@@ -1759,8 +1843,7 @@ def _peer_neighborhood_recent_vs_baseline(
     return out
 
 
-@st.cache_data(ttl=3600)
-def store_anomalies(merchant_id: str) -> dict:
+def store_anomalies(merchant_id: str, filters: dict | None = None) -> dict:
     """Per-store recent-vs-baseline traffic deviation, with a peer-
     neighborhood corroboration column. Data shape for Pattern 9 (A2).
 
@@ -1781,15 +1864,35 @@ def store_anomalies(merchant_id: str) -> dict:
                                       "peers flat" / "limited peer footprint".
         }
     """
+    # Stores filter applies to OWN-side: the user's selection restricts
+    # which stores appear in the recent/baseline rollup. Date filter is
+    # NOT additionally applied here because recent/baseline use fixed
+    # week anchors (_A_RECENT_WEEK_START / _A_BASELINE_WEEK_*); the
+    # caller's date_range narrows context for other helpers but the
+    # anomaly comparison stays week-anchored. Peer overlay unchanged.
+    f = filters or {}
+    store_extra_where = ""
+    store_extra_params: list = []
+    if f.get("stores"):
+        ph = ",".join("?" for _ in f["stores"])
+        store_extra_where = f" AND s.store_id IN ({ph})"
+        store_extra_params = list(f["stores"])
+    txn_extra_where = ""
+    txn_extra_params: list = []
+    if f.get("stores"):
+        ph = ",".join("?" for _ in f["stores"])
+        txn_extra_where = f" AND t.store_id IN ({ph})"
+        txn_extra_params = list(f["stores"])
+
     with _conn() as c:
         own_rows = c.execute(
-            """
+            f"""
             WITH weekly AS (
                 SELECT t.store_id,
                        DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
                        COUNT(DISTINCT t.txn_id) AS n_txns
                 FROM tenant_transactions t
-                WHERE t.merchant_id = ?
+                WHERE t.merchant_id = ?{txn_extra_where}
                   AND DATE(t.txn_ts, 'weekday 0', '-6 days')
                       BETWEEN ? AND ?
                 GROUP BY t.store_id, week
@@ -1802,15 +1905,15 @@ def store_anomalies(merchant_id: str) -> dict:
                         AS baseline
             FROM tenant_stores s
             LEFT JOIN weekly w ON w.store_id = s.store_id
-            WHERE s.merchant_id = ?
+            WHERE s.merchant_id = ?{store_extra_where}
             GROUP BY s.store_id, s.neighborhood
             """,
             (
-                merchant_id,
+                merchant_id, *txn_extra_params,
                 _A_BASELINE_WEEK_START, _A_RECENT_WEEK_START,
                 _A_RECENT_WEEK_START,
                 _A_BASELINE_WEEK_START, _A_BASELINE_WEEK_END,
-                merchant_id,
+                merchant_id, *store_extra_params,
             ),
         ).fetchall()
         peer_by_nb = _peer_neighborhood_recent_vs_baseline(c, merchant_id)
@@ -1883,8 +1986,7 @@ def store_anomalies(merchant_id: str) -> dict:
     }
 
 
-@st.cache_data(ttl=3600)
-def category_anomalies(merchant_id: str) -> dict:
+def category_anomalies(merchant_id: str, filters: dict | None = None) -> dict:
     """Per-category recent-vs-baseline line-volume deviation with an
     optional peer-category corroboration column. Pattern 9 (A3).
 
@@ -1903,11 +2005,13 @@ def category_anomalies(merchant_id: str) -> dict:
             "peer_signal_for_top": short text.
         }
     """
+    extra_where, extra_params = _own_filters_sql(filters)
+
     lake_t = f"lake_transactions_{merchant_id}"
 
     with _conn() as c:
         own_rows = c.execute(
-            """
+            f"""
             WITH weekly AS (
                 SELECT p.category,
                        DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
@@ -1915,7 +2019,7 @@ def category_anomalies(merchant_id: str) -> dict:
                 FROM tenant_transaction_items i
                 JOIN tenant_products p     ON p.sku    = i.sku
                 JOIN tenant_transactions t ON t.txn_id = i.txn_id
-                WHERE t.merchant_id = ?
+                WHERE t.merchant_id = ?{extra_where}
                   AND DATE(t.txn_ts, 'weekday 0', '-6 days')
                       BETWEEN ? AND ?
                 GROUP BY p.category, week
@@ -1928,7 +2032,7 @@ def category_anomalies(merchant_id: str) -> dict:
             GROUP BY category
             """,
             (
-                merchant_id,
+                merchant_id, *extra_params,
                 _A_BASELINE_WEEK_START, _A_RECENT_WEEK_START,
                 _A_RECENT_WEEK_START,
                 _A_BASELINE_WEEK_START, _A_BASELINE_WEEK_END,
@@ -2036,24 +2140,40 @@ _RECENT_WEEK = "2026-05-18"
 _PRIOR_4W_STARTS = ["2026-04-20", "2026-04-27", "2026-05-04", "2026-05-11"]
 
 
-def _new_pct_for_week(c, merchant_id: str, week_start: str) -> float:
+def _new_pct_for_week(
+    c, merchant_id: str, week_start: str, filters: dict | None = None,
+) -> float:
     """Helper: % of that week's distinct customers whose first txn
     with this merchant was that same week. Called by
     ``new_vs_returning`` for the recent week and each of the four
     baseline weeks to compute the new-share trend."""
+    f = filters or {}
+    extra_where = ""
+    extra_params: list = []
+    if f.get("date_start"):
+        extra_where += " AND DATE(txn_ts) >= ?"
+        extra_params.append(f["date_start"].isoformat())
+    if f.get("date_end"):
+        extra_where += " AND DATE(txn_ts) <= ?"
+        extra_params.append(f["date_end"].isoformat())
+    if f.get("stores"):
+        ph = ",".join("?" for _ in f["stores"])
+        extra_where += f" AND store_id IN ({ph})"
+        extra_params.extend(f["stores"])
+
     row = c.execute(
-        """
+        f"""
         WITH this_week AS (
             SELECT DISTINCT customer_id
             FROM tenant_transactions
-            WHERE merchant_id = ?
+            WHERE merchant_id = ?{extra_where}
               AND DATE(txn_ts, 'weekday 0', '-6 days') = ?
         ),
         first_week AS (
             SELECT customer_id,
                    MIN(DATE(txn_ts, 'weekday 0', '-6 days')) AS first_wk
             FROM tenant_transactions
-            WHERE merchant_id = ?
+            WHERE merchant_id = ?{extra_where}
             GROUP BY customer_id
         )
         SELECT
@@ -2062,7 +2182,8 @@ def _new_pct_for_week(c, merchant_id: str, week_start: str) -> float:
         FROM this_week tw
         JOIN first_week fw ON fw.customer_id = tw.customer_id
         """,
-        (merchant_id, week_start, merchant_id, week_start, week_start),
+        (merchant_id, *extra_params, week_start,
+         merchant_id, *extra_params, week_start, week_start),
     ).fetchone()
     new_count = int(row[0] or 0)
     returning_count = int(row[1] or 0)
@@ -2070,11 +2191,11 @@ def _new_pct_for_week(c, merchant_id: str, week_start: str) -> float:
     return (new_count / total * 100) if total else 0.0
 
 
-@st.cache_data(ttl=3600)
 def new_vs_returning(
     merchant_id: str,
     *,
     week_start: str = _RECENT_WEEK,
+    filters: dict | None = None,
 ) -> dict:
     """Card 5.1 data — classify this-week's distinct customers as new
     (first txn was this week) or returning (prior txn exists earlier
@@ -2084,20 +2205,37 @@ def new_vs_returning(
     how the new-customer share moved vs the prior 4-week mean
     new-share.
     """
+    # ``tenant_transactions`` queries here use unaliased ``txn_ts`` /
+    # ``store_id``; the standard ``_own_filters_sql`` returns
+    # ``t.``-prefixed fragments, so build the WHERE manually.
+    f = filters or {}
+    extra_where = ""
+    extra_params: list = []
+    if f.get("date_start"):
+        extra_where += " AND DATE(txn_ts) >= ?"
+        extra_params.append(f["date_start"].isoformat())
+    if f.get("date_end"):
+        extra_where += " AND DATE(txn_ts) <= ?"
+        extra_params.append(f["date_end"].isoformat())
+    if f.get("stores"):
+        ph = ",".join("?" for _ in f["stores"])
+        extra_where += f" AND store_id IN ({ph})"
+        extra_params.extend(f["stores"])
+
     with _conn() as c:
         row = c.execute(
-            """
+            f"""
             WITH this_week AS (
                 SELECT DISTINCT customer_id
                 FROM tenant_transactions
-                WHERE merchant_id = ?
+                WHERE merchant_id = ?{extra_where}
                   AND DATE(txn_ts, 'weekday 0', '-6 days') = ?
             ),
             first_week AS (
                 SELECT customer_id,
                        MIN(DATE(txn_ts, 'weekday 0', '-6 days')) AS first_wk
                 FROM tenant_transactions
-                WHERE merchant_id = ?
+                WHERE merchant_id = ?{extra_where}
                 GROUP BY customer_id
             )
             SELECT
@@ -2106,7 +2244,8 @@ def new_vs_returning(
             FROM this_week tw
             JOIN first_week fw ON fw.customer_id = tw.customer_id
             """,
-            (merchant_id, week_start, merchant_id, week_start, week_start),
+            (merchant_id, *extra_params, week_start,
+             merchant_id, *extra_params, week_start, week_start),
         ).fetchone()
         new_count       = int(row[0] or 0)
         returning_count = int(row[1] or 0)
@@ -2114,7 +2253,7 @@ def new_vs_returning(
 
         # Prior 4-week mean new-share for the trend delta.
         prior_new_pcts = [
-            _new_pct_for_week(c, merchant_id, wk)
+            _new_pct_for_week(c, merchant_id, wk, filters=filters)
             for wk in _PRIOR_4W_STARTS
         ]
 
@@ -2136,23 +2275,24 @@ def new_vs_returning(
     }
 
 
-@st.cache_data(ttl=3600)
-def transactions_per_customer(merchant_id: str) -> dict:
+def transactions_per_customer(merchant_id: str, filters: dict | None = None) -> dict:
     """Card 5.2 data — distribution of customers across visit-count
     buckets over the 90-day window plus per-bucket revenue share so
     the takeaway can name the top cohort's customer % and revenue %.
 
     Buckets: ``1``, ``2-3``, ``4-6``, ``7-10``, ``11+`` visits.
     """
+    extra_where, extra_params = _own_filters_sql(filters)
+
     with _conn() as c:
         rows = c.execute(
-            """
+            f"""
             WITH per_cust AS (
                 SELECT t.customer_id,
                        COUNT(DISTINCT t.txn_id) AS n,
                        SUM(t.txn_total)         AS rev
                 FROM tenant_transactions t
-                WHERE t.merchant_id = ?
+                WHERE t.merchant_id = ?{extra_where}
                 GROUP BY t.customer_id
             )
             SELECT
@@ -2170,7 +2310,7 @@ def transactions_per_customer(merchant_id: str) -> dict:
             GROUP BY bucket
             ORDER BY sort_key
             """,
-            (merchant_id,),
+            (merchant_id, *extra_params),
         ).fetchall()
 
     if not rows:
@@ -2210,8 +2350,7 @@ def transactions_per_customer(merchant_id: str) -> dict:
 # Phase 4.4 — Section 4 helpers (Catalog, Card 4.2 SKU performance)
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=3600)
-def sku_performance(merchant_id: str) -> dict:
+def sku_performance(merchant_id: str, filters: dict | None = None) -> dict:
     """Per-SKU recent-week line count + revenue plus deviation vs the
     first-4w baseline mean. Used by Card 4.2's top/bottom toggle —
     the same row set sorted two different ways (top by recent
@@ -2220,9 +2359,11 @@ def sku_performance(merchant_id: str) -> dict:
     Returns all SKUs (no top-N cap) so the renderer can sort + slice
     per view without re-querying.
     """
+    extra_where, extra_params = _own_filters_sql(filters)
+
     with _conn() as c:
         rows = c.execute(
-            """
+            f"""
             WITH weekly AS (
                 SELECT p.sku, p.name AS sku_name, p.category,
                        DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
@@ -2231,7 +2372,7 @@ def sku_performance(merchant_id: str) -> dict:
                 FROM tenant_transaction_items i
                 JOIN tenant_products p     ON p.sku    = i.sku
                 JOIN tenant_transactions t ON t.txn_id = i.txn_id
-                WHERE t.merchant_id = ?
+                WHERE t.merchant_id = ?{extra_where}
                   AND DATE(t.txn_ts, 'weekday 0', '-6 days')
                       BETWEEN ? AND ?
                 GROUP BY p.sku, week
@@ -2245,7 +2386,7 @@ def sku_performance(merchant_id: str) -> dict:
             GROUP BY sku, sku_name, category
             """,
             (
-                merchant_id,
+                merchant_id, *extra_params,
                 _A_BASELINE_WEEK_START, _A_RECENT_WEEK_START,
                 _A_RECENT_WEEK_START,
                 _A_RECENT_WEEK_START,
@@ -2280,8 +2421,7 @@ def sku_performance(merchant_id: str) -> dict:
 # Phase 4.4 — Section 2 helpers (Performance over time, Cards 2.1-2.3)
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=3600)
-def performance_trajectory(merchant_id: str) -> dict:
+def performance_trajectory(merchant_id: str, filters: dict | None = None) -> dict:
     """Weekly revenue, transactions, and avg-basket trajectory over
     the 12-week full-weeks window. Shared by Card 2.1 (revenue
     trajectory) and Card 2.2 (transaction trajectory).
@@ -2304,6 +2444,8 @@ def performance_trajectory(merchant_id: str) -> dict:
                                    "both" | "neither, mixed",
         }
     """
+    extra_where, extra_params = _own_filters_sql(filters)
+
     weeks = [
         "2026-03-02", "2026-03-09", "2026-03-16", "2026-03-23",
         "2026-03-30", "2026-04-06", "2026-04-13", "2026-04-20",
@@ -2313,16 +2455,16 @@ def performance_trajectory(merchant_id: str) -> dict:
 
     with _conn() as c:
         rows = c.execute(
-            """
+            f"""
             SELECT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
                    SUM(t.txn_total)         AS revenue,
                    COUNT(DISTINCT t.txn_id) AS n_txns
             FROM tenant_transactions t
-            WHERE t.merchant_id = ?
+            WHERE t.merchant_id = ?{extra_where}
               AND DATE(t.txn_ts, 'weekday 0', '-6 days') BETWEEN ? AND ?
             GROUP BY week
             """,
-            (merchant_id, week_lo, week_hi),
+            (merchant_id, *extra_params, week_lo, week_hi),
         ).fetchall()
 
     rev_by_wk = {w: float(r) for w, r, _ in rows}
@@ -2423,14 +2565,13 @@ _HOUR_DOW_DOW_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 _HOUR_DOW_SQLITE_ORDER = [1, 2, 3, 4, 5, 6, 0]  # Mon..Sun
 
 
-@st.cache_data(ttl=3600)
-def hour_dow_heatmap_card(merchant_id: str) -> dict:
+def hour_dow_heatmap_card(merchant_id: str, filters: dict | None = None) -> dict:
     """Hour × day-of-week traffic heatmap with peak/slow analysis.
     Wraps the existing ``hour_dow_heatmap`` panel-totals DataFrame in
     the shape Pattern 3 own-only-sequential expects, plus takeaway
     metadata (peak cell, slow cell, weekday-vs-weekend ratio).
     """
-    pivot = hour_dow_heatmap(merchant_id, _filters_key({}))
+    pivot = hour_dow_heatmap(merchant_id, _filters_key(filters or {}))
     # Re-order rows Mon..Sun and label them; columns stay 0..23.
     # k=5 contract: cells with 0 < count < 5 are suppressed (set to
     # None); cells with count == 0 stay as 0 (no activity, not
@@ -2533,49 +2674,107 @@ def hour_dow_heatmap_card(merchant_id: str) -> dict:
 # constant lookup.
 
 
-@st.cache_data(ttl=3600)
-def kpi_strip(merchant_id: str) -> dict:
+def kpi_strip(merchant_id: str, filters: dict | None = None) -> dict:
     """Five-card KPI strip data — Revenue / Transactions / Avg basket /
     Unique customers / Anomaly count, each with a delta vs the prior
     4-week average and a 12-week trailing sparkline.
 
+    Filter semantics (Phase 4.5 — Decision 2 re-anchor):
+      * "Recent week" = last full week ≤ filters["date_end"].
+      * "Baseline" = up to 4 prior weeks within
+        [date_start, date_end - 7 days].
+      * Sparkline = weeks within the filter window.
+      * If the filter window is < 14 days, deltas are suppressed
+        (returned as ``None`` so the UI can render "—" instead of
+        a misleading 0 %).
+      * Stores filter applies to all OWN queries.
+      * No filter set = the existing hardcoded 12-week behavior
+        ending 2026-05-18.
+
     Returns::
 
         {
-            "revenue":          {"value": float, "delta_pct": float,
+            "revenue":          {"value": float,
+                                 "delta_pct": float | None,
                                  "sparkline": list[float]},
             "transactions":     {...},
             "avg_basket":       {...},
             "unique_customers": {...},
-            "anomaly":          {"value": int, "n_stores": int,
-                                 "n_categories": int,
-                                 "sparkline": list[int]},
+            "anomaly":          {...},
         }
     """
-    weeks = [
-        "2026-03-02", "2026-03-09", "2026-03-16", "2026-03-23",
-        "2026-03-30", "2026-04-06", "2026-04-13", "2026-04-20",
-        "2026-04-27", "2026-05-04", "2026-05-11", "2026-05-18",
-    ]
+    f = filters or {}
+    date_start, date_end = _resolve_dates(f)
+    extra_where, extra_params = _own_filters_sql(f)
+
+    # The "default" path (full panel, no stores filter): use the
+    # canonical 12-week list ending 2026-05-18 so existing callers
+    # who never set a filter see byte-identical numbers.
+    is_default = (
+        date_start == PANEL_START and date_end == PANEL_END
+        and not f.get("stores")
+    )
+    if is_default:
+        weeks = [
+            "2026-03-02", "2026-03-09", "2026-03-16", "2026-03-23",
+            "2026-03-30", "2026-04-06", "2026-04-13", "2026-04-20",
+            "2026-04-27", "2026-05-04", "2026-05-11", "2026-05-18",
+        ]
+    else:
+        # Re-anchor: enumerate weeks (Monday-keyed) with data inside
+        # the filter window. Auto-detects available weeks rather than
+        # building from calendar math — also picks up the stores
+        # filter so weeks with zero matching txns don't show up.
+        with _conn() as c:
+            week_rows = c.execute(
+                f"""
+                SELECT DISTINCT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week
+                FROM tenant_transactions t
+                WHERE t.merchant_id = ?{extra_where}
+                ORDER BY week
+                """,
+                (merchant_id, *extra_params),
+            ).fetchall()
+        weeks = [r[0] for r in week_rows]
+
+    if not weeks:
+        # Edge case: no data in the filter window. Return zeros so
+        # the strip renders without crashing; deltas suppressed.
+        return {
+            "revenue":          {"value": 0.0, "delta_pct": None, "sparkline": []},
+            "transactions":     {"value": 0,   "delta_pct": None, "sparkline": []},
+            "avg_basket":       {"value": 0.0, "delta_pct": None, "sparkline": []},
+            "unique_customers": {"value": 0,   "delta_pct": None, "sparkline": []},
+            "anomaly": {
+                "concerning": 0, "notable": 0, "total": 0,
+                "n_stores_concerning": 0, "n_stores_notable": 0,
+                "n_categories_concerning": 0, "n_categories_notable": 0,
+                "trailing_concerning": [], "trailing_notable": [],
+                "trailing_total": [],
+            },
+        }
+
     week_lo, week_hi = weeks[0], weeks[-1]
-    recent = weeks[-1]
-    prior_lo, prior_hi = weeks[-5], weeks[-2]  # 4 weeks prior to recent
+
+    # Suppress deltas if the filter window is < 14 days — there isn't
+    # enough room for "recent vs prior 4-week" to be meaningful.
+    suppress_deltas = (date_end - date_start).days < 14
 
     with _conn() as c:
-        # Per-week aggregates for the 12-week sparkline.
+        # Per-week aggregates for the sparkline.
         rows = c.execute(
-            """
+            f"""
             SELECT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
                    SUM(t.txn_total)              AS revenue,
                    COUNT(DISTINCT t.txn_id)      AS n_txns,
                    COUNT(DISTINCT t.customer_id) AS n_customers
             FROM tenant_transactions t
-            WHERE t.merchant_id = ?
+            WHERE t.merchant_id = ?{extra_where}
               AND DATE(t.txn_ts, 'weekday 0', '-6 days')
                   BETWEEN ? AND ?
             GROUP BY week
             """,
-            (merchant_id, week_lo, week_hi),
+            (merchant_id, *extra_params, week_lo, week_hi),
         ).fetchall()
 
     rev_by_wk: dict[str, float] = {w: float(r) for w, r, _, _ in rows}
@@ -2593,13 +2792,18 @@ def kpi_strip(merchant_id: str) -> dict:
         for i in range(len(weeks))
     ]
 
-    def _delta(recent_val: float, prior_vals: list[float]) -> float:
+    def _delta(recent_val: float, prior_vals: list[float]) -> float | None:
+        if suppress_deltas:
+            return None
         prior_mean = sum(prior_vals) / len(prior_vals) if prior_vals else 0.0
         if prior_mean <= 0:
-            return 0.0
+            return None if suppress_deltas else 0.0
         return round((recent_val / prior_mean - 1) * 100, 1)
 
-    prior_idx = slice(-5, -1)  # 4 weeks prior to recent
+    # Prior = up to 4 weeks ending one week before "recent", so the
+    # 1-week buffer matches the original logic. With fewer than 5
+    # weeks of data available, prior_vals shrinks naturally.
+    prior_idx = slice(max(0, len(weeks) - 5), len(weeks) - 1)
     rev_recent  = rev_series[-1];  rev_delta  = _delta(rev_recent,  rev_series[prior_idx])
     txn_recent  = txn_series[-1];  txn_delta  = _delta(txn_recent,  txn_series[prior_idx])
     cust_recent = cust_series[-1]; cust_delta = _delta(cust_recent, cust_series[prior_idx])
@@ -2611,8 +2815,8 @@ def kpi_strip(merchant_id: str) -> dict:
     # concerning item — growth-mode merchants whose stores all run
     # above baseline (TBL, TJX in the current synthetic data) read
     # as "all clear" instead of red.
-    anomaly_counts = _anomaly_counts_series(merchant_id, weeks)
-    anomaly_breakdown = _anomaly_count_breakdown(merchant_id)
+    anomaly_counts = _anomaly_counts_series(merchant_id, weeks, filters=f)
+    anomaly_breakdown = _anomaly_count_breakdown(merchant_id, filters=f)
 
     return {
         "revenue": {
@@ -2653,6 +2857,7 @@ def kpi_strip(merchant_id: str) -> dict:
 def _anomaly_counts_series(
     merchant_id: str,
     weeks: list[str],
+    filters: dict | None = None,
 ) -> dict[str, list[int]]:
     """Per-week anomaly counts split by direction. Returns three
     aligned lists::
@@ -2667,36 +2872,38 @@ def _anomaly_counts_series(
     card can flag "alert" only when there are below-baseline items
     rather than coloring growth-mode merchants red.
     """
+    extra_where, extra_params = _own_filters_sql(filters)
     week_lo, week_hi = weeks[0], weeks[-1]
-    baseline_lo = "2026-03-02"
-    baseline_hi = "2026-03-23"
+    # Baseline = first 4 weeks of the available window so the
+    # ratio-vs-baseline measure stays anchored within the filter.
+    baseline_lo, baseline_hi = weeks[0], weeks[min(3, len(weeks) - 1)]
 
     with _conn() as c:
         store_rows = c.execute(
-            """
+            f"""
             SELECT t.store_id,
                    DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
                    COUNT(DISTINCT t.txn_id) AS n_txns
             FROM tenant_transactions t
-            WHERE t.merchant_id = ?
+            WHERE t.merchant_id = ?{extra_where}
               AND DATE(t.txn_ts, 'weekday 0', '-6 days') BETWEEN ? AND ?
             GROUP BY t.store_id, week
             """,
-            (merchant_id, week_lo, week_hi),
+            (merchant_id, *extra_params, week_lo, week_hi),
         ).fetchall()
         cat_rows = c.execute(
-            """
+            f"""
             SELECT p.category,
                    DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
                    COUNT(*) AS n_lines
             FROM tenant_transaction_items i
             JOIN tenant_products p     ON p.sku    = i.sku
             JOIN tenant_transactions t ON t.txn_id = i.txn_id
-            WHERE t.merchant_id = ?
+            WHERE t.merchant_id = ?{extra_where}
               AND DATE(t.txn_ts, 'weekday 0', '-6 days') BETWEEN ? AND ?
             GROUP BY p.category, week
             """,
-            (merchant_id, week_lo, week_hi),
+            (merchant_id, *extra_params, week_lo, week_hi),
         ).fetchall()
 
     store_baselines: dict[str, list[int]] = {}
@@ -2747,12 +2954,12 @@ def _anomaly_counts_series(
     }
 
 
-def _anomaly_count_breakdown(merchant_id: str) -> dict:
+def _anomaly_count_breakdown(merchant_id: str, filters: dict | None = None) -> dict:
     """Split this week's anomaly count into store-side and category-
     side contributions, each further split by direction — used by
     the KPI hint subtitle and the alert/clear flag decision."""
-    s = store_anomalies_own_only(merchant_id)
-    cat = category_anomalies(merchant_id)
+    s = store_anomalies_own_only(merchant_id, filters=filters)
+    cat = category_anomalies(merchant_id, filters=filters)
     return {
         "n_stores":              s["n_flagged"],
         "n_stores_concerning":   s["n_under"],
@@ -2806,9 +3013,11 @@ _DOW_FROM_SQLITE = {
 }
 
 
-def _full_weeks(merchant_id: str) -> list[str]:
+def _full_weeks(merchant_id: str, filters: dict | None = None) -> list[str]:
     """Return the 12 full Mon-Sun week-start ISO dates that the
     A1/A2/A3 anomaly questions also use."""
+    # Filter accepted but not applicable to this helper.
+    _ = filters
     return [
         "2026-03-02", "2026-03-09", "2026-03-16", "2026-03-23",
         "2026-03-30", "2026-04-06", "2026-04-13", "2026-04-20",
@@ -2820,8 +3029,7 @@ def _full_weeks(merchant_id: str) -> list[str]:
 # T-P1 — Daypart × week mean ticket trends
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=3600)
-def tbl_daypart_ticket_trends(merchant_id: str) -> dict:
+def tbl_daypart_ticket_trends(merchant_id: str, filters: dict | None = None) -> dict:
     """Weekly mean transaction value per QSR daypart over the 12-week
     full-weeks window. Pattern 1 own-multi shape.
 
@@ -2830,23 +3038,25 @@ def tbl_daypart_ticket_trends(merchant_id: str) -> dict:
     bottom-of-card takeaway names the daypart with the largest ticket
     drift (positive or negative).
     """
-    weeks = _full_weeks(merchant_id)
+    extra_where, extra_params = _own_filters_sql(filters)
+
+    weeks = _full_weeks(merchant_id, filters=filters)
     week_lo = weeks[0]
     week_hi = weeks[-1]
 
     with _conn() as c:
         rows = c.execute(
-            """
+            f"""
             SELECT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
                    CAST(SUBSTR(t.txn_ts, 12, 2) AS INTEGER) AS hr,
                    AVG(t.txn_total) AS mean_ticket
             FROM tenant_transactions t
-            WHERE t.merchant_id = ?
+            WHERE t.merchant_id = ?{extra_where}
               AND DATE(t.txn_ts, 'weekday 0', '-6 days')
                   BETWEEN ? AND ?
             GROUP BY week, hr
             """,
-            (merchant_id, week_lo, week_hi),
+            (merchant_id, *extra_params, week_lo, week_hi),
         ).fetchall()
 
     # Aggregate hours into dayparts. Per (week, daypart), simple mean
@@ -2906,32 +3116,35 @@ def tbl_daypart_ticket_trends(merchant_id: str) -> dict:
 # T-P2 — Per-category weekly mean unit price
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=3600)
-def category_unit_price_trends(merchant_id: str, top_n: int = 6) -> dict:
+def category_unit_price_trends(
+    merchant_id: str, top_n: int = 6, filters: dict | None = None,
+) -> dict:
     """Weekly mean unit price per top-revenue category. Pattern 1
     own-multi. Used by T-P2 (TBL) and R-P1 (TJX, similar shape but
     framed as "ticket trends across categories"). Returns top
     ``top_n`` categories by total revenue across the 12-week window.
     """
-    weeks = _full_weeks(merchant_id)
+    extra_where, extra_params = _own_filters_sql(filters)
+
+    weeks = _full_weeks(merchant_id, filters=filters)
     week_lo = weeks[0]
     week_hi = weeks[-1]
 
     with _conn() as c:
         cat_rows = c.execute(
-            """
+            f"""
             SELECT p.category, SUM(i.line_total) AS rev
             FROM tenant_transaction_items i
             JOIN tenant_products p     ON p.sku    = i.sku
             JOIN tenant_transactions t ON t.txn_id = i.txn_id
-            WHERE t.merchant_id = ?
+            WHERE t.merchant_id = ?{extra_where}
               AND DATE(t.txn_ts, 'weekday 0', '-6 days')
                   BETWEEN ? AND ?
             GROUP BY p.category
             ORDER BY rev DESC
             LIMIT ?
             """,
-            (merchant_id, week_lo, week_hi, int(top_n)),
+            (merchant_id, *extra_params, week_lo, week_hi, int(top_n)),
         ).fetchall()
         top_cats = [r[0] for r in cat_rows]
         if not top_cats:
@@ -2948,12 +3161,12 @@ def category_unit_price_trends(merchant_id: str, top_n: int = 6) -> dict:
             FROM tenant_transaction_items i
             JOIN tenant_products p     ON p.sku    = i.sku
             JOIN tenant_transactions t ON t.txn_id = i.txn_id
-            WHERE t.merchant_id = ?
+            WHERE t.merchant_id = ?{extra_where}
               AND p.category IN ({ph})
               AND DATE(t.txn_ts, 'weekday 0', '-6 days') BETWEEN ? AND ?
             GROUP BY week, p.category
             """,
-            [merchant_id, *top_cats, week_lo, week_hi],
+            [merchant_id, *extra_params, *top_cats, week_lo, week_hi],
         ).fetchall()
 
     by_wc: dict[tuple[str, str], float] = {
@@ -2993,25 +3206,26 @@ def category_unit_price_trends(merchant_id: str, top_n: int = 6) -> dict:
 # T-P3 — Per-store mean ticket distribution
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=3600)
-def per_store_mean_ticket(merchant_id: str) -> dict:
+def per_store_mean_ticket(merchant_id: str, filters: dict | None = None) -> dict:
     """Per-store mean transaction value over the 12-week window with a
     chain-mean reference line and >1σ outlier highlighting. Pattern 2
     own-only-bars shape. Used by T-P3.
     """
+    extra_where, extra_params = _own_filters_sql(filters)
+
     with _conn() as c:
         rows = c.execute(
-            """
+            f"""
             SELECT t.store_id, s.neighborhood,
                    AVG(t.txn_total) AS mean_ticket,
                    COUNT(*)         AS n_txns
             FROM tenant_transactions t
             JOIN tenant_stores s ON s.store_id = t.store_id
-            WHERE t.merchant_id = ?
+            WHERE t.merchant_id = ?{extra_where}
             GROUP BY t.store_id, s.neighborhood
             ORDER BY mean_ticket DESC
             """,
-            (merchant_id,),
+            (merchant_id, *extra_params),
         ).fetchall()
 
     if not rows:
@@ -3066,20 +3280,31 @@ def per_store_mean_ticket(merchant_id: str) -> dict:
 # T-A1 / R-A1 — Per-store recent-vs-baseline (no peer column)
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=3600)
-def store_anomalies_own_only(merchant_id: str) -> dict:
+def store_anomalies_own_only(merchant_id: str, filters: dict | None = None) -> dict:
     """Per-store deviation table for merchants without same-segment
     peers. Same first-4w baseline as A2; no peer-neighborhood column.
     """
+    f = filters or {}
+    store_extra_where = ""
+    store_extra_params: list = []
+    txn_extra_where = ""
+    txn_extra_params: list = []
+    if f.get("stores"):
+        ph = ",".join("?" for _ in f["stores"])
+        store_extra_where = f" AND s.store_id IN ({ph})"
+        store_extra_params = list(f["stores"])
+        txn_extra_where = f" AND t.store_id IN ({ph})"
+        txn_extra_params = list(f["stores"])
+
     with _conn() as c:
         own_rows = c.execute(
-            """
+            f"""
             WITH weekly AS (
                 SELECT t.store_id,
                        DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
                        COUNT(DISTINCT t.txn_id) AS n_txns
                 FROM tenant_transactions t
-                WHERE t.merchant_id = ?
+                WHERE t.merchant_id = ?{txn_extra_where}
                   AND DATE(t.txn_ts, 'weekday 0', '-6 days')
                       BETWEEN ? AND ?
                 GROUP BY t.store_id, week
@@ -3092,15 +3317,15 @@ def store_anomalies_own_only(merchant_id: str) -> dict:
                         AS baseline
             FROM tenant_stores s
             LEFT JOIN weekly w ON w.store_id = s.store_id
-            WHERE s.merchant_id = ?
+            WHERE s.merchant_id = ?{store_extra_where}
             GROUP BY s.store_id, s.neighborhood
             """,
             (
-                merchant_id,
+                merchant_id, *txn_extra_params,
                 _A_BASELINE_WEEK_START, _A_RECENT_WEEK_START,
                 _A_RECENT_WEEK_START,
                 _A_BASELINE_WEEK_START, _A_BASELINE_WEEK_END,
-                merchant_id,
+                merchant_id, *store_extra_params,
             ),
         ).fetchall()
 
@@ -3139,15 +3364,18 @@ def store_anomalies_own_only(merchant_id: str) -> dict:
 # T-A2 — Per-SKU anomaly table
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=3600)
-def sku_anomalies(merchant_id: str, top_n: int = 25) -> dict:
+def sku_anomalies(
+    merchant_id: str, top_n: int = 25, filters: dict | None = None,
+) -> dict:
     """Per-SKU recent-vs-baseline volume deviation. Returns the top
     ``top_n`` by absolute deviation so the table stays scannable in
     the 35 % chat panel (TBL has ~60 SKUs total).
     """
+    extra_where, extra_params = _own_filters_sql(filters)
+
     with _conn() as c:
         rows = c.execute(
-            """
+            f"""
             WITH weekly AS (
                 SELECT p.sku, p.name AS sku_name, p.category,
                        DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
@@ -3155,7 +3383,7 @@ def sku_anomalies(merchant_id: str, top_n: int = 25) -> dict:
                 FROM tenant_transaction_items i
                 JOIN tenant_products p     ON p.sku    = i.sku
                 JOIN tenant_transactions t ON t.txn_id = i.txn_id
-                WHERE t.merchant_id = ?
+                WHERE t.merchant_id = ?{extra_where}
                   AND DATE(t.txn_ts, 'weekday 0', '-6 days')
                       BETWEEN ? AND ?
                 GROUP BY p.sku, week
@@ -3168,7 +3396,7 @@ def sku_anomalies(merchant_id: str, top_n: int = 25) -> dict:
             GROUP BY sku, sku_name, category
             """,
             (
-                merchant_id,
+                merchant_id, *extra_params,
                 _A_BASELINE_WEEK_START, _A_RECENT_WEEK_START,
                 _A_RECENT_WEEK_START,
                 _A_BASELINE_WEEK_START, _A_BASELINE_WEEK_END,
@@ -3216,28 +3444,29 @@ def sku_anomalies(merchant_id: str, top_n: int = 25) -> dict:
 # T-A3 — Day-of-week × daypart heatmap (ratios)
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=3600)
-def day_daypart_heatmap(merchant_id: str) -> dict:
+def day_daypart_heatmap(merchant_id: str, filters: dict | None = None) -> dict:
     """Day-of-week × QSR-daypart recent-vs-baseline ratio cells. Cells
     are ``recent_count / baseline_avg`` (1.0 = on baseline). Cells
     with fewer than 5 transactions in the recent window are returned
     as ``None`` (per-cell suppression, consistent with the k=5
     convention applied elsewhere)."""
+    extra_where, extra_params = _own_filters_sql(filters)
+
     with _conn() as c:
         rows = c.execute(
-            """
+            f"""
             SELECT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
                    STRFTIME('%w', t.txn_ts)               AS dow_num,
                    CAST(SUBSTR(t.txn_ts, 12, 2) AS INTEGER) AS hr,
                    COUNT(DISTINCT t.txn_id)               AS n_txns
             FROM tenant_transactions t
-            WHERE t.merchant_id = ?
+            WHERE t.merchant_id = ?{extra_where}
               AND DATE(t.txn_ts, 'weekday 0', '-6 days')
                   BETWEEN ? AND ?
             GROUP BY week, dow_num, hr
             """,
             (
-                merchant_id,
+                merchant_id, *extra_params,
                 _A_BASELINE_WEEK_START, _A_RECENT_WEEK_START,
             ),
         ).fetchall()
@@ -3305,23 +3534,26 @@ def day_daypart_heatmap(merchant_id: str) -> dict:
 # T-D1 / R-D1 — Category share bars
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=3600)
-def category_share_own(merchant_id: str, top_n: int = 8) -> dict:
+def category_share_own(
+    merchant_id: str, top_n: int = 8, filters: dict | None = None,
+) -> dict:
     """Per-category share of own revenue. Top ``top_n`` categories;
     smaller categories rolled into "Other". Pattern 2 own-only-bars.
     """
+    extra_where, extra_params = _own_filters_sql(filters)
+
     with _conn() as c:
         rows = c.execute(
-            """
+            f"""
             SELECT p.category, SUM(i.line_total) AS rev
             FROM tenant_transaction_items i
             JOIN tenant_products p     ON p.sku    = i.sku
             JOIN tenant_transactions t ON t.txn_id = i.txn_id
-            WHERE t.merchant_id = ?
+            WHERE t.merchant_id = ?{extra_where}
             GROUP BY p.category
             ORDER BY rev DESC
             """,
-            (merchant_id,),
+            (merchant_id, *extra_params),
         ).fetchall()
 
     if not rows:
@@ -3356,28 +3588,31 @@ def category_share_own(merchant_id: str, top_n: int = 8) -> dict:
 # T-D2 / R-D2 — Category share trajectory
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=3600)
-def category_share_trajectory(merchant_id: str, top_n: int = 6) -> dict:
+def category_share_trajectory(
+    merchant_id: str, top_n: int = 6, filters: dict | None = None,
+) -> dict:
     """Weekly per-category share of own revenue over the 12-week
     window. Pattern 1 own-multi. Highlights the most-rising and
     most-falling categories for the takeaway.
     """
-    weeks = _full_weeks(merchant_id)
+    extra_where, extra_params = _own_filters_sql(filters)
+
+    weeks = _full_weeks(merchant_id, filters=filters)
     week_lo = weeks[0]; week_hi = weeks[-1]
 
     with _conn() as c:
         cat_rows = c.execute(
-            """
+            f"""
             SELECT p.category, SUM(i.line_total) AS rev
             FROM tenant_transaction_items i
             JOIN tenant_products p     ON p.sku    = i.sku
             JOIN tenant_transactions t ON t.txn_id = i.txn_id
-            WHERE t.merchant_id = ?
+            WHERE t.merchant_id = ?{extra_where}
             GROUP BY p.category
             ORDER BY rev DESC
             LIMIT ?
             """,
-            (merchant_id, int(top_n)),
+            (merchant_id, *extra_params, int(top_n)),
         ).fetchall()
         top_cats = [r[0] for r in cat_rows]
         if not top_cats:
@@ -3393,23 +3628,23 @@ def category_share_trajectory(merchant_id: str, top_n: int = 6) -> dict:
             FROM tenant_transaction_items i
             JOIN tenant_products p     ON p.sku    = i.sku
             JOIN tenant_transactions t ON t.txn_id = i.txn_id
-            WHERE t.merchant_id = ?
+            WHERE t.merchant_id = ?{extra_where}
               AND DATE(t.txn_ts, 'weekday 0', '-6 days') BETWEEN ? AND ?
             GROUP BY week, p.category
             """,
-            (merchant_id, week_lo, week_hi),
+            (merchant_id, *extra_params, week_lo, week_hi),
         ).fetchall()
         wk_total_rows = c.execute(
-            """
+            f"""
             SELECT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
                    SUM(i.line_total) AS rev
             FROM tenant_transaction_items i
             JOIN tenant_transactions t ON t.txn_id = i.txn_id
-            WHERE t.merchant_id = ?
+            WHERE t.merchant_id = ?{extra_where}
               AND DATE(t.txn_ts, 'weekday 0', '-6 days') BETWEEN ? AND ?
             GROUP BY week
             """,
-            (merchant_id, week_lo, week_hi),
+            (merchant_id, *extra_params, week_lo, week_hi),
         ).fetchall()
 
     wk_total = {w: float(r) for w, r in wk_total_rows}
@@ -3451,8 +3686,7 @@ def category_share_trajectory(merchant_id: str, top_n: int = 6) -> dict:
 _D_TIE_PP = 2.0  # same threshold as D7 cross_merchant
 
 
-@st.cache_data(ttl=3600)
-def revenue_change_decomposition_own(merchant_id: str) -> dict:
+def revenue_change_decomposition_own(merchant_id: str, filters: dict | None = None) -> dict:
     """Own-vs-own decomposition of recent-week revenue vs first-4w
     baseline-week. Pattern 5 own_vs_own_baseline.
 
@@ -3462,32 +3696,35 @@ def revenue_change_decomposition_own(merchant_id: str) -> dict:
     """
     import math
 
+    extra_where, extra_params = _own_filters_sql(filters)
+
     with _conn() as c:
         recent = c.execute(
-            """
+            f"""
             SELECT COUNT(DISTINCT t.txn_id) AS n_txns,
                    SUM(i.qty)               AS items,
                    SUM(i.line_total)        AS revenue
             FROM tenant_transactions t
             JOIN tenant_transaction_items i ON i.txn_id = t.txn_id
-            WHERE t.merchant_id = ?
+            WHERE t.merchant_id = ?{extra_where}
               AND DATE(t.txn_ts, 'weekday 0', '-6 days') = ?
             """,
-            (merchant_id, _A_RECENT_WEEK_START),
+            (merchant_id, *extra_params, _A_RECENT_WEEK_START),
         ).fetchone()
         # Baseline = mean weekly aggregates across the first 4 weeks
         # (sum / 4).
         baseline = c.execute(
-            """
+            f"""
             SELECT COUNT(DISTINCT t.txn_id) * 1.0 / 4 AS n_txns,
                    SUM(i.qty)              * 1.0 / 4 AS items,
                    SUM(i.line_total)       * 1.0 / 4 AS revenue
             FROM tenant_transactions t
             JOIN tenant_transaction_items i ON i.txn_id = t.txn_id
-            WHERE t.merchant_id = ?
+            WHERE t.merchant_id = ?{extra_where}
               AND DATE(t.txn_ts, 'weekday 0', '-6 days') BETWEEN ? AND ?
             """,
-            (merchant_id, _A_BASELINE_WEEK_START, _A_BASELINE_WEEK_END),
+            (merchant_id, *extra_params,
+             _A_BASELINE_WEEK_START, _A_BASELINE_WEEK_END),
         ).fetchone()
 
     N_r, I_r, R_r = recent
@@ -3560,38 +3797,39 @@ _TJX_TICKET_BANDS: list[tuple[str, float, float | None]] = [
 ]
 
 
-@st.cache_data(ttl=3600)
-def category_price_spread(merchant_id: str) -> dict:
+def category_price_spread(merchant_id: str, filters: dict | None = None) -> dict:
     """Per-category min / median / max unit price + spread ratio
     (max / min). Pattern 9 table shape for R-P2.
     """
+    extra_where, extra_params = _own_filters_sql(filters)
+
     with _conn() as c:
         # SQLite doesn't ship a percentile function, so the median is
         # computed via two-step sort + index. Cheap given panel size
         # (TJX category line counts are 8K-10K each).
         cats = [r[0] for r in c.execute(
-            """
+            f"""
             SELECT DISTINCT p.category
             FROM tenant_transaction_items i
             JOIN tenant_products p ON p.sku = i.sku
             JOIN tenant_transactions t ON t.txn_id = i.txn_id
-            WHERE t.merchant_id = ?
+            WHERE t.merchant_id = ?{extra_where}
             """,
-            (merchant_id,),
+            (merchant_id, *extra_params),
         )]
         rows: list[dict] = []
         for cat in cats:
             prices = [
                 float(r[0]) for r in c.execute(
-                    """
+                    f"""
                     SELECT i.unit_price
                     FROM tenant_transaction_items i
                     JOIN tenant_products p ON p.sku = i.sku
                     JOIN tenant_transactions t ON t.txn_id = i.txn_id
-                    WHERE t.merchant_id = ? AND p.category = ?
+                    WHERE t.merchant_id = ?{extra_where} AND p.category = ?
                     ORDER BY i.unit_price
                     """,
-                    (merchant_id, cat),
+                    (merchant_id, *extra_params, cat),
                 )
             ]
             if not prices:
@@ -3623,12 +3861,28 @@ def category_price_spread(merchant_id: str) -> dict:
     }
 
 
-@st.cache_data(ttl=3600)
-def ticket_band_distribution(merchant_id: str) -> dict:
+def ticket_band_distribution(merchant_id: str, filters: dict | None = None) -> dict:
     """Per-ticket-band transaction count + revenue share. Returns
     grouped-bars data shape (R-P3). Both metrics expressed as
     percentages on a common 0-100 scale for clean grouped display.
     """
+    # ``tenant_transactions`` is unaliased here, so build the filter
+    # WHERE manually (the standard helper returns ``t.``-prefixed
+    # fragments).
+    f = filters or {}
+    extra_where = ""
+    extra_params: list = []
+    if f.get("date_start"):
+        extra_where += " AND DATE(txn_ts) >= ?"
+        extra_params.append(f["date_start"].isoformat())
+    if f.get("date_end"):
+        extra_where += " AND DATE(txn_ts) <= ?"
+        extra_params.append(f["date_end"].isoformat())
+    if f.get("stores"):
+        ph = ",".join("?" for _ in f["stores"])
+        extra_where += f" AND store_id IN ({ph})"
+        extra_params.extend(f["stores"])
+
     with _conn() as c:
         # Each band's lower bound is inclusive, upper bound is exclusive
         # (open-ended for the top band).
@@ -3636,22 +3890,22 @@ def ticket_band_distribution(merchant_id: str) -> dict:
         for label, lo, hi in _TJX_TICKET_BANDS:
             if hi is None:
                 row = c.execute(
-                    """
+                    f"""
                     SELECT COUNT(*), COALESCE(SUM(txn_total), 0)
                     FROM tenant_transactions
-                    WHERE merchant_id = ? AND txn_total >= ?
+                    WHERE merchant_id = ?{extra_where} AND txn_total >= ?
                     """,
-                    (merchant_id, lo),
+                    (merchant_id, *extra_params, lo),
                 ).fetchone()
             else:
                 row = c.execute(
-                    """
+                    f"""
                     SELECT COUNT(*), COALESCE(SUM(txn_total), 0)
                     FROM tenant_transactions
-                    WHERE merchant_id = ?
+                    WHERE merchant_id = ?{extra_where}
                       AND txn_total >= ? AND txn_total < ?
                     """,
-                    (merchant_id, lo, hi),
+                    (merchant_id, *extra_params, lo, hi),
                 ).fetchone()
             agg_rows.append((label, int(row[0]), float(row[1])))
 
@@ -3679,8 +3933,7 @@ def ticket_band_distribution(merchant_id: str) -> dict:
     }
 
 
-@st.cache_data(ttl=3600)
-def day_week_heatmap(merchant_id: str) -> dict:
+def day_week_heatmap(merchant_id: str, filters: dict | None = None) -> dict:
     """Day-of-week × week ratio cells for the last 4 weeks vs each
     day's first-4w baseline mean. Pattern 3 own_only_diverging shape
     (R-A3). Cells with recent count <5 are suppressed.
@@ -3690,23 +3943,25 @@ def day_week_heatmap(merchant_id: str) -> dict:
     # the heatmap surfaces day-of-week patterns across the recent
     # window (not just the single last week, which would be a 7-cell
     # strip rather than a 2D heatmap).
+    extra_where, extra_params = _own_filters_sql(filters)
+
     recent_weeks = ["2026-04-27", "2026-05-04", "2026-05-11", "2026-05-18"]
     week_lo = "2026-03-02"
     week_hi = "2026-05-18"
 
     with _conn() as c:
         rows = c.execute(
-            """
+            f"""
             SELECT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
                    STRFTIME('%w', t.txn_ts) AS dow_num,
                    COUNT(DISTINCT t.txn_id) AS n_txns
             FROM tenant_transactions t
-            WHERE t.merchant_id = ?
+            WHERE t.merchant_id = ?{extra_where}
               AND DATE(t.txn_ts, 'weekday 0', '-6 days')
                   BETWEEN ? AND ?
             GROUP BY week, dow_num
             """,
-            (merchant_id, week_lo, week_hi),
+            (merchant_id, *extra_params, week_lo, week_hi),
         ).fetchall()
 
     # Per-day baseline = mean of (Mar 2, 9, 16, 23) counts.

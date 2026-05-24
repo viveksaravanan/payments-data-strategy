@@ -118,9 +118,9 @@ def _push(
 # questions land.
 # ---------------------------------------------------------------------------
 
-def _render_a1(merchant_id: str) -> None:
+def _render_a1(merchant_id: str, filters: dict | None = None) -> None:
     """A1: University City weekly transaction trajectory (Pattern 1)."""
-    chart_data = D.uc_decline_trajectory(merchant_id)
+    chart_data = D.uc_decline_trajectory(merchant_id, filters=filters)
     if not chart_data.get("weeks"):
         st.caption("_No University City data available for this merchant._")
         return
@@ -149,9 +149,9 @@ def _render_a1(merchant_id: str) -> None:
     )
 
 
-def _render_p1(merchant_id: str) -> None:
+def _render_p1(merchant_id: str, filters: dict | None = None) -> None:
     """P1: category × peer pricing heatmap (Pattern 3 cross-merchant diverging)."""
-    chart_data = D.category_peer_pricing_gaps(merchant_id)
+    chart_data = D.category_peer_pricing_gaps(merchant_id, filters=filters)
     if not chart_data["rows"]:
         st.caption("_No pricing data available for this merchant._")
         return
@@ -193,9 +193,9 @@ def _render_p1(merchant_id: str) -> None:
     )
 
 
-def _render_p2(merchant_id: str) -> None:
+def _render_p2(merchant_id: str, filters: dict | None = None) -> None:
     """P2: staple-tier vs non-food-tier pricing positioning (Pattern 2)."""
-    chart_data = D.staple_vs_nonfood_pricing(merchant_id)
+    chart_data = D.staple_vs_nonfood_pricing(merchant_id, filters=filters)
     if not chart_data["panel_a_data"]["categories"] and \
        not chart_data["panel_b_data"]["categories"]:
         st.caption("_No pricing data available for this merchant._")
@@ -214,9 +214,9 @@ def _render_p2(merchant_id: str) -> None:
     )
 
 
-def _render_p3(merchant_id: str) -> None:
+def _render_p3(merchant_id: str, filters: dict | None = None) -> None:
     """P3: pricing-leverage scatter — volume × peer-gap quadrants (Pattern 4)."""
-    chart_data = D.category_pricing_leverage(merchant_id)
+    chart_data = D.category_pricing_leverage(merchant_id, filters=filters)
     if not chart_data["points"]:
         st.caption("_No pricing data available for this merchant._")
         return
@@ -241,9 +241,9 @@ def _render_p3(merchant_id: str) -> None:
     )
 
 
-def _render_d4(merchant_id: str) -> None:
+def _render_d4(merchant_id: str, filters: dict | None = None) -> None:
     """D4: own share vs peer share — basket-mix scatter with parity line (Pattern 4)."""
-    chart_data = D.category_share_vs_peer_share(merchant_id)
+    chart_data = D.category_share_vs_peer_share(merchant_id, filters=filters)
     if not chart_data["points"]:
         st.caption("_No basket-mix data available for this merchant._")
         return
@@ -260,7 +260,7 @@ def _render_d4(merchant_id: str) -> None:
     )
 
 
-def _render_d7(merchant_id: str) -> None:
+def _render_d7(merchant_id: str, filters: dict | None = None) -> None:
     """D7: per-peer revenue gap decomposition (Pattern 5 waterfall × 2).
 
     Renders one waterfall per same-segment peer (peer_a + peer_b)
@@ -272,7 +272,7 @@ def _render_d7(merchant_id: str) -> None:
     per-store drivers sit within 2pp of each other — KRG↔WDX hits
     this zone).
     """
-    chart_data = D.revenue_gap_decomposition(merchant_id)
+    chart_data = D.revenue_gap_decomposition(merchant_id, filters=filters)
     if not chart_data.get("has_peers"):
         st.caption("_No peer data available for revenue-gap decomposition._")
         return
@@ -316,9 +316,9 @@ def _render_d7(merchant_id: str) -> None:
         )
 
 
-def _render_d3(merchant_id: str) -> None:
+def _render_d3(merchant_id: str, filters: dict | None = None) -> None:
     """D3: basket-mix fingerprint vs peer-average (Pattern 2 diverging)."""
-    chart_data = D.basket_mix_vs_peers(merchant_id)
+    chart_data = D.basket_mix_vs_peers(merchant_id, filters=filters)
     if not chart_data["categories"]:
         st.caption("_No basket-mix data available for this merchant._")
         return
@@ -336,9 +336,9 @@ def _render_d3(merchant_id: str) -> None:
     )
 
 
-def _render_t_p1(merchant_id: str) -> None:
+def _render_t_p1(merchant_id: str, filters: dict | None = None) -> None:
     """T-P1 (TBL): mean ticket trend per daypart (Pattern 1 own-multi)."""
-    chart_data = D.tbl_daypart_ticket_trends(merchant_id)
+    chart_data = D.tbl_daypart_ticket_trends(merchant_id, filters=filters)
     if not chart_data["series"]:
         st.caption("_No daypart-trend data available._")
         return
@@ -359,9 +359,9 @@ def _render_t_p1(merchant_id: str) -> None:
     )
 
 
-def _render_t_p2(merchant_id: str) -> None:
+def _render_t_p2(merchant_id: str, filters: dict | None = None) -> None:
     """T-P2 (TBL): per-category unit price trends (Pattern 1 own-multi)."""
-    chart_data = D.category_unit_price_trends(merchant_id, top_n=6)
+    chart_data = D.category_unit_price_trends(merchant_id, top_n=6, filters=filters)
     if not chart_data["series"]:
         st.caption("_No category-price data available._")
         return
@@ -378,9 +378,9 @@ def _render_t_p2(merchant_id: str) -> None:
     )
 
 
-def _render_t_p3(merchant_id: str) -> None:
+def _render_t_p3(merchant_id: str, filters: dict | None = None) -> None:
     """T-P3 (TBL): per-store mean-ticket distribution (Pattern 2 own-bars)."""
-    chart_data = D.per_store_mean_ticket(merchant_id)
+    chart_data = D.per_store_mean_ticket(merchant_id, filters=filters)
     if not chart_data["labels"]:
         st.caption("_No store ticket data available._")
         return
@@ -397,9 +397,9 @@ def _render_t_p3(merchant_id: str) -> None:
     )
 
 
-def _render_t_a1(merchant_id: str) -> None:
+def _render_t_a1(merchant_id: str, filters: dict | None = None) -> None:
     """T-A1 (TBL): per-store recent-vs-baseline traffic anomalies (Pattern 9)."""
-    chart_data = D.store_anomalies_own_only(merchant_id)
+    chart_data = D.store_anomalies_own_only(merchant_id, filters=filters)
     rows = chart_data["rows"]
     if not rows:
         st.caption("_No stores with enough baseline data to evaluate._")
@@ -445,9 +445,9 @@ def _render_t_a1(merchant_id: str) -> None:
     )
 
 
-def _render_t_a2(merchant_id: str) -> None:
+def _render_t_a2(merchant_id: str, filters: dict | None = None) -> None:
     """T-A2 (TBL): per-SKU recent-vs-baseline volume anomalies (Pattern 9)."""
-    chart_data = D.sku_anomalies(merchant_id, top_n=25)
+    chart_data = D.sku_anomalies(merchant_id, top_n=25, filters=filters)
     rows = chart_data["rows"]
     if not rows:
         st.caption("_No SKU-volume data in the recent window._")
@@ -492,9 +492,9 @@ def _render_t_a2(merchant_id: str) -> None:
     )
 
 
-def _render_t_a3(merchant_id: str) -> None:
+def _render_t_a3(merchant_id: str, filters: dict | None = None) -> None:
     """T-A3 (TBL): day-of-week × daypart ratio heatmap (Pattern 3 own-only)."""
-    chart_data = D.day_daypart_heatmap(merchant_id)
+    chart_data = D.day_daypart_heatmap(merchant_id, filters=filters)
     weakest = chart_data["weakest"]
     strongest = chart_data["strongest"]
     if weakest is None or strongest is None:
@@ -515,9 +515,9 @@ def _render_t_a3(merchant_id: str) -> None:
     )
 
 
-def _render_t_d1(merchant_id: str) -> None:
+def _render_t_d1(merchant_id: str, filters: dict | None = None) -> None:
     """T-D1 (TBL): menu-category share bars (Pattern 2 own-bars)."""
-    chart_data = D.category_share_own(merchant_id, top_n=8)
+    chart_data = D.category_share_own(merchant_id, top_n=8, filters=filters)
     if not chart_data["labels"]:
         st.caption("_No category-share data available._")
         return
@@ -533,9 +533,9 @@ def _render_t_d1(merchant_id: str) -> None:
     )
 
 
-def _render_t_d2(merchant_id: str) -> None:
+def _render_t_d2(merchant_id: str, filters: dict | None = None) -> None:
     """T-D2 (TBL): category share trajectory (Pattern 1 own-multi)."""
-    chart_data = D.category_share_trajectory(merchant_id, top_n=6)
+    chart_data = D.category_share_trajectory(merchant_id, top_n=6, filters=filters)
     if not chart_data["series"]:
         st.caption("_No category-share trajectory data available._")
         return
@@ -567,9 +567,9 @@ def _render_t_d2(merchant_id: str) -> None:
     )
 
 
-def _render_t_d3(merchant_id: str) -> None:
+def _render_t_d3(merchant_id: str, filters: dict | None = None) -> None:
     """T-D3 (TBL): revenue-change decomposition (Pattern 5 own-vs-own)."""
-    chart_data = D.revenue_change_decomposition_own(merchant_id)
+    chart_data = D.revenue_change_decomposition_own(merchant_id, filters=filters)
     if not chart_data.get("has_data"):
         st.caption("_Insufficient data to decompose this week's change._")
         return
@@ -600,14 +600,14 @@ def _render_t_d3(merchant_id: str) -> None:
     )
 
 
-def _render_r_p1(merchant_id: str) -> None:
+def _render_r_p1(merchant_id: str, filters: dict | None = None) -> None:
     """R-P1 (TJX): per-category unit-price trends (Pattern 1 own-multi).
 
     Same data shape as T-P2 — reusing ``category_unit_price_trends``.
     The merchant-phrased takeaway changes to frame it as a ticket
     trend (R-P1) rather than a unit-price drift (T-P2).
     """
-    chart_data = D.category_unit_price_trends(merchant_id, top_n=6)
+    chart_data = D.category_unit_price_trends(merchant_id, top_n=6, filters=filters)
     if not chart_data["series"]:
         st.caption("_No category-ticket data available._")
         return
@@ -624,9 +624,9 @@ def _render_r_p1(merchant_id: str) -> None:
     )
 
 
-def _render_r_p2(merchant_id: str) -> None:
+def _render_r_p2(merchant_id: str, filters: dict | None = None) -> None:
     """R-P2 (TJX): per-category price spread table (Pattern 9)."""
-    chart_data = D.category_price_spread(merchant_id)
+    chart_data = D.category_price_spread(merchant_id, filters=filters)
     rows = chart_data["rows"]
     if not rows:
         st.caption("_No price-spread data available._")
@@ -659,9 +659,9 @@ def _render_r_p2(merchant_id: str) -> None:
     )
 
 
-def _render_r_p3(merchant_id: str) -> None:
+def _render_r_p3(merchant_id: str, filters: dict | None = None) -> None:
     """R-P3 (TJX): ticket-band split (Pattern 2 grouped bars)."""
-    chart_data = D.ticket_band_distribution(merchant_id)
+    chart_data = D.ticket_band_distribution(merchant_id, filters=filters)
     if not chart_data["labels"]:
         st.caption("_No ticket-band data available._")
         return
@@ -677,13 +677,13 @@ def _render_r_p3(merchant_id: str) -> None:
     )
 
 
-def _render_r_a1(merchant_id: str) -> None:
+def _render_r_a1(merchant_id: str, filters: dict | None = None) -> None:
     """R-A1 (TJX): per-store recent-vs-baseline anomalies (Pattern 9).
 
     Same helper as T-A1; the merchant-phrased takeaway matches the
     grocer-style A2 wording for consistency.
     """
-    chart_data = D.store_anomalies_own_only(merchant_id)
+    chart_data = D.store_anomalies_own_only(merchant_id, filters=filters)
     rows = chart_data["rows"]
     if not rows:
         st.caption("_No stores with enough baseline data to evaluate._")
@@ -729,14 +729,14 @@ def _render_r_a1(merchant_id: str) -> None:
     )
 
 
-def _render_r_a2(merchant_id: str) -> None:
+def _render_r_a2(merchant_id: str, filters: dict | None = None) -> None:
     """R-A2 (TJX): per-category volume anomalies (Pattern 9, no peer col).
 
     Reuses ``category_anomalies``; for TJX the peer column comes back
     None for every row (no same-segment peers in the lake), so the
     column is omitted entirely from the table.
     """
-    chart_data = D.category_anomalies(merchant_id)
+    chart_data = D.category_anomalies(merchant_id, filters=filters)
     rows = chart_data["rows"]
     if not rows:
         st.caption("_No category-volume data in the recent window._")
@@ -773,9 +773,9 @@ def _render_r_a2(merchant_id: str) -> None:
     )
 
 
-def _render_r_a3(merchant_id: str) -> None:
+def _render_r_a3(merchant_id: str, filters: dict | None = None) -> None:
     """R-A3 (TJX): day × week ratio heatmap (Pattern 3 own-only)."""
-    chart_data = D.day_week_heatmap(merchant_id)
+    chart_data = D.day_week_heatmap(merchant_id, filters=filters)
     weakest = chart_data["weakest"]
     if weakest is None:
         takeaway = "Insufficient day-level data to score this period."
@@ -793,12 +793,12 @@ def _render_r_a3(merchant_id: str) -> None:
     )
 
 
-def _render_r_d1(merchant_id: str) -> None:
+def _render_r_d1(merchant_id: str, filters: dict | None = None) -> None:
     """R-D1 (TJX): category share bars (Pattern 2 own-bars).
 
     Shares ``category_share_own`` with T-D1; only the merchant-phrased
     title changes."""
-    chart_data = D.category_share_own(merchant_id, top_n=8)
+    chart_data = D.category_share_own(merchant_id, top_n=8, filters=filters)
     if not chart_data["labels"]:
         st.caption("_No category-share data available._")
         return
@@ -814,9 +814,9 @@ def _render_r_d1(merchant_id: str) -> None:
     )
 
 
-def _render_r_d2(merchant_id: str) -> None:
+def _render_r_d2(merchant_id: str, filters: dict | None = None) -> None:
     """R-D2 (TJX): category share trajectory (Pattern 1 own-multi)."""
-    chart_data = D.category_share_trajectory(merchant_id, top_n=6)
+    chart_data = D.category_share_trajectory(merchant_id, top_n=6, filters=filters)
     if not chart_data["series"]:
         st.caption("_No category-share trajectory data available._")
         return
@@ -848,9 +848,9 @@ def _render_r_d2(merchant_id: str) -> None:
     )
 
 
-def _render_r_d3(merchant_id: str) -> None:
+def _render_r_d3(merchant_id: str, filters: dict | None = None) -> None:
     """R-D3 (TJX): revenue-change decomposition (Pattern 5 own-vs-own)."""
-    chart_data = D.revenue_change_decomposition_own(merchant_id)
+    chart_data = D.revenue_change_decomposition_own(merchant_id, filters=filters)
     if not chart_data.get("has_data"):
         st.caption("_Insufficient data to decompose this week's change._")
         return
@@ -881,9 +881,9 @@ def _render_r_d3(merchant_id: str) -> None:
     )
 
 
-def _render_a2(merchant_id: str) -> None:
+def _render_a2(merchant_id: str, filters: dict | None = None) -> None:
     """A2: per-store recent-vs-baseline traffic table (Pattern 9)."""
-    chart_data = D.store_anomalies(merchant_id)
+    chart_data = D.store_anomalies(merchant_id, filters=filters)
     rows = chart_data["rows"]
     if not rows:
         st.caption("_No stores with enough baseline data to evaluate._")
@@ -939,9 +939,9 @@ def _render_a2(merchant_id: str) -> None:
     )
 
 
-def _render_a3(merchant_id: str) -> None:
+def _render_a3(merchant_id: str, filters: dict | None = None) -> None:
     """A3: per-category recent-vs-baseline volume table (Pattern 9)."""
-    chart_data = D.category_anomalies(merchant_id)
+    chart_data = D.category_anomalies(merchant_id, filters=filters)
     rows = chart_data["rows"]
     if not rows:
         st.caption("_No category-volume data in the recent window._")
@@ -984,9 +984,9 @@ def _render_a3(merchant_id: str) -> None:
     )
 
 
-def _render_t1(merchant_id: str) -> None:
+def _render_t1(merchant_id: str, filters: dict | None = None) -> None:
     """T1: per-neighborhood performance map (Pattern 6 diverging)."""
-    chart_data = D.neighborhood_performance(merchant_id)
+    chart_data = D.neighborhood_performance(merchant_id, filters=filters)
     nbhds = chart_data["neighborhoods"]
     if not nbhds:
         st.caption("_No store footprint to map._")
@@ -1054,9 +1054,9 @@ def _render_t1(merchant_id: str) -> None:
     )
 
 
-def _render_t2(merchant_id: str) -> None:
+def _render_t2(merchant_id: str, filters: dict | None = None) -> None:
     """T2: customer-home density map (Pattern 6 sequential)."""
-    chart_data = D.customer_home_density(merchant_id)
+    chart_data = D.customer_home_density(merchant_id, filters=filters)
     nbhds = chart_data["neighborhoods"]
     if not nbhds:
         st.caption("_No customer-home data to map._")
@@ -1105,9 +1105,9 @@ def _render_t2(merchant_id: str) -> None:
     )
 
 
-def _render_t4(merchant_id: str) -> None:
+def _render_t4(merchant_id: str, filters: dict | None = None) -> None:
     """T4: expansion-opportunity map (Pattern 6 score)."""
-    chart_data = D.expansion_opportunity(merchant_id)
+    chart_data = D.expansion_opportunity(merchant_id, filters=filters)
     nbhds = chart_data["neighborhoods"]
     if not nbhds:
         st.caption("_No customer-activity data to score._")
@@ -1154,7 +1154,7 @@ def _render_t4(merchant_id: str) -> None:
     )
 
 
-QUESTION_RENDERERS: dict[str, Callable[[str], None]] = {
+QUESTION_RENDERERS: dict[str, Callable[..., None]] = {
     "A1": _render_a1,
     "A2": _render_a2,
     "A3": _render_a3,
@@ -1193,16 +1193,19 @@ QUESTION_RENDERERS: dict[str, Callable[[str], None]] = {
 def _render_question_chart(qid: str | None, merchant_id: str) -> None:
     """Render the chart associated with `qid`, if a renderer is wired.
 
-    Wrapped in try/except so a chart-render failure doesn't break the
-    surrounding chat-message bubble.
+    Pulls the current per-merchant filter state from session_state and
+    passes it through so chat-replayed charts honor the dashboard's
+    active filters. Wrapped in try/except so a chart-render failure
+    doesn't break the surrounding chat-message bubble.
     """
     if not qid:
         return
     renderer = QUESTION_RENDERERS.get(qid)
     if renderer is None:
         return
+    filters = st.session_state.get("filters_by_merchant", {}).get(merchant_id)
     try:
-        renderer(merchant_id)
+        renderer(merchant_id, filters=filters)
     except Exception as exc:  # noqa: BLE001 — chart errors are non-fatal
         st.caption(f"_(chart render failed: {type(exc).__name__})_")
 

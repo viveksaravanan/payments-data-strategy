@@ -152,7 +152,7 @@ mid = state.merchant_id
 # panel is a fixed-position overlay drawer (closed / side / expanded)
 # rather than a permanent right-rail column.
 
-f_col1, f_col2, f_col3 = st.columns([1.2, 1.6, 1.6])
+f_col1, f_col2 = st.columns([1.5, 2.0])
 with f_col1:
     date_range = st.date_input(
         "Date range",
@@ -173,16 +173,9 @@ with f_col2:
         key=f"stores_{mid}",
     )
     filters["stores"] = chosen_stores
-with f_col3:
-    cats = D.categories_for(mid)
-    chosen_cats = st.multiselect(
-        f"Categories ({len(cats)})",
-        options=cats,
-        default=filters["categories"] if filters["categories"] else [],
-        placeholder="All categories",
-        key=f"cats_{mid}",
-    )
-    filters["categories"] = chosen_cats
+# ``filters["categories"]`` is kept in the dict shape for chat-side
+# / programmatic callers (v3.1) — backend helpers honor it via
+# ``_category_where``. No UI surface for v3.
 
 st.markdown("<hr style='margin: 8px 0 12px;'/>", unsafe_allow_html=True)
 

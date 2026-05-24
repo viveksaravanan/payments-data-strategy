@@ -77,7 +77,7 @@ PLOTLY_CONFIG = {"displayModeBar": False, "responsive": True}
 # ---------------------------------------------------------------------------
 
 
-def render_customers_section(merchant_id: str, filters: dict) -> None:  # noqa: ARG001
+def render_customers_section(merchant_id: str, filters: dict) -> None:
     """Phase 4.4 Section 5 — Customers. Three cards in an equal-width row:
 
     - Card 5.1 New vs returning (Pattern 2 own-bars, with trend delta).
@@ -102,7 +102,7 @@ def render_customers_section(merchant_id: str, filters: dict) -> None:  # noqa: 
                     "week — are new customers growing or my base growing?"
                 ),
             }
-            nvr = D.new_vs_returning(merchant_id)
+            nvr = D.new_vs_returning(merchant_id, filters=filters)
             if nvr["total_count"] == 0:
                 st.caption("_No customer activity in the recent week._")
             else:
@@ -141,7 +141,7 @@ def render_customers_section(merchant_id: str, filters: dict) -> None:  # noqa: 
                     "tell me about loyalty?"
                 ),
             }
-            freq = D.transactions_per_customer(merchant_id)
+            freq = D.transactions_per_customer(merchant_id, filters=filters)
             if not freq["labels"]:
                 st.caption("_No customer-frequency data._")
             else:
@@ -173,7 +173,7 @@ def render_customers_section(merchant_id: str, filters: dict) -> None:  # noqa: 
                 "specialist": "trade",
                 "prefill":    "Where do my customers live relative to my stores?",
             }
-            chart_data = D.customer_home_density(merchant_id)
+            chart_data = D.customer_home_density(merchant_id, filters=filters)
             nbhds = chart_data["neighborhoods"]
             if not nbhds:
                 st.caption("_No customer-home data to map._")
@@ -224,7 +224,7 @@ def render_customers_section(merchant_id: str, filters: dict) -> None:  # noqa: 
                 )
 
 
-def render_catalog_section(merchant_id: str, filters: dict) -> None:  # noqa: ARG001
+def render_catalog_section(merchant_id: str, filters: dict) -> None:
     """Phase 4.4 Section 4 — Catalog. Two cards in a 40/60 row:
 
     - Card 4.1 Category mix (Pattern 2 own-bars, top 8 + "Other"
@@ -261,7 +261,7 @@ def render_catalog_section(merchant_id: str, filters: dict) -> None:  # noqa: AR
                 "specialist": "demand",
                 "prefill":    prefill_by_segment.get(merchant_id, prefill_by_segment["KRG"]),
             }
-            chart_data = D.category_share_own(merchant_id, top_n=8)
+            chart_data = D.category_share_own(merchant_id, top_n=8, filters=filters)
             if not chart_data["labels"]:
                 st.caption("_No category-share data available._")
             else:
@@ -326,7 +326,7 @@ def render_catalog_section(merchant_id: str, filters: dict) -> None:  # noqa: AR
                 "prefill":    ask_prefill,
             }
 
-            chart_data = D.sku_performance(merchant_id)
+            chart_data = D.sku_performance(merchant_id, filters=filters)
             all_rows = chart_data["rows"]
             if not all_rows:
                 st.caption("_No SKU data in the recent window._")
@@ -406,7 +406,7 @@ def render_catalog_section(merchant_id: str, filters: dict) -> None:  # noqa: AR
                 )
 
 
-def render_geography_section(merchant_id: str, filters: dict) -> None:  # noqa: ARG001
+def render_geography_section(merchant_id: str, filters: dict) -> None:
     """Phase 4.4 Section 3 — Geography. Two cards in a 55/45 row:
 
     - Card 3.1 Neighborhood performance map (Pattern 6 diverging,
@@ -430,7 +430,7 @@ def render_geography_section(merchant_id: str, filters: dict) -> None:  # noqa: 
                     "market's?"
                 ),
             }
-            chart_data = D.neighborhood_performance(merchant_id)
+            chart_data = D.neighborhood_performance(merchant_id, filters=filters)
             nbhds = chart_data["neighborhoods"]
             if not nbhds:
                 st.caption("_No store footprint to map._")
@@ -496,9 +496,9 @@ def render_geography_section(merchant_id: str, filters: dict) -> None:  # noqa: 
             # leaner own-only variant. Both produce the same row
             # shape minus the peer column.
             if D.has_same_segment_peers(merchant_id):
-                chart_data = D.store_anomalies(merchant_id)
+                chart_data = D.store_anomalies(merchant_id, filters=filters)
             else:
-                chart_data = D.store_anomalies_own_only(merchant_id)
+                chart_data = D.store_anomalies_own_only(merchant_id, filters=filters)
             rows = chart_data["rows"]
             if not rows:
                 st.caption("_No stores with enough baseline data._")
@@ -541,7 +541,7 @@ def render_geography_section(merchant_id: str, filters: dict) -> None:  # noqa: 
                 )
 
 
-def render_performance_section(merchant_id: str, filters: dict) -> None:  # noqa: ARG001
+def render_performance_section(merchant_id: str, filters: dict) -> None:
     """Phase 4.4 Section 2 — Performance over time. Three cards in a
     row: Revenue trajectory, Transaction trajectory, Hour × DOW
     heatmap. Each carries an "Ask about this" affordance routing per
@@ -549,7 +549,7 @@ def render_performance_section(merchant_id: str, filters: dict) -> None:  # noqa
     """
     from . import chart_patterns as CP
 
-    t = D.performance_trajectory(merchant_id)
+    t = D.performance_trajectory(merchant_id, filters=filters)
 
     def _dir(pct: float) -> str:
         return "up" if pct > 0 else ("down" if pct < 0 else "flat")
@@ -618,7 +618,7 @@ def render_performance_section(merchant_id: str, filters: dict) -> None:  # noqa
                 "specialist": "trade",
                 "prefill":    "What does my hour-by-day pattern tell me about my customer base?",
             }
-            h = D.hour_dow_heatmap_card(merchant_id)
+            h = D.hour_dow_heatmap_card(merchant_id, filters=filters)
             wd_we_phrase = (
                 f"{h['wd_we_higher']} traffic is {h['wd_we_ratio']}% higher "
                 "than the inverse"
@@ -641,7 +641,7 @@ def render_performance_section(merchant_id: str, filters: dict) -> None:  # noqa
             )
 
 
-def render_kpi_strip(merchant_id: str, filters: dict) -> None:  # noqa: ARG001
+def render_kpi_strip(merchant_id: str, filters: dict) -> None:
     """Phase 4.4 KPI strip: 5 Pattern 8 callouts in a row — Revenue,
     Transactions, Avg basket, Unique customers, Anomaly count. Each
     card carries an "Ask about this" affordance routing per
@@ -649,10 +649,17 @@ def render_kpi_strip(merchant_id: str, filters: dict) -> None:  # noqa: ARG001
     """
     from . import chart_patterns as CP
 
-    k = D.kpi_strip(merchant_id)
+    k = D.kpi_strip(merchant_id, filters=filters)
 
-    def _direction(pct: float) -> str:
+    def _direction(pct: float | None) -> str:
+        if pct is None:
+            return "flat"
         return "up" if pct > 0 else ("down" if pct < 0 else "flat")
+
+    def _delta_text(pct: float | None) -> str:
+        if pct is None:
+            return "— (window too narrow)"
+        return f"{pct:+.1f}% vs prior 4w"
 
     cols = st.columns(5, gap="small")
 
@@ -661,7 +668,7 @@ def render_kpi_strip(merchant_id: str, filters: dict) -> None:  # noqa: ARG001
         CP.render_kpi_callout(
             label="Revenue this week",
             value=_fmt_money(k["revenue"]["value"]),
-            delta_text=f"{k['revenue']['delta_pct']:+.1f}% vs prior 4w",
+            delta_text=_delta_text(k["revenue"]["delta_pct"]),
             delta_direction=_direction(k["revenue"]["delta_pct"]),
             sparkline=k["revenue"]["sparkline"],
             ask_about_this={
@@ -676,7 +683,7 @@ def render_kpi_strip(merchant_id: str, filters: dict) -> None:  # noqa: ARG001
         CP.render_kpi_callout(
             label="Transactions this week",
             value=_fmt_int(k["transactions"]["value"]),
-            delta_text=f"{k['transactions']['delta_pct']:+.1f}% vs prior 4w",
+            delta_text=_delta_text(k["transactions"]["delta_pct"]),
             delta_direction=_direction(k["transactions"]["delta_pct"]),
             sparkline=k["transactions"]["sparkline"],
             ask_about_this={
@@ -691,7 +698,7 @@ def render_kpi_strip(merchant_id: str, filters: dict) -> None:  # noqa: ARG001
         CP.render_kpi_callout(
             label="Avg basket",
             value=_fmt_money(k["avg_basket"]["value"]),
-            delta_text=f"{k['avg_basket']['delta_pct']:+.1f}% vs prior 4w",
+            delta_text=_delta_text(k["avg_basket"]["delta_pct"]),
             delta_direction=_direction(k["avg_basket"]["delta_pct"]),
             sparkline=k["avg_basket"]["sparkline"],
             ask_about_this={
@@ -706,7 +713,7 @@ def render_kpi_strip(merchant_id: str, filters: dict) -> None:  # noqa: ARG001
         CP.render_kpi_callout(
             label="Unique customers",
             value=_fmt_int(k["unique_customers"]["value"]),
-            delta_text=f"{k['unique_customers']['delta_pct']:+.1f}% vs prior 4w",
+            delta_text=_delta_text(k["unique_customers"]["delta_pct"]),
             delta_direction=_direction(k["unique_customers"]["delta_pct"]),
             sparkline=k["unique_customers"]["sparkline"],
             ask_about_this={
