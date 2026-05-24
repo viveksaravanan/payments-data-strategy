@@ -78,8 +78,9 @@ state.setdefault("chat_expanded", False)
 
 
 def _render_telemetry_footer() -> None:
-    """Cost / token telemetry block — rendered below the chat panel in
-    both layout modes (split and full-width)."""
+    """Cost / token telemetry — a single 9 px line below the chat
+    panel content. Phase 4.5 polish flattened the previous two-line
+    "Session telemetry" header + values block to one minimal line."""
     try:
         from src.agents import llm as _llm
         totals = _llm.session_totals()
@@ -88,16 +89,13 @@ def _render_telemetry_footer() -> None:
     if not (totals and totals.get("calls", 0) > 0):
         return
     st.markdown(
-        '<hr style="margin: 14px 0 6px; border-color: var(--border);"/>'
-        '<div style="font-size:11px;color:var(--text-muted);'
-        'letter-spacing:0.05em;text-transform:uppercase;font-weight:600;'
-        'margin:0 0 4px;">Session telemetry</div>'
-        f'<div style="font-size:12px;color:var(--text-2);">'
-        f'{totals["calls"]} LLM calls · '
-        f'{totals["input_tokens"]:,} in · '
+        f'<div style="font-size:9px;color:var(--text-muted);'
+        f'margin:4px 0 0 0;letter-spacing:0.02em;">'
+        f'{totals["calls"]} calls · '
+        f'{totals["input_tokens"]:,} in / '
         f'{totals["output_tokens"]:,} out · '
-        f'~${totals["cost_usd"]:.4f}'
-        '</div>',
+        f'${totals["cost_usd"]:.4f}'
+        f'</div>',
         unsafe_allow_html=True,
     )
 

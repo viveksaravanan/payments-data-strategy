@@ -397,10 +397,10 @@ _CSS = """
        inside it scrolls internally. Layout below makes the panel a
        flex column so the history fills the remaining space after
        the fixed-size header / selectbox / suggestions / input row.
-       Without this restructure, the panel scrolled and the input
-       row could fall below the viewport. */
+       Phase 4.5 polish: top padding trimmed 16 → 4 px so the panel
+       header sits flush at the top with minimal gap above. */
     overflow: hidden !important;
-    padding: 16px 20px 16px 20px;
+    padding: 4px 20px 12px 20px;
     transition: width 0.3s ease, max-width 0.3s ease;
   }
   /* Make the panel's inner Streamlit ``stVerticalBlock`` a flex
@@ -499,34 +499,34 @@ _CSS = """
      visible regardless of the panel's overflow-y scrolling. */
   div[class*="st-key-chat_expand_edge"] {
     position: fixed !important;
-    right: calc(40vw - 24px);  /* center on the panel's left edge */
+    right: calc(40vw - 22px);  /* center on the panel's left edge */
     top: 50% !important;
     transform: translateY(-50%) !important;
-    width: 48px !important;
+    width: 44px !important;
     z-index: 1000;
     transition: right 0.3s ease;
   }
   body.chat-expanded div[class*="st-key-chat_expand_edge"] {
-    right: calc(90vw - 24px);
+    right: calc(90vw - 22px);
   }
   body.chat-closed div[class*="st-key-chat_expand_edge"] {
     display: none !important;
   }
-  /* Phase 4.5 polish: keep the 48 × 48 button container; bump the
-     chevron glyph to 34 px so it visually fills the circle (was
-     24 px floating in the middle of negative space). The button
-     dimensions are unchanged — only the glyph grew. */
+  /* Phase 4.5 polish: 44 × 44 button (down from 48) with 32 px
+     chevron glyph (down from 34 but proportionally bigger inside
+     the smaller circle). The chevron visually fills the circle —
+     not a small icon floating in negative space. */
   div[class*="st-key-chat_expand_edge"] button {
-    width: 48px !important;
-    height: 48px !important;
+    width: 44px !important;
+    height: 44px !important;
     min-height: 0 !important;
     padding: 0 !important;
     border-radius: 50% !important;
     background: #FFFFFF !important;
     border: 1px solid var(--border) !important;
     box-shadow: -2px 2px 8px rgba(15, 31, 46, 0.15) !important;
-    font-size: 34px !important;
-    line-height: 0.9 !important;
+    font-size: 32px !important;
+    line-height: 0.85 !important;
     color: #534AB7 !important;
   }
   div[class*="st-key-chat_expand_edge"] button:hover {
@@ -546,9 +546,9 @@ _CSS = """
     justify-content: flex-end !important;
   }
   div[class*="st-key-clear_btn_"] button {
-    width: 96px !important;
-    max-width: 96px !important;
-    flex: 0 0 96px !important;
+    width: 88px !important;
+    max-width: 88px !important;
+    flex: 0 0 88px !important;
     font-size: 12px !important;
     padding: 6px 12px !important;
     min-height: 0 !important;
@@ -761,11 +761,13 @@ def apply_chat_state_class(chat_state: str) -> None:
     The chat panel CSS responds to ``body.chat-closed`` /
     ``body.chat-side`` / ``body.chat-expanded`` — this helper writes
     the current state to the iframe's ``document.body`` so the CSS
-    transitions fire smoothly on state changes. It also installs a
-    one-time global ``keydown`` listener that wires Enter-to-submit
-    on the chat panel's text-area (Shift+Enter still inserts a
-    newline; the listener is guarded by a sentinel flag so reruns
-    don't stack handlers).
+    transitions fire smoothly on state changes.
+
+    Phase 4.5 polish: the prior Enter-to-submit keydown handler is
+    removed. Enter now inserts a newline (the textarea's default
+    behaviour); only the Send button submits. Removes a JS surface
+    area that fought Streamlit's iframe re-mounting and produced
+    occasional double-submit flickers on rerun.
     """
     import streamlit.components.v1 as _components
     cls = f"chat-{chat_state}"
@@ -775,29 +777,6 @@ def apply_chat_state_class(chat_state: str) -> None:
           const doc = window.parent.document;
           doc.body.classList.remove('chat-closed', 'chat-side', 'chat-expanded');
           doc.body.classList.add({cls!r});
-
-          // One-time Enter-to-submit binding on the chat-panel
-          // textarea. The sentinel on ``window.parent`` keeps this
-          // idempotent across Streamlit reruns — each rerun re-runs
-          // this script but the conditional ensures only the first
-          // run attaches the listener.
-          if (!window.parent.__chatEnterHandlerInstalled) {{
-            window.parent.__chatEnterHandlerInstalled = true;
-            doc.addEventListener('keydown', function(e) {{
-              if (!e.target || e.target.tagName !== 'TEXTAREA') return;
-              if (e.key !== 'Enter' || e.shiftKey) return;
-              // Only fire on the chat panel's text-area (key starts
-              // with ``chat_input_``), not other textareas on the
-              // page that might exist in future cards.
-              const wrapper = e.target.closest('[class*="st-key-chat_input_"]');
-              if (!wrapper) return;
-              e.preventDefault();
-              const sendBtn = doc.querySelector(
-                '[class*="st-key-chat_send_"] button'
-              );
-              if (sendBtn) sendBtn.click();
-            }});
-          }}
         </script>
         """,
         height=0,

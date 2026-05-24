@@ -1482,22 +1482,68 @@ def render_chat_panel(merchant_id: str) -> None:
 
     st.markdown("---")
 
-    # Suggested questions: clicking enqueues a pending dispatch but
-    # does NOT run the agent in this run. Streamlit's auto-rerun on
-    # button-click fires, and the next run renders everything with
-    # is_running=True before the dispatch executes inside the chat
-    # container — so the user can't disrupt mid-stream.
+    # Suggested questions — auto-collapse logic (Phase 4.5 polish).
+    # When the merchant has no chat history yet, the 3 suggested-
+    # question pills render expanded so the cold-open invites a
+    # click. Once history exists, the pills collapse to a small
+    # "▸ Suggested questions" link to free vertical space for the
+    # conversation; clicking the link expands them with a "▾ Hide
+    # suggestions" toggle.
+    #
+    # State: ``suggestions_open_by_merchant[merchant_id]`` — bool.
+    # Default: True iff the history is empty. Survives reruns. A
+    # specialist switch with non-empty history resets to False
+    # (collapsed) so the merchant isn't forced to re-collapse after
+    # each switch.
+    state.setdefault("suggestions_open_by_merchant", {})
+    state.setdefault("last_active_agent_by_merchant", {})
+    sob = state.suggestions_open_by_merchant
+    laa = state.last_active_agent_by_merchant
+    if merchant_id not in sob:
+        sob[merchant_id] = not bool(history)
+    # If the user just switched specialists and history exists,
+    # collapse the new specialist's suggestions.
+    if laa.get(merchant_id) != state.active_agent and history:
+        sob[merchant_id] = False
+    laa[merchant_id] = state.active_agent
+
+    show_pills = sob[merchant_id]
+
     clicked: tuple[str, str] | None = None
-    for q in Q.questions_for(merchant_id, state.active_agent):
-        qid, qtext = q["id"], q["text"]
+    if show_pills:
+        for q in Q.questions_for(merchant_id, state.active_agent):
+            qid, qtext = q["id"], q["text"]
+            if st.button(
+                qtext,
+                key=f"q_{merchant_id}_{state.active_agent}_{qid}",
+                use_container_width=True,
+                disabled=is_running,
+                type="secondary",
+            ):
+                clicked = (qid, qtext)
+        # "Hide suggestions" toggle (only when pills are expanded
+        # AND history is non-empty — empty history leaves the pills
+        # always-visible since there's nothing to hide them for).
+        if history:
+            if st.button(
+                "▾ Hide suggestions",
+                key=f"hide_suggestions_{merchant_id}",
+                disabled=is_running,
+                type="secondary",
+            ):
+                sob[merchant_id] = False
+                st.rerun()
+    else:
+        # Collapsed state — a one-line link/button to re-expand.
         if st.button(
-            qtext,
-            key=f"q_{merchant_id}_{state.active_agent}_{qid}",
-            use_container_width=True,
+            "▸ Suggested questions",
+            key=f"show_suggestions_{merchant_id}",
             disabled=is_running,
             type="secondary",
         ):
-            clicked = (qid, qtext)
+            sob[merchant_id] = True
+            st.rerun()
+
     if clicked is not None and not is_running:
         qid, qtext = clicked
         state.pending_dispatch = {
