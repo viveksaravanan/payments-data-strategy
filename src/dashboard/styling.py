@@ -512,9 +512,10 @@ _CSS = """
   body.chat-closed div[class*="st-key-chat_expand_edge"] {
     display: none !important;
   }
-  /* Phase 4.5 final: bigger 48 × 48 chevron (was 44) with 24 px
-     glyph (was 20) — clearer affordance for the side ↔ expanded
-     toggle. */
+  /* Phase 4.5 polish: keep the 48 × 48 button container; bump the
+     chevron glyph to 34 px so it visually fills the circle (was
+     24 px floating in the middle of negative space). The button
+     dimensions are unchanged — only the glyph grew. */
   div[class*="st-key-chat_expand_edge"] button {
     width: 48px !important;
     height: 48px !important;
@@ -524,8 +525,8 @@ _CSS = """
     background: #FFFFFF !important;
     border: 1px solid var(--border) !important;
     box-shadow: -2px 2px 8px rgba(15, 31, 46, 0.15) !important;
-    font-size: 24px !important;
-    line-height: 1 !important;
+    font-size: 34px !important;
+    line-height: 0.9 !important;
     color: #534AB7 !important;
   }
   div[class*="st-key-chat_expand_edge"] button:hover {
@@ -593,26 +594,20 @@ _CSS = """
     pointer-events: none;  /* purely visual — click-to-close not wired in this commit */
   }
 
-  /* Phase 4.5 final — Variant B rounded input pill.
+  /* Phase 4.5 final — Variant B rounded input pill (column layout).
 
-     Streamlit renders each widget into its own ``.element-container``,
-     so the textarea and the Send button are siblings in the DOM
-     (not nested). To make the Send button appear INSIDE the pill on
-     its right edge, the button's element-container is absolutely
-     positioned over the textarea's element-container via the
-     ``:has()`` selector targeting the button's keyed wrapper. The
-     pill wrapper itself is ``position: relative`` to anchor the
-     absolute positioning.
-
-     Padding-right on the pill (48 px) reserves space for the
-     overlaid 32 × 32 button + an 8 px gutter so the textarea text
-     never collides with the arrow. */
+     The textarea + Send button live in an ``st.columns([1, 0.13])``
+     row inside the pill container — guaranteed side-by-side via
+     Streamlit's column primitive (was previously
+     absolute-positioned, which depended on ``:has()`` matching
+     Streamlit's exact DOM). The pill wrapper CSS hides the column
+     gap + flattens Streamlit's per-widget chrome so the row reads
+     as one rounded element. */
   div[class*="st-key-chat_input_row"] {
-    position: relative !important;
     background: #FFFFFF !important;
     border: 1px solid var(--border) !important;
     border-radius: 22px !important;
-    padding: 4px 48px 4px 14px !important;
+    padding: 2px 8px 2px 14px !important;
     margin-top: 4px !important;
     box-shadow: 0 1px 3px rgba(15, 31, 46, 0.04);
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -621,7 +616,12 @@ _CSS = """
     border-color: #534AB7 !important;
     box-shadow: 0 0 0 3px rgba(83, 74, 183, 0.12);
   }
-
+  /* Tighten the columns gap so the textarea sits flush against the
+     Send button. */
+  div[class*="st-key-chat_input_row"] div[data-testid="stHorizontalBlock"] {
+    gap: 4px !important;
+    align-items: center !important;
+  }
   /* Strip Streamlit's textarea chrome so the textarea reads as the
      pill's interior — no border, no shadow, no background. */
   div[class*="st-key-chat_input_row"] [data-testid="stTextArea"],
@@ -638,11 +638,11 @@ _CSS = """
     outline: none !important;
     box-shadow: none !important;
     background: transparent !important;
-    padding: 8px 0 !important;
+    padding: 6px 0 !important;
     min-height: 28px !important;
     max-height: 80px !important;
-    font-size: 13.5px !important;
-    line-height: 1.45 !important;
+    font-size: 13px !important;
+    line-height: 1.4 !important;
     resize: none !important;
     font-family: inherit !important;
   }
@@ -651,30 +651,11 @@ _CSS = """
     outline: none !important;
     box-shadow: none !important;
   }
-  /* Hide Streamlit's label spacer ``label_visibility="collapsed"``
-     leaves behind. */
   div[class*="st-key-chat_input_row"] [data-testid="stWidgetLabel"] {
     display: none !important;
   }
-
-  /* Send button — absolutely position its ENTIRE
-     ``.element-container`` wrapper so it overlays the pill's right
-     edge. ``:has()`` targets the element-container whose direct
-     child is the button's keyed wrapper. */
-  div[class*="st-key-chat_input_row"] div[data-testid="stVerticalBlock"] >
-    div[data-testid="element-container"]:has(> div[class*="st-key-chat_send_"]) {
-    position: absolute !important;
-    right: 8px !important;
-    top: 50% !important;
-    transform: translateY(-50%) !important;
-    width: 32px !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    z-index: 5;
-  }
-  /* The button itself — 32 × 32 purple circle. ``font-size: 0`` hides
-     the ``›`` glyph fallback; the white SVG arrow renders via
-     background-image. */
+  /* The button itself — 32 × 32 purple circle with white SVG arrow.
+     ``font-size: 0`` hides the ``›`` glyph fallback. */
   div[class*="st-key-chat_input_row"] div[class*="st-key-chat_send_"] button {
     width: 32px !important;
     height: 32px !important;
@@ -702,6 +683,35 @@ _CSS = """
     background-color: var(--text-muted) !important;
     cursor: not-allowed;
     transform: none;
+  }
+
+  /* Phase 4.5 polish — compact suggested-question pills.
+     The 3 suggested-question buttons inside the chat panel.
+     Bumped down to a 10 px font with tight 3 px gaps so the
+     section's total height drops from ~138 px → ~84 px,
+     freeing room for the chat-history flex grow. */
+  div[class*="st-key-chat_panel_overlay"] div[class*="st-key-q_"] {
+    margin-bottom: 3px !important;
+  }
+  div[class*="st-key-chat_panel_overlay"] div[class*="st-key-q_"]:last-child {
+    margin-bottom: 0 !important;
+  }
+  div[class*="st-key-chat_panel_overlay"] div[class*="st-key-q_"] button {
+    font-size: 10px !important;
+    padding: 5px 10px !important;
+    min-height: 0 !important;
+    border-radius: 6px !important;
+    line-height: 1.4 !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text-2) !important;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  div[class*="st-key-chat_panel_overlay"] div[class*="st-key-q_"] button:hover {
+    background: #EEEDFE !important;
+    border-color: #EEEDFE !important;
   }
 
   /* Mobile responsiveness — drawer becomes a bottom sheet at narrow

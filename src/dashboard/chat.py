@@ -1520,12 +1520,14 @@ def render_chat_panel(merchant_id: str) -> None:
     st.markdown("---")
 
     # -- Free-form input (Variant B "rounded pill with inline arrow")
-    # The text-area + Send button are wrapped in a container with a
-    # stable key (``chat_input_row``) so CSS can style them as one
-    # rounded white pill with a purple circular arrow on the right.
-    # Streamlit renders each widget in its own div, so the pill look
-    # comes from CSS targeting the wrapper + restyling the textarea
-    # / button children. --
+    # The text-area + Send button are placed in an
+    # ``st.columns([1, 0.13])`` row inside the pill container so
+    # they render side-by-side regardless of Streamlit's internal
+    # widget wrapping (the prior absolute-positioning approach
+    # depended on ``:has()`` selectors matching Streamlit's exact
+    # DOM; columns are more robust). The pill wrapper CSS hides
+    # the column gap + Streamlit's per-widget chrome so the row
+    # reads as one rounded element. --
     prefill = state.chat_input_prefill or ""
     # Re-key the textarea per (merchant_id, prefill-hash) so a fresh
     # prefill from an affordance click forces the widget to remount
@@ -1533,22 +1535,26 @@ def render_chat_panel(merchant_id: str) -> None:
     # the prior textarea content and ignores the value kwarg.
     input_key = f"chat_input_{merchant_id}_{hash(prefill) & 0xFFFF:04x}"
     with st.container(key="chat_input_row"):
-        free_q = st.text_area(
-            "Ask anything…",
-            value=prefill,
-            key=input_key,
-            height=68,
-            disabled=is_running,
-            label_visibility="collapsed",
-            placeholder="Ask any question about your data…",
-        )
-        if st.button(
-            "›",
-            key=f"chat_send_{merchant_id}",
-            type="primary",
-            disabled=is_running,
-            help="Send",
-        ):
+        col_input, col_send = st.columns([1, 0.13], gap="small")
+        with col_input:
+            free_q = st.text_area(
+                "Ask anything…",
+                value=prefill,
+                key=input_key,
+                height=68,
+                disabled=is_running,
+                label_visibility="collapsed",
+                placeholder="Ask any question about your data…",
+            )
+        with col_send:
+            send_clicked = st.button(
+                "›",
+                key=f"chat_send_{merchant_id}",
+                type="primary",
+                disabled=is_running,
+                help="Send",
+            )
+        if send_clicked:
             if free_q and free_q.strip():
                 state.pending_dispatch = {
                     "kind":     "free",
