@@ -591,15 +591,31 @@ _CSS = """
     color: #534AB7 !important;
   }
 
-  /* Backdrop — dimmed click-catcher behind the panel when expanded.
-     Implemented as a markdown div with ``position: fixed`` that sits
-     between the dashboard (z-index: 0) and the panel (z-index: 998). */
+  /* Backdrop scrim — covers the dashboard area to the LEFT of the
+     panel so the panel reads as the primary focus. Clean light
+     gray (no dim/dark feel). Sits below the dashboard header
+     (top: 56 px) and stops at the panel's left edge. Slightly
+     stronger in expanded mode to keep the modal-style focus
+     that 90 vw deserves.
+
+     Implemented as a markdown div with ``position: fixed`` that
+     sits between the dashboard (z-index: 0) and the panel
+     (z-index: 998). Purely decorative — click-to-close isn't
+     wired (Streamlit's iframe sandbox blocks the JS bridge). */
   .chat-backdrop {
     position: fixed;
-    top: 0; right: 0; bottom: 0; left: 0;
-    background: rgba(15, 31, 46, 0.45);
+    top: 56px;
+    right: 40vw;
+    bottom: 0;
+    left: 0;
+    background: rgba(241, 239, 232, 0.55);
     z-index: 997;
-    pointer-events: none;  /* purely visual — click-to-close not wired in this commit */
+    pointer-events: none;
+    transition: right 0.3s ease, background-color 0.3s ease;
+  }
+  body.chat-expanded .chat-backdrop {
+    right: 90vw;
+    background: rgba(241, 239, 232, 0.75);
   }
 
   /* Simple chat input row — plain text area + Send button at

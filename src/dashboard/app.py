@@ -200,12 +200,13 @@ views.render_geography_section(mid, filters)
 views.render_catalog_section(mid, filters)
 views.render_customers_section(mid, filters)
 
-# Backdrop only renders when expanded — the markdown is purely
-# decorative since Streamlit's iframe sandbox blocks click-outside JS
-# from updating session_state reliably. Documented deviation: the
-# expanded-mode backdrop dims the dashboard but doesn't close the
-# panel on click; use the X / collapse buttons.
-if state.chat_state == "expanded":
+# Backdrop renders in both side and expanded modes — a light gray
+# scrim covers the dashboard area to the left of the panel so the
+# panel reads as the primary focus. The scrim is purely decorative
+# since Streamlit's iframe sandbox blocks click-outside JS from
+# updating session_state reliably; use the X / collapse buttons
+# to dismiss.
+if state.chat_state in ("side", "expanded"):
     st.markdown('<div class="chat-backdrop"></div>', unsafe_allow_html=True)
 
 # Edge tab: a small floating button on the right edge, only shown
