@@ -796,3 +796,244 @@ migration. Same caveat as Phase 1.5 close-out: hold the deploy
 until Phase 3-6 work is more shippable.
 
 No tuning pass used. Both passes accepted as regenerated.
+
+---
+
+## Phase 4.5 / 4.6 completed 2026-05-24
+
+The v3 dashboard is feature-complete: full-bleed grid of 15 cards
+backed by 30+ helpers in `data.py`, with a fixed-position overlay
+chat panel that routes per-card "Ask about this" affordances into
+the four specialist agents. Filter wiring restored end-to-end after
+a Phase 4.4 regression. `make test` ends at 212 passing; dashboard
+HTTP 200 with no exceptions in the log.
+
+### Chat panel UX
+
+Overlay drawer pattern with three states (closed / side at 40 vw /
+expanded at 90 vw) driven by `state.chat_state` and a body-level
+class (`body.chat-side` / `body.chat-expanded`). State transitions
+animate over 0.3 s via CSS `transition`. Right-edge sparkles tab
+(52 × 80 px with a 28 × 28 px SVG) renders when closed. Round
+chevron expand button (44 × 44 px, fixed-positioned to track the
+panel's left edge via `right: calc(40vw - 22px)` ↔
+`calc(90vw - 22px)`) anchors to the viewport so it stays visible
+regardless of panel scroll.
+
+The panel header is a fixed-width action cluster pattern: title +
+36 px purple avatar on the left (canonical #534AB7 sparkles SVG on
+#EEEDFE soft fill), and a `chat_header_actions` container on the
+right holding Clear + ✕ in nested `st.columns([0.78, 0.22])` so
+the two buttons sit immediately adjacent at a stable 124 px total
+width regardless of outer column resize. Below the header:
+specialist selectbox (demand / pricing / anomaly / trade), always-
+visible suggested-question pills (with a `margin-top: -6px`
+override to defeat the parent flex gap), a scrollable chat-history
+container (`flex: 1 1 auto`, `min-height: 0`, absorbing all
+available vertical space), and a fixed-bottom input row — text
+area (45 px height-locked, `resize: none`) plus Send button (45 px)
+side-by-side via `st.columns([1, 0.18])`.
+
+A gray scrim backdrop renders in both side and expanded modes
+(`rgba(241, 239, 232, 0.55)` → `0.75` in expanded). `top: 56 px`
+keeps the dashboard header visible above the scrim; `right: 40vw`
+(→ `90vw` via `body.chat-expanded`) stops the scrim at the panel's
+left edge so it covers the dashboard area only.
+
+The 15 dashboard cards each carry a sparkles affordance icon
+(32 × 32 with a 20 px SVG inside) in the top-right that routes
+into chat with a prefill and the appropriate specialist already
+selected. Telemetry footer (calls / input + output tokens / cost,
+8 px font, right-aligned) renders inside the panel's flex layout
+at the very bottom — only when at least one LLM call has been
+made this session.
+
+Per-merchant chat history isolation via
+`chat_messages_by_merchant[merchant_id]`. Switching the dashboard's
+"Acting as" merchant changes which bucket renders; no message ever
+crosses between merchants. The chat panel reads filter state from
+`session_state.filters_by_merchant[merchant_id]` on each render so
+filter changes propagate to the next chart replay immediately.
+
+### Filter wiring
+
+Filter dict shape locked at `{date_start, date_end, stores, categories}`
+in `filters_by_merchant[merchant_id]`. The UI surfaces date and
+stores only (2-column layout in `app.py` — `st.columns([1.5, 2.0])`);
+categories stays in the dict but has no widget. Per the audit
+diagnostic written before this phase started (Task 1 in the
+conversation log): Phase 4.4's rebuild had every section renderer
+in `views.py` carrying `# noqa: ARG001` on its `filters: dict`
+parameter — the dict arrived but was never consumed; the Phase 4.4
+"card" wrappers in `data.py` (e.g., `hour_dow_heatmap_card`)
+hardcoded filter-blind calls like `_filters_key({})`. This commit
+chain repairs the wiring at all three layers.
+
+29 `data.py` helpers are now filter-aware via a wrapper +
+cached-inner pattern (see Performance section below for the cache
+mechanics). The 5 `views.py` section renderers had their
+`# noqa: ARG001` directives removed and thread `filters=filters`
+into every helper call. The 30 `_render_*` functions in `chat.py`
+gained a `filters: dict | None = None` parameter; `_render_question_chart`
+pulls the active filter dict from session state and forwards to
+the registered renderer.
+
+Two helpers got bespoke logic per the locked decisions in the
+conversation log:
+
+**KPI strip re-anchor (Decision 2).** `kpi_strip` re-anchors its
+window when a filter is set: "recent week" = last week with data
+in `[date_start, date_end]`; baseline = up to 4 prior weeks within
+the window. If the window is < 14 days, deltas return `None` and
+the UI renders "— (window too narrow)" instead of a misleading
+0 %. Default filters preserve the canonical 12-week list ending
+2026-05-18 byte-identically.
+
+**UC trajectory intersection (Decision 3).** `uc_decline_trajectory`
+intersects the user's stores filter with the merchant's UC stores.
+If the intersection is empty, the OWN line returns no data and
+`_render_a1` falls into its existing "no UC stores in the panel"
+empty-state path with peer overlays still rendered.
+
+**Filter scope rule (Decision 4).** `filters["stores"]` narrows
+OWN merchant data only. Peer queries (lake views, `_peer_*`
+helpers) compute over the full peer segment unchanged. Documented
+as a one-line comment near `_own_filters_sql` in `data.py`. Empty
+stores list = no constraint (not "show empty results").
+
+Other "recent vs baseline" helpers (`performance_trajectory`,
+`category_anomalies`, `store_anomalies`, etc.) thread the filter
+into their OWN-side SQL but retain their hardcoded week sub-windows
+per the additive-semantics decision. Date filter narrows what data
+those windows see; the windows themselves stay at panel-default
+anchors. KPI strip is the only "first-class re-anchor" card in
+this commit chain.
+
+### Performance
+
+The initial filter-wiring commit (`e556ecb`) stripped
+`@st.cache_data(ttl=3600)` from all filter-accepting helpers
+because dict params aren't hashable for Streamlit's cache.
+Dashboard cold + warm reads then hit the DB on every interaction;
+real-world load felt sluggish. Caching restored in `04b2aac` via
+the `filters_key` tuple pattern that the legacy `hour_dow_heatmap`
+already used. Each filter-aware helper now splits into:
+
+- A thin public wrapper preserving the original signature and
+  docstring — computes `_filters_key(filters or {})` and forwards
+  to the cached inner. Cheap to call (tuple build + function
+  dispatch).
+- A cached inner `_*_cached(merchant_id, ..., key: tuple)`
+  decorated with `@st.cache_data(ttl=3600)`. First line is
+  `filters = _unpack_filters_key(key)`. Body byte-identical to
+  pre-cache version.
+
+Headless standalone benchmark of a 16-helper sequence approximating
+one full dashboard render: 120 s cold (first-time compute) → 10 ms
+warm (cache hit). ~11,500× speedup on cache hits. Real-world
+impact: first render of a merchant + filter combo pays the full
+compute cost once, then every subsequent render hits the cache
+until TTL expires (3600 s = 1 h).
+
+Two helpers deliberately excluded from the caching pass.
+`has_same_segment_peers` is a pure-Python lookup against
+`MERCHANT_SEGMENT`; no DB hit, no benefit. `hour_dow_heatmap_card`
+is a passthrough wrapper around the already-cached
+`hour_dow_heatmap(filters_key)`; double-wrapping would just add
+overhead. Internal helpers (`_anomaly_count_breakdown`,
+`_anomaly_counts_series`, `_full_weeks`, `_new_pct_for_week`,
+`_peer_neighborhood_recent_vs_baseline`) are covered by the outer
+wrappers' caches; nested cache layers would be redundant.
+
+### Known limitations / deferred to v3.1
+
+**Click-outside-to-close not wired.** Streamlit's iframe sandbox
+blocks the JS bridge that would translate a backdrop click into a
+`session_state` update. The explicit ✕ close button and the
+chevron collapse button are the workarounds. Documented in
+`styling.py` near the `.chat-backdrop` rule.
+
+**Re-anchor applied only to `kpi_strip`.** Other "recent vs
+baseline" helpers — `performance_trajectory`, `category_anomalies`,
+`store_anomalies`, `store_anomalies_own_only`, `sku_anomalies`,
+`revenue_change_decomposition_own` — thread the filter into their
+OWN-side SQL but keep their hardcoded week-anchor sub-windows.
+Date filter narrows the data those windows see; the windows
+themselves don't slide. Per the additive-semantics call in
+Decision 2 this is correct, but if a future phase wants
+consistent re-anchoring across every "recent vs baseline" card,
+this is the cut.
+
+**`categories_for` retained as orphan.** No dashboard caller after
+the UI dropped the categories multiselect. Kept available for
+chat / programmatic callers.
+
+**Categories filter has no UI surface in v3.** Backend honors
+`filters["categories"]` via `_category_where`; setting it from
+chat or a future v3.1 widget will work. The dict shape is stable.
+
+**In-chart filter UI deferred.** Per-chart category selectors
+(e.g., the P1 heatmap getting its own dropdown to slice categories
+inside the chart) are a chart-level redesign, not a global filter
+concern.
+
+### Architecture observations for Phase 5+
+
+The cache pattern is now uniform: every filter-aware public helper
+has a matching `_*_cached` inner with a tuple-keyed cache. The
+public wrapper is the stable API surface; the cached inner is the
+implementation detail. New filter-aware helpers added in later
+phases should follow this template directly.
+
+Filter empty-selection semantics are universal: an empty list
+(`stores=[]`, `categories=[]`) means "no constraint" — return
+all matching rows. Empty does NOT mean "show empty results." The
+default-filters path (`filters=None` or `filters={}`) produces
+byte-identical pre-filter behavior (12-week `kpi_strip` window,
+canonical anchor weeks elsewhere).
+
+Per-merchant filter isolation lives in
+`filters_by_merchant[merchant_id]`. Switching the dashboard's
+"Acting as" merchant changes which dict the widgets read/write
+against; the previous merchant's filter state is preserved across
+the switch. Same isolation pattern as `chat_messages_by_merchant`.
+
+The chat panel reads filter state from session state on each
+render — no copy, no snapshot. Filter changes propagate to the
+next chart replay immediately (the next time
+`_render_question_chart` runs for that qid).
+
+### Test coverage
+
+```
+$ uv run pytest -q
+================ 212 passed, 16 deselected in 58.4s ================
+```
+
+One new smoke test added (`tests/test_filter_wiring.py::test_kpi_strip_honors_stores_filter`)
+proving the wrapper + cached-inner pair narrows results when a
+2-store subset is selected. Asserts strict-less-than on revenue
+and transactions relative to the full panel. This is the canary —
+broader filter-aware coverage (e.g., asserting `store_anomalies`
+narrows correctly under stores filter, or
+`category_peer_pricing_gaps` under date filter) is deferred to
+Phase 5/6 alongside any per-helper bug investigation that arises.
+
+### Phase 4.5 / 4.6 commit trail
+
+| Commit | What landed |
+|---|---|
+| `e556ecb` | Filter wiring end-to-end (date + stores in UI, categories backend-only). 29 data.py helpers signature-changed; 5 view renderers de-noqa'd; 30 chat renderers thread filters; KPI strip re-anchor; UC trajectory intersection. |
+| `04b2aac` | Restored `filters_key` caching on all 29 filter-aware helpers via wrapper + cached-inner pattern. ~11,500× warm-reload speedup. |
+| `a804895` | Gray scrim backdrop in side + expanded modes (light gray, top: 56 px). |
+| `3d03dd1` | Clear + ✕ header action cluster at fixed 124 px right-anchored width. |
+| `d0e3e62` | Shortened two pricing-specialist suggested-question texts so the pills render single-line at 9 px. |
+
+Plus 15+ earlier commits in the chain — UI restructure, panel overlay
+redesign, affordance icon consistency pass, suggestion-pill spacing
+overrides — see `git log --oneline` between `2fa27f9` (Phase 4.1
+follow-up) and the current HEAD.
+
+The data layer (lake materialization, k-anonymity suppression,
+peer mapping) is unchanged. No schema migration. HF Spaces redeploy
+is dashboard-code-only — no `data/payments.db` rebuild needed.
