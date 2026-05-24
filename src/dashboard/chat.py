@@ -34,6 +34,34 @@ from . import questions as Q
 
 
 # ---------------------------------------------------------------------------
+# Telemetry footer — rendered INSIDE the chat panel so it participates
+# in the panel's flex layout (was previously in app.py and added
+# height below the panel).
+# ---------------------------------------------------------------------------
+
+def _render_telemetry_inline() -> None:
+    """One-line 8 px cost / token telemetry below the chat input. Only
+    rendered when at least one LLM call has been made this session."""
+    try:
+        from src.agents import llm as _llm
+        totals = _llm.session_totals()
+    except Exception:  # noqa: BLE001
+        totals = None
+    if not (totals and totals.get("calls", 0) > 0):
+        return
+    st.markdown(
+        f'<div style="font-size:8px;color:var(--text-muted);'
+        f'margin:2px 0 0 0;letter-spacing:0.02em;line-height:1.3;">'
+        f'{totals["calls"]} calls · '
+        f'{totals["input_tokens"]:,} in / '
+        f'{totals["output_tokens"]:,} out · '
+        f'${totals["cost_usd"]:.4f}'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Per-merchant chat history (session state)
 # ---------------------------------------------------------------------------
 
@@ -1404,7 +1432,12 @@ def render_chat_panel(merchant_id: str) -> None:
     # (right). The expand button moved out of the header to a round
     # button on the middle-left edge of the panel (rendered after
     # the panel content via a CSS-positioned ``st.container``). --
-    h1, h2, h3 = st.columns([0.65, 0.22, 0.13], gap="small")
+    # Phase 4.5 polish: tightened column ratios from [0.65, 0.22, 0.13]
+    # → [0.72, 0.18, 0.10] so the Clear chat + X close columns sit
+    # tighter against the right edge. The button widths are CSS-
+    # pinned (88 px / 28 px) regardless of column allocation; the
+    # tighter ratios just reduce whitespace around them.
+    h1, h2, h3 = st.columns([0.72, 0.18, 0.10], gap="small")
     with h1:
         # Avatar (purple circle) + title — canonical sparkles SVG in
         # #534AB7 on #EEEDFE soft fill. The subtitle line below the
@@ -1556,14 +1589,19 @@ def render_chat_panel(merchant_id: str) -> None:
         state.agent_running = True
         st.rerun()
 
-    st.markdown("---")
+    # Phase 4.5 polish: removed the two ``st.markdown("---")``
+    # dividers that previously bracketed the chat-history container.
+    # Saved ~34 px and let the history flex grow into the freed
+    # space. The ``--- `` between description and suggestions stays
+    # (it's the only visual break between control area and content).
 
-    # -- Reserve scrollable chat history container. Compact height so
-    # the panel's text-input + Send button fit within the visible
-    # viewport on 720p+ displays without panel-level scrolling. --
-    chat_box = st.container(height=220, border=True, key="chat_history")
-
-    st.markdown("---")
+    # -- Reserve scrollable chat history container. Base height
+    # bumped 220 → 380 px as a fallback floor when the CSS flex
+    # override (``height: 100% !important``) doesn't win the
+    # cascade. With the flex override active the container fills
+    # whatever room the panel allocates; without it, 380 still
+    # gives the history a substantial vertical share. --
+    chat_box = st.container(height=380, border=True, key="chat_history")
 
     # -- Free-form input (Variant B "rounded pill with inline arrow")
     # The text-area + Send button are placed in an
@@ -1654,3 +1692,10 @@ def render_chat_panel(merchant_id: str) -> None:
                 state.pending_dispatch = None
                 state.agent_running = False
             st.rerun()
+
+    # -- Session telemetry — rendered INSIDE the chat panel so it
+    # participates in the panel's flex layout (was previously in
+    # app.py, adding height below the panel). Compact 8 px single
+    # line; only renders when at least one LLM call has been
+    # made. --
+    _render_telemetry_inline()

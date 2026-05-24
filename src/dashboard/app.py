@@ -77,27 +77,10 @@ state.setdefault("chat_state", "closed")  # "closed" | "side" | "expanded"
 state.setdefault("chat_expanded", False)
 
 
-def _render_telemetry_footer() -> None:
-    """Cost / token telemetry — a single 9 px line below the chat
-    panel content. Phase 4.5 polish flattened the previous two-line
-    "Session telemetry" header + values block to one minimal line."""
-    try:
-        from src.agents import llm as _llm
-        totals = _llm.session_totals()
-    except Exception:  # noqa: BLE001
-        totals = None
-    if not (totals and totals.get("calls", 0) > 0):
-        return
-    st.markdown(
-        f'<div style="font-size:9px;color:var(--text-muted);'
-        f'margin:4px 0 0 0;letter-spacing:0.02em;">'
-        f'{totals["calls"]} calls · '
-        f'{totals["input_tokens"]:,} in / '
-        f'{totals["output_tokens"]:,} out · '
-        f'${totals["cost_usd"]:.4f}'
-        f'</div>',
-        unsafe_allow_html=True,
-    )
+# Phase 4.5 polish: ``_render_telemetry_footer`` moved into chat.py
+# as ``_render_telemetry_inline``. It now renders at the very end of
+# ``render_chat_panel`` so it lives INSIDE the panel's flex layout
+# instead of adding height below the panel.
 
 
 def _default_filters(merchant_id: str) -> dict:
@@ -239,5 +222,6 @@ if state.chat_state == "closed":
 # Streamlit widget state inside (input, history, etc.) survives state
 # transitions without re-instantiating.
 with st.container(key="chat_panel_overlay"):
+    # Telemetry now renders inside ``render_chat_panel`` so it
+    # participates in the panel's flex layout.
     chat.render_chat_panel(mid)
-    _render_telemetry_footer()
