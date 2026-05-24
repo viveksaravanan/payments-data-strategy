@@ -1553,7 +1553,7 @@ def render_chat_panel(merchant_id: str) -> None:
     # cascade. With the flex override active the container fills
     # whatever room the panel allocates; without it, 380 still
     # gives the history a substantial vertical share. --
-    chat_box = st.container(height=380, border=True, key="chat_history")
+    chat_box = st.container(height=442, border=True, key="chat_history")
 
     # -- Free-form input — simple text area + Send button to the
     # right. The whole row is pinned to the bottom of the chat

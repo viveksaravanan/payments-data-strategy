@@ -661,9 +661,9 @@ _CSS = """
      because flex gap is applied one DOM layer up. Adjust the
      ``margin-bottom`` value in the rule below to widen/narrow
      pill-to-pill spacing. */
-  div[class*="st-key-chat_panel_overlay"] > div[data-testid="stVerticalBlock"] >
+  div[class*="st-key-chat_panel_overlay"] div[data-testid="stVerticalBlock"] >
     div[data-testid="element-container"]:has(> div[class*="st-key-q_"]) {
-    margin-top: 0 !important;
+    margin-top: 0px !important;
     margin-bottom: 0 !important;
   }
   div[class*="st-key-chat_panel_overlay"] div[class*="st-key-q_"] button {
