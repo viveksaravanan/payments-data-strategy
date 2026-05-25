@@ -14,8 +14,8 @@ from src.agents.specialist import Specialist
 class TradeAreaSpecialist(Specialist):
     AGENT_LABEL = "Trade Area Intelligence Agent"
     PROMPT_PATH = Path(__file__).parent / "prompts" / "trade.md"
-    # Phase 5.1.5: standardized to 8 across all specialists per design
-    # doc §10 (1 schema + 2 tenant + 2 lake + 1 chart + 2 buffer).
-    # 6 was insufficient — Trade T1 bailed mid-contract on the Phase 5.1
-    # browser smoke (headline emitted, evidence/therefore/caveats lost).
-    MAX_TURNS = 8
+    # Phase 5.1.5: standardized to 8 across all specialists (6 was
+    # insufficient — Trade T1 bailed mid-contract during the 5.1 smoke).
+    # Phase 5.1.9: bumped to 10 to accommodate the analytical
+    # reconciliation step chart-takeaway injection adds.
+    MAX_TURNS = 10

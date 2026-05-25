@@ -14,6 +14,8 @@ from src.agents.specialist import Specialist
 class PricingSpecialist(Specialist):
     AGENT_LABEL = "Pricing & Benchmarking Agent"
     PROMPT_PATH = Path(__file__).parent / "prompts" / "pricing.md"
-    # Phase 5.1.5: standardized to 8 across all specialists per design
-    # doc §10 (1 schema + 2 tenant + 2 lake + 1 chart + 2 buffer).
-    MAX_TURNS = 8
+    # Phase 5.1.5: standardized to 8 across all specialists.
+    # Phase 5.1.9: bumped to 10 to accommodate the analytical
+    # reconciliation step chart-takeaway injection adds (agent may
+    # need to re-query with the takeaway's analytical window).
+    MAX_TURNS = 10

@@ -28,10 +28,13 @@ from src.agents import llm as L
 from src.agents import tools as T
 from src.agents.context import MerchantContext
 
-# Default turn cap. Per-specialist overrides set MAX_TURNS as a class
-# attribute on the subclass (Anomaly + Pricing bump to 7; Demand + Trade
-# stay at the default).
-DEFAULT_MAX_TURNS = 6
+# Default turn cap. Bumped from 8 to 10 in Phase 5.1.9 because
+# chart-takeaway injection adds an analytical reconciliation
+# workflow: agent's initial query may use a different window than
+# the chart, requires re-query to match, plus the normal
+# query → chart → respond sequence. Net: 10 gives reasonable
+# headroom for the common case.
+DEFAULT_MAX_TURNS = 10
 MAX_TOKENS = 2048
 
 # Phase 2A.5: per-turn progress narration. The Specialist fires

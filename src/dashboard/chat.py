@@ -29,6 +29,7 @@ import streamlit as st
 
 from . import agents as A
 from . import chart_patterns as CP
+from . import chart_takeaways as CT
 from . import data as D
 from . import questions as Q
 
@@ -156,34 +157,9 @@ def _render_p1(merchant_id: str, filters: dict | None = None) -> None:
         st.caption("_No pricing data available for this merchant._")
         return
 
-    # The takeaway varies based on whether the matrix spans zero:
-    #   - mixed (positive + negative cells): "above X in Y; below Z in W"
-    #   - all-positive: "above peers across the board; widest in Y"
-    #   - all-negative: "below peers across the board; widest in Y"
-    #   - near-parity: "at or near peer levels"
-    PARITY = 0.5
-    above = chart_data["max_above"]  # (value, category, peer)
-    below = chart_data["max_below"]
-    if above and below and above[0] > PARITY and below[0] < -PARITY:
-        takeaway = (
-            f"You're priced {above[0]:.1f}% above {CP.peer_display(above[2])} "
-            f"in {above[1]}; {abs(below[0]):.1f}% below "
-            f"{CP.peer_display(below[2])} in {below[1]}."
-        )
-    elif above and above[0] > PARITY:
-        takeaway = (
-            f"You're priced above peers across categories; "
-            f"widest gap: +{above[0]:.1f}% in {above[1]} "
-            f"(vs {CP.peer_display(above[2])})."
-        )
-    elif below and below[0] < -PARITY:
-        takeaway = (
-            f"You're priced below peers across categories; "
-            f"widest gap: {below[0]:.1f}% in {below[1]} "
-            f"(vs {CP.peer_display(below[2])})."
-        )
-    else:
-        takeaway = "Your prices are at or near peer levels across categories."
+    # Takeaway centralized in chart_takeaways.compute_takeaway("P1", ...)
+    # — see Phase 5.1.9 commit message for the architectural rationale.
+    takeaway = CT.compute_takeaway("P1", merchant_id, filters=filters)
 
     CP.render_heatmap(
         chart_data,
@@ -220,20 +196,7 @@ def _render_p3(merchant_id: str, filters: dict | None = None) -> None:
     if not chart_data["points"]:
         st.caption("_No pricing data available for this merchant._")
         return
-    above = chart_data["above_peer_names"]
-    if above:
-        names = ", ".join(above)
-        takeaway = (
-            f"Your largest priced-above-peers categories are {names}; "
-            f"{chart_data['top_volume_category']} is the highest-volume "
-            "opportunity."
-        )
-    else:
-        takeaway = (
-            "You're at or below peer pricing on every category; "
-            f"{chart_data['top_volume_category']} is your largest "
-            "category by volume."
-        )
+    takeaway = CT.compute_takeaway("P3", merchant_id, filters=filters)
     CP.render_scatter_with_peers(
         chart_data,
         title="Pricing leverage by category",
@@ -322,12 +285,7 @@ def _render_d3(merchant_id: str, filters: dict | None = None) -> None:
     if not chart_data["categories"]:
         st.caption("_No basket-mix data available for this merchant._")
         return
-    takeaway = CP.format_takeaway(
-        "You're over-indexed on {top_category} (+{top_pp:.1f}pp vs "
-        "peer-average); under-indexed on {bottom_category} "
-        "({bottom_pp:.1f}pp).",
-        chart_data,
-    )
+    takeaway = CT.compute_takeaway("D3", merchant_id, filters=filters)
     CP.render_cross_merchant_comparison(
         chart_data,
         title="Your basket mix vs peer-average",
@@ -365,12 +323,7 @@ def _render_t_p2(merchant_id: str, filters: dict | None = None) -> None:
     if not chart_data["series"]:
         st.caption("_No category-price data available._")
         return
-    takeaway = (
-        f"{chart_data['top_category']} prices are {chart_data['top_direction']} "
-        f"{abs(chart_data['top_pct']):.1f}% over 90 days; next-largest shift "
-        f"{chart_data['next_category']} at {chart_data['next_direction']} "
-        f"{abs(chart_data['next_pct']):.1f}%."
-    )
+    takeaway = CT.compute_takeaway("T-P2", merchant_id, filters=filters)
     CP.render_time_series_own_multi(
         chart_data,
         title="Mean unit price by category, weekly",
@@ -452,30 +405,7 @@ def _render_t_a2(merchant_id: str, filters: dict | None = None) -> None:
     if not rows:
         st.caption("_No SKU-volume data in the recent window._")
         return
-    n_flag = chart_data["n_flagged"]
-    spike  = chart_data["top_spike"]
-    drop   = chart_data["top_drop"]
-
-    if n_flag == 0:
-        takeaway = (
-            "No menu items deviate from baseline by >15% in the recent week."
-        )
-    else:
-        parts = []
-        if spike is not None:
-            parts.append(
-                f"largest spike: {spike['sku_name']} "
-                f"({spike['deviation_pct']:+.1f}%)"
-            )
-        if drop is not None:
-            parts.append(
-                f"largest drop: {drop['sku_name']} "
-                f"({drop['deviation_pct']:+.1f}%)"
-            )
-        takeaway = (
-            f"{n_flag} menu item{'s' if n_flag != 1 else ''} deviate from "
-            f"baseline by >15%; " + "; ".join(parts) + "."
-        )
+    takeaway = CT.compute_takeaway("T-A2", merchant_id, filters=filters)
     CP.render_table_with_drilldown(
         {
             "rows": rows,
@@ -539,27 +469,7 @@ def _render_t_d2(merchant_id: str, filters: dict | None = None) -> None:
     if not chart_data["series"]:
         st.caption("_No category-share trajectory data available._")
         return
-    grow = chart_data["growing_category"]
-    grow_pp = chart_data["growing_pp"]
-    dec = chart_data["declining_category"]
-    dec_pp = chart_data["declining_pp"]
-    if grow != "—" and dec != "—":
-        takeaway = (
-            f"{grow} share is up {grow_pp:+.1f}pp over 90 days; "
-            f"{dec} is down {dec_pp:+.1f}pp."
-        )
-    elif grow != "—":
-        takeaway = (
-            f"{grow} share is up {grow_pp:+.1f}pp over 90 days; "
-            "no category is materially declining."
-        )
-    elif dec != "—":
-        takeaway = (
-            f"{dec} share is down {dec_pp:+.1f}pp over 90 days; "
-            "no category is materially growing."
-        )
-    else:
-        takeaway = "Category shares are flat across the 90-day window."
+    takeaway = CT.compute_takeaway("T-D2", merchant_id, filters=filters)
     CP.render_time_series_own_multi(
         chart_data,
         title="Category share of revenue, weekly",
@@ -631,17 +541,7 @@ def _render_r_p2(merchant_id: str, filters: dict | None = None) -> None:
     if not rows:
         st.caption("_No price-spread data available._")
         return
-    widest   = chart_data["widest"]
-    tightest = chart_data["tightest"]
-    if widest and tightest:
-        takeaway = (
-            f"{widest['category']} has the widest price spread "
-            f"({widest['spread_ratio']:.1f}× from min to max); "
-            f"{tightest['category']} is narrowest at "
-            f"{tightest['spread_ratio']:.1f}×."
-        )
-    else:
-        takeaway = "Insufficient category-price data."
+    takeaway = CT.compute_takeaway("R-P2", merchant_id, filters=filters)
     CP.render_table_with_drilldown(
         {
             "rows": rows,
@@ -820,27 +720,7 @@ def _render_r_d2(merchant_id: str, filters: dict | None = None) -> None:
     if not chart_data["series"]:
         st.caption("_No category-share trajectory data available._")
         return
-    grow = chart_data["growing_category"]
-    grow_pp = chart_data["growing_pp"]
-    dec = chart_data["declining_category"]
-    dec_pp = chart_data["declining_pp"]
-    if grow != "—" and dec != "—":
-        takeaway = (
-            f"{grow} share is up {grow_pp:+.1f}pp over 90 days; "
-            f"{dec} is down {dec_pp:+.1f}pp."
-        )
-    elif grow != "—":
-        takeaway = (
-            f"{grow} share is up {grow_pp:+.1f}pp over 90 days; "
-            "no category is materially declining."
-        )
-    elif dec != "—":
-        takeaway = (
-            f"{dec} share is down {dec_pp:+.1f}pp over 90 days; "
-            "no category is materially growing."
-        )
-    else:
-        takeaway = "Category shares are flat across the 90-day window."
+    takeaway = CT.compute_takeaway("R-D2", merchant_id, filters=filters)
     CP.render_time_series_own_multi(
         chart_data,
         title="Category share of revenue, weekly",
@@ -889,37 +769,7 @@ def _render_a2(merchant_id: str, filters: dict | None = None) -> None:
         st.caption("_No stores with enough baseline data to evaluate._")
         return
 
-    n_flag = chart_data["n_flagged"]
-    n_under = chart_data["n_under"]
-    n_over  = chart_data["n_over"]
-    top     = chart_data["top"]
-    peer    = chart_data["peer_signal_for_top"]
-
-    # Adaptive takeaway:
-    #   - 0 flagged → "all stores within ±15%"
-    #   - all flagged same direction → name the direction
-    #   - mixed → name count + top by magnitude + peer signal
-    if n_flag == 0:
-        takeaway = "All your stores are within 15% of your panel baseline."
-    elif n_under == 0:
-        takeaway = (
-            f"{n_flag} of your stores are running >15% above baseline; "
-            f"{top['store_id']} ({top['neighborhood']}) shows the largest "
-            f"swing ({top['deviation_pct']:+.1f}%); {peer}."
-        )
-    elif n_over == 0:
-        takeaway = (
-            f"{n_flag} of your stores are running >15% below baseline; "
-            f"{top['store_id']} ({top['neighborhood']}) shows the largest "
-            f"swing ({top['deviation_pct']:+.1f}%); {peer}."
-        )
-    else:
-        takeaway = (
-            f"{n_flag} stores deviate from baseline by >15% "
-            f"({n_under} under, {n_over} over); "
-            f"{top['store_id']} ({top['neighborhood']}) shows the largest "
-            f"swing ({top['deviation_pct']:+.1f}%); {peer}."
-        )
+    takeaway = CT.compute_takeaway("A2", merchant_id, filters=filters)
 
     CP.render_table_with_drilldown(
         {
@@ -947,25 +797,7 @@ def _render_a3(merchant_id: str, filters: dict | None = None) -> None:
         st.caption("_No category-volume data in the recent window._")
         return
 
-    n_flag = chart_data["n_flagged"]
-    top    = chart_data["top"]
-    direction = chart_data["top_direction"]
-    peer   = chart_data["peer_signal_for_top"]
-
-    if n_flag == 0:
-        takeaway = (
-            "No category-level anomalies in the recent week — every "
-            "category is within 15% of your baseline."
-        )
-    else:
-        word = "spikes" if direction == "spike" else (
-            "drops" if direction == "drop" else "swings"
-        )
-        takeaway = (
-            f"{n_flag} categor{'y' if n_flag == 1 else 'ies'} show recent "
-            f"volume off baseline by >15%; {top['category']} {word} the "
-            f"most ({top['deviation_pct']:+.1f}%); {peer}."
-        )
+    takeaway = CT.compute_takeaway("A3", merchant_id, filters=filters)
 
     CP.render_table_with_drilldown(
         {
@@ -992,41 +824,7 @@ def _render_t1(merchant_id: str, filters: dict | None = None) -> None:
         st.caption("_No store footprint to map._")
         return
 
-    weakest   = chart_data["weakest"]
-    strongest = chart_data["strongest"]
-
-    # Adaptive takeaway (P1-style):
-    #   - clear under-performer beyond noise floor → name it + peer signal
-    #   - all neighborhoods within noise floor of baseline → on-baseline phrasing
-    #   - all over-baseline → name strongest with positive framing
-    noise = 5.0
-    if weakest and weakest["own_delta_pct"] is not None and weakest["own_delta_pct"] < -noise:
-        signal = weakest["peer_signal"]
-        signal_phrase = {
-            "market-wide":   "peers co-decline; suggests market-wide",
-            "operational":   "peers stable; suggests operational",
-            "market-wide (positive)": "peers also above; market-wide",
-            "operational (positive)": "peers stable; operational lift",
-            "on baseline":   "peer signal flat",
-            "limited peer footprint": "limited peer footprint for signal",
-            "limited own footprint":  "limited own footprint",
-        }.get(signal, signal)
-        takeaway = (
-            f"{weakest['name']} under-performs by "
-            f"{abs(weakest['own_delta_pct']):.1f}%; {signal_phrase}."
-        )
-    elif strongest and strongest["own_delta_pct"] is not None and strongest["own_delta_pct"] > noise:
-        # Mirror case: all above-baseline; name the strongest.
-        takeaway = (
-            f"All neighborhoods at or above your panel baseline; "
-            f"{strongest['name']} leads at +{strongest['own_delta_pct']:.1f}%."
-        )
-    else:
-        takeaway = (
-            "Every neighborhood is within "
-            f"{noise:.0f}% of your panel baseline of "
-            f"{chart_data['own_baseline']:.0f} txns/store."
-        )
+    takeaway = CT.compute_takeaway("T1", merchant_id, filters=filters)
 
     polygons = []
     for n in nbhds:
@@ -1062,19 +860,7 @@ def _render_t2(merchant_id: str, filters: dict | None = None) -> None:
         st.caption("_No customer-home data to map._")
         return
 
-    pct = chart_data["pct_underserved"]
-    densest = chart_data["densest_underserved"]
-    if densest is not None:
-        takeaway = (
-            f"{pct:.1f}% of your customers live in neighborhoods without a "
-            f"same-merchant store; densest under-served area is "
-            f"{densest['name']} ({densest['n_customers']} customers)."
-        )
-    else:
-        takeaway = (
-            "Every neighborhood with your customers also has at least one "
-            "of your stores — no under-served neighborhoods in the panel."
-        )
+    takeaway = CT.compute_takeaway("T2", merchant_id, filters=filters)
 
     polygons = []
     for n in nbhds:
@@ -1113,17 +899,7 @@ def _render_t4(merchant_id: str, filters: dict | None = None) -> None:
         st.caption("_No customer-activity data to score._")
         return
 
-    top    = chart_data["top"]
-    signal = chart_data["top_peer_signal"]
-
-    if top:
-        takeaway = (
-            f"Top expansion opportunity: {top['name']} "
-            f"(score {top['score']:.1f}); {top['peer_n_stores']} peer "
-            f"store(s) suggests {signal}."
-        )
-    else:
-        takeaway = "No scored neighborhoods in the panel."
+    takeaway = CT.compute_takeaway("T4", merchant_id, filters=filters)
 
     polygons = []
     for n in nbhds:

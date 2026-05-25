@@ -6,8 +6,8 @@ Single shared client with:
   - Timeout
   - Per-session token + cost telemetry (module-global counter, the
     dashboard footer reads from it)
-  - Model constants per the Phase 2 decision:
-      MODEL_SPECIALIST = "claude-sonnet-4-6"
+  - Model constants per the Phase 5.1.8b reversion:
+      MODEL_SPECIALIST = "claude-haiku-4-5-20251001"
       MODEL_ROUTER     = "claude-haiku-4-5-20251001"
 """
 from __future__ import annotations
@@ -22,18 +22,30 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-# Model strings. Phase 2A.6: specialist switched from Sonnet 4.6 to
-# Haiku 4.5 — 3× cheaper, 2-3× faster per turn, hits the demo's
-# latency/cost targets (<15s, <$0.06/q).
+# Model strings.
+#
+# Phase 2A.6 switched specialists from Sonnet 4.6 to Haiku 4.5 for
+# cost/latency. Phase 5.1.8 attempted to bump specialists back to
+# Sonnet 4.6 after four prompt-based mitigations didn't fully bind
+# Haiku to faithful number grounding. Phase 5.1.8b reverted that
+# bump after the Sonnet smoke confirmed the issue was architectural,
+# not model capability: the agent and the chart helper were using
+# different analytical windows (45/45 split vs weekly trajectory)
+# on the same data, producing real but divergent numbers. The fix
+# is chart-takeaway pre-injection (Phase 5.1.9), not a model bump.
+# Haiku 4.5 retained for cost (5–10× lower) and latency (2–3×
+# faster). See docs/V3_AGENTS_DESIGN.md §10.
 MODEL_SPECIALIST = "claude-haiku-4-5-20251001"
 MODEL_ROUTER     = "claude-haiku-4-5-20251001"
 
-# Anthropic pricing (per Mtoken) as of plan-write time. Sonnet 4.6:
-# $3 input / $15 output. Haiku 4.5: $1 input / $5 output. These are
-# used only for the in-dashboard cost footer — not billing.
+# Anthropic pricing (per Mtoken). Sonnet 4.6: $3 in / $15 out.
+# Haiku 4.5: $1 in / $5 out. Used only for the in-dashboard cost
+# footer — not billing. Keyed by model identifier (not by role
+# constant) so the right rate is applied regardless of which role
+# each model fills.
 _PRICING = {
-    MODEL_SPECIALIST: (3.0, 15.0),
-    MODEL_ROUTER:     (1.0,  5.0),
+    "claude-sonnet-4-6":          (3.0, 15.0),
+    "claude-haiku-4-5-20251001":  (1.0,  5.0),
 }
 
 MAX_TIMEOUT_SEC = 60

@@ -13,16 +13,19 @@ remaining two stay on the v4 roadmap.
   and prepends the routing decision ("Routed to the Pricing & Benchmarking
   Agent…") to the specialist's response.
 - **`pricing.py`** — **Pricing & Benchmarking Agent.** Per-SKU pricing,
-  category share, peer-relative price gaps. `MAX_TURNS = 7`.
+  category share, peer-relative price gaps. **`MAX_TURNS = 10`**
+  (standardized across all specialists in Phase 5.1.5 to 8, then
+  bumped to 10 in Phase 5.1.9 to accommodate the analytical
+  re-query workflow introduced by chart-takeaway injection).
 - **`anomaly.py`** — **Anomaly Detection Agent.** Operational anomalies
   only (no fraud). Knows the three planted signals (University City
   decline, Plaza Midwood avocado spike, pasta-promo divergence) and
-  the privacy rule on naming. `MAX_TURNS = 7`.
+  the privacy rule on naming. `MAX_TURNS = 10`.
 - **`demand.py`** — **Demand Forecasting & Campaign Adjudication
   Agent.** Slow-mover analysis, campaign attribution, projected promo
-  uplift. `MAX_TURNS = 6`.
+  uplift. `MAX_TURNS = 10`.
 - **`trade.py`** — **Trade Area Intelligence Agent.** Catchment density,
-  underserved neighborhoods, new-store siting. `MAX_TURNS = 6`.
+  underserved neighborhoods, new-store siting. `MAX_TURNS = 10`.
 
 All four specialists subclass **`specialist.py::Specialist`** — the
 shared bounded tool loop, the streaming-tokens callback, the caveats
@@ -84,9 +87,12 @@ renamed so pytest skips them.
   single SELECT statement before executing — regex check, before any
   DB connection. Never trust the model to self-restrict.
 
-- **`MAX_TURNS = 6`.** Hard cap. If the loop hasn't terminated, return
-  what the agent has and surface "didn't converge" in the dashboard.
-  Don't raise without adding a regression test.
+- **`MAX_TURNS = 10`.** Hard cap, standardized across all four
+  specialists in Phase 5.1.5 to 8, then bumped to 10 in Phase
+  5.1.9 to accommodate the analytical re-query workflow introduced
+  by chart-takeaway injection. If the loop hasn't terminated,
+  return what the agent has and surface "didn't converge" in the
+  dashboard. Don't raise without adding a regression test.
 
 - **Final answers must include the SQL.** The dashboard renders it in
   an expander. The agent's answer is not trustworthy without it.
@@ -144,9 +150,17 @@ lake_stores (6 columns)
 
 ## Models
 
-Default to `claude-opus-4-7`. For unit tests against the real API
-(rare), use `claude-haiku-4-5` to keep cost down. Most unit tests
-should mock the client — see `tests/test_agents.py` for the pattern.
+Specialists + router both run on `claude-haiku-4-5-20251001`.
+Phase 5.1.8 attempted a bump to Sonnet 4.6 to fix
+chart-vs-prose contradictions; the smoke confirmed the root
+cause was architectural (different analytical windows in
+agent SQL vs chart helper), not model capability — addressed
+in Phase 5.1.9 via chart-takeaway pre-injection. Haiku
+retained for cost (5–10× lower) and latency (2–3× faster).
+
+For unit tests against the real API (rare), prefer
+`claude-haiku-4-5` to keep cost down. Most unit tests should mock
+the client — see `tests/test_agents.py` for the pattern.
 
 ## Mock / fallback mode
 
@@ -168,3 +182,29 @@ When you add a new suggested question, register a `HANDLERS` entry so
 the fallback path doesn't surface "No placeholder handler is wired."
 Phase 1.5's question-curation pass made all live qids HANDLERS-covered;
 keep that property.
+
+# Development workflow notes
+
+## Prompt / class-attribute changes require process restart
+
+Streamlit's hot-reload does NOT reliably pick up changes to:
+
+- Specialist prompt files in `src/agents/prompts/*.md`
+- Class attributes like `MAX_TURNS` in `src/agents/{specialist}.py`
+- Model identifiers in `src/agents/llm.py`
+
+Python bytecode caching in `__pycache__/` directories can hold
+the previous values even after a file save. The visible symptom
+is the dashboard behaving as if the change never landed
+(stale MAX_TURNS, stale model selection, stale prompt
+instructions).
+
+**After editing any of these files:**
+
+1. Stop Streamlit (Ctrl+C in the running terminal)
+2. Optionally clear bytecode: `find . -name "__pycache__" -type d -exec rm -rf {} +`
+3. Restart: `uv run streamlit run src/dashboard/app.py`
+
+This is especially important during Phase 5 prompt-iteration
+work, where small prompt changes need fast turnaround. Build the
+restart into your testing loop.

@@ -517,8 +517,9 @@ From the Phase 5 prep audit (commit c75642f + audit report), these are the resol
 | Q3 | Structured output | **Dropped** — contract enforced by prompts + examples + regression-test checks | Preserves streaming UX; examples are the real quality lever |
 | Q4 | Filter awareness | No automatic injection; honor only if user mentions date range in question | Agents should have full context; user overrides only when explicit |
 | Model | Stay on Haiku 4.5 | Defer model differentiation to v3.1 | Risk-averse for demo |
+| Model (revised in 5.1.8b) | Specialists stay on Haiku 4.5; router stays on Haiku | Sonnet 4.6 bump in Phase 5.1.8 was tested and did NOT resolve the chart-vs-prose contradiction. Root cause turned out to be architectural — the chart helper and the agent's SQL use different analytical windows (weekly trajectory vs 45/45 split) on the same data, producing real but divergent numbers. Addressed in Phase 5.1.9 via chart-takeaway pre-injection rather than model bump. Haiku 4.5 retained for cost (5–10× lower) and latency (2–3× faster). |
 | Prompt caching | Defer to Phase 5.7 follow-up commit | Keeps quality work and perf work separate; avoids confounding variables during quality review |
-| MAX_TURNS | Standardize to 8 | One number, documented rationale (1 schema + 2 tenant + 2 lake + 1 chart + 2 buffer) | |
+| MAX_TURNS | Standardize to 10 across all specialists (was 8 in Phase 5.1.5; bumped in Phase 5.1.9) | Chart-takeaway injection adds an analytical reconciliation turn (re-query to match the takeaway's window) on top of the existing query + chart + respond sequence. 8 turns was borderline for some questions; 10 gives clean headroom. | |
 | Few-shot count | Pricing 5, Demand 5, Anomaly 5, Trade 5 (incl. no-data demo) = 20 total | Pattern coverage + edge case demonstration | |
 | Cassette infrastructure | Lightweight custom JSON format with baseline + comparison sub-formats | Simple, no dependency, fits the test surface needs | |
 | Routing UX | Inline prose-prepend stays | Defer cleanup to v3.1; UI risk too high for demo | |
