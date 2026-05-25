@@ -358,18 +358,39 @@ def _takeaway_d4(merchant_id: str, filters: dict | None = None) -> str | None:
 
 
 def _takeaway_t_p1(merchant_id: str, filters: dict | None = None) -> str | None:
+    """T-P1 daypart ticket trend takeaway — DIRECTIONAL only.
+
+    Phase 5.2.1 fix: the chart helper computes drift as a
+    mean-of-means at hour granularity (each hour weighted equally
+    regardless of transaction count) and reports first-non-None vs
+    last-non-None percentages. The agent's natural SQL is
+    transaction-weighted ``AVG(txn_total) GROUP BY daypart``, which
+    produces numerically different drift values. When the takeaway
+    asserted a specific magnitude (e.g., "+4.4%"), the agent either
+    spun trying to reconcile (hit MAX_TURNS) or fabricated evidence
+    numbers to back-derive the takeaway's percentages. Both
+    failures observed in Phase 5.2 smoke.
+
+    Resolution: name the entities and directions (which the chart
+    visualization shows clearly) without pinning a specific
+    magnitude the agent must reproduce. Agent Evidence can cite
+    per-daypart ticket figures from its own SQL without
+    reconciliation. The chart itself still shows the precise
+    trajectory via series lines; the takeaway becomes a
+    direction-only summary."""
     chart_data = D.tbl_daypart_ticket_trends(merchant_id, filters=filters)
     if not chart_data["series"]:
         return None
     top_dp  = chart_data["top_daypart"]
-    top_pct = chart_data["top_pct"]
     top_dir = chart_data["top_direction"]
     bot_dp  = chart_data["bottom_daypart"]
-    bot_pct = chart_data["bottom_pct"]
     bot_dir = chart_data["bottom_direction"]
+    if top_dp == "—" or bot_dp == "—":
+        return None
     return (
-        f"Your {top_dp.lower()} ticket is {top_dir} {abs(top_pct):.1f}% "
-        f"over 90 days; {bot_dp.lower()} is {bot_dir} {abs(bot_pct):.1f}%."
+        f"Among QSR dayparts over 90 days, {top_dp.lower()} ticket "
+        f"shows the largest {top_dir}ward drift; "
+        f"{bot_dp.lower()} shows the largest {bot_dir}ward drift."
     )
 
 
