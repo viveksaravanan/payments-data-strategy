@@ -4,6 +4,7 @@ Auto-runs the full pipeline (generate -> seed) once per session if the
 corresponding artifacts are missing, so any test file can be invoked
 standalone without a prior `make seed`.
 """
+import json
 from pathlib import Path
 
 import pytest
@@ -22,3 +23,17 @@ def ensure_pipeline() -> None:
     if not db_marker.exists():
         from src.db.seed import main as seed_main
         seed_main()
+
+
+@pytest.fixture
+def baseline_cassettes() -> dict[str, dict]:
+    """Loads every baseline cassette into a dict keyed by the file
+    stem (``{specialist}_{qid}_{merchant}``). Empty dict if no
+    baseline cassettes have been recorded yet."""
+    baseline_dir = ROOT / "tests" / "cassettes" / "baseline"
+    out: dict[str, dict] = {}
+    if not baseline_dir.exists():
+        return out
+    for path in sorted(baseline_dir.glob("*.json")):
+        out[path.stem] = json.loads(path.read_text())
+    return out

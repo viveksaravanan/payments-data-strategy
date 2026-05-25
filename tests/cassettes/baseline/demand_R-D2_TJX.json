@@ -1,0 +1,48 @@
+{
+  "qid": "R-D2",
+  "specialist": "demand",
+  "merchant_id": "TJX",
+  "question": "Which categories are gaining or losing share over time?",
+  "tool_calls": [
+    {
+      "tool": "tenant",
+      "query": "\nSELECT \n  p.category,\n  CASE\n    WHEN DATE(t.txn_ts) BETWEEN '2026-03-01' AND '2026-03-31' THEN 'Mar 2026'\n    WHEN DATE(t.txn_ts) BETWEEN '2026-04-01' AND '2026-04-30' THEN 'Apr 2026'\n    WHEN DATE(t.txn_ts) BETWEEN '2026-05-01' AND '2026-05-29' THEN 'May 2026'\n  END AS period,\n  SUM(i.line_total) AS category_sales,\n  SUM(SUM(i.line_total)) OVER (PARTITION BY CASE WHEN DATE(t.txn_ts) BETWEEN '2026-03-01' AND '2026-03-31' THEN 'Mar 2026' WHEN DATE(t.txn_ts) BETWEEN '2026-04-01' AND '2026-04-30' THEN 'Apr 2026' WHEN DATE(t.txn_ts) BETWEEN '2026-05-01' AND '2026-05-29' THEN 'May 2026' END) AS period_total,\n  ROUND(100.0 * SUM(i.line_total) / SUM(SUM(i.line_total)) OVER (PARTITION BY CASE WHEN DATE(t.txn_ts) BETWEEN '2026-03-01' AND '2026-03-31' THEN 'Mar 2026' WHEN DATE(t.txn_ts) BETWEEN '2026-04-01' AND '2026-04-30' THEN 'Apr 2026' WHEN DATE(t.txn_ts) BETWEEN '2026-05-01' AND '2026-05-29' THEN 'May 2026' END), 2) AS share_pct\nFROM tenant_transaction_items i\nJOIN tenant_transactions t ON t.txn_id = i.txn_id\nJOIN tenant_products p ON p.sku = i.sku\nWHERE t.merchant_id = 'TJX'\nGROUP BY p.category, period\nORDER BY category, period\nLIMIT 100;\n",
+      "row_count": 24
+    },
+    {
+      "tool": "tenant",
+      "query": "\nSELECT \n  p.category,\n  CASE\n    WHEN DATE(t.txn_ts) BETWEEN '2026-03-01' AND '2026-03-31' THEN 'Mar 2026'\n    WHEN DATE(t.txn_ts) BETWEEN '2026-04-01' AND '2026-04-30' THEN 'Apr 2026'\n    WHEN DATE(t.txn_ts) BETWEEN '2026-05-01' AND '2026-05-29' THEN 'May 2026'\n  END AS period,\n  ROUND(100.0 * SUM(i.line_total) / SUM(SUM(i.line_total)) OVER (PARTITION BY CASE WHEN DATE(t.txn_ts) BETWEEN '2026-03-01' AND '2026-03-31' THEN 'Mar 2026' WHEN DATE(t.txn_ts) BETWEEN '2026-04-01' AND '2026-04-30' THEN 'Apr 2026' WHEN DATE(t.txn_ts) BETWEEN '2026-05-01' AND '2026-05-29' THEN 'May 2026' END), 2) AS share_pct\nFROM tenant_transaction_items i\nJOIN tenant_transactions t ON t.txn_id = i.txn_id\nJOIN tenant_products p ON p.sku = i.sku\nWHERE t.merchant_id = 'TJX'\nGROUP BY p.category, period\nORDER BY category ASC, period ASC\nLIMIT 100;\n",
+      "row_count": 24
+    },
+    {
+      "tool": "tenant",
+      "query": "\nSELECT \n  p.category,\n  CASE\n    WHEN DATE(t.txn_ts) BETWEEN '2026-03-01' AND '2026-03-31' THEN 'Mar'\n    WHEN DATE(t.txn_ts) BETWEEN '2026-04-01' AND '2026-04-30' THEN 'Apr'\n    WHEN DATE(t.txn_ts) BETWEEN '2026-05-01' AND '2026-05-29' THEN 'May'\n  END AS period,\n  ROUND(100.0 * SUM(i.line_total) / SUM(SUM(i.line_total)) OVER (PARTITION BY CASE WHEN DATE(t.txn_ts) BETWEEN '2026-03-01' AND '2026-03-31' THEN 'Mar' WHEN DATE(t.txn_ts) BETWEEN '2026-04-01' AND '2026-04-30' THEN 'Apr' WHEN DATE(t.txn_ts) BETWEEN '2026-05-01' AND '2026-05-29' THEN 'May' END), 2) AS share_pct\nFROM tenant_transaction_items i\nJOIN tenant_transactions t ON t.txn_id = i.txn_id\nJOIN tenant_products p ON p.sku = i.sku\nWHERE t.merchant_id = 'TJX'\nGROUP BY p.category, period\nORDER BY category, period;\n",
+      "row_count": 24
+    },
+    {
+      "tool": "tenant",
+      "query": "\nSELECT DISTINCT p.category\nFROM tenant_products p\nWHERE p.merchant_id = 'TJX'\nORDER BY category;\n",
+      "row_count": 8
+    },
+    {
+      "tool": "tenant",
+      "query": "\nSELECT \n  p.category,\n  CASE\n    WHEN DATE(t.txn_ts) BETWEEN '2026-03-01' AND '2026-03-31' THEN 'Mar'\n    WHEN DATE(t.txn_ts) BETWEEN '2026-04-01' AND '2026-04-30' THEN 'Apr'\n    WHEN DATE(t.txn_ts) BETWEEN '2026-05-01' AND '2026-05-29' THEN 'May'\n  END AS period,\n  ROUND(100.0 * SUM(i.line_total) / SUM(SUM(i.line_total)) OVER (PARTITION BY CASE WHEN DATE(t.txn_ts) BETWEEN '2026-03-01' AND '2026-03-31' THEN 'Mar' WHEN DATE(t.txn_ts) BETWEEN '2026-04-01' AND '2026-04-30' THEN 'Apr' WHEN DATE(t.txn_ts) BETWEEN '2026-05-01' AND '2026-05-29' THEN 'May' END), 2) AS share_pct\nFROM tenant_transaction_items i\nJOIN tenant_transactions t ON t.txn_id = i.txn_id\nJOIN tenant_products p ON p.sku = i.sku\nWHERE t.merchant_id = 'TJX' AND p.category = 'WOM'\nGROUP BY p.category, period;\n",
+      "row_count": 3
+    }
+  ],
+  "response_dict": {
+    "agent": "Demand Forecasting Agent",
+    "prose": "(I couldn't converge on a full answer in 6 turns. Showing the best-effort partial — see the SQL below for what I queried.)",
+    "caveats": [],
+    "telemetry": {
+      "input_tokens": 46759,
+      "output_tokens": 2128,
+      "cost_usd": 0.057399,
+      "turns": 6,
+      "converged": false
+    }
+  },
+  "recorded_at": "2026-05-25T20:14:46Z",
+  "phase_baseline": "4.6",
+  "commit_sha": "480c590"
+}

@@ -1,0 +1,38 @@
+{
+  "qid": "A3",
+  "specialist": "anomaly",
+  "merchant_id": "KRG",
+  "question": "Which SKUs or categories are spiking or dropping unusually?",
+  "tool_calls": [
+    {
+      "tool": "tenant",
+      "query": "\nSELECT\n  p.category,\n  p.subcategory,\n  p.name,\n  DATE(t.txn_ts) as date,\n  SUM(i.qty) as total_units,\n  SUM(i.line_total) as total_sales,\n  COUNT(DISTINCT t.txn_id) as num_txns\nFROM tenant_transactions t\nJOIN tenant_transaction_items i ON t.txn_id = i.txn_id\nJOIN tenant_products p ON i.sku = p.sku\nWHERE t.merchant_id = 'KRG'\n  AND DATE(t.txn_ts) >= DATE('2026-04-01')\nGROUP BY p.category, p.subcategory, p.name, DATE(t.txn_ts)\nORDER BY date DESC, total_units DESC\nLIMIT 200\n",
+      "row_count": 200
+    },
+    {
+      "tool": "tenant",
+      "query": "\nSELECT\n  p.category,\n  SUM(CASE WHEN DATE(t.txn_ts) >= DATE('2026-05-23') THEN i.qty ELSE 0 END) as recent_units,\n  SUM(CASE WHEN DATE(t.txn_ts) >= DATE('2026-05-16') AND DATE(t.txn_ts) < DATE('2026-05-23') THEN i.qty ELSE 0 END) as prior_units,\n  ROUND(100.0 * (SUM(CASE WHEN DATE(t.txn_ts) >= DATE('2026-05-23') THEN i.qty ELSE 0 END) - SUM(CASE WHEN DATE(t.txn_ts) >= DATE('2026-05-16') AND DATE(t.txn_ts) < DATE('2026-05-23') THEN i.qty ELSE 0 END)) / NULLIF(SUM(CASE WHEN DATE(t.txn_ts) >= DATE('2026-05-16') AND DATE(t.txn_ts) < DATE('2026-05-23') THEN i.qty ELSE 0 END), 0), 1) as pct_change\nFROM tenant_transactions t\nJOIN tenant_transaction_items i ON t.txn_id = i.txn_id\nJOIN tenant_products p ON i.sku = p.sku\nWHERE t.merchant_id = 'KRG'\nGROUP BY p.category\nORDER BY ABS(pct_change) DESC\nLIMIT 200\n",
+      "row_count": 12
+    },
+    {
+      "tool": "tenant",
+      "query": "\nSELECT\n  p.name,\n  p.category,\n  SUM(CASE WHEN DATE(t.txn_ts) >= DATE('2026-05-23') THEN i.qty ELSE 0 END) as recent_units,\n  SUM(CASE WHEN DATE(t.txn_ts) >= DATE('2026-05-16') AND DATE(t.txn_ts) < DATE('2026-05-23') THEN i.qty ELSE 0 END) as prior_units\nFROM tenant_transactions t\nJOIN tenant_transaction_items i ON t.txn_id = i.txn_id\nJOIN tenant_products p ON i.sku = p.sku\nWHERE t.merchant_id = 'KRG'\nGROUP BY p.name, p.category\nORDER BY recent_units DESC\nLIMIT 50\n",
+      "row_count": 50
+    }
+  ],
+  "response_dict": {
+    "agent": "Anomaly Detection Agent",
+    "prose": "(I couldn't converge on a full answer in 7 turns. Showing the best-effort partial — see the SQL below for what I queried.)",
+    "caveats": [],
+    "telemetry": {
+      "input_tokens": 55161,
+      "output_tokens": 2356,
+      "cost_usd": 0.066941,
+      "turns": 7,
+      "converged": false
+    }
+  },
+  "recorded_at": "2026-05-25T20:15:23Z",
+  "phase_baseline": "4.6",
+  "commit_sha": "480c590"
+}

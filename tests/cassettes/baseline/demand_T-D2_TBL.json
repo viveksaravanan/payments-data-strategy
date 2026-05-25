@@ -1,0 +1,28 @@
+{
+  "qid": "T-D2",
+  "specialist": "demand",
+  "merchant_id": "TBL",
+  "question": "Which categories are gaining or losing share over time?",
+  "tool_calls": [
+    {
+      "tool": "tenant",
+      "query": "\nSELECT \n  strftime('%Y-%m', t.txn_ts) AS month,\n  p.category,\n  SUM(i.qty) AS qty,\n  SUM(i.line_total) AS revenue\nFROM tenant_transactions t\nJOIN tenant_transaction_items i ON t.txn_id = i.txn_id\nJOIN tenant_products p ON p.sku = i.sku\nWHERE t.merchant_id = 'TBL'\nGROUP BY month, p.category\nORDER BY month, revenue DESC\nLIMIT 200;\n",
+      "row_count": 21
+    }
+  ],
+  "response_dict": {
+    "agent": "Demand Forecasting Agent",
+    "prose": "---\n\n## Category Share Trends: Clear Winners and Losers Over Mar–May 2026\n\n**Taco Bell is experiencing strong, consistent gains in COMBO and SIDE categories, while TACO (the namesake category) is essentially flat.** COMBO revenue grew 12% over the three-month window (from $54.6K to $61.1K), and SIDE jumped 16% ($31.7K to $36.8K), while DRINK (a bellwether category) grew steadily at 12% across the same span. TACO, paradoxically, remained nearly stagnant at ~$16.3K–$17.1K — a red flag for the core product line.\n\n**Key observations:**\n\n- **COMBO (winner):** +$6.5K revenue (+12% over 90 days); accelerating month-over-month (+$1.1K Mar→Apr, +$5.4K Apr→May). This category is capturing incremental customer value and frequency.\n- **SIDE (winner):** +$5.1K revenue (+16% over 90 days); fastest relative growth among all categories. Volume surge (+1.3K units from Mar to May) suggests strong pairing with mains.\n- **DRINK (steady performer):** +$4.7K revenue (+11% YTD); maintains ~25–26% of total revenue share throughout.\n- **TACO (flat risk):** Essentially zero growth; volume +4% but revenue stagnant (heavily discounted or low-margin mix). Lost share vs. COMBO/SIDE despite being the marquee product.\n- **BURR, SPEC, BFAST:** All growing in absolute terms (+8–10% over three months) but at slower rates than COMBO/SIDE.\n\n**Recommendation:** Investigate TACO-category SKU mix and promo exposure — margin erosion or customer preference shift toward bundles may be suppressing base-product appeal; prioritize COMBO attachment offers and SIDE velocity to sustain the momentum.\n\n```json\n[\n  \"Category shares computed from tenant_transactions + tenant_transaction_items JOIN tenant_products over the full 2026-03-01 → 2026-05-29 window.\",\n  \"TACO category includes all SKUs with category='TACO'; COMBO, DRINK, etc. defined by tenant_products.category field.\",\n  \"Revenue = SUM(line_total) per category per month; qty = SUM(qty).\",\n  \"Chart shows monthly absolute revenue; proportional share can be calculated from absolute figures (e.g., May COMBO = 61.1K / (61.1K+45.9K+36.9K+36.4K+36.8K+29.9K+17.1K) ≈ 26.1%).\",\n  \"No peer-segment comparison included; this is Taco Bell own-merchant demand trend.\"\n]\n```",
+    "caveats": [],
+    "telemetry": {
+      "input_tokens": 25585,
+      "output_tokens": 1371,
+      "cost_usd": 0.03244,
+      "turns": 4,
+      "converged": true
+    }
+  },
+  "recorded_at": "2026-05-25T20:14:30Z",
+  "phase_baseline": "4.6",
+  "commit_sha": "480c590"
+}
