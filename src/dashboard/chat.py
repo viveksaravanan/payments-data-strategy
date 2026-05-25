@@ -125,22 +125,7 @@ def _render_a1(merchant_id: str, filters: dict | None = None) -> None:
     if not chart_data.get("weeks"):
         st.caption("_No University City data available for this merchant._")
         return
-
-    # If the viewer has no UC stores at all, render the peer overlays
-    # only and a different takeaway. Avoids the "you dropped 0%" gibberish.
-    if not chart_data.get("trough_week"):
-        takeaway = (
-            "You have no University City stores in the panel — "
-            "showing peer trajectories only."
-        )
-    else:
-        takeaway = CP.format_takeaway(
-            "Your UC transactions dropped {own_pct_drop}% from baseline "
-            "by week of {trough_week}; peers also declined "
-            "({peer_a_pct_drop}% and {peer_b_pct_drop}%). "
-            "The pattern is {market_signal}.",
-            chart_data,
-        )
+    takeaway = CT.compute_takeaway("A1", merchant_id, filters=filters)
 
     CP.render_time_series_vs_peers(
         chart_data,
@@ -176,12 +161,7 @@ def _render_p2(merchant_id: str, filters: dict | None = None) -> None:
        not chart_data["panel_b_data"]["categories"]:
         st.caption("_No pricing data available for this merchant._")
         return
-    takeaway = CP.format_takeaway(
-        "Your staple tier averages {staple_pct:+.1f}% vs Peer A; "
-        "non-food tier averages {nonfood_pct:+.1f}%. "
-        "Your pricing strategy is {tier_signal} across tiers.",
-        chart_data,
-    )
+    takeaway = CT.compute_takeaway("P2", merchant_id, filters=filters)
     CP.render_cross_merchant_comparison(
         chart_data,
         title="Pricing positioning: staples vs non-food",
@@ -210,12 +190,7 @@ def _render_d4(merchant_id: str, filters: dict | None = None) -> None:
     if not chart_data["points"]:
         st.caption("_No basket-mix data available for this merchant._")
         return
-    takeaway = (
-        f"{chart_data['over_category']} overperforms peers by "
-        f"{chart_data['over_pp']:+.1f}pp share; "
-        f"{chart_data['under_category']} underperforms by "
-        f"{chart_data['under_pp']:+.1f}pp."
-    )
+    takeaway = CT.compute_takeaway("D4", merchant_id, filters=filters)
     CP.render_scatter_with_peers(
         chart_data,
         title="Your category mix vs peer-average",
@@ -300,16 +275,7 @@ def _render_t_p1(merchant_id: str, filters: dict | None = None) -> None:
     if not chart_data["series"]:
         st.caption("_No daypart-trend data available._")
         return
-    top_dp   = chart_data["top_daypart"]
-    top_pct  = chart_data["top_pct"]
-    top_dir  = chart_data["top_direction"]
-    bot_dp   = chart_data["bottom_daypart"]
-    bot_pct  = chart_data["bottom_pct"]
-    bot_dir  = chart_data["bottom_direction"]
-    takeaway = (
-        f"Your {top_dp.lower()} ticket is {top_dir} {abs(top_pct):.1f}% "
-        f"over 90 days; {bot_dp.lower()} is {bot_dir} {abs(bot_pct):.1f}%."
-    )
+    takeaway = CT.compute_takeaway("T-P1", merchant_id, filters=filters)
     CP.render_time_series_own_multi(
         chart_data,
         title="Average ticket by daypart, weekly",
@@ -337,12 +303,7 @@ def _render_t_p3(merchant_id: str, filters: dict | None = None) -> None:
     if not chart_data["labels"]:
         st.caption("_No store ticket data available._")
         return
-    takeaway = (
-        f"Your highest-ticket store is {chart_data['top_store']} at "
-        f"${chart_data['top_value']:.2f}; lowest is {chart_data['bottom_store']} "
-        f"at ${chart_data['bottom_value']:.2f}; range is "
-        f"${chart_data['range_value']:.2f}."
-    )
+    takeaway = CT.compute_takeaway("T-P3", merchant_id, filters=filters)
     CP.render_horizontal_bars_own(
         chart_data,
         title="Mean ticket by store",
@@ -357,31 +318,7 @@ def _render_t_a1(merchant_id: str, filters: dict | None = None) -> None:
     if not rows:
         st.caption("_No stores with enough baseline data to evaluate._")
         return
-    n_flag = chart_data["n_flagged"]
-    n_under = chart_data["n_under"]
-    n_over  = chart_data["n_over"]
-    top = chart_data["top"]
-    if n_flag == 0:
-        takeaway = "All your stores are within 15% of your panel baseline."
-    elif n_under == 0:
-        takeaway = (
-            f"{n_flag} of your stores are running >15% above baseline; "
-            f"{top['store_id']} ({top['neighborhood']}) shows the largest "
-            f"swing ({top['deviation_pct']:+.1f}%)."
-        )
-    elif n_over == 0:
-        takeaway = (
-            f"{n_flag} of your stores are running >15% below baseline; "
-            f"{top['store_id']} ({top['neighborhood']}) shows the largest "
-            f"swing ({top['deviation_pct']:+.1f}%)."
-        )
-    else:
-        takeaway = (
-            f"{n_flag} stores deviate from baseline by >15% "
-            f"({n_under} under, {n_over} over); "
-            f"{top['store_id']} ({top['neighborhood']}) shows the largest "
-            f"swing ({top['deviation_pct']:+.1f}%)."
-        )
+    takeaway = CT.compute_takeaway("T-A1", merchant_id, filters=filters)
     CP.render_table_with_drilldown(
         {
             "rows": rows,
@@ -425,18 +362,7 @@ def _render_t_a2(merchant_id: str, filters: dict | None = None) -> None:
 def _render_t_a3(merchant_id: str, filters: dict | None = None) -> None:
     """T-A3 (TBL): day-of-week × daypart ratio heatmap (Pattern 3 own-only)."""
     chart_data = D.day_daypart_heatmap(merchant_id, filters=filters)
-    weakest = chart_data["weakest"]
-    strongest = chart_data["strongest"]
-    if weakest is None or strongest is None:
-        takeaway = "Insufficient daypart-level data to score this week."
-    else:
-        w_val, w_dow, w_dp = weakest
-        s_val, s_dow, s_dp = strongest
-        takeaway = (
-            f"Weakest day-daypart this week: {w_dow} {w_dp.lower()} at "
-            f"{w_val * 100:.0f}% of baseline; strongest: {s_dow} "
-            f"{s_dp.lower()} at {s_val * 100:.0f}%."
-        )
+    takeaway = CT.compute_takeaway("T-A3", merchant_id, filters=filters)
     CP.render_heatmap(
         chart_data,
         title="Day × daypart recent-week vs first-4-week baseline",
@@ -451,11 +377,7 @@ def _render_t_d1(merchant_id: str, filters: dict | None = None) -> None:
     if not chart_data["labels"]:
         st.caption("_No category-share data available._")
         return
-    names = ", ".join(chart_data["top3_names"])
-    takeaway = (
-        f"Top 3 categories ({names}) account for "
-        f"{chart_data['top3_pct']:.1f}% of revenue."
-    )
+    takeaway = CT.compute_takeaway("T-D1", merchant_id, filters=filters)
     CP.render_horizontal_bars_own(
         chart_data,
         title="Category share of revenue",
@@ -483,25 +405,7 @@ def _render_t_d3(merchant_id: str, filters: dict | None = None) -> None:
     if not chart_data.get("has_data"):
         st.caption("_Insufficient data to decompose this week's change._")
         return
-    change = chart_data["total_change_pct"]
-    direction = "up" if change > 0 else ("down" if change < 0 else "flat")
-    dom_name = chart_data["dominant_driver"].lower()
-    dom_pp = chart_data["dominant_pp"]
-    tied = chart_data.get("tied_with") or []
-    if not tied:
-        takeaway = (
-            f"Revenue {direction} {abs(change):.1f}% vs your first-4-week "
-            f"baseline; {dom_name} contributes {dom_pp:+.1f}pp."
-        )
-    else:
-        both_names = [dom_name] + [n.lower() for n, _ in tied]
-        pps        = [dom_pp]   + [pp for _, pp in tied]
-        names      = " + ".join(both_names)
-        magnitudes = " / ".join(f"{pp:+.1f}pp" for pp in pps)
-        takeaway = (
-            f"Revenue {direction} {abs(change):.1f}% vs baseline; "
-            f"{names} together drive the change ({magnitudes})."
-        )
+    takeaway = CT.compute_takeaway("T-D3", merchant_id, filters=filters)
     CP.render_waterfall(
         chart_data,
         title="Revenue change drivers vs first-4-week baseline",
@@ -521,12 +425,7 @@ def _render_r_p1(merchant_id: str, filters: dict | None = None) -> None:
     if not chart_data["series"]:
         st.caption("_No category-ticket data available._")
         return
-    takeaway = (
-        f"{chart_data['top_category']} ticket is "
-        f"{chart_data['top_direction']} {abs(chart_data['top_pct']):.1f}% "
-        f"over 90 days; {chart_data['next_category']} is "
-        f"{chart_data['next_direction']} {abs(chart_data['next_pct']):.1f}%."
-    )
+    takeaway = CT.compute_takeaway("R-P1", merchant_id, filters=filters)
     CP.render_time_series_own_multi(
         chart_data,
         title="Mean ticket by category, weekly",
@@ -565,11 +464,7 @@ def _render_r_p3(merchant_id: str, filters: dict | None = None) -> None:
     if not chart_data["labels"]:
         st.caption("_No ticket-band data available._")
         return
-    takeaway = (
-        f"Your top ticket band ({chart_data['top_band']}) accounts for "
-        f"{chart_data['top_txn_pct']:.1f}% of transactions and "
-        f"{chart_data['top_rev_pct']:.1f}% of revenue."
-    )
+    takeaway = CT.compute_takeaway("R-P3", merchant_id, filters=filters)
     CP.render_horizontal_bars_grouped(
         chart_data,
         title="Transactions and revenue by ticket band",
@@ -588,31 +483,7 @@ def _render_r_a1(merchant_id: str, filters: dict | None = None) -> None:
     if not rows:
         st.caption("_No stores with enough baseline data to evaluate._")
         return
-    n_flag = chart_data["n_flagged"]
-    n_under = chart_data["n_under"]
-    n_over  = chart_data["n_over"]
-    top = chart_data["top"]
-    if n_flag == 0:
-        takeaway = "All your stores are within 15% of your panel baseline."
-    elif n_under == 0:
-        takeaway = (
-            f"{n_flag} of your stores are running >15% above baseline; "
-            f"{top['store_id']} ({top['neighborhood']}) shows the largest "
-            f"swing ({top['deviation_pct']:+.1f}%)."
-        )
-    elif n_over == 0:
-        takeaway = (
-            f"{n_flag} of your stores are running >15% below baseline; "
-            f"{top['store_id']} ({top['neighborhood']}) shows the largest "
-            f"swing ({top['deviation_pct']:+.1f}%)."
-        )
-    else:
-        takeaway = (
-            f"{n_flag} stores deviate from baseline by >15% "
-            f"({n_under} under, {n_over} over); "
-            f"{top['store_id']} ({top['neighborhood']}) shows the largest "
-            f"swing ({top['deviation_pct']:+.1f}%)."
-        )
+    takeaway = CT.compute_takeaway("R-A1", merchant_id, filters=filters)
     CP.render_table_with_drilldown(
         {
             "rows": rows,
@@ -641,23 +512,7 @@ def _render_r_a2(merchant_id: str, filters: dict | None = None) -> None:
     if not rows:
         st.caption("_No category-volume data in the recent window._")
         return
-    n_flag = chart_data["n_flagged"]
-    top    = chart_data["top"]
-    direction = chart_data["top_direction"]
-
-    if n_flag == 0:
-        takeaway = (
-            "No categories deviate from baseline by >15% in the recent week."
-        )
-    else:
-        word = "spikes" if direction == "spike" else (
-            "drops" if direction == "drop" else "swings"
-        )
-        takeaway = (
-            f"{n_flag} categor{'y' if n_flag == 1 else 'ies'} show recent "
-            f"volume off baseline by >15%; {top['category']} {word} the "
-            f"most ({top['deviation_pct']:+.1f}%)."
-        )
+    takeaway = CT.compute_takeaway("R-A2", merchant_id, filters=filters)
     CP.render_table_with_drilldown(
         {
             "rows": rows,
@@ -676,15 +531,7 @@ def _render_r_a2(merchant_id: str, filters: dict | None = None) -> None:
 def _render_r_a3(merchant_id: str, filters: dict | None = None) -> None:
     """R-A3 (TJX): day × week ratio heatmap (Pattern 3 own-only)."""
     chart_data = D.day_week_heatmap(merchant_id, filters=filters)
-    weakest = chart_data["weakest"]
-    if weakest is None:
-        takeaway = "Insufficient day-level data to score this period."
-    else:
-        ratio, dow, week_label = weakest
-        takeaway = (
-            f"Weakest day-week this period: {dow} week of {week_label} "
-            f"at {ratio * 100:.0f}% of baseline."
-        )
+    takeaway = CT.compute_takeaway("R-A3", merchant_id, filters=filters)
     CP.render_heatmap(
         chart_data,
         title="Day-of-week recent vs first-4-week baseline",
@@ -702,11 +549,7 @@ def _render_r_d1(merchant_id: str, filters: dict | None = None) -> None:
     if not chart_data["labels"]:
         st.caption("_No category-share data available._")
         return
-    names = ", ".join(chart_data["top3_names"])
-    takeaway = (
-        f"Top 3 categories ({names}) account for "
-        f"{chart_data['top3_pct']:.1f}% of revenue."
-    )
+    takeaway = CT.compute_takeaway("R-D1", merchant_id, filters=filters)
     CP.render_horizontal_bars_own(
         chart_data,
         title="Category share of revenue",
@@ -734,25 +577,7 @@ def _render_r_d3(merchant_id: str, filters: dict | None = None) -> None:
     if not chart_data.get("has_data"):
         st.caption("_Insufficient data to decompose this week's change._")
         return
-    change = chart_data["total_change_pct"]
-    direction = "up" if change > 0 else ("down" if change < 0 else "flat")
-    dom_name = chart_data["dominant_driver"].lower()
-    dom_pp = chart_data["dominant_pp"]
-    tied = chart_data.get("tied_with") or []
-    if not tied:
-        takeaway = (
-            f"Revenue {direction} {abs(change):.1f}% vs your first-4-week "
-            f"baseline; {dom_name} contributes {dom_pp:+.1f}pp."
-        )
-    else:
-        both_names = [dom_name] + [n.lower() for n, _ in tied]
-        pps        = [dom_pp]   + [pp for _, pp in tied]
-        names      = " + ".join(both_names)
-        magnitudes = " / ".join(f"{pp:+.1f}pp" for pp in pps)
-        takeaway = (
-            f"Revenue {direction} {abs(change):.1f}% vs baseline; "
-            f"{names} together drive the change ({magnitudes})."
-        )
+    takeaway = CT.compute_takeaway("R-D3", merchant_id, filters=filters)
     CP.render_waterfall(
         chart_data,
         title="Revenue change drivers vs first-4-week baseline",

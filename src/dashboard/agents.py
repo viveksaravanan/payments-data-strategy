@@ -191,20 +191,33 @@ def _run_specialist(
     # chart renders below the agent's response, its mechanically-
     # computed caption is THIS string — so the agent's prose has the
     # same source of truth the user sees on the chart.
+    #
+    # Phase 5.2: ``compute_takeaway`` may return a pattern-type fallback
+    # (a brief chart-shape descriptor) for qids whose chart can't be
+    # summarized in a single sentence. We detect that via
+    # ``is_pattern_fallback`` and soften the prompt language — the
+    # fallback isn't authoritative numeric truth, just framing context.
     takeaway = _compute_chart_takeaway(question_id, merchant_id)
     if takeaway:
-        question = (
-            f"{question}\n\n"
-            f"**Authoritative takeaway from the chart that will render "
-            f"below your response:**\n"
-            f'"{takeaway}"\n\n'
-            f"Your prose MUST be consistent with this takeaway in "
-            f"direction and magnitude. If your tool results suggest a "
-            f"different analytical window or answer, RE-QUERY using "
-            f"the same window the takeaway uses (typically first week "
-            f"vs last week in a trajectory, not first-half-mean vs "
-            f"second-half-mean) before responding."
-        )
+        from src.dashboard import chart_takeaways as CT
+        if CT.is_pattern_fallback(takeaway):
+            question = (
+                f"{question}\n\n"
+                f"**Chart context:**\n{takeaway}"
+            )
+        else:
+            question = (
+                f"{question}\n\n"
+                f"**Authoritative takeaway from the chart that will render "
+                f"below your response:**\n"
+                f'"{takeaway}"\n\n'
+                f"Your prose MUST be consistent with this takeaway in "
+                f"direction and magnitude. If your tool results suggest a "
+                f"different analytical window or answer, RE-QUERY using "
+                f"the same window the takeaway uses (typically first week "
+                f"vs last week in a trajectory, not first-half-mean vs "
+                f"second-half-mean) before responding."
+            )
 
     if specialist_id == "pricing":
         from src.agents.pricing import PricingSpecialist

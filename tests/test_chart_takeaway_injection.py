@@ -17,6 +17,13 @@ from __future__ import annotations
 from unittest.mock import patch
 
 from src.dashboard.agents import _compute_chart_takeaway, _run_specialist
+from src.dashboard.chart_takeaways import (
+    compute_takeaway,
+    is_pattern_fallback,
+    PATTERN_FALLBACK_MARKER,
+    _PATTERN_FALLBACKS,
+    _REGISTRY,
+)
 
 
 def test_compute_chart_takeaway_for_known_qid():
@@ -81,3 +88,54 @@ def test_run_specialist_injects_takeaway_for_known_qid():
     assert "BURR" in q or "BFAST" in q, (
         f"Expected injected takeaway to reference BURR or BFAST; got: {q!r}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 5.2 — coverage extension + pattern-type fallback
+# ---------------------------------------------------------------------------
+
+def test_compute_takeaway_pattern_fallback_for_d7():
+    """D7 renders two separate waterfalls (one per peer) — no single
+    sentence summarizes both. The pattern-fallback path kicks in and
+    returns a brief chart-shape descriptor instead of ``None``."""
+    result = compute_takeaway("D7", "KRG")
+    assert result is not None, (
+        "D7 should fall back to a pattern-type descriptor, not None."
+    )
+    assert is_pattern_fallback(result), (
+        f"Expected D7 result to be detected as a pattern fallback; "
+        f"got: {result!r}"
+    )
+    assert PATTERN_FALLBACK_MARKER in result
+    assert "waterfall" in result.lower()
+
+
+def test_takeaway_coverage_matches_question_renderers():
+    """Every qid in chat.py's QUESTION_RENDERERS should have either a
+    full takeaway handler in ``_REGISTRY`` OR a pattern fallback in
+    ``_PATTERN_FALLBACKS``. Coverage regression canary."""
+    from src.dashboard.chat import QUESTION_RENDERERS
+
+    covered_full     = set(_REGISTRY.keys())
+    covered_fallback = set(_PATTERN_FALLBACKS.keys())
+    covered_total    = covered_full | covered_fallback
+    registered       = set(QUESTION_RENDERERS.keys())
+    uncovered        = registered - covered_total
+
+    assert not uncovered, (
+        f"qids registered in QUESTION_RENDERERS but missing from "
+        f"chart_takeaways coverage: {sorted(uncovered)}"
+    )
+
+
+def test_is_pattern_fallback_discriminates():
+    """``is_pattern_fallback`` should return True for fallback strings
+    and False for full takeaways and ``None``."""
+    # Full takeaway (no marker)
+    assert not is_pattern_fallback("BURR prices are down 0.9% over 90 days.")
+    # Pattern fallback (marker present)
+    assert is_pattern_fallback(
+        "The chart that will render below your response is a heatmap..."
+    )
+    # None input
+    assert not is_pattern_fallback(None)
