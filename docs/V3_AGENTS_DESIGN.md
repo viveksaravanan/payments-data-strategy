@@ -2,9 +2,12 @@
 
 **Status:** locked, ready for implementation.
 **Author:** [you]
-**Date:** 2026-05-24
+**Date:** 2026-05-25 (revised; original locked 2026-05-24)
 **Phase 4.6 baseline commit:** c75642f
-**Phase 5 target:** prompt + response-shape redesign across all 4 specialists + orchestrator, plus regression cassette infrastructure.
+**Phase 5.0 cassette baseline commit:** 5c9f899
+**Phase 5 target:** prompt + example redesign across all 4 specialists + orchestrator. Plus regression cassette infrastructure (already shipped in 5.0).
+
+**Revision note:** the original locked version proposed tool_use structured output (hybrid contract). After review, tool_use was dropped — it broke streaming UX and over-engineered the structural enforcement. The actual Phase 5 quality lever is the worked examples and sharpened prompts. Contract is enforced by prompt instructions + examples + regression-test checks, not by API schema.
 
 ---
 
@@ -15,8 +18,8 @@
 1. **Sharpen the chat experience.** Make every specialist response follow a consistent, readable, actionable shape. Demo-defining quality.
 2. **Ground prose in chart shape.** Specialists know which chart pattern will render below their prose and frame evidence accordingly.
 3. **Segment-aware routing.** Orchestrator picks the right specialist with viewer-segment context, not segment-blind heuristics.
-4. **Build a regression test surface.** Cassette-based replay so prompt changes can be validated against baseline responses.
-5. **Preserve all working architecture.** Filter wiring, caching, chat panel UX, dashboard layout — all stay as-is.
+4. **Build a regression test surface.** Cassette-based replay so prompt changes can be validated against baseline responses. (Shipped in Phase 5.0.)
+5. **Preserve all working architecture.** Filter wiring, caching, chat panel UX, dashboard layout, streaming response — all stay as-is.
 
 ### Non-goals
 
@@ -25,15 +28,18 @@
 - No dedicated UI slot for routing decisions. Inline prose-prepend stays for v3.
 - No changes to chart rendering or dashboard layout.
 - No expansion of specialist count or scope. 4 specialists, same domains.
+- **No tool_use structured output.** Contract is enforced by prompts, examples, and regression-test checks. Streaming UX preserved as-is. (See revision note above.)
 - **Prompt caching deferred to Phase 5.7 follow-up commit** (see §12). Keeps quality work and perf work cleanly separated.
 
 ---
 
 ## 2. Response shape contract
 
-Every specialist response follows this 4-part shape, surfaced via a `tool_use` structured output:
+Every specialist response follows this 4-part shape, enforced by the prompt + few-shot examples + regression-test checks:
 
 HEADLINE → EVIDENCE → THEREFORE → CAVEATS
+
+The user sees this rendered as flowing prose. Streaming token-by-token, just like today.
 
 ### Headline (1 sentence)
 
@@ -67,6 +73,8 @@ HEADLINE → EVIDENCE → THEREFORE → CAVEATS
 
 ### Therefore (1 sentence, at most 2)
 
+Rendered in prose as a final paragraph, optionally led with `**Therefore:**` as a lightweight visual marker.
+
 **Recommended openers (pick one when it fits the response naturally):**
 - "Worth investigating..."
 - "The dominant lever is..."
@@ -93,10 +101,14 @@ HEADLINE → EVIDENCE → THEREFORE → CAVEATS
 - Each caveat ≤ 20 words
 - Fenced as ```caveats ["...", "..."]``` at very end of prose
 - Caveats parsed via existing `_split_caveats` regex; this contract preserves that
+- Caveats should NOT be filler that restates the response shape (e.g., "All comparisons are average unit price..." adds nothing)
 
 **Good:**
 - "Based on the 90-day window (Mar 1 – May 29, 2026)."
 - "Whole milk SKU mapping confidence: 89% based on canonical_product match."
+
+**Bad:**
+- "All comparisons are average unit price per line item across the full transaction window in the panel." (restates the response shape; not a caveat)
 
 ---
 
@@ -255,7 +267,7 @@ UX cleanup deferred to v3.1.
 
 ## 6. Few-shot example structure
 
-Each specialist's system prompt embeds worked examples (19 total across 4 specialists: pricing 5, demand 5, anomaly 5, trade 4 + 1 no-data demo = 5).
+Each specialist's system prompt embeds worked examples (20 total across 4 specialists: pricing 5, demand 5, anomaly 5, trade 5 incl. no-data demo).
 
 ### Critical sequencing note
 
@@ -263,13 +275,13 @@ Each example must be drafted in detail BEFORE the prompt rewrite in sub-task 4. 
 
 **Implementation order:**
 
-1. Sub-task 1 (cassettes) — produces baseline responses
-2. Sub-task 2 (tool_use) — adds structured output
-3. Sub-task 3 (pattern context) — adds chart pattern awareness
+1. Sub-task 1 (cassettes) — ✅ shipped in Phase 5.0; produces baseline responses
+2. Sub-task 2 (contract instructions added to prompts) — lightweight; Phase 5.1
+3. Sub-task 3 (pattern context injection) — Phase 5.2
 4. **Pause and draft the 20 examples** — use baseline cassettes as raw material, refine into ideal contract-shape responses. Budget 4-6 hours for this alone, not bundled with prompt edits.
-5. Sub-task 4 (prompt rewrites with examples baked in)
-6. Sub-task 5 (routing)
-7. Sub-task 6 (regression run + iterate)
+5. Sub-task 4 (prompt rewrites with examples baked in) — Phase 5.3
+6. Sub-task 5 (segment-conditional routing) — Phase 5.4
+7. Sub-task 6 (regression run + iterate) — Phase 5.5
 
 This means sub-task 4 becomes "fold pre-drafted examples into prompts" rather than "write prompts AND examples simultaneously."
 
@@ -279,7 +291,7 @@ Each example shows:
 
 1. **Question** — a representative user question
 2. **Tool calls** — abbreviated trace of what the specialist queried (1-3 lines)
-3. **Response** — the ideal response following the contract (Headline → Evidence → Therefore → Caveats)
+3. **Response** — the ideal response following the contract (Headline → Evidence → Therefore → Caveats), written as flowing prose
 4. **Why this example** — 1 line of meta-explanation visible to the model
 
 The examples per specialist cover the most common question types for that specialist.
@@ -331,15 +343,16 @@ Phase 5 success = "the new responses are at least as good as baseline, and the c
 
 ### Contract compliance (objective)
 
-Every response must:
+Every response must (verified by regression-test regex checks in Phase 5.5):
 
 - Start with a Headline that names a specific number
 - Have 3-5 Evidence bullets, each with a number
-- Have a Therefore section (1-2 sentences)
+- Have a Therefore section (1-2 sentences) — detectable by recommended-opener phrases or `**Therefore:**` marker
 - End with a Caveats fenced JSON block (0-3 items)
 - Not contain throat-clearing ("Looking at your data...", "Interesting question...")
+- Not contain forbidden verbs in the Therefore section ("should", "recommend", "consider", etc.)
 
-These are mechanically checkable in the regression suite.
+These are mechanically checkable via regex on the prose. The cassette comparison tests in `tests/test_contract_compliance.py` (added in Phase 5.5) flag violations automatically.
 
 ### Quality bar (subjective)
 
@@ -357,9 +370,9 @@ Grade each as: better / equal / worse vs baseline.
 ### Who judges what
 
 **Claude Code verifies:**
-- Mechanical contract compliance (headline has number, caveats fence present, no forbidden verbs in Therefore, etc.)
+- Mechanical contract compliance (headline has number, caveats fence present, no forbidden verbs in Therefore, etc.) via regex checks
 - All 12 cassettes parse correctly post-changes
-- Tests still pass (target: 225)
+- Tests still pass
 - No new errors in dispatch path
 
 **YOU verify (budget ~2 hours):**
@@ -376,9 +389,9 @@ Any of these = blocking:
 
 - Pattern context injection breaks free-form orchestrated path (no qid)
 - Segment-conditional routing routes TBL questions to a peer-comparison response that returns empty
-- Tool_use structured output produces malformed JSON
-- Streaming breaks (no streaming on tool_use responses)
+- Streaming visibly breaks (responses no longer appear progressively)
 - Token cost increases > 2x baseline
+- Caveats fence parsing breaks (existing `_split_caveats` regex starts missing caveats)
 
 ---
 
@@ -386,75 +399,32 @@ Any of these = blocking:
 
 ### Sub-task ordering
 
-**Sub-task 1: Cassette infrastructure (foundation)**
+**Sub-task 1: Cassette infrastructure (foundation)** ✅ Shipped in Phase 5.0 (commit 5c9f899)
 
-- Build `tests/cassettes/` directory with two file formats:
+- 12 baseline cassettes recorded against Phase 4.6 prompts
+- Helper module `tests/cassette_helpers.py` with record / replay / compare
+- 3 new tests for infrastructure
+- Total cost: $0.5148
 
-  **Baseline format** (`cassettes/{specialist}_{qid}.json`):
-```json
-  {
-    "qid": "P1",
-    "specialist": "pricing",
-    "question": "How do my prices compare to peer grocers across categories?",
-    "merchant_id": "KRG",
-    "tool_calls": [
-      {"tool": "tenant", "query": "...", "row_count": 12},
-      {"tool": "lake", "query": "...", "row_count": 24}
-    ],
-    "response_dict": {
-      "agent": "Pricing & Benchmarking Agent",
-      "prose": "Your dairy category is priced...",
-      "caveats": ["..."],
-      "telemetry": {"turns": 3, "input_tokens": 12000, "output_tokens": 800, "cost_usd": 0.005}
-    },
-    "recorded_at": "2026-05-24T15:00:00Z"
-  }
-```
+**Sub-task 2: Response contract instructions added to specialist prompts (lightweight)**
 
-  **Comparison format** (`cassettes/comparisons/{specialist}_{qid}.json`, generated during sub-task 6):
-```json
-  {
-    "qid": "P1",
-    "specialist": "pricing",
-    "question": "...",
-    "baseline_response": {
-      "prose": "...",
-      "caveats": [...]
-    },
-    "phase5_response": {
-      "headline": "...",
-      "evidence": [...],
-      "therefore": "...",
-      "caveats": [...]
-    },
-    "grade": null,  // user fills in: "better" | "equal" | "worse"
-    "notes": ""     // user fills in: optional commentary
-  }
-```
+- Add the §2 contract to each of the 4 specialist prompts. Update the existing "Output format" section with:
+  - Headline: 1 sentence, names a number, no throat-clearing
+  - Evidence: 3-5 bullets, each with a number
+  - Therefore: 1 sentence with recommended openers; forbidden verbs listed
+  - Caveats: 0-3 bullets in fenced JSON block (unchanged from today)
+- Optionally lead the Therefore paragraph with `**Therefore:**` for visual clarity
+- No code changes. Prompt edits only.
+- Cassette format unchanged. Streaming unchanged. `_split_caveats` regex unchanged.
 
-- Helper functions: `record_cassette(specialist, qid, merchant_id)` + `replay_cassette(cassette_path) -> response_dict` + `compare_cassettes(baseline_path, phase5_path) -> comparison_dict`
-- Record 12 baseline cassettes (3 per specialist) against current prompts
-- Pytest fixture for cassette replay
-- No prompt changes yet — just infrastructure
-
-**Commit:** `Phase 5.0: cassette infrastructure for agent regression testing`
-
-**Sub-task 2: Response contract + tool_use structured output**
-
-- Define `respond` tool with schema: `{headline: str, evidence: list[str], therefore: str, caveats: list[str]}`
-- Update Specialist base class to use tool_use for final response (intermediate turns still use freeform)
-- Post-process tool_use output into prose (headline + evidence bullets + therefore + caveats fence)
-- Backward-compatible: if tool_use missing, fall back to current freeform + regex parsing
-- Run cassette replay; expect all 12 to still parse correctly
-
-**Commit:** `Phase 5.1: structured response shape via tool_use`
+**Commit:** `Phase 5.1: response contract instructions added to specialist prompts`
 
 **Sub-task 3: Pattern context injection**
 
 - Build `chart_pattern_for(qid: str) -> str | None` helper (e.g., "P1" → "heatmap")
 - Specialist signature gains `chart_pattern: str | None = None`
 - `_run_specialist` in agents.py passes pattern through; defaults to None for orchestrated path
-- Specialist prompts updated with pattern-conditional sections (6 patterns described)
+- Specialist prompts updated with pattern-conditional sections (6 patterns described per §3)
 - Graceful no-op when pattern is None or unknown
 
 **Commit:** `Phase 5.2: chart pattern context injection into specialist prompts`
@@ -466,14 +436,14 @@ Before this sub-task: pause and draft the 20 worked examples. Use baseline casse
 Then:
 
 - 4 specialist prompts rewritten with:
-  - New response contract section
-  - Per-pattern framing rules
+  - Reinforced response contract section (already added in 5.1)
+  - Per-pattern framing rules (already added in 5.2)
   - Pre-drafted worked examples folded in (5 per specialist; 5 for trade including no-data demo)
   - Voice/domain quirks per §4
   - No-data response shape section (applies to all)
 - Prompts stay under ~300 lines each
 
-**Commit:** `Phase 5.3: specialist prompt rewrites with response contract and pre-drafted examples`
+**Commit:** `Phase 5.3: specialist prompt rewrites with pre-drafted examples`
 
 **Sub-task 5: Segment-conditional orchestrator routing**
 
@@ -488,37 +458,37 @@ Then:
 
 - Re-run all 12 cassettes against new prompts
 - Generate comparison files (baseline vs phase5 side-by-side)
-- User grades each as better / equal / worse
+- Add `tests/test_contract_compliance.py` with regex-based contract checks (headline-has-number, therefore-section-present, forbidden-verbs-absent, caveats-fence-present)
+- User grades each cassette as better / equal / worse
 - If pass criteria met (≥8 better, 0 worse), commit cassette comparisons
 - If not, iterate on specific specialists' prompts
 
-**Commit:** `Phase 5.5: regression run, baseline comparisons, prompt tuning`
+**Commit:** `Phase 5.5: regression run, baseline comparisons, contract compliance tests`
 
 ### Test coverage
 
-- **Existing 212 tests:** all must continue passing (no regressions)
+- **Existing 215 tests:** all must continue passing (no regressions)
 - **New tests:**
-  - Cassette infrastructure tests (~3 tests: record, replay, compare)
-  - Tool_use schema validation tests (~2 tests: well-formed, malformed-fallback)
   - Pattern context injection tests (~2 tests: with pattern, without)
   - Routing tests (~4 tests: one per segment)
-- **Target: 225 passing**
+  - Contract compliance tests (~6 tests: one per contract rule)
+- **Target: ~227 passing**
 
 ### Commit boundaries
 
-Six focused commits, one per sub-task. Each commit independently testable. No mega-commits.
+Five focused commits (Phase 5.0 already shipped). Each commit independently testable. No mega-commits.
 
 ### Estimated time
 
-- Sub-task 1 (cassettes): 1-2 hours
-- Sub-task 2 (tool_use): 2-3 hours
+- Sub-task 1 (cassettes): ✅ done
+- Sub-task 2 (contract instructions): 1-2 hours
 - Sub-task 3 (pattern injection): 1-2 hours
 - **Example drafting pause: 4-6 hours**
-- Sub-task 4 (prompt rewrites with examples): 2-3 hours (lighter since examples already drafted)
+- Sub-task 4 (prompt rewrites with examples): 2-3 hours
 - Sub-task 5 (routing): 1-2 hours
 - Sub-task 6 (regression + iterate): 2-4 hours (including ~2 hours of your manual quality review)
 
-**Total: ~13-22 hours of focused work.** Spread across 2-3 working days.
+**Total remaining: ~11-19 hours of focused work.** Spread across 2-3 working days.
 
 ---
 
@@ -526,12 +496,13 @@ Six focused commits, one per sub-task. Each commit independently testable. No me
 
 | Risk | Likelihood | Mitigation |
 |---|---|---|
-| Tool_use breaks streaming | Medium | Keep freeform fallback; test streaming explicitly in sub-task 2 |
+| Specialists ignore the response contract under load | Medium | Examples + prompt + regression checks; if a specialist consistently violates, drift back to it in Phase 5.5 iteration |
 | Few-shot examples bloat prompt where Haiku context limit is hit | Low | Each prompt < 300 lines; Haiku 4.5 has 200k context, plenty of headroom |
 | Pattern context confuses orchestrated path (no qid) | Medium | Explicit no-op when pattern is None; tested in sub-task 3 |
 | Cassettes drift over time (deterministic LLM output assumption) | High | Cassettes record at temp=0 if possible; accept some response variance in regression diff |
 | Segment-conditional routing breaks orchestrated questions for TBL/TJX | Medium | Test 3 cassettes per segment in sub-task 5; surface back before commit if any segment regresses |
 | Worked examples don't generalize (model memorizes vs. learns shape) | Medium | Vary examples across question types and chart patterns; not just literal patterns to copy |
+| Caveats parsing breaks under new prompts | Low | `_split_caveats` regex unchanged; new prompts reinforce the same fenced format |
 
 ---
 
@@ -543,7 +514,7 @@ From the Phase 5 prep audit (commit c75642f + audit report), these are the resol
 |---|---|---|---|
 | Q1 | Pattern-awareness | Inject pattern context + graceful exception handling | Single biggest quality lever; cheap to add |
 | Q2 | Segment-conditional routing | Add segment-aware logic | TBL/TJX have meaningfully different intents from grocers |
-| Q3 | Structured output | (c) Hybrid — tool_use for contract structure, freeform within sections | Best of both worlds: rigid where it matters, prose where it reads |
+| Q3 | Structured output | **Dropped** — contract enforced by prompts + examples + regression-test checks | Preserves streaming UX; examples are the real quality lever |
 | Q4 | Filter awareness | No automatic injection; honor only if user mentions date range in question | Agents should have full context; user overrides only when explicit |
 | Model | Stay on Haiku 4.5 | Defer model differentiation to v3.1 | Risk-averse for demo |
 | Prompt caching | Defer to Phase 5.7 follow-up commit | Keeps quality work and perf work separate; avoids confounding variables during quality review |
@@ -551,6 +522,7 @@ From the Phase 5 prep audit (commit c75642f + audit report), these are the resol
 | Few-shot count | Pricing 5, Demand 5, Anomaly 5, Trade 5 (incl. no-data demo) = 20 total | Pattern coverage + edge case demonstration | |
 | Cassette infrastructure | Lightweight custom JSON format with baseline + comparison sub-formats | Simple, no dependency, fits the test surface needs | |
 | Routing UX | Inline prose-prepend stays | Defer cleanup to v3.1; UI risk too high for demo | |
+| Streaming | Preserved as-is | Tool_use would have broken streaming; prompt-based contract is sufficient | |
 
 ---
 
@@ -562,8 +534,7 @@ From the Phase 5 prep audit (commit c75642f + audit report), these are the resol
 - **Pattern:** chart shape (heatmap, scatter, waterfall, etc.); Phase 5 injects into specialist prompts so prose grounds in chart shape
 - **Cassette:** recorded LLM call (input + tool calls + response) saved to disk for regression testing
 - **Comparison cassette:** baseline + phase5 response side-by-side for manual quality grading
-- **Contract:** the 4-part response shape (Headline → Evidence → Therefore → Caveats) every response must follow
-- **Tool_use:** Anthropic API mechanism where the model returns structured JSON via a defined tool schema rather than freeform prose
+- **Contract:** the 4-part response shape (Headline → Evidence → Therefore → Caveats) every response must follow. Enforced by prompts, examples, and regression-test checks
 - **Segment:** merchant type (grocer / QSR / retail); used in segment-conditional routing
 - **MAX_TURNS:** maximum tool-use cycles a specialist can take before forced final response
 - **No-data response shape:** adapted contract for when requested comparison has no data (e.g., TBL pricing question with no same-segment peers)
