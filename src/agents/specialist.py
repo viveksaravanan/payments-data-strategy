@@ -35,7 +35,12 @@ from src.agents.context import MerchantContext
 # query → chart → respond sequence. Net: 10 gives reasonable
 # headroom for the common case.
 DEFAULT_MAX_TURNS = 10
-MAX_TOKENS = 2048
+# Output budget per turn. Bumped 2048 → 4096 in Phase 5.1.10 so
+# the trailing caveats fence never gets truncated mid-stream when
+# the chart-takeaway reconciliation context inflates the response.
+# Haiku output is cheap (~$5/M); allocating doesn't cost — we only
+# pay for tokens actually generated.
+MAX_TOKENS = 4096
 
 # Phase 2A.5: per-turn progress narration. The Specialist fires
 # progress(turn_idx, message) at the start of each turn so the
