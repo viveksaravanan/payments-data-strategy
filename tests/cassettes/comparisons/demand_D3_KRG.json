@@ -1,0 +1,44 @@
+{
+  "qid": "D3",
+  "specialist": "demand",
+  "merchant_id": "KRG",
+  "question": "What does my basket-mix look like compared to peers? Where am I over or under indexed?",
+  "baseline_response": {
+    "prose": "(I couldn't converge on a full answer in 6 turns. Showing the best-effort partial — see the SQL below for what I queried.)",
+    "caveats": [],
+    "telemetry": {
+      "input_tokens": 34427,
+      "output_tokens": 846,
+      "cost_usd": 0.038657,
+      "turns": 6,
+      "converged": false
+    }
+  },
+  "phase5_response": {
+    "prose": "(I couldn't converge on a full answer in 10 turns. Showing the best-effort partial — see the SQL below for what I queried.)",
+    "caveats": [],
+    "telemetry": {
+      "input_tokens": 96720,
+      "output_tokens": 3125,
+      "cost_usd": 0.11234500000000001,
+      "turns": 10,
+      "converged": false,
+      "wall_time_s": 42.27
+    }
+  },
+  "contract_compliance": {
+    "headline_has_number": true,
+    "evidence_3_to_5_bullets": false,
+    "therefore_section_present": false,
+    "approved_therefore_opener": false,
+    "no_forbidden_verbs": true,
+    "caveats_fence_parsed": true,
+    "no_throat_clearing": true
+  },
+  "grade": null,
+  "notes": "",
+  "phase_baseline": "4.6",
+  "phase_compare": "5.4",
+  "compared_at": "2026-05-25T23:12:44Z",
+  "commit_sha": "8bf021b"
+}

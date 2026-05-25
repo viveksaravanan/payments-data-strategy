@@ -1,0 +1,48 @@
+{
+  "qid": "T-A2",
+  "specialist": "anomaly",
+  "merchant_id": "TBL",
+  "question": "Are any menu items spiking or dropping unusually?",
+  "baseline_response": {
+    "prose": "---\n\n## **Headline**\n\n**Widespread menu-item decline across nearly all categories in the most recent week (May 23–29) — down 40–51% versus the baseline (May 9–22).** This is not a single-SKU spike but a broad operational drop affecting breakfast items, burritos, tacos, drinks, combos, and sides. No evidence of a promotional driver or seasonal event.\n\n## Details\n\n- **Cinnabon Delights (2 ct)** dropped **51.2%** (159 units recent vs. 326 baseline; 138 txns → 277 txns)\n- **Lemonade Md** fell **46.8%** (355 units → 667 units)\n- **$5 Cravings Box** declined **46.7%** (288 units → 540 units)\n- **Black Bean Burrito** down **46.6%** (181 units → 339 units)\n- **Power Menu Bowl**, **Breakfast Combo**, **Chalupa-style Taco**, **Big Box**, and **Chicken Chalupa** all fell in the **43–46% range**\n\nThe pattern is systemic: **every category shows decline**, with virtually no exceptions. Transaction counts also dropped proportionally, suggesting reduced store traffic overall rather than a menu-mix shift.\n\n## Business Interpretation\n\nThe synchronized decline across all product categories and reduction in transaction volume points to **lower overall store traffic** in the May 23–29 window, likely driven by external factors such as a local holiday (Memorial Day fell on May 27, 2026), weekend-skew effects, or weather. This is an **operational traffic anomaly**, not a menu or promotion issue. Individual item performance is declining because the denominator (daily transactions per store) is lower.\n\n## Caveats",
+    "caveats": [
+      "Assumed most recent 7 days (May 23–29) vs. the prior 14-day baseline (May 9–22).",
+      "No same-segment peers available for traffic comparison; analysis limited to own-merchant time-series.",
+      "Memorial Day (May 27) falls within the recent window and may explain some or all of the decline."
+    ],
+    "telemetry": {
+      "input_tokens": 43602,
+      "output_tokens": 1977,
+      "cost_usd": 0.053487,
+      "turns": 6,
+      "converged": true
+    }
+  },
+  "phase5_response": {
+    "prose": "(I couldn't converge on a full answer in 10 turns. Showing the best-effort partial — see the SQL below for what I queried.)",
+    "caveats": [],
+    "telemetry": {
+      "input_tokens": 114408,
+      "output_tokens": 3414,
+      "cost_usd": 0.131478,
+      "turns": 10,
+      "converged": false,
+      "wall_time_s": 29.56
+    }
+  },
+  "contract_compliance": {
+    "headline_has_number": true,
+    "evidence_3_to_5_bullets": false,
+    "therefore_section_present": false,
+    "approved_therefore_opener": false,
+    "no_forbidden_verbs": true,
+    "caveats_fence_parsed": true,
+    "no_throat_clearing": true
+  },
+  "grade": null,
+  "notes": "",
+  "phase_baseline": "4.6",
+  "phase_compare": "5.4",
+  "compared_at": "2026-05-25T23:12:02Z",
+  "commit_sha": "8bf021b"
+}

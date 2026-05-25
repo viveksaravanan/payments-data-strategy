@@ -1,0 +1,44 @@
+{
+  "qid": "T2",
+  "specialist": "trade",
+  "merchant_id": "KRG",
+  "question": "Where do my customers live relative to my stores?",
+  "baseline_response": {
+    "prose": "**Recommended follow-ups:**\n- **ZIPs without stores**: 28027 (416 customers, 0 stores) and 28025 (406 customers, 0 stores) show material customer bases. A new site in either could be a candidate if neighborhood density and lease economics align.\n- **Imbalance check**: Dilworth's 5-store footprint is unusually high; a trade-area analysis isolating Dilworth customer-capture rates versus neighboring Pineville and Ballantyne would show if over-saturation is limiting basket size or frequency.\n\n---\n\n```json\n{\n  \"caveats\": [\n    \"Data reflects all Kroger transactions in the panel window; no time cohort specified (assumes recent 12 months or full available window)\",\n    \"Store count is physical; transaction count is not normalized for age or operating hours\",\n    \"Customer home ZIP is derived from `home_zip5` in the tenant_customers table; single-store customers and multi-store visitors are included in their home ZIP count\",\n    \"Neighborhoods are attached to stores, not customers; customers are mapped only by ZIP\",\n    \"Does not include non-transacting customers (panel coverage only)\"\n  ]\n}\n```",
+    "caveats": [],
+    "telemetry": {
+      "input_tokens": 26496,
+      "output_tokens": 1670,
+      "cost_usd": 0.034846,
+      "turns": 4,
+      "converged": true
+    }
+  },
+  "phase5_response": {
+    "prose": "(I couldn't converge on a full answer in 10 turns. Showing the best-effort partial — see the SQL below for what I queried.)",
+    "caveats": [],
+    "telemetry": {
+      "input_tokens": 91530,
+      "output_tokens": 2170,
+      "cost_usd": 0.10238,
+      "turns": 10,
+      "converged": false,
+      "wall_time_s": 27.08
+    }
+  },
+  "contract_compliance": {
+    "headline_has_number": true,
+    "evidence_3_to_5_bullets": false,
+    "therefore_section_present": false,
+    "approved_therefore_opener": false,
+    "no_forbidden_verbs": true,
+    "caveats_fence_parsed": true,
+    "no_throat_clearing": true
+  },
+  "grade": null,
+  "notes": "",
+  "phase_baseline": "4.6",
+  "phase_compare": "5.4",
+  "compared_at": "2026-05-25T23:15:31Z",
+  "commit_sha": "8bf021b"
+}

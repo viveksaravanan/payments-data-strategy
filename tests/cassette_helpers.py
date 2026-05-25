@@ -33,6 +33,7 @@ schema)::
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -147,23 +148,125 @@ def compare_cassettes(
 
     Reads the baseline cassette, pulls its ``prose`` + ``caveats``
     into ``baseline_response``, pairs them with the supplied
-    ``phase5_response`` (which should already be in the new
-    tool-output contract shape — headline/evidence/therefore/caveats),
-    and stamps ``grade=None`` + ``notes=""`` for the reviewer to fill
-    in.
+    ``phase5_response``, and stamps ``grade=None`` + ``notes=""``
+    for the reviewer to fill in.
+
+    The ``phase5_response`` can be either the raw dict from
+    ``_run_specialist`` (in which case prose/caveats/telemetry are
+    extracted into a compact form) or a pre-shaped dict with just
+    those keys. Pre-existing baseline-only tests pass the latter;
+    the regression script passes the former.
     """
     raw = json.loads(Path(baseline_path).read_text())
     baseline_resp = raw.get("response_dict", {})
+    base_tel     = baseline_resp.get("telemetry") or {}
+
+    # Normalize phase5_response into the comparison shape.
+    phase5_compact = {
+        "prose":   phase5_response.get("prose", ""),
+        "caveats": list(phase5_response.get("caveats") or []),
+        "telemetry": phase5_response.get("telemetry") or {},
+    }
+
     return {
         "qid":               raw.get("qid"),
         "specialist":        raw.get("specialist"),
         "merchant_id":       raw.get("merchant_id"),
         "question":          raw.get("question"),
         "baseline_response": {
-            "prose":   baseline_resp.get("prose", ""),
-            "caveats": list(baseline_resp.get("caveats") or []),
+            "prose":     baseline_resp.get("prose", ""),
+            "caveats":   list(baseline_resp.get("caveats") or []),
+            "telemetry": dict(base_tel),
         },
-        "phase5_response":   dict(phase5_response),
-        "grade":             None,
-        "notes":             "",
+        "phase5_response":     phase5_compact,
+        "contract_compliance": check_contract_compliance(phase5_compact),
+        "grade":               None,
+        "notes":               "",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Contract-compliance regex checks (Phase 5.5)
+#
+# These are *mechanical* checks against the response contract from
+# V3_AGENTS_DESIGN.md §2 (Headline → Evidence → Therefore → Caveats).
+# They catch obvious shape violations cheaply; the user's manual grade
+# captures everything regex can't see (quality of evidence, framing
+# fit, recommendation strength).
+# ---------------------------------------------------------------------------
+
+# Therefore-opener phrases approved by the contract (§2 Therefore).
+_APPROVED_THEREFORE_OPENERS = (
+    "worth investigating",
+    "the dominant lever",
+    "largest opportunity sits in",
+    "most actionable next look",
+    "watch for",
+)
+
+# Forbidden verbs in the Therefore section (§2 Therefore).
+_FORBIDDEN_THEREFORE_VERBS = (
+    "should", "recommend", "consider", "try",
+    "implement", "deploy", "roll out",
+)
+
+# Throat-clearing openers the Headline must NOT start with (§2 Headline).
+_THROAT_CLEARING = (
+    "looking at", "here's what", "interesting question",
+    "let me", "based on the data i gathered",
+    "now i", "now let me", "excellent", "perfect", "great",
+)
+
+_HEADLINE_NUMBER_RE   = re.compile(r"\d")
+_BULLET_RE            = re.compile(r"^\s*[-*]\s", re.MULTILINE)
+_THEREFORE_MARKER_RE  = re.compile(r"\*\*Therefore:?\*\*", re.IGNORECASE)
+
+
+def _extract_therefore(prose: str) -> str:
+    """Return the Therefore paragraph (text after ``**Therefore:**``)
+    or an empty string if no marker is present."""
+    m = _THEREFORE_MARKER_RE.search(prose)
+    if not m:
+        return ""
+    return prose[m.end():].strip()
+
+
+def _extract_headline(prose: str) -> str:
+    """Return the first non-empty paragraph of the prose."""
+    for chunk in prose.split("\n\n"):
+        s = chunk.strip()
+        if s and not s.startswith(("-", "*")):
+            return s
+    return ""
+
+
+def check_contract_compliance(response: dict[str, Any]) -> dict[str, bool]:
+    """Run the 7 mechanical contract checks on a response dict.
+
+    Returns a ``{check_name: bool}`` dict. Used by the regression
+    script to capture each comparison's structural compliance
+    without requiring manual grading."""
+    prose   = response.get("prose", "") or ""
+    caveats = response.get("caveats")
+
+    headline = _extract_headline(prose)
+    therefore_body = _extract_therefore(prose).lower()
+    bullet_count = len(_BULLET_RE.findall(prose))
+    headline_l = headline.lower().lstrip()
+
+    return {
+        "headline_has_number":
+            bool(_HEADLINE_NUMBER_RE.search(headline)),
+        "evidence_3_to_5_bullets":
+            3 <= bullet_count <= 5,
+        "therefore_section_present":
+            bool(_THEREFORE_MARKER_RE.search(prose)),
+        "approved_therefore_opener":
+            any(o in therefore_body for o in _APPROVED_THEREFORE_OPENERS),
+        "no_forbidden_verbs":
+            not any(v in therefore_body for v in _FORBIDDEN_THEREFORE_VERBS),
+        "caveats_fence_parsed":
+            isinstance(caveats, list),
+        "no_throat_clearing":
+            not any(headline_l.startswith(s) for s in _THROAT_CLEARING),
     }

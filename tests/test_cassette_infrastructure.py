@@ -122,11 +122,20 @@ def test_compare_generates_comparison_dict(tmp_path):
     path = tmp_path / "pricing_P1_KRG.json"
     path.write_text(json.dumps(baseline))
 
+    # Phase 5 contract is prose-shaped (tool_use was dropped per the
+    # 2026-05-25 design revision). compare_cassettes normalizes the
+    # response into ``{prose, caveats, telemetry}`` and stamps
+    # mechanical contract-compliance checks.
     phase5 = {
-        "headline":  "Dairy is 2.2% above peer_a.",
-        "evidence":  ["KRG dairy $4.21", "peer_a dairy $4.12"],
-        "therefore": "Your dairy strip is the widest cross-peer gap.",
+        "prose": (
+            "Dairy is 2.2% above peer_a — the widest cross-peer gap.\n\n"
+            "- KRG dairy: $4.21\n"
+            "- peer_a dairy: $4.12 (-2.2%)\n"
+            "- peer_b dairy: $4.30 (+2.1%)\n\n"
+            "**Therefore:** Worth investigating dairy positioning."
+        ),
         "caveats":   ["Based on the 90-day window."],
+        "telemetry": {"turns": 4, "cost_usd": 0.030, "converged": True},
     }
     out = compare_cassettes(path, phase5)
 
@@ -135,6 +144,15 @@ def test_compare_generates_comparison_dict(tmp_path):
     assert out["merchant_id"] == "KRG"
     assert out["baseline_response"]["prose"]   == "Baseline prose."
     assert out["baseline_response"]["caveats"] == ["Caveat A"]
-    assert out["phase5_response"] == phase5
+    assert out["phase5_response"]["prose"]     == phase5["prose"]
+    assert out["phase5_response"]["caveats"]   == phase5["caveats"]
+    assert out["phase5_response"]["telemetry"] == phase5["telemetry"]
+    assert "contract_compliance" in out
+    cc = out["contract_compliance"]
+    assert cc["headline_has_number"] is True
+    assert cc["therefore_section_present"] is True
+    assert cc["approved_therefore_opener"] is True
+    assert cc["no_throat_clearing"] is True
+    assert cc["caveats_fence_parsed"] is True
     assert out["grade"] is None
     assert out["notes"] == ""
