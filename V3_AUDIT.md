@@ -1037,3 +1037,172 @@ follow-up) and the current HEAD.
 The data layer (lake materialization, k-anonymity suppression,
 peer mapping) is unchanged. No schema migration. HF Spaces redeploy
 is dashboard-code-only — no `data/payments.db` rebuild needed.
+
+---
+
+## Phase 5.1 — Closeout (2026-05-25)
+
+Phase 5.1 (originally "structured response shape via tool_use") evolved
+through 8 sub-commits into a multi-layered intervention to improve chat
+response quality. The final state ships a coherent architecture for
+aligning specialist prose with chart-rendered data, accepting prompt
+constraints, and producing the response contract shape consistently.
+
+### Commits in the Phase 5.1 sequence
+
+| Sub-commit | What | Outcome |
+|---|---|---|
+| 5c9f899 (5.0) | Cassette infrastructure | 12 baseline cassettes recorded against Phase 4.6 prompts; $0.51 spend; 215 tests passing |
+| 2541741 (5.1) | Response contract instructions added to 4 specialist prompts | Headline/Evidence/Therefore/Caveats shape enforced via prompt rules; 32% cost reduction from removed throat-clearing |
+| ecc1f40 (5.1.5) | MAX_TURNS standardized to 8; "final response only" instruction added | Trade convergence failures fixed; partial leak reduction in Demand |
+| 19919f4 (5.1.6) | Worked examples (bad-vs-good) for Demand + Trade specialists | Surfaced a deeper issue: numbers in agent prose didn't match chart captions |
+| (uncommitted) (5.1.7) | Number-grounding requirement in all 4 prompts | Did NOT solve chart-vs-prose contradiction; revealed the issue wasn't hallucination |
+| (5.1.8) | Sonnet 4.6 experiment | Bumped specialists to Sonnet to test capability hypothesis. **Reverted**: Sonnet produced same contradiction at 5-10x cost; proved root cause was architectural |
+| 523fb09 (5.1.8b/5.1.9) | Chart-takeaway pre-injection; Haiku reverted; MAX_TURNS bumped to 10 | Architectural fix — dispatcher pre-computes chart's authoritative takeaway and injects into specialist's input as ground truth; BURR direction now matches chart |
+| d16b2c5 (5.1.10) | "Trust the takeaway" prompt rewording + max_tokens 4096 | Eliminated 30-line reconciliation arithmetic leak before responses; caveats fence no longer truncates |
+
+### The diagnostic loop
+
+The 8-sub-commit sequence was longer than the design doc anticipated
+because the actual problem wasn't what we initially diagnosed. The
+sequence:
+
+1. **Initial diagnosis (5.1, 5.1.5, 5.1.6):** Responses were inconsistent;
+   we added contract instructions, MAX_TURNS standardization, and worked
+   examples. Each helped but didn't fully solve the issue.
+
+2. **Hallucination hypothesis (5.1.7):** Test showed agent prose
+   contradicting chart captions. We hypothesized Haiku 4.5 was
+   fabricating numbers. Added explicit number-grounding rules. Didn't fix.
+
+3. **Capability test (5.1.8):** Bumped to Sonnet 4.6 to test whether the
+   issue was model capability. Sonnet produced the same contradiction.
+   Reverted. $0.12 in diagnostic spend; ruled out capability hypothesis.
+
+4. **Real diagnosis:** The agent's SQL and the chart helper used different
+   analytical windows (45/45 mean split vs week-1 vs week-13 trajectory)
+   on the same data. Both produced real but divergent numbers. The
+   "contradiction" was two valid answers to slightly different framings,
+   with no shared source of truth.
+
+5. **Architectural fix (5.1.9):** Dispatcher pre-computes the chart's
+   authoritative takeaway using the same data helper the chart renderer
+   uses, then injects it into the specialist's input. The specialist
+   treats the takeaway as ground truth and re-queries with the matching
+   window when its initial SQL diverges.
+
+6. **UX polish (5.1.10):** The first version of chart-consistency rules
+   triggered 30-line reconciliation arithmetic in responses. Re-worded to
+   "trust the takeaway as authoritative input data, do not re-derive."
+   Bumped max_tokens to 4096 to prevent caveats truncation.
+
+### What's in the system after Phase 5.1
+
+- **Chart takeaways module** (`src/dashboard/chart_takeaways.py`): 13
+  takeaway functions extracted from chart renderers, single source of
+  truth for what each chart's caption says
+- **Chart caption deduplication** (`src/dashboard/chat.py`): 13
+  `_render_*` functions now call `CT.compute_takeaway()` directly,
+  ensuring chart captions and injected ground truth never drift
+- **Chart-takeaway injection** (`src/dashboard/agents.py`):
+  `_compute_chart_takeaway()` helper called in `_run_specialist` before
+  agent dispatch when a known qid is present
+- **Contract enforcement** (4 specialist prompts): Headline → Evidence
+  → Therefore → Caveats structure required by prompt rules + worked
+  examples + recommended openers
+- **Trust framing** (4 specialist prompts): "Chart consistency
+  (CRITICAL)" section instructs specialists to use takeaway numbers
+  directly, not re-derive them
+- **MAX_TURNS=10** across all 4 specialists (was 6/7/8 historically;
+  standardized in 5.1.5, bumped in 5.1.9 for reconciliation headroom)
+- **Specialist model**: Haiku 4.5 retained (Sonnet experiment proved
+  capability wasn't the issue)
+- **3 new tests** in `tests/test_chart_takeaway_injection.py` — 218
+  total passing (215 + 3)
+
+### Phase 5.1 spend
+
+- 5.0 cassette recording: $0.51
+- 5.1 → 5.1.7 prompt iterations: ~$0.50 in smoke tests
+- 5.1.8 Sonnet experiment: $0.12
+- 5.1.8b/5.1.9 chart-takeaway smoke: $0.21
+- 5.1.10 trust-framing smoke: $0.12
+- **Total Phase 5.1 spend: ~$1.50** across all diagnostics and smoke tests
+
+### Quality lift, before vs after
+
+Test 1 (TBL Pricing T-P2) comparison:
+
+| Metric | Phase 4.6 baseline | After Phase 5.1.10 |
+|---|---|---|
+| Headline names a number | Sometimes | Always |
+| Headline matches chart caption | No (~50% direction contradictions) | Yes (direction + magnitude) |
+| Therefore section present | No | Yes, with approved opener |
+| Caveats parsed cleanly | Yes | Yes |
+| Reconciliation arithmetic leak | N/A (no reconciliation work) | None (was 30+ lines mid-iteration) |
+| Cost per dispatch | $0.04 | $0.085 (more analytical work) |
+| Wall time per dispatch | ~25 s | ~24 s |
+| Convergence within MAX_TURNS | Mixed (Trade hit ceiling) | Consistent at 8 turns |
+
+The cost increase per dispatch (~2x) reflects the added analytical work
+of reconciling against the takeaway. This is acceptable for demo
+volume.
+
+### Deferred to v4
+
+- **Phase 5.3 (worked examples in specialist prompts)**: Originally
+  planned as 20 worked examples (5 per specialist) showing ideal
+  contract-shape responses. Deferred to v4, where real user
+  interactions can inform which question types deserve examples.
+- **Per-pattern framing rules** (design doc §3): The "heatmap describes
+  strongest cell" / "waterfall names dominant driver" rules. Partially
+  achieved through chart-takeaway injection (which gives the agent
+  pattern-specific ground truth) but not fully manifest as explicit
+  prompt rules. Move to v4.
+- **No-data response shape examples**: The TBL/TJX no-peer scenario
+  has prompt rules but no concrete worked example demonstrating them.
+  Defer to v4.
+
+### What's left for Phase 5 completion
+
+- **Phase 5.4: Segment-conditional orchestrator routing** (~1-2 hours).
+  Per design doc §5. Orchestrator gains segment awareness so ambiguous
+  questions route differently for TBL/TJX vs grocers.
+- **Phase 5.5: Regression run + manual quality grading** (~2-4 hours).
+  Re-run 12 baseline cassettes against current prompts. Generate
+  comparison cassettes. Grade better/equal/worse. Realistic pass
+  criterion (revised for skipped 5.3): ≥4-6 better, ≥6-8 equal, 0 worse.
+
+### Lessons captured for future phases
+
+1. **Prompt-only fixes hit diminishing returns.** Four successive
+   prompt commits (5.1, 5.1.5, 5.1.6, 5.1.7) each improved something
+   but didn't solve the chart-vs-prose contradiction. The architectural
+   fix in 5.1.9 was necessary and only obvious after the diagnostic
+   loop forced us past prompt-tuning.
+
+2. **Diagnose before mitigating.** The Sonnet experiment cost $0.12 but
+   proved that capability wasn't the issue. If we'd skipped the test
+   and committed to Sonnet, we'd have paid 5-10x ongoing cost without
+   solving the problem.
+
+3. **Streamlit + Python bytecode caching can produce ghost behavior.**
+   After every prompt change or class-attribute change, a full process
+   restart is required. Hot-reload is unreliable for these. Restart
+   guidance is now documented in `src/agents/CLAUDE.md`.
+
+4. **Cassette-based regression infrastructure pays off.** The 12
+   baseline cassettes from Phase 5.0 became the foundation for every
+   diagnostic test in Phase 5.1. Without them, the iteration loop
+   would have been "vibes-based" comparisons. With them, every
+   sub-commit had a concrete starting point.
+
+5. **The design doc should evolve, not stay rigid.** Phase 5.1 ended
+   up substantially different from the original Phase 5 spec.
+   Specifically: tool_use was dropped in favor of prompt-based
+   contract; chart-takeaway injection was added (wasn't in original
+   spec); Phase 5.3 was deferred to v4. The doc was updated mid-flight
+   (§10 decisions table revisions) to reflect actual decisions, not
+   aspirational ones. Future phases should expect similar evolution.
+
+### Status: Phase 5.1 closed. Phase 5.4 + 5.5 remain.
