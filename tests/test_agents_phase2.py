@@ -138,6 +138,60 @@ def test_llm_module_is_available_check():
     assert llm.is_available() == bool(os.environ.get("ANTHROPIC_API_KEY"))
 
 
+# ---------------------------------------------------------------------------
+# Phase 5.4 — segment-conditional orchestrator routing
+# ---------------------------------------------------------------------------
+
+def test_segment_for_merchant_grocer():
+    from src.agents.orchestrator import _segment_for_merchant
+    for mid in ("KRG", "ACM", "WDX"):
+        assert _segment_for_merchant(mid) == "grocer"
+
+
+def test_segment_for_merchant_qsr_and_retail():
+    from src.agents.orchestrator import _segment_for_merchant
+    assert _segment_for_merchant("TBL") == "qsr"
+    assert _segment_for_merchant("TJX") == "retail"
+
+
+def test_segment_for_merchant_unknown():
+    from src.agents.orchestrator import _segment_for_merchant
+    assert _segment_for_merchant("FOO") == "unknown"
+
+
+def test_keyword_fallback_segment_conditional_defaults():
+    """Ambiguous questions route to the segment's default specialist:
+    grocer→anomaly, qsr→demand, retail→pricing, unknown→demand."""
+    from src.agents.orchestrator import _keyword_route
+    q = "how are things going overall"  # No keyword match in any rule.
+    assert _keyword_route(q, segment="grocer").primary == "anomaly"
+    assert _keyword_route(q, segment="qsr").primary    == "demand"
+    assert _keyword_route(q, segment="retail").primary == "pricing"
+    assert _keyword_route(q, segment="unknown").primary == "demand"
+    # None segment preserves the original segment-blind default.
+    assert _keyword_route(q).primary == "demand"
+
+
+def test_keyword_fallback_explicit_signal_overrides_segment():
+    """Explicit anomaly keywords route to Anomaly regardless of the
+    viewer's segment — segment-conditional defaults only apply when
+    no domain keyword matches."""
+    from src.agents.orchestrator import _keyword_route
+    q = "which stores are running with an unusual decline"
+    assert _keyword_route(q, segment="qsr").primary    == "anomaly"
+    assert _keyword_route(q, segment="retail").primary == "anomaly"
+    assert _keyword_route(q, segment="grocer").primary == "anomaly"
+
+
+def test_routing_decision_carries_viewer_segment():
+    """RoutingDecision exposes ``viewer_segment`` for downstream
+    consumers (UI / telemetry / logging)."""
+    from src.agents.orchestrator import _keyword_route
+    d = _keyword_route("how are things going overall", segment="qsr")
+    assert d.viewer_segment == "qsr"
+    assert d.to_dict()["viewer_segment"] == "qsr"
+
+
 def test_dispatch_returns_error_when_llm_unavailable(monkeypatch):
     """With ANTHROPIC_API_KEY unset, dispatch returns an honest error
     response. Phase 4.0 dropped the v2.5 mock fallback — no canned

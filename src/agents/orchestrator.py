@@ -31,6 +31,46 @@ VALID_SPECIALISTS = ("pricing", "anomaly", "demand", "trade")
 PROMPT_PATH = Path(__file__).parent / "prompts" / "orchestrator.md"
 _PROMPT_TEMPLATE = PROMPT_PATH.read_text()
 
+# Phase 5.4 — segment-conditional routing.
+#
+# The orchestrator's "ambiguous default" specialist depends on the
+# viewer's segment:
+#   grocer → anomaly  (decline-investigation is the grocer demo arc)
+#   qsr    → demand   (growth tracking is TBL's arc; no same-segment peers)
+#   retail → pricing  (pricing-positioning is TJX's arc)
+#   unknown → demand  (original segment-blind default)
+#
+# Specialist prompts already see ``{{viewer_segment}}`` as the raw
+# business label ("grocery"/"qsr"/"off_price_retail"). The routing
+# helpers below normalize to "grocer"/"qsr"/"retail" for the
+# prompt + fallback rules so the language stays user-friendly.
+_GROCER_MERCHANTS = {"KRG", "ACM", "WDX"}
+_QSR_MERCHANTS    = {"TBL"}
+_RETAIL_MERCHANTS = {"TJX"}
+
+_SEGMENT_DEFAULT_SPECIALIST = {
+    "grocer":  "anomaly",
+    "qsr":     "demand",
+    "retail":  "pricing",
+    "unknown": "demand",
+}
+
+
+def _segment_for_merchant(merchant_id: str) -> str:
+    """Map merchant ID to a routing-friendly segment label.
+
+    Returns one of ``'grocer'``, ``'qsr'``, ``'retail'``, or
+    ``'unknown'`` — distinct from MerchantContext's raw business
+    label (``"grocery"`` / ``"qsr"`` / ``"off_price_retail"``)."""
+    if merchant_id in _GROCER_MERCHANTS:
+        return "grocer"
+    if merchant_id in _QSR_MERCHANTS:
+        return "qsr"
+    if merchant_id in _RETAIL_MERCHANTS:
+        return "retail"
+    return "unknown"
+
+
 # Lazy specialist import — done in `_build_specialist` to keep the
 # orchestrator usable in tests that don't need every specialist class.
 
@@ -41,13 +81,15 @@ class RoutingDecision:
     secondary: str | None
     rationale: str
     via_fallback: bool = False  # True iff the keyword fallback was used
+    viewer_segment: str | None = None  # 'grocer'|'qsr'|'retail'|'unknown'|None
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "primary":      self.primary,
-            "secondary":    self.secondary,
-            "rationale":    self.rationale,
-            "via_fallback": self.via_fallback,
+            "primary":        self.primary,
+            "secondary":      self.secondary,
+            "rationale":      self.rationale,
+            "via_fallback":   self.via_fallback,
+            "viewer_segment": self.viewer_segment,
         }
 
 
@@ -110,7 +152,15 @@ _KEYWORD_RULES: list[tuple[tuple[str, ...], str]] = [
 ]
 
 
-def _keyword_route(question: str) -> RoutingDecision:
+def _keyword_route(question: str, segment: str | None = None) -> RoutingDecision:
+    """Keyword-based routing fallback used when the LLM router fails.
+
+    Explicit domain keywords match first (segment-blind — an anomaly
+    question is an anomaly question regardless of viewer segment).
+    If no keyword matches, fall back to the segment-conditional
+    default (Phase 5.4): grocer→anomaly, qsr→demand, retail→pricing.
+    ``segment=None`` preserves the original segment-blind default
+    ("demand") for callers that don't know the viewer segment."""
     q = question.lower()
     for keywords, agent in _KEYWORD_RULES:
         for kw in keywords:
@@ -120,12 +170,24 @@ def _keyword_route(question: str) -> RoutingDecision:
                     secondary=None,
                     rationale=f"Keyword fallback matched '{kw}'.",
                     via_fallback=True,
+                    viewer_segment=segment,
                 )
+    # No explicit keyword match — use segment-conditional default.
+    default_specialist = _SEGMENT_DEFAULT_SPECIALIST.get(
+        segment or "unknown", "demand",
+    )
+    rationale = (
+        f"No domain match; defaulted to {default_specialist} "
+        f"({segment} ambiguous default)."
+        if segment in _SEGMENT_DEFAULT_SPECIALIST and segment != "unknown"
+        else f"No domain match; defaulted to {default_specialist}."
+    )
     return RoutingDecision(
-        primary="demand",
+        primary=default_specialist,
         secondary=None,
-        rationale="No domain match; defaulted to demand.",
+        rationale=rationale,
         via_fallback=True,
+        viewer_segment=segment,
     )
 
 
@@ -161,18 +223,23 @@ def _parse_router_output(text: str) -> RoutingDecision | None:
 
 
 def _render_router_prompt(ctx: MerchantContext) -> str:
+    # Phase 5.4: substitute the routing-normalized segment label
+    # ('grocer'/'qsr'/'retail'/'unknown') so the prompt's
+    # segment-conditional rules can key on a consistent vocabulary.
+    routing_segment = _segment_for_merchant(ctx.viewing_merchant_id)
     return (
         _PROMPT_TEMPLATE
         .replace("{{viewer_id}}",      ctx.viewing_merchant_id)
         .replace("{{viewer_name}}",    ctx.viewing_merchant_name)
-        .replace("{{viewer_segment}}", ctx.viewing_merchant_segment)
+        .replace("{{viewer_segment}}", routing_segment)
     )
 
 
 def route(question: str, ctx: MerchantContext) -> RoutingDecision:
     """LLM router with keyword fallback. Cheap — one Haiku call, no tools."""
+    segment = _segment_for_merchant(ctx.viewing_merchant_id)
     if not L.is_available():
-        return _keyword_route(question)
+        return _keyword_route(question, segment=segment)
     try:
         import anthropic  # noqa: F401, PLC0415  — import smoke-check
         client = L._client()  # noqa: SLF001 — reuse the cached client
@@ -199,11 +266,12 @@ def route(question: str, ctx: MerchantContext) -> RoutingDecision:
         )
         decision = _parse_router_output(text)
         if decision is None:
-            return _keyword_route(question)
+            return _keyword_route(question, segment=segment)
+        decision.viewer_segment = segment
         decision._tel = tel  # type: ignore[attr-defined] — attach for caller
         return decision
     except Exception:  # noqa: BLE001 — never fail a routing decision
-        return _keyword_route(question)
+        return _keyword_route(question, segment=segment)
 
 
 # ---------------------------------------------------------------------------
