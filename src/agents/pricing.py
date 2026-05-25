@@ -14,6 +14,6 @@ from src.agents.specialist import Specialist
 class PricingSpecialist(Specialist):
     AGENT_LABEL = "Pricing & Benchmarking Agent"
     PROMPT_PATH = Path(__file__).parent / "prompts" / "pricing.md"
-    # Pricing "above-market" / "below-market" questions require own + peer
-    # queries plus per-SKU joins. Extra turn for finalization headroom.
-    MAX_TURNS = 7
+    # Phase 5.1.5: standardized to 8 across all specialists per design
+    # doc §10 (1 schema + 2 tenant + 2 lake + 1 chart + 2 buffer).
+    MAX_TURNS = 8

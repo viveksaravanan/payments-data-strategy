@@ -14,7 +14,8 @@ from src.agents.specialist import Specialist
 class TradeAreaSpecialist(Specialist):
     AGENT_LABEL = "Trade Area Intelligence Agent"
     PROMPT_PATH = Path(__file__).parent / "prompts" / "trade.md"
-    # Trade questions often need own-store + lake density + neighborhood
-    # join + finalize = 4-5 tool calls. The 2D.1 cap of 5 starved the
-    # finalization turn (7/80 partials); reverted to 6.
-    MAX_TURNS = 6
+    # Phase 5.1.5: standardized to 8 across all specialists per design
+    # doc §10 (1 schema + 2 tenant + 2 lake + 1 chart + 2 buffer).
+    # 6 was insufficient — Trade T1 bailed mid-contract on the Phase 5.1
+    # browser smoke (headline emitted, evidence/therefore/caveats lost).
+    MAX_TURNS = 8

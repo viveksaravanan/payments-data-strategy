@@ -14,7 +14,6 @@ from src.agents.specialist import Specialist
 class DemandForecastingSpecialist(Specialist):
     AGENT_LABEL = "Demand Forecasting Agent"
     PROMPT_PATH = Path(__file__).parent / "prompts" / "demand.md"
-    # Demand typically converges in 2-3 turns, but the `campaign_attr`
-    # path needs multi-step promo lookups. 6 turns gives finalization
-    # headroom without inviting exploration.
-    MAX_TURNS = 6
+    # Phase 5.1.5: standardized to 8 across all specialists per design
+    # doc §10 (1 schema + 2 tenant + 2 lake + 1 chart + 2 buffer).
+    MAX_TURNS = 8
