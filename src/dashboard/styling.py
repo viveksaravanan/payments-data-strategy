@@ -520,26 +520,36 @@ _CSS = """
   body.chat-closed div[class*="st-key-chat_expand_edge"] {
     display: none !important;
   }
-  /* Phase 4.5 polish: 44 × 44 button (down from 48) with 32 px
-     chevron glyph (down from 34 but proportionally bigger inside
-     the smaller circle). The chevron visually fills the circle —
-     not a small icon floating in negative space. */
+  /* 44 × 44 button with a 22 px SVG chevron painted as a
+     background-image (Streamlit ``st.button`` labels can't carry
+     inline SVG, so the unicode ``‹``/``›`` glyph in the label is
+     hidden via ``font-size: 0`` and ``color: transparent`` and
+     used only as a screen-reader fallback). The SVG sits at ~50 %
+     of the button diameter for clear visibility. The
+     ``body.chat-expanded`` override below swaps to the
+     right-pointing variant when the panel is in expanded mode. */
   div[class*="st-key-chat_expand_edge"] button {
     width: 44px !important;
     height: 44px !important;
     min-height: 0 !important;
     padding: 0 !important;
     border-radius: 50% !important;
-    background: #FFFFFF !important;
+    background-color: #FFFFFF !important;
+    background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23534AB7' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='15 18 9 12 15 6'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: 22px 22px !important;
     border: 1px solid var(--border) !important;
     box-shadow: -2px 2px 8px rgba(15, 31, 46, 0.15) !important;
-    font-size: 32px !important;
-    line-height: 0.85 !important;
-    color: #534AB7 !important;
+    font-size: 0 !important;
+    line-height: 1 !important;
+    color: transparent !important;
+  }
+  body.chat-expanded div[class*="st-key-chat_expand_edge"] button {
+    background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23534AB7' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='9 18 15 12 9 6'/%3E%3C/svg%3E") !important;
   }
   div[class*="st-key-chat_expand_edge"] button:hover {
-    background: #EEEDFE !important;
-    color: #534AB7 !important;
+    background-color: #EEEDFE !important;
   }
 
   /* Chat panel header buttons:

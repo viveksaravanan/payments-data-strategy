@@ -132,6 +132,14 @@ with header_col2:
     merchant_labels = [f"{D.MERCHANT_NAME[m]}" for m in
                         ("KRG", "ACM", "WDX", "TBL", "TJX")]
     merchant_ids = ["KRG", "ACM", "WDX", "TBL", "TJX"]
+    # Push "Acting as" down so the label clears Streamlit's top toolbar
+    # and sits roughly in line with the "Merchant dashboard" heading
+    # on the left. block-container padding-top alone (1.6 rem) doesn't
+    # clear the taller Streamlit header for small caption-style labels.
+    st.markdown(
+        "<div style='margin-top:1.5rem;'></div>",
+        unsafe_allow_html=True,
+    )
     chosen = st.selectbox(
         "Acting as",
         options=merchant_ids,
