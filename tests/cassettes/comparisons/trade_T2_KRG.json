@@ -18,12 +18,12 @@
     "prose": "(I couldn't converge on a full answer in 10 turns. Showing the best-effort partial — see the SQL below for what I queried.)",
     "caveats": [],
     "telemetry": {
-      "input_tokens": 91530,
-      "output_tokens": 2170,
-      "cost_usd": 0.10238,
+      "input_tokens": 92272,
+      "output_tokens": 1885,
+      "cost_usd": 0.10169699999999998,
       "turns": 10,
       "converged": false,
-      "wall_time_s": 27.08
+      "wall_time_s": 19.56
     }
   },
   "contract_compliance": {
@@ -39,6 +39,6 @@
   "notes": "",
   "phase_baseline": "4.6",
   "phase_compare": "5.4",
-  "compared_at": "2026-05-25T23:15:31Z",
-  "commit_sha": "8bf021b"
+  "compared_at": "2026-05-25T23:54:01Z",
+  "commit_sha": "fc6bba7"
 }

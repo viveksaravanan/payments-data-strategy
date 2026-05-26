@@ -1,26 +1,36 @@
-"""Per-qid takeaway synthesis — the single source of truth for the
-mechanically-computed caption displayed beneath each chart.
+"""Per-qid takeaway synthesis — directional framing for chart captions
+and specialist injection.
 
-Phase 5.1.9 motivation: the chat panel's ``_render_*`` functions and
-the specialist agents were independently producing analytical
-summaries of the same underlying data, using different windows
-(weekly trajectory vs first-half-mean vs second-half-mean), and
-disagreeing in prose. This module centralizes the chart's
-takeaway computation so that:
+Phase 5.1.9 introduced takeaway injection so the agent and the chart
+caption share a narrative. Phase 5.5 regression revealed a second-order
+problem: when the takeaway pinned a SPECIFIC percentage or dollar
+figure, the agent tried to reproduce that number with its own SQL,
+got a slightly different result (different aggregation window), and
+spun reconciling — sometimes past MAX_TURNS, sometimes leaking the
+reconciliation work into prose, sometimes fabricating evidence
+endpoints that back-derive to the takeaway's magnitude.
 
-  * ``chat.py``'s ``_render_*`` functions call into this module
-    and display the result as the chart caption.
-  * ``agents.py``'s ``_run_specialist`` calls into this module
-    BEFORE dispatching, and injects the takeaway into the
-    specialist's input as authoritative ground truth.
+Phase 5.5.1 resolves this by rewriting takeaways to be DIRECTIONAL:
+entity + direction + qualitative magnitude. The takeaway names which
+entity matters and which way it's moving, but not the precise
+magnitude. The agent's tool calls produce its own numbers; the
+agent's prose aligns with the takeaway's narrative (entity, direction)
+while citing its own arithmetic in the Evidence bullets. The chart
+itself still displays exact numbers visually on bars/lines, so the
+user sees specifics — they just don't have to match the prose's
+specifics byte-for-byte.
 
-Both paths read from the same string, so the prose the agent
-produces and the caption the chart displays are guaranteed to
-agree by construction.
+What this is and isn't:
+  * It IS narrative coordination (chart and prose tell the same story).
+  * It is NOT math unification — chart helpers and the agent's tool
+    layer still compute independently. Their numbers may differ by a
+    few percentage points. Both are correct under slightly different
+    aggregations. v4 documented in V3_AUDIT.md will unify the compute
+    layer; v3 ships with the narrative-coordination approach.
 
-For qids not covered here, ``compute_takeaway`` returns ``None``
-and the dispatch path proceeds without injection (the specialist
-operates as before).
+For qids not covered here, ``compute_takeaway`` returns ``None`` (or
+the pattern-type fallback for D7) and the dispatch path proceeds
+accordingly.
 """
 from __future__ import annotations
 
@@ -33,11 +43,25 @@ from src.dashboard import data as D
 # ---------------------------------------------------------------------------
 # Per-qid takeaway functions
 #
-# Each function mirrors the synthesis in ``chat.py::_render_<qid>``
-# byte-for-byte (same data helper, same conditional branches, same
-# wording). The duplication is intentional — the takeaway string is
-# the contract, and a single source of truth eliminates drift between
-# the chart caption and the agent's injected context.
+# Phase 5.5.1: each function returns a DIRECTIONAL takeaway — entity
+# names + direction words + qualitative magnitude. No specific
+# percentages, dollar amounts, or counts that the agent would need to
+# reproduce arithmetically. The agent uses its own SQL to produce
+# its own numbers in Evidence bullets while aligning to the takeaway's
+# named entities and directions.
+#
+# What stays in the takeaway:
+#   * Entity names (BURR, BFAST, University City, KRG-NC-0019)
+#   * Direction (up/down, largest/smallest, widest/narrowest,
+#     growing/declining, over/under-performs)
+#   * Qualitative magnitude (modest / significant / sharp / broad)
+#   * Relative ranking ("the only ... that", "the largest ... among")
+#
+# What does NOT belong in the takeaway:
+#   * Specific %s (+4.4%, -13.9%)
+#   * Specific $ amounts ($21.78)
+#   * Specific counts (3,508 transactions)
+#   * Anything the agent would have to reproduce arithmetically
 # ---------------------------------------------------------------------------
 
 
@@ -50,20 +74,21 @@ def _takeaway_p1(merchant_id: str, filters: dict | None = None) -> str | None:
     below = chart_data["max_below"]
     if above and below and above[0] > PARITY and below[0] < -PARITY:
         return (
-            f"You're priced {above[0]:.1f}% above {CP.peer_display(above[2])} "
-            f"in {above[1]}; {abs(below[0]):.1f}% below "
-            f"{CP.peer_display(below[2])} in {below[1]}."
+            f"{above[1]} is your widest peer premium "
+            f"(vs {CP.peer_display(above[2])}); "
+            f"{below[1]} is your largest peer discount "
+            f"(vs {CP.peer_display(below[2])})."
         )
     if above and above[0] > PARITY:
         return (
             f"You're priced above peers across categories; "
-            f"widest gap: +{above[0]:.1f}% in {above[1]} "
+            f"{above[1]} is the widest peer premium "
             f"(vs {CP.peer_display(above[2])})."
         )
     if below and below[0] < -PARITY:
         return (
             f"You're priced below peers across categories; "
-            f"widest gap: {below[0]:.1f}% in {below[1]} "
+            f"{below[1]} is the largest peer discount "
             f"(vs {CP.peer_display(below[2])})."
         )
     return "Your prices are at or near peer levels across categories."
@@ -92,11 +117,10 @@ def _takeaway_d3(merchant_id: str, filters: dict | None = None) -> str | None:
     chart_data = D.basket_mix_vs_peers(merchant_id, filters=filters)
     if not chart_data["categories"]:
         return None
-    return CP.format_takeaway(
-        "You're over-indexed on {top_category} (+{top_pp:.1f}pp vs "
-        "peer-average); under-indexed on {bottom_category} "
-        "({bottom_pp:.1f}pp).",
-        chart_data,
+    return (
+        f"You're over-indexed on {chart_data['top_category']} vs the "
+        f"peer-average basket mix; under-indexed on "
+        f"{chart_data['bottom_category']}."
     )
 
 
@@ -105,11 +129,21 @@ def _takeaway_p2(merchant_id: str, filters: dict | None = None) -> str | None:
     if (not chart_data["panel_a_data"]["categories"]
             and not chart_data["panel_b_data"]["categories"]):
         return None
-    return CP.format_takeaway(
-        "Your staple tier averages {staple_pct:+.1f}% vs Peer A; "
-        "non-food tier averages {nonfood_pct:+.1f}%. "
-        "Your pricing strategy is {tier_signal} across tiers.",
-        chart_data,
+    # Derive directional signal from the signed pcts without pinning a
+    # magnitude. ``tier_signal`` is already qualitative; the per-tier
+    # directions add narrative texture.
+    def _dir(pct: float) -> str:
+        if pct > 0.5:
+            return "above"
+        if pct < -0.5:
+            return "below"
+        return "at parity with"
+    staple_dir  = _dir(chart_data["staple_pct"])
+    nonfood_dir = _dir(chart_data["nonfood_pct"])
+    return (
+        f"Your staple-tier pricing sits {staple_dir} Peer A; non-food-tier "
+        f"sits {nonfood_dir} Peer A. Strategy reads as "
+        f"{chart_data['tier_signal']} across tiers."
     )
 
 
@@ -118,10 +152,10 @@ def _takeaway_t_p2(merchant_id: str, filters: dict | None = None) -> str | None:
     if not chart_data["series"]:
         return None
     return (
-        f"{chart_data['top_category']} prices are {chart_data['top_direction']} "
-        f"{abs(chart_data['top_pct']):.1f}% over 90 days; next-largest shift "
-        f"{chart_data['next_category']} at {chart_data['next_direction']} "
-        f"{abs(chart_data['next_pct']):.1f}%."
+        f"{chart_data['top_category']} prices show the largest "
+        f"{chart_data['top_direction']}ward shift over 90 days; "
+        f"next-largest shift is {chart_data['next_category']} "
+        f"{chart_data['next_direction']}ward."
     )
 
 
@@ -133,21 +167,15 @@ def _takeaway_t_a2(merchant_id: str, filters: dict | None = None) -> str | None:
     spike  = chart_data["top_spike"]
     drop   = chart_data["top_drop"]
     if n_flag == 0:
-        return "No menu items deviate from baseline by >15% in the recent week."
+        return "No menu items deviate from baseline materially in the recent week."
     parts: list[str] = []
     if spike is not None:
-        parts.append(
-            f"largest spike: {spike['sku_name']} "
-            f"({spike['deviation_pct']:+.1f}%)"
-        )
+        parts.append(f"largest spike: {spike['sku_name']}")
     if drop is not None:
-        parts.append(
-            f"largest drop: {drop['sku_name']} "
-            f"({drop['deviation_pct']:+.1f}%)"
-        )
+        parts.append(f"largest drop: {drop['sku_name']}")
     return (
-        f"{n_flag} menu item{'s' if n_flag != 1 else ''} deviate from "
-        f"baseline by >15%; " + "; ".join(parts) + "."
+        "Multiple menu items deviate from baseline; "
+        + "; ".join(parts) + "."
     )
 
 
@@ -159,23 +187,21 @@ def _takeaway_share_trajectory(
     if not chart_data["series"]:
         return None
     grow = chart_data["growing_category"]
-    grow_pp = chart_data["growing_pp"]
     dec = chart_data["declining_category"]
-    dec_pp = chart_data["declining_pp"]
     if grow != "—" and dec != "—":
         return (
-            f"{grow} share is up {grow_pp:+.1f}pp over 90 days; "
-            f"{dec} is down {dec_pp:+.1f}pp."
+            f"{grow} share is gaining over 90 days; {dec} is the "
+            f"largest declining category."
         )
     if grow != "—":
         return (
-            f"{grow} share is up {grow_pp:+.1f}pp over 90 days; "
-            "no category is materially declining."
+            f"{grow} share is gaining over 90 days; no category is "
+            "materially declining."
         )
     if dec != "—":
         return (
-            f"{dec} share is down {dec_pp:+.1f}pp over 90 days; "
-            "no category is materially growing."
+            f"{dec} share is declining over 90 days; no category is "
+            "materially growing."
         )
     return "Category shares are flat across the 90-day window."
 
@@ -188,10 +214,8 @@ def _takeaway_r_p2(merchant_id: str, filters: dict | None = None) -> str | None:
     tightest = chart_data["tightest"]
     if widest and tightest:
         return (
-            f"{widest['category']} has the widest price spread "
-            f"({widest['spread_ratio']:.1f}× from min to max); "
-            f"{tightest['category']} is narrowest at "
-            f"{tightest['spread_ratio']:.1f}×."
+            f"{widest['category']} has the widest min-to-max price spread; "
+            f"{tightest['category']} is the narrowest."
         )
     return "Insufficient category-price data."
 
@@ -200,30 +224,29 @@ def _takeaway_a2(merchant_id: str, filters: dict | None = None) -> str | None:
     chart_data = D.store_anomalies(merchant_id, filters=filters)
     if not chart_data["rows"]:
         return None
-    n_flag = chart_data["n_flagged"]
+    n_flag  = chart_data["n_flagged"]
     n_under = chart_data["n_under"]
     n_over  = chart_data["n_over"]
     top     = chart_data["top"]
     peer    = chart_data["peer_signal_for_top"]
     if n_flag == 0:
-        return "All your stores are within 15% of your panel baseline."
+        return "All your stores are running close to your panel baseline."
     if n_under == 0:
         return (
-            f"{n_flag} of your stores are running >15% above baseline; "
-            f"{top['store_id']} ({top['neighborhood']}) shows the largest "
-            f"swing ({top['deviation_pct']:+.1f}%); {peer}."
+            "Multiple stores are running materially above baseline; "
+            f"{top['store_id']} ({top['neighborhood']}) shows the "
+            f"largest swing; {peer}."
         )
     if n_over == 0:
         return (
-            f"{n_flag} of your stores are running >15% below baseline; "
-            f"{top['store_id']} ({top['neighborhood']}) shows the largest "
-            f"swing ({top['deviation_pct']:+.1f}%); {peer}."
+            "Multiple stores are running materially below baseline; "
+            f"{top['store_id']} ({top['neighborhood']}) shows the "
+            f"largest swing; {peer}."
         )
     return (
-        f"{n_flag} stores deviate from baseline by >15% "
-        f"({n_under} under, {n_over} over); "
+        "Multiple stores deviate from baseline in both directions; "
         f"{top['store_id']} ({top['neighborhood']}) shows the largest "
-        f"swing ({top['deviation_pct']:+.1f}%); {peer}."
+        f"swing; {peer}."
     )
 
 
@@ -231,22 +254,21 @@ def _takeaway_a3(merchant_id: str, filters: dict | None = None) -> str | None:
     chart_data = D.category_anomalies(merchant_id, filters=filters)
     if not chart_data["rows"]:
         return None
-    n_flag = chart_data["n_flagged"]
-    top    = chart_data["top"]
+    n_flag    = chart_data["n_flagged"]
+    top       = chart_data["top"]
     direction = chart_data["top_direction"]
-    peer   = chart_data["peer_signal_for_top"]
+    peer      = chart_data["peer_signal_for_top"]
     if n_flag == 0:
         return (
             "No category-level anomalies in the recent week — every "
-            "category is within 15% of your baseline."
+            "category is close to your baseline."
         )
     word = "spikes" if direction == "spike" else (
         "drops" if direction == "drop" else "swings"
     )
     return (
-        f"{n_flag} categor{'y' if n_flag == 1 else 'ies'} show recent "
-        f"volume off baseline by >15%; {top['category']} {word} the "
-        f"most ({top['deviation_pct']:+.1f}%); {peer}."
+        f"Categories show recent volume off baseline; "
+        f"{top['category']} {word} the most; {peer}."
     )
 
 
@@ -270,33 +292,28 @@ def _takeaway_t1(merchant_id: str, filters: dict | None = None) -> str | None:
             "limited own footprint":  "limited own footprint",
         }.get(signal, signal)
         return (
-            f"{weakest['name']} under-performs by "
-            f"{abs(weakest['own_delta_pct']):.1f}%; {signal_phrase}."
+            f"{weakest['name']} shows the largest deviation below your "
+            f"chain baseline; {signal_phrase}."
         )
     if (strongest and strongest["own_delta_pct"] is not None
             and strongest["own_delta_pct"] > noise):
         return (
-            f"All neighborhoods at or above your panel baseline; "
-            f"{strongest['name']} leads at +{strongest['own_delta_pct']:.1f}%."
+            "All neighborhoods at or above your panel baseline; "
+            f"{strongest['name']} leads."
         )
-    return (
-        "Every neighborhood is within "
-        f"{noise:.0f}% of your panel baseline of "
-        f"{chart_data['own_baseline']:.0f} txns/store."
-    )
+    return "Every neighborhood is close to your panel baseline."
 
 
 def _takeaway_t2(merchant_id: str, filters: dict | None = None) -> str | None:
     chart_data = D.customer_home_density(merchant_id, filters=filters)
     if not chart_data["neighborhoods"]:
         return None
-    pct = chart_data["pct_underserved"]
     densest = chart_data["densest_underserved"]
     if densest is not None:
         return (
-            f"{pct:.1f}% of your customers live in neighborhoods without a "
-            f"same-merchant store; densest under-served area is "
-            f"{densest['name']} ({densest['n_customers']} customers)."
+            "Some of your customers live in neighborhoods without a "
+            f"same-merchant store; the densest under-served area is "
+            f"{densest['name']}."
         )
     return (
         "Every neighborhood with your customers also has at least one "
@@ -312,9 +329,8 @@ def _takeaway_t4(merchant_id: str, filters: dict | None = None) -> str | None:
     signal = chart_data["top_peer_signal"]
     if top:
         return (
-            f"Top expansion opportunity: {top['name']} "
-            f"(score {top['score']:.1f}); {top['peer_n_stores']} peer "
-            f"store(s) suggests {signal}."
+            f"Top expansion opportunity: {top['name']}; peer presence "
+            f"there suggests {signal}."
         )
     return "No scored neighborhoods in the panel."
 
@@ -336,12 +352,11 @@ def _takeaway_a1(merchant_id: str, filters: dict | None = None) -> str | None:
             "You have no University City stores in the panel — "
             "showing peer trajectories only."
         )
-    return CP.format_takeaway(
-        "Your UC transactions dropped {own_pct_drop}% from baseline "
-        "by week of {trough_week}; peers also declined "
-        "({peer_a_pct_drop}% and {peer_b_pct_drop}%). "
-        "The pattern is {market_signal}.",
-        chart_data,
+    return (
+        f"Your University City transactions declined through the panel "
+        f"window with a trough around week of {chart_data['trough_week']}; "
+        f"peers also declined. The pattern reads as "
+        f"{chart_data['market_signal']}."
     )
 
 
@@ -350,10 +365,8 @@ def _takeaway_d4(merchant_id: str, filters: dict | None = None) -> str | None:
     if not chart_data["points"]:
         return None
     return (
-        f"{chart_data['over_category']} overperforms peers by "
-        f"{chart_data['over_pp']:+.1f}pp share; "
-        f"{chart_data['under_category']} underperforms by "
-        f"{chart_data['under_pp']:+.1f}pp."
+        f"{chart_data['over_category']} overperforms peers in share; "
+        f"{chart_data['under_category']} underperforms."
     )
 
 
@@ -399,10 +412,8 @@ def _takeaway_t_p3(merchant_id: str, filters: dict | None = None) -> str | None:
     if not chart_data["labels"]:
         return None
     return (
-        f"Your highest-ticket store is {chart_data['top_store']} at "
-        f"${chart_data['top_value']:.2f}; lowest is {chart_data['bottom_store']} "
-        f"at ${chart_data['bottom_value']:.2f}; range is "
-        f"${chart_data['range_value']:.2f}."
+        f"Your highest-ticket store is {chart_data['top_store']}; "
+        f"lowest is {chart_data['bottom_store']}."
     )
 
 
@@ -418,24 +429,23 @@ def _takeaway_store_anomalies_own_only(
     n_over  = chart_data["n_over"]
     top     = chart_data["top"]
     if n_flag == 0:
-        return "All your stores are within 15% of your panel baseline."
+        return "All your stores are running close to your panel baseline."
     if n_under == 0:
         return (
-            f"{n_flag} of your stores are running >15% above baseline; "
-            f"{top['store_id']} ({top['neighborhood']}) shows the largest "
-            f"swing ({top['deviation_pct']:+.1f}%)."
+            "Multiple stores are running materially above baseline; "
+            f"{top['store_id']} ({top['neighborhood']}) shows the "
+            "largest swing."
         )
     if n_over == 0:
         return (
-            f"{n_flag} of your stores are running >15% below baseline; "
-            f"{top['store_id']} ({top['neighborhood']}) shows the largest "
-            f"swing ({top['deviation_pct']:+.1f}%)."
+            "Multiple stores are running materially below baseline; "
+            f"{top['store_id']} ({top['neighborhood']}) shows the "
+            "largest swing."
         )
     return (
-        f"{n_flag} stores deviate from baseline by >15% "
-        f"({n_under} under, {n_over} over); "
+        "Multiple stores deviate from baseline in both directions; "
         f"{top['store_id']} ({top['neighborhood']}) shows the largest "
-        f"swing ({top['deviation_pct']:+.1f}%)."
+        "swing."
     )
 
 
@@ -445,12 +455,11 @@ def _takeaway_t_a3(merchant_id: str, filters: dict | None = None) -> str | None:
     strongest = chart_data["strongest"]
     if weakest is None or strongest is None:
         return "Insufficient daypart-level data to score this week."
-    w_val, w_dow, w_dp = weakest
-    s_val, s_dow, s_dp = strongest
+    _, w_dow, w_dp = weakest
+    _, s_dow, s_dp = strongest
     return (
-        f"Weakest day-daypart this week: {w_dow} {w_dp.lower()} at "
-        f"{w_val * 100:.0f}% of baseline; strongest: {s_dow} "
-        f"{s_dp.lower()} at {s_val * 100:.0f}%."
+        f"Weakest day-daypart this week: {w_dow} {w_dp.lower()}; "
+        f"strongest: {s_dow} {s_dp.lower()}."
     )
 
 
@@ -463,8 +472,7 @@ def _takeaway_category_share_own(
         return None
     names = ", ".join(chart_data["top3_names"])
     return (
-        f"Top 3 categories ({names}) account for "
-        f"{chart_data['top3_pct']:.1f}% of revenue."
+        f"Top 3 categories ({names}) dominate your revenue mix."
     )
 
 
@@ -478,20 +486,17 @@ def _takeaway_revenue_change_own(
     change = chart_data["total_change_pct"]
     direction = "up" if change > 0 else ("down" if change < 0 else "flat")
     dom_name = chart_data["dominant_driver"].lower()
-    dom_pp = chart_data["dominant_pp"]
     tied = chart_data.get("tied_with") or []
     if not tied:
         return (
-            f"Revenue {direction} {abs(change):.1f}% vs your first-4-week "
-            f"baseline; {dom_name} contributes {dom_pp:+.1f}pp."
+            f"Revenue is {direction} vs your first-4-week baseline; "
+            f"{dom_name} is the dominant driver."
         )
     both_names = [dom_name] + [n.lower() for n, _ in tied]
-    pps        = [dom_pp]   + [pp for _, pp in tied]
-    names      = " + ".join(both_names)
-    magnitudes = " / ".join(f"{pp:+.1f}pp" for pp in pps)
+    names = " + ".join(both_names)
     return (
-        f"Revenue {direction} {abs(change):.1f}% vs baseline; "
-        f"{names} together drive the change ({magnitudes})."
+        f"Revenue is {direction} vs baseline; {names} together drive "
+        "the change."
     )
 
 
@@ -501,10 +506,10 @@ def _takeaway_r_p1(merchant_id: str, filters: dict | None = None) -> str | None:
     if not chart_data["series"]:
         return None
     return (
-        f"{chart_data['top_category']} ticket is "
-        f"{chart_data['top_direction']} {abs(chart_data['top_pct']):.1f}% "
-        f"over 90 days; {chart_data['next_category']} is "
-        f"{chart_data['next_direction']} {abs(chart_data['next_pct']):.1f}%."
+        f"{chart_data['top_category']} ticket shows the largest "
+        f"{chart_data['top_direction']}ward shift over 90 days; "
+        f"next-largest shift is {chart_data['next_category']} "
+        f"{chart_data['next_direction']}ward."
     )
 
 
@@ -513,9 +518,8 @@ def _takeaway_r_p3(merchant_id: str, filters: dict | None = None) -> str | None:
     if not chart_data["labels"]:
         return None
     return (
-        f"Your top ticket band ({chart_data['top_band']}) accounts for "
-        f"{chart_data['top_txn_pct']:.1f}% of transactions and "
-        f"{chart_data['top_rev_pct']:.1f}% of revenue."
+        f"Your top ticket band is {chart_data['top_band']}, accounting "
+        "for the bulk of transactions and revenue."
     )
 
 
@@ -529,15 +533,14 @@ def _takeaway_r_a2(merchant_id: str, filters: dict | None = None) -> str | None:
     direction = chart_data["top_direction"]
     if n_flag == 0:
         return (
-            "No categories deviate from baseline by >15% in the recent week."
+            "No categories deviate materially from baseline in the recent week."
         )
     word = "spikes" if direction == "spike" else (
         "drops" if direction == "drop" else "swings"
     )
     return (
-        f"{n_flag} categor{'y' if n_flag == 1 else 'ies'} show recent "
-        f"volume off baseline by >15%; {top['category']} {word} the "
-        f"most ({top['deviation_pct']:+.1f}%)."
+        f"Categories show recent volume off baseline; "
+        f"{top['category']} {word} the most."
     )
 
 
@@ -546,10 +549,9 @@ def _takeaway_r_a3(merchant_id: str, filters: dict | None = None) -> str | None:
     weakest = chart_data["weakest"]
     if weakest is None:
         return "Insufficient day-level data to score this period."
-    ratio, dow, week_label = weakest
+    _, dow, week_label = weakest
     return (
-        f"Weakest day-week this period: {dow} week of {week_label} "
-        f"at {ratio * 100:.0f}% of baseline."
+        f"Weakest day-week this period: {dow} week of {week_label}."
     )
 
 

@@ -1206,3 +1206,78 @@ volume.
    aspirational ones. Future phases should expect similar evolution.
 
 ### Status: Phase 5.1 closed. Phase 5.4 + 5.5 remain.
+
+---
+
+## Known architectural debt for v4
+
+### Chart and agent compute findings independently
+
+**Current state (v3, post-Phase 5.5.1):** `chart_takeaways.py` runs
+its own SQL to compute chart captions. The specialist agent runs
+its own SQL via tool calls. Both query the same underlying data
+but use different windows, aggregations, or filters. They produce
+numerically different (but directionally consistent) answers.
+
+**Phase 5 mitigation:** Takeaways were rewritten to use directional
+framing (entity + direction + qualitative magnitude) rather than
+specific percentages. The specialist agent uses its own numbers
+in Evidence bullets while aligning to the takeaway's narrative
+direction and entity names. The user sees a unified story across
+chart and prose, even when specific percentages differ slightly
+(e.g., chart shows −13.9%, prose shows −13.0%).
+
+**What this is and isn't:**
+
+- It IS narrative coordination (same story across chart and prose)
+- It is NOT math unification (chart and prose still compute
+  independently)
+- The specific numbers shown in chart vs prose may differ within
+  a few percentage points
+
+**Why this is acceptable for v3:**
+
+- Direction and entity alignment prevents user-visible contradictions
+- The chart's specific numbers are visible to the user (on bars/lines);
+  the prose's specific numbers come from honest tool queries
+- Both numbers are correct interpretations of the same data with
+  slightly different aggregations
+
+**Why v4 should refactor:**
+
+1. **Performance:** Two separate SQL queries per dispatch (one in
+   chart_takeaways.py, one in the specialist's tool loop) doubles
+   the database load. A single shared query halves it.
+2. **Honesty:** When a user audits the prose's numbers against
+   the chart's numbers, they should match exactly, not just
+   directionally.
+3. **Maintainability:** Changing how a metric is computed currently
+   requires updating BOTH chart_takeaways.py AND the specialist's
+   natural query patterns. A single shared compute layer would
+   propagate metric definitions automatically.
+4. **Trust:** Removing the per-qid coordination logic in
+   chart_takeaways.py simplifies the dispatch path and removes a
+   source of subtle bugs.
+
+**Proposed v4 design:**
+
+A single `compute_finding(qid, merchant_id, filters)` function in
+a new module (probably `src/findings/`) that:
+
+- Returns a structured Finding object:
+  `{entities: [], direction: str, magnitude: dict, numbers: dict}`
+- Is called BOTH by the chart renderer (which uses the structure
+  to lay out bars/lines/captions) AND by the agent (which uses
+  the structure to write Evidence bullets with consistent numbers)
+- Centralizes metric definitions, window choices, and aggregation
+  conventions
+
+Estimated v4 scope: 1–2 days. Touches
+`src/dashboard/chart_takeaways.py`, all renderers in
+`src/dashboard/chat.py`, and the specialist tool layer in
+`src/agents/specialist.py`.
+
+**v4 prerequisite:** v3 must ship first. The current Phase 5.5.1
+mitigation is sufficient for demo and production use. The refactor
+becomes valuable once real user feedback informs which metrics
+matter most.

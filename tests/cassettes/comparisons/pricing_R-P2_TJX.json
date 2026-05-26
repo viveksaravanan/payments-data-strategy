@@ -19,18 +19,18 @@
     }
   },
   "phase5_response": {
-    "prose": "WOM has the widest price spread at 6.8× from minimum to maximum unit price — the largest price range among all categories, driven by product assortment spanning budget basics to premium items.\n\n- WOM: $13.06 (min) to $89.40 (max) — 6.85× spread, reflecting apparel ranging from basics to designer pieces\n- HOM: $8.66 (min) to $49.90 (max) — 5.76× spread, second-widest dispersion\n- JEW: $16.48 (min) to $87.68 (max) — 5.32× spread, significant variance across jewelry tiers\n- SHO: $26.10 (min) to $95.06 (max) — 3.64× spread, narrowest range despite similar dollar bounds to other categories\n\n**Therefore:** Worth investigating WOM's pricing architecture — the 6.8× spread is substantially wider than any peer category. This may signal opportunity to better segment or rebrand within the wide assortment band, or reflect uneven pricing efficiency across product tiers.",
+    "prose": "Women's clothing (WOM) has the widest min-to-max price spread at $76.34, with prices ranging from $13.06 to $89.40 — driven by product diversity from basics to premium pieces.\n\n- **WOM:** $76.34 spread ($13.06–$89.40) — the widest category spread in the portfolio\n- **SHO:** $68.96 spread ($26.10–$95.06) — second-widest, narrow gap behind WOM\n- **JEW:** $71.20 spread ($16.48–$87.68) — third-widest; similar to SHO despite fewer SKUs\n- **ACC:** $150.30 spread ($37.22–$187.52) — widest absolute spread, but reflects high-value accessory items (belts, bags, scarves)\n- **BTY:** $21.32 spread ($7.18–$28.50) — the narrowest category, reflecting lower price-point beauty products\n\n**Therefore:** Worth investigating whether WOM's $76.34 spread reflects intentional tiering (basics vs. premium lines) or uncontrolled SKU mix. ACC's spread is dominated by higher-value items, but WOM's breadth within an apparel context is the most strategically interesting.",
     "caveats": [
-      "Based on all TJ Maxx transactions in the panel window.",
-      "Spread ratio captures min/max price points; intermediate clustering may vary significantly within each category."
+      "Analysis spans all TJ Maxx transactions in the panel window.",
+      "Price spread is min-to-max per category; does not reflect customer distribution or volume concentration."
     ],
     "telemetry": {
-      "input_tokens": 19760,
-      "output_tokens": 823,
-      "cost_usd": 0.023875,
-      "turns": 3,
+      "input_tokens": 12915,
+      "output_tokens": 575,
+      "cost_usd": 0.01579,
+      "turns": 2,
       "converged": true,
-      "wall_time_s": 9.11
+      "wall_time_s": 13.48
     }
   },
   "contract_compliance": {
@@ -46,6 +46,6 @@
   "notes": "",
   "phase_baseline": "4.6",
   "phase_compare": "5.4",
-  "compared_at": "2026-05-25T23:14:04Z",
-  "commit_sha": "8bf021b"
+  "compared_at": "2026-05-25T23:52:04Z",
+  "commit_sha": "fc6bba7"
 }

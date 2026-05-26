@@ -19,22 +19,26 @@
     }
   },
   "phase5_response": {
-    "prose": "(I couldn't converge on a full answer in 10 turns. Showing the best-effort partial — see the SQL below for what I queried.)",
-    "caveats": [],
+    "prose": "Multiple menu items show significant quantity increases from early March to late May, with Quesadilla posting the largest spike at **54% growth**.\n\n- Quesadilla: 327 units (early March) → 503 units (late May), 1.54× multiplier\n- Crunchwrap Supreme: 296 → 452 units, 1.53× multiplier  \n- Baja Blast Md: 514 → 760 units, 1.48× multiplier\n- Chips & Cheese: 492 → 726 units, 1.48× multiplier\n- Spicy Potato Soft Taco: 306 → 445 units, 1.45× multiplier\n\n**Therefore:** Quesadilla leads the menu spike, with nearly identical strength in Crunchwrap Supreme and consistent moderate lifts across beverages and sides. The broad-based gain (top 10 items all exceed 40% growth) suggests seasonal demand ramp rather than a single-item promo or supply event. Worth investigating whether this reflects spring/early-summer seasonal patterns, a menu repositioning, or bundled promotion activity during this window.",
+    "caveats": [
+      "Baseline window: 2026-03-01 to 2026-03-14 (14 days); Recent window: 2026-05-16 to 2026-05-29 (14 days).",
+      "Analysis uses unit quantity; does not adjust for price changes or promotional discounting.",
+      "Items shown only if both periods had positive volume."
+    ],
     "telemetry": {
-      "input_tokens": 114408,
-      "output_tokens": 3414,
-      "cost_usd": 0.131478,
-      "turns": 10,
-      "converged": false,
-      "wall_time_s": 29.56
+      "input_tokens": 104010,
+      "output_tokens": 3077,
+      "cost_usd": 0.119395,
+      "turns": 9,
+      "converged": true,
+      "wall_time_s": 28.64
     }
   },
   "contract_compliance": {
     "headline_has_number": true,
-    "evidence_3_to_5_bullets": false,
-    "therefore_section_present": false,
-    "approved_therefore_opener": false,
+    "evidence_3_to_5_bullets": true,
+    "therefore_section_present": true,
+    "approved_therefore_opener": true,
     "no_forbidden_verbs": true,
     "caveats_fence_parsed": true,
     "no_throat_clearing": true
@@ -43,6 +47,6 @@
   "notes": "",
   "phase_baseline": "4.6",
   "phase_compare": "5.4",
-  "compared_at": "2026-05-25T23:12:02Z",
-  "commit_sha": "8bf021b"
+  "compared_at": "2026-05-25T23:49:55Z",
+  "commit_sha": "fc6bba7"
 }

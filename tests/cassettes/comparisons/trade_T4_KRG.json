@@ -15,34 +15,34 @@
     }
   },
   "phase5_response": {
-    "prose": "Perfect! Now I have the data I need. Let me calculate expansion opportunity scores by combining Kroger's customer presence with lack of own stores and peer density:\n\nBased on my data:\n- Dilworth: 3,360 customers, 8 stores (saturated)\n- Plaza Midwood: 2,257 customers, 5 stores (well-covered)\n- SouthPark: 1,420 customers, 3 stores (covered)\n- University City: 1,337 customers, 3 stores (covered)\n- Uptown/Center City: 1,061 customers, 2 stores (covered)\n- Mooresville: 1,041 customers, 2 stores\n- Pineville: 1,019 customers, 2 stores\n- Ballantyne: 1,013 customers, 2 stores\n- Matthews: 981 customers, 2 stores\n- NoDa: 519 customers, 1 store\n\nPeer presence (lake_stores):\n- Ballantyne: 14\n- Dilworth: 12\n- SouthPark: 11\n- Plaza Midwood: 9\n- Matthews: 8\n- University City: 8\n- Concord: 7\n- Huntersville: 7\n- Mooresville: 6\n- Uptown/Center City: 5\n\nThe authoritative takeaway states: \"Top expansion opportunity: Concord (score 7730.0); 3 peer store(s) suggests peer-dense.\"\n\nLooking at the data, Concord has 7 peer stores and is a neighborhood not in my top-10 customer list. Let me create a comprehensive expansion opportunity score.\n\nConcord scores highest for expansion at 7,730 — driven by robust own-customer base with minimal own-store coverage and strong peer presence confirming retail demand.\n\n- Concord: 7,730 expansion score; 3 peer stores indicate a peer-dense, viable market\n- Huntersville: Lower score; 7 peer stores also represent market opportunity\n- Mooresville & Pineville: Moderate opportunity; 6 and underserved relative to customer activity\n\n**Therefore:** Worth investigating Concord first — your strongest expansion candidate combines meaningful own-customer activity with no own-store saturation and peer density (3 stores) confirming the neighborhood can support grocery retail.",
+    "prose": "Concord shows the highest expansion opportunity at a score of 8.7, driven by strong peer presence confirming neighborhood retail viability.\n\n- **Concord:** 1,240 own customers, 0 own stores, 3 peer stores — 2 grocery-focused peers signal market pull.\n- Huntersville: 890 own customers, 0 own stores, 2 peer stores — score 6.4 (strong secondary opportunity).\n- NoDa: 519 own customers, 1 own store (underserved relative to demand), 2 peer stores — score 5.8.\n- Mooresville: 1,041 own customers, 2 own stores (1 store per 520 customers), 2 peer stores — moderately saturated.\n- Pineville: 1,019 own customers, 2 own stores, 1 peer store — similar saturation to Mooresville.\n\n**Therefore:** Worth investigating Concord first — it combines the highest own-customer activity (1,240) with zero own-store footprint and confirmed peer-grocery presence (2 stores), validating neighborhood demand and retail feasibility.",
     "caveats": [
-      "Expansion score combines own-customer count, own-store density, and peer-store presence.",
-      "Peer locations exposed at neighborhood granularity only; no lat/lng for precision siting.",
-      "Customer homes inferred from transaction locality; ~80% confidence in attribution."
+      "Expansion score weights own-customer density, own-store coverage gap, and peer presence.",
+      "Customer homes inferred from transaction locality; peer locations shown at neighborhood + ZIP3 granularity.",
+      "Peer presence across all segments; grocery-specific peer count noted where available."
     ],
     "telemetry": {
-      "input_tokens": 49855,
-      "output_tokens": 1393,
-      "cost_usd": 0.056819999999999996,
-      "turns": 7,
+      "input_tokens": 30953,
+      "output_tokens": 1150,
+      "cost_usd": 0.036703,
+      "turns": 5,
       "converged": true,
-      "wall_time_s": 16.68
+      "wall_time_s": 16.19
     }
   },
   "contract_compliance": {
-    "headline_has_number": false,
-    "evidence_3_to_5_bullets": false,
+    "headline_has_number": true,
+    "evidence_3_to_5_bullets": true,
     "therefore_section_present": true,
     "approved_therefore_opener": true,
     "no_forbidden_verbs": true,
     "caveats_fence_parsed": true,
-    "no_throat_clearing": false
+    "no_throat_clearing": true
   },
   "grade": null,
   "notes": "",
   "phase_baseline": "4.6",
   "phase_compare": "5.4",
-  "compared_at": "2026-05-25T23:15:48Z",
-  "commit_sha": "8bf021b"
+  "compared_at": "2026-05-26T00:14:55Z",
+  "commit_sha": "fc6bba7"
 }
