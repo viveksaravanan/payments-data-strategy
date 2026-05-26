@@ -1200,6 +1200,11 @@ def render_chat_panel(merchant_id: str) -> None:
                     "question": free_q.strip(),
                 }
                 state.chat_input_prefill = ""
+                # Drop the textarea's session-state value so the widget
+                # re-renders empty on next rerun. Without this, Streamlit
+                # restores the typed value from session state (keyed by
+                # ``input_key``), ignoring the ``value=""`` default.
+                st.session_state.pop(input_key, None)
                 state.agent_running = True
                 st.rerun()
 
