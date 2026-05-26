@@ -663,8 +663,11 @@ _CSS = """
     resize: none !important;
     overflow-y: auto !important;
   }
-  /* Send button — full-height purple pill matching the textarea. */
-  div[class*="st-key-chat_input_row"] div[class*="st-key-chat_send_"] button {
+  /* Send button — full-height purple pill matching the textarea.
+     Selectors target ``stFormSubmitButton`` (Phase 5.5.x rework wraps
+     the input + button in ``st.form(clear_on_submit=True)`` so the
+     submit button is no longer a keyed ``st.button``). */
+  div[class*="st-key-chat_input_row"] [data-testid="stFormSubmitButton"] button {
     height: 45px !important;
     min-height: 45px !important;
     padding: 0 !important;
@@ -677,11 +680,11 @@ _CSS = """
     box-shadow: 0 1px 3px rgba(83, 74, 183, 0.30);
     transition: background-color 0.15s ease;
   }
-  div[class*="st-key-chat_input_row"] div[class*="st-key-chat_send_"] button:hover {
+  div[class*="st-key-chat_input_row"] [data-testid="stFormSubmitButton"] button:hover {
     background-color: #443B9F !important;
     color: #FFFFFF !important;
   }
-  div[class*="st-key-chat_input_row"] div[class*="st-key-chat_send_"] button:disabled {
+  div[class*="st-key-chat_input_row"] [data-testid="stFormSubmitButton"] button:disabled {
     background-color: var(--text-muted) !important;
     cursor: not-allowed;
   }

@@ -1170,41 +1170,41 @@ def render_chat_panel(merchant_id: str) -> None:
     prefill = state.chat_input_prefill or ""
     # Re-key the textarea per (merchant_id, prefill-hash) so a fresh
     # prefill from an affordance click forces the widget to remount
-    # with the new ``value=`` — without the re-key, Streamlit keeps
-    # the prior textarea content and ignores the value kwarg.
+    # with the new ``value=``. The form wrapper below
+    # (``clear_on_submit=True``) handles the typed-text-after-send
+    # case — Streamlit clears every widget inside the form on submit
+    # whether the user clicked Send or pressed Cmd/Ctrl+Enter.
     input_key = f"chat_input_{merchant_id}_{hash(prefill) & 0xFFFF:04x}"
     with st.container(key="chat_input_row"):
-        col_input, col_send = st.columns([1, 0.18], gap="small")
-        with col_input:
-            free_q = st.text_area(
-                "Ask anything…",
-                value=prefill,
-                key=input_key,
-                height=68,
-                disabled=is_running,
-                label_visibility="collapsed",
-                placeholder="Ask any question about your data…",
-            )
-        with col_send:
-            send_clicked = st.button(
-                "Send",
-                key=f"chat_send_{merchant_id}",
-                type="primary",
-                disabled=is_running,
-                use_container_width=True,
-            )
-        if send_clicked:
-            if free_q and free_q.strip():
+        with st.form(
+            key=f"chat_form_{merchant_id}",
+            clear_on_submit=True,
+            border=False,
+        ):
+            col_input, col_send = st.columns([1, 0.18], gap="small")
+            with col_input:
+                free_q = st.text_area(
+                    "Ask anything…",
+                    value=prefill,
+                    key=input_key,
+                    height=68,
+                    disabled=is_running,
+                    label_visibility="collapsed",
+                    placeholder="Ask any question about your data…",
+                )
+            with col_send:
+                send_clicked = st.form_submit_button(
+                    "Send",
+                    type="primary",
+                    disabled=is_running,
+                    use_container_width=True,
+                )
+            if send_clicked and free_q and free_q.strip():
                 state.pending_dispatch = {
                     "kind":     "free",
                     "question": free_q.strip(),
                 }
                 state.chat_input_prefill = ""
-                # Drop the textarea's session-state value so the widget
-                # re-renders empty on next rerun. Without this, Streamlit
-                # restores the typed value from session state (keyed by
-                # ``input_key``), ignoring the ``value=""`` default.
-                st.session_state.pop(input_key, None)
                 state.agent_running = True
                 st.rerun()
 
