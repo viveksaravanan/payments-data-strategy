@@ -15,18 +15,18 @@
     }
   },
   "phase5_response": {
-    "prose": "Burrito share is gaining over the 90-day window, while Breakfast is the largest declining category.\n\n- **Burr:** 13.8% → 14.0% (+0.2pp) — only category gaining meaningful share\n- **Bfast:** 11.9% → 11.1% (−0.8pp) — largest share decliner\n- **Side:** 13.5% → 14.2% (+0.7pp) — second-strongest gainer\n- **Combo:** 23.1% → 22.9% (−0.2pp) — modest decline, largest category\n- **Drink:** 17.4% → 17.5% (+0.1pp) — essentially flat\n\n**Therefore:** Worth investigating what's driving Breakfast's 0.8pp decline — the largest share shift over 90 days. Conversely, Side and Burrito are both gaining; understanding whether this reflects menu mix changes, pricing, or traffic would help identify which drivers are sustainable.",
+    "prose": "Most categories are losing share over the 90-day window, with COMBO and DRINK declining most—down 1.8pp and 1.3pp respectively.\n\n- **COMBO** declined from 29.8% to 28.0% (−1.8pp) — largest share loss\n- **DRINK** fell from 22.5% to 21.2% (−1.3pp) — second-largest decline\n- **BURR** (Burritos) lost 1.1pp (18.2% → 17.1%)\n- **SPEC** (Specialties) shed 0.6pp (17.4% → 16.8%)\n- All other categories (SIDE, BFAST, TACO) declined by 0.2–0.8pp\n\n**Therefore:** Worth investigating why COMBO and DRINK — your largest two categories at 49% combined share — are both losing momentum. The 1.8pp and 1.3pp shifts suggest either traffic decline, lower unit-transaction volume, or price-driven mix shift away from these bundles.",
     "caveats": [
-      "Based on first week (Mar 1–7) vs last week (May 23–29) of the 90-day panel window.",
-      "Share computed on revenue; volume share may differ slightly."
+      "Based on the 90-day window (Mar 1 – May 29, 2026); comparison uses early period (Mar 1 – Apr 14) vs late period (May 16 – May 29).",
+      "Share computed on revenue; unit velocity may show different patterns."
     ],
     "telemetry": {
-      "input_tokens": 19736,
-      "output_tokens": 1181,
-      "cost_usd": 0.025641,
-      "turns": 3,
+      "input_tokens": 32100,
+      "output_tokens": 1032,
+      "cost_usd": 0.03726,
+      "turns": 4,
       "converged": true,
-      "wall_time_s": 16.38
+      "wall_time_s": 11.76
     }
   },
   "contract_compliance": {
@@ -42,6 +42,6 @@
   "notes": "",
   "phase_baseline": "4.6",
   "phase_compare": "5.4",
-  "compared_at": "2026-05-25T23:51:09Z",
-  "commit_sha": "fc6bba7"
+  "compared_at": "2026-05-26T00:54:12Z",
+  "commit_sha": "12ea5fb"
 }

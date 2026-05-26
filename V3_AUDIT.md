@@ -1281,3 +1281,80 @@ Estimated v4 scope: 1–2 days. Touches
 mitigation is sufficient for demo and production use. The refactor
 becomes valuable once real user feedback informs which metrics
 matter most.
+
+---
+
+## Phase 5.5.2 — Reverted chart-takeaway injection (2026-05-26)
+
+After three iterations attempting to align agent prose with
+chart-rendered captions (Phase 5.1.9 introduction, Phase 5.1.10
+trust-framing refinement, Phase 5.5.1 directional rewrite), the
+chart-takeaway injection layer was reverted.
+
+**What was reverted:**
+
+- The injection of chart caption text into the specialist's prompt
+  (the ``_compute_chart_takeaway`` helper and its call site in
+  ``_run_specialist``)
+- The "Chart consistency (CRITICAL)" sections in all 4 specialist
+  prompts
+- The ``tests/test_chart_takeaway_injection.py`` file (all 6 tests
+  were injection-specific)
+
+**What was kept:**
+
+- ``src/dashboard/chart_takeaways.py`` module — still used for UI
+  chart captions in ``chat.py::_render_*``
+- The contract enforcement (Headline → Evidence → Therefore →
+  Caveats) from Phase 5.1
+- The "Final response" instruction from Phase 5.1.5
+- The worked examples from Phase 5.1.6 (in demand.md and trade.md)
+- The number-grounding rule from Phase 5.1.7
+- Segment-conditional orchestrator routing from Phase 5.4
+- Cassette infrastructure from Phase 5.0
+- ``MAX_TURNS = 10``
+- The directional rewrites of takeaway strings from Phase 5.5.1
+  (the strings are now used only for UI captions, not for
+  injection — but the directional shape is appropriate for both)
+
+**Why reverted:**
+
+The injection architecture worked for ~half of qids but failed
+unpredictably on others, with the failure mode shifting between
+iterations:
+
+- Phase 5.1.9 — agent spun trying to reproduce exact takeaway
+  numbers; hit ``MAX_TURNS`` on multiple qids.
+- Phase 5.1.10 — trust-framing helped some but added reconciliation
+  leaks in others (CoT spirals leaking into prose).
+- Phase 5.5.1 — directional rewrite fixed some failures (T-A2, D3)
+  but regressed others (R-D2, T1).
+
+Across three iterations, the regression run never achieved >8/12
+convergence reliably. For v3 demo timing, predictable convergence
+matters more than precise chart-prose number alignment.
+
+**What this means for users:**
+
+- The agent's prose and the chart caption may show slightly
+  different specific numbers (e.g., chart shows −13.9%, prose
+  shows −13.0%) because each uses its own SQL with different
+  aggregations.
+- They will typically align on direction and entity — both will
+  point at the same neighborhood/category/store, in the same
+  direction — because both compute from the same underlying
+  panel data.
+- Direction contradictions (the original problem chart-takeaway
+  injection was designed to prevent) remain possible but rare.
+  Baseline data from Phase 5.0 showed these in < 5% of dispatches
+  on the demo question set.
+
+**v4 plan (unchanged):**
+
+Refactor into a unified ``compute_finding()`` layer that both the
+chart renderer and the agent draw from. See "Known architectural
+debt for v4" section above for the proposal. Phase 5.5.2 ships v3
+without that refactor; the refactor is the proper architectural
+fix and is planned for the next release cycle.
+
+### Status: Phase 5 closed. v4 picks up the unified-compute refactor.

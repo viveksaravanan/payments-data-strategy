@@ -15,19 +15,18 @@
     }
   },
   "phase5_response": {
-    "prose": "Concord shows the highest expansion opportunity at a score of 8.7, driven by strong peer presence confirming neighborhood retail viability.\n\n- **Concord:** 1,240 own customers, 0 own stores, 3 peer stores — 2 grocery-focused peers signal market pull.\n- Huntersville: 890 own customers, 0 own stores, 2 peer stores — score 6.4 (strong secondary opportunity).\n- NoDa: 519 own customers, 1 own store (underserved relative to demand), 2 peer stores — score 5.8.\n- Mooresville: 1,041 own customers, 2 own stores (1 store per 520 customers), 2 peer stores — moderately saturated.\n- Pineville: 1,019 own customers, 2 own stores, 1 peer store — similar saturation to Mooresville.\n\n**Therefore:** Worth investigating Concord first — it combines the highest own-customer activity (1,240) with zero own-store footprint and confirmed peer-grocery presence (2 stores), validating neighborhood demand and retail feasibility.",
+    "prose": "University City scores highest for expansion opportunity at 8.1, with 1,337 own customers shopping there against only 3 own stores, combined with established peer grocery presence (5 stores from 2 different competitors).\n\n- **University City:** 1,337 own customers, 3 own stores, 5 peer grocery stores — score 8.1 (customer-to-store gap of 445:1)\n- **SouthPark:** 1,420 own customers, 3 own stores, 8 peer grocery stores — score 7.4 (customer-to-store gap of 473:1)\n- **Uptown / Center City:** 1,061 own customers, 2 own stores, peer presence confirmed — score 6.8 (customer-to-store gap of 531:1)\n- **Mooresville:** 1,041 own customers, 2 own stores, underserved catchment — score 6.2\n- **Pineville:** 1,019 own customers, 2 own stores, underserved catchment — score 5.9\n\n**Therefore:** Worth investigating University City first — your highest customer-density-per-store with proven peer grocery demand (5 established stores), suggesting the neighborhood can absorb additional grocery retail and that your current footprint is stretched.",
     "caveats": [
-      "Expansion score weights own-customer density, own-store coverage gap, and peer presence.",
-      "Customer homes inferred from transaction locality; peer locations shown at neighborhood + ZIP3 granularity.",
-      "Peer presence across all segments; grocery-specific peer count noted where available."
+      "Expansion score combines own-customer count, own-store density ratio, and peer-store presence.",
+      "Customer homes inferred from transaction locality; not a demographic profile."
     ],
     "telemetry": {
-      "input_tokens": 30953,
-      "output_tokens": 1150,
-      "cost_usd": 0.036703,
+      "input_tokens": 39048,
+      "output_tokens": 1007,
+      "cost_usd": 0.044083,
       "turns": 5,
       "converged": true,
-      "wall_time_s": 16.19
+      "wall_time_s": 15.42
     }
   },
   "contract_compliance": {
@@ -43,6 +42,6 @@
   "notes": "",
   "phase_baseline": "4.6",
   "phase_compare": "5.4",
-  "compared_at": "2026-05-26T00:14:55Z",
-  "commit_sha": "fc6bba7"
+  "compared_at": "2026-05-26T00:56:42Z",
+  "commit_sha": "12ea5fb"
 }

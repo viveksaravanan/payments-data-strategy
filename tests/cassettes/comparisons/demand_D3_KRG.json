@@ -15,18 +15,18 @@
     }
   },
   "phase5_response": {
-    "prose": "Kroger is over-indexed on PRODUCE (20.4% vs peer average 13.2%) and under-indexed on DAIRY (17.8% vs peer average 17.0%).\n\n- **PRODUCE:** Kroger captures 20.4% of revenue vs peer average 13.2% — a +7.2pp over-index, the largest single-category advantage.\n- **DAIRY:** Kroger's 17.8% share trails peer average 17.0% — a -0.8pp under-index, the main gap.\n- **PANTRY:** Kroger leads at 25.8% share vs peers' 22.1% (+3.7pp) — second-strongest over-index.\n- **HOUSEHOLD & SNACKS:** Kroger moderately over-indexed on Household (+3.3pp) and Snacks (+1.8pp).\n- **Frozen and Beverages:** Slight over-indices of +1.3pp and +2.5pp respectively.\n\n**Therefore:** Worth investigating what's driving Kroger's PRODUCE strength — whether it's mix (more fresh-fruit sales), traffic, or pricing. A 7.2pp over-index is substantial and likely the primary mix lever in the basket. The DAIRY under-index is modest but worth exploring to see if it reflects customer preference drift or competitive leakage.",
+    "prose": "Kroger is **over-indexed in Seafood (+1.3pp) and Fresh Fruit (+0.7pp), but under-indexed in Formula (−0.6pp) and Milk (−0.6pp)**.\n\n- **Seafood:** Kroger 5.5% vs peer average 4.2% — strongest over-index (+1.3pp).\n- **Fresh Fruit:** Kroger 5.0% vs peer average 4.3% — second-strongest over-index (+0.7pp).\n- **Milk:** Kroger 2.3% vs peer average 2.9% — largest under-index (−0.6pp).\n- **Formula:** Kroger 2.0% vs peer average 2.6% — second-largest under-index (−0.6pp).\n- **Most categories (Beef, Fresh Vegetables, Cheese, Condiments) align with peer shares within ±0.3pp.**\n\n**Therefore:** Worth investigating whether Seafood and Fresh Fruit over-performance reflects local store format (proximity to coastal suppliers, regional demographics), promotional intensity, or customer mix — these categories drive 10.5% of your revenue against 8.5% for peers. Conversely, the Milk and Formula gap may signal opportunity to grow perishables share through category management or targeted promotions.",
     "caveats": [
-      "Shares computed on full-window revenue (Mar 1 – May 29, 2026) across all grocery-segment peers.",
-      "Peer average calculated from lake aggregates; individual peer shares may vary."
+      "Peer shares (peer_a, peer_b) computed over full panel window; Kroger data from Mar 1–May 29, 2026.",
+      "Only two peers (peer_a, peer_b) returned complete subcategory breakdowns; full four-peer aggregate may differ slightly."
     ],
     "telemetry": {
-      "input_tokens": 60598,
-      "output_tokens": 1400,
-      "cost_usd": 0.06759799999999999,
-      "turns": 7,
+      "input_tokens": 89959,
+      "output_tokens": 2514,
+      "cost_usd": 0.102529,
+      "turns": 10,
       "converged": true,
-      "wall_time_s": 23.65
+      "wall_time_s": 37.83
     }
   },
   "contract_compliance": {
@@ -42,6 +42,6 @@
   "notes": "",
   "phase_baseline": "4.6",
   "phase_compare": "5.4",
-  "compared_at": "2026-05-25T23:50:18Z",
-  "commit_sha": "fc6bba7"
+  "compared_at": "2026-05-26T00:53:50Z",
+  "commit_sha": "12ea5fb"
 }

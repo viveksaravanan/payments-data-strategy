@@ -19,22 +19,22 @@
     }
   },
   "phase5_response": {
-    "prose": "PET is your widest peer premium, with BABY as your largest peer discount across the grocery panel.\n\n- **PET:** $21.99 (you) vs $25.28 (peer_a, +15.0%) vs $18.98 (peer_b, -13.6%) — your largest advantage vs peer_b\n- **BABY:** $17.63 (you) vs $20.57 (peer_a, +16.7%) — your largest disadvantage vs peer_a; $15.74 (peer_b, -10.7%)\n- **PERSONAL:** $9.61 (you) vs $10.33 (peer_a, +7.5%) vs $8.55 (peer_b, -11.0%) — wide spread across peers\n- **HOUSEHOLD:** $9.30 (you) vs $10.18 (peer_a, +9.4%) vs $8.65 (peer_b, -6.9%)\n- **MEAT:** $7.72 (you) vs $7.80 (peer_a, +1.0%) vs $7.44 (peer_b, -3.6%) — tightest category spread\n\n**Therefore:** Worth investigating whether PET and BABY category mix differs from peers — PET's strong premium over peer_b (−13.6%) and BABY's discount vs peer_a (+16.7%) may reflect SKU assortment or quality positioning rather than across-the-board pricing strategy.",
+    "prose": "Your most significant pricing gap is in Beverages, where you're **+4.2% above peer_a and +6.4% above peer_b** — the widest spread among all major categories.\n\n- Beverages: $5.43 (you) vs $5.66 (peer_a, +4.2%) vs $5.08 (peer_b, -6.4%) — both peers below you, peer_b notably undercuts.\n- Personal Care: $9.61 (you) vs $10.33 (peer_a, +7.5%) vs $8.55 (peer_b, -11.0%) — you sit between peers; peer_b's deep discount is an outlier.\n- Baby: $17.63 (you) vs $20.57 (peer_a, +16.7%) vs $15.74 (peer_b, -10.7%) — you're in the middle; peer_a's premium positioning is notable.\n- Dairy: $4.02 (you) vs $4.20 (peer_a, +4.5%) vs $3.91 (peer_b, -2.7%) — you slightly undercut peer_a; competitive with peer_b.\n- Pantry: $3.74 (you) vs $3.98 (peer_a, +6.1%) vs $3.58 (peer_b, -4.5%) — you're above peer_b; peer_a is the premium tier.\n\n**Therefore:** Worth investigating Beverages — it's the only category where both peers undercut you. The gap to peer_b is 6.4%, suggesting either a deliberate positioning strategy by peer_b or potentially a different product mix driving your higher average.",
     "caveats": [
-      "Peer data reflects grocery-segment panel averages; your SNACKS and PRODUCE coverage may differ from peers in the lake.",
-      "Per-line unit prices; category share and volume mix not controlled for."
+      "Peer prices reflect panel averages across all transactions; category SKU mix may vary between you and peers.",
+      "Based on full transaction history in the panel window."
     ],
     "telemetry": {
-      "input_tokens": 27662,
-      "output_tokens": 1190,
-      "cost_usd": 0.033612,
-      "turns": 4,
+      "input_tokens": 30741,
+      "output_tokens": 1393,
+      "cost_usd": 0.037705999999999996,
+      "turns": 5,
       "converged": true,
-      "wall_time_s": 21.96
+      "wall_time_s": 23.94
     }
   },
   "contract_compliance": {
-    "headline_has_number": false,
+    "headline_has_number": true,
     "evidence_3_to_5_bullets": true,
     "therefore_section_present": true,
     "approved_therefore_opener": true,
@@ -46,6 +46,6 @@
   "notes": "",
   "phase_baseline": "4.6",
   "phase_compare": "5.4",
-  "compared_at": "2026-05-25T23:51:31Z",
-  "commit_sha": "fc6bba7"
+  "compared_at": "2026-05-26T00:54:36Z",
+  "commit_sha": "12ea5fb"
 }

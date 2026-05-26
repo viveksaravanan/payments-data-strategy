@@ -15,21 +15,25 @@
     }
   },
   "phase5_response": {
-    "prose": "(I couldn't converge on a full answer in 10 turns. Showing the best-effort partial — see the SQL below for what I queried.)",
-    "caveats": [],
+    "prose": "Your Kroger customers are drawn from a wide geographic area, with the vast majority living outside the immediate ZIP code of the store they visit.\n\nAcross your 30 stores, you serve approximately **13,008 distinct customers**. Only about **4,693 customers (36%) live in the same ZIP5 as a Kroger store they transact at**; the remaining **8,315 customers (64%) live in a different ZIP5** from where they shop. This indicates strong trade-area reach beyond your store's immediate ZIP code.\n\nThe pattern is consistent across metro regions:\n- **Dilworth (urban_core):** 8 stores pull 3,360 customers; 73% live outside the store ZIP\n- **Plaza Midwood (urban_core):** 5 stores pull 2,257 customers; 80% live outside the store ZIP\n- **SouthPark (inner_suburbs):** 3 stores pull 1,420 customers; 81% live outside the store ZIP\n- **University City (inner_suburbs):** 3 stores pull 1,337 customers; 80% live outside the store ZIP\n- **Outer-suburban neighborhoods** (Mooresville, Pineville, Matthews) show similar patterns: 75–81% of customers travel from outside the immediate ZIP\n\n**Therefore:** Your customer base is highly dispersed — customers travel 1 to 5+ ZIP codes to reach you. This suggests strong pulling power from your location or merchandising, but also that store-to-store cannibalization may be moderate (since overlapping trade areas are expected). Worth profiling which neighborhoods have the highest inbound traffic density, to identify your strongest demand centers for potential new locations nearby.",
+    "caveats": [
+      "Customer homes inferred from transacting customer home_zip5; panel window not specified—analysis covers all available transaction history.",
+      "Same-ZIP counts underestimate local capture—same-ZIP logic matches only exact ZIP5, not ZIP+4 or travel distance.",
+      "Store counts by neighborhood vary (1–8); smaller neighborhoods may have customer clustering effects."
+    ],
     "telemetry": {
-      "input_tokens": 92272,
-      "output_tokens": 1885,
-      "cost_usd": 0.10169699999999998,
-      "turns": 10,
-      "converged": false,
-      "wall_time_s": 19.56
+      "input_tokens": 31667,
+      "output_tokens": 1130,
+      "cost_usd": 0.037317,
+      "turns": 4,
+      "converged": true,
+      "wall_time_s": 63.82
     }
   },
   "contract_compliance": {
-    "headline_has_number": true,
-    "evidence_3_to_5_bullets": false,
-    "therefore_section_present": false,
+    "headline_has_number": false,
+    "evidence_3_to_5_bullets": true,
+    "therefore_section_present": true,
     "approved_therefore_opener": false,
     "no_forbidden_verbs": true,
     "caveats_fence_parsed": true,
@@ -39,6 +43,6 @@
   "notes": "",
   "phase_baseline": "4.6",
   "phase_compare": "5.4",
-  "compared_at": "2026-05-25T23:54:01Z",
-  "commit_sha": "fc6bba7"
+  "compared_at": "2026-05-26T00:56:27Z",
+  "commit_sha": "12ea5fb"
 }

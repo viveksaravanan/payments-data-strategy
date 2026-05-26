@@ -133,38 +133,16 @@ def _question_text_for(specialist_id: str, question_id: str, merchant_id: str) -
 
 
 # ---------------------------------------------------------------------------
-# Chart-takeaway pre-injection (Phase 5.1.9)
-#
-# For suggested-question dispatches (i.e. dispatches with a known
-# qid), we pre-compute the chart's authoritative takeaway by calling
-# the same data helper the chart renderer will use. The takeaway is
-# then injected into the specialist's question as ground truth.
-# This collapses two analytical windows (agent SQL vs chart helper)
-# into one canonical view — the agent's prose cannot drift from the
-# chart caption beneath it.
-#
-# For free-form orchestrated dispatch (no qid), there is no chart
-# and no takeaway; the specialist proceeds normally.
-# ---------------------------------------------------------------------------
-
-def _compute_chart_takeaway(
-    qid: "str | None",
-    merchant_id: str,
-) -> "str | None":
-    """For a known qid, return the chart's authoritative takeaway
-    string (same string the chart caption will display). Returns
-    ``None`` for unknown qids, qids with no chart helper, or chart
-    helpers that returned no data — in all those cases the dispatch
-    path proceeds without injection."""
-    if not qid:
-        return None
-    from src.dashboard import chart_takeaways as CT
-    return CT.compute_takeaway(qid, merchant_id)
-
-
-# ---------------------------------------------------------------------------
 # Inner LLM runner — invoked by both dispatch() and dispatch_orchestrated()
 # fallback paths. Raises on failure; callers translate to error responses.
+#
+# Phase 5.5.2 reverted the chart-takeaway pre-injection layer that
+# Phase 5.1.9 introduced. The injection worked for some qids but
+# failed unpredictably across the 30-qid surface (3 iterations couldn't
+# stabilize convergence above 8/12). The agent now operates without
+# chart context; ``chart_takeaways.py`` stays for UI captions only.
+# See V3_AUDIT.md "Phase 5.5.2 — Reverted chart-takeaway injection"
+# for the rationale and the v4 unified-compute plan.
 # ---------------------------------------------------------------------------
 
 def _run_specialist(
@@ -185,39 +163,6 @@ def _run_specialist(
 
     question = raw_question or _question_text_for(specialist_id, question_id, merchant_id)
     ctx = MerchantContext.for_merchant(merchant_id)
-
-    # Phase 5.1.9: pre-compute the chart's authoritative takeaway and
-    # inject as ground truth into the specialist's question. When the
-    # chart renders below the agent's response, its mechanically-
-    # computed caption is THIS string — so the agent's prose has the
-    # same source of truth the user sees on the chart.
-    #
-    # Phase 5.2: ``compute_takeaway`` may return a pattern-type fallback
-    # (a brief chart-shape descriptor) for qids whose chart can't be
-    # summarized in a single sentence. We detect that via
-    # ``is_pattern_fallback`` and soften the prompt language — the
-    # fallback isn't authoritative numeric truth, just framing context.
-    takeaway = _compute_chart_takeaway(question_id, merchant_id)
-    if takeaway:
-        from src.dashboard import chart_takeaways as CT
-        if CT.is_pattern_fallback(takeaway):
-            question = (
-                f"{question}\n\n"
-                f"**Chart context:**\n{takeaway}"
-            )
-        else:
-            question = (
-                f"{question}\n\n"
-                f"**Authoritative takeaway from the chart that will render "
-                f"below your response:**\n"
-                f'"{takeaway}"\n\n'
-                f"Your prose MUST be consistent with this takeaway in "
-                f"direction and magnitude. If your tool results suggest a "
-                f"different analytical window or answer, RE-QUERY using "
-                f"the same window the takeaway uses (typically first week "
-                f"vs last week in a trajectory, not first-half-mean vs "
-                f"second-half-mean) before responding."
-            )
 
     if specialist_id == "pricing":
         from src.agents.pricing import PricingSpecialist

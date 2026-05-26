@@ -1,36 +1,30 @@
-"""Per-qid takeaway synthesis — directional framing for chart captions
-and specialist injection.
+"""Chart caption helpers for dashboard rendering.
 
-Phase 5.1.9 introduced takeaway injection so the agent and the chart
-caption share a narrative. Phase 5.5 regression revealed a second-order
-problem: when the takeaway pinned a SPECIFIC percentage or dollar
-figure, the agent tried to reproduce that number with its own SQL,
-got a slightly different result (different aggregation window), and
-spun reconciling — sometimes past MAX_TURNS, sometimes leaking the
-reconciliation work into prose, sometimes fabricating evidence
-endpoints that back-derive to the takeaway's magnitude.
+Each takeaway function computes a short directional summary string
+that appears below the chart in the UI (in ``chat.py::_render_*``).
+The captions help users quickly understand what each chart highlights.
 
-Phase 5.5.1 resolves this by rewriting takeaways to be DIRECTIONAL:
-entity + direction + qualitative magnitude. The takeaway names which
-entity matters and which way it's moving, but not the precise
-magnitude. The agent's tool calls produce its own numbers; the
-agent's prose aligns with the takeaway's narrative (entity, direction)
-while citing its own arithmetic in the Evidence bullets. The chart
-itself still displays exact numbers visually on bars/lines, so the
-user sees specifics — they just don't have to match the prose's
-specifics byte-for-byte.
+NOTE: As of Phase 5.5.2, these takeaways are NOT injected into the
+specialist agent's prompt. The agent runs its own SQL and writes
+prose based on its own analysis. The chart caption and the agent's
+prose may differ in specific numbers (because chart helpers and the
+agent's tool layer use different aggregations), but should align
+qualitatively in direction and named entities.
 
-What this is and isn't:
-  * It IS narrative coordination (chart and prose tell the same story).
-  * It is NOT math unification — chart helpers and the agent's tool
-    layer still compute independently. Their numbers may differ by a
-    few percentage points. Both are correct under slightly different
-    aggregations. v4 documented in V3_AUDIT.md will unify the compute
-    layer; v3 ships with the narrative-coordination approach.
+History:
+  * Phase 5.1.9 introduced injection of these strings into the
+    specialist's prompt as ground truth.
+  * Phase 5.1.10 / 5.5.1 iterated on framing (trust the takeaway →
+    directional only) to reduce reconciliation spirals.
+  * Phase 5.5.2 reverted the injection layer after three iterations
+    failed to stabilize convergence above 8/12 in the regression run.
+    The module stays for UI captions; the agent operates without it.
 
-For qids not covered here, ``compute_takeaway`` returns ``None`` (or
-the pattern-type fallback for D7) and the dispatch path proceeds
-accordingly.
+v4 will refactor this module along with the agent's tool layer into
+a single shared ``compute_finding()`` function so chart visuals,
+chart captions, and agent prose all draw from the same compute
+layer. See V3_AUDIT.md "Known architectural debt for v4" for the
+proposal.
 """
 from __future__ import annotations
 

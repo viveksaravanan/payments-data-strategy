@@ -247,7 +247,10 @@ The orchestrator currently routes via Haiku LLM with keyword fallback. Phase 5 a
 - "Category share" / "growing" / "declining" → Demand
 - "Per-store" / "store performance" → Anomaly
 - Trade area questions → Trade (but limited; no peer footprint context)
-- Ambiguous → Pricing (TJX's growth narrative is pricing-positioning)
+- Truly ambiguous (no domain signal at all) → Pricing fallback
+- With store-performance signal → Anomaly (overrides default)
+- With broad demand-shaped framing → Demand (overrides default)
+- Note: LLM router exercises judgment when soft signals exist; segment default fires only when the question has no specialist-pointing signals.
 
 ### Implementation
 

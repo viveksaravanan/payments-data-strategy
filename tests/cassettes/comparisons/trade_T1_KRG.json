@@ -15,22 +15,26 @@
     }
   },
   "phase5_response": {
-    "prose": "(I couldn't converge on a full answer in 10 turns. Showing the best-effort partial — see the SQL below for what I queried.)",
-    "caveats": [],
+    "prose": "**Dilworth dominates your chain, generating 2.7× the average neighborhood output with 8 stores and 17,757 transactions, while single-store NoDa underperforms at 0.33× the average.**\n\n- **Dilworth:** 8 stores, 17,757 txns, 2.7× chain average — your strongest neighborhood cluster\n- **Plaza Midwood:** 5 stores, 11,033 txns, 1.68× chain average — strong secondary performer\n- **SouthPark:** 3 stores, 6,444 txns, 0.98× chain average — at-average performance\n- **NoDa, Matthews, Uptown/Center City:** 0.33–0.66× chain average — underperformers despite store presence\n- **Mooresville & Pineville:** 2 stores each, 0.71–0.72× average — weak per-store productivity despite pairing\n\n**Therefore:** Worth investigating why NoDa's single store underperforms so severely at one-third the chain average, and whether Dilworth's neighborhood density (8 stores competing) may be masking individual store weakness — your highest-velocity neighborhood may not justify current store count.",
+    "caveats": [
+      "Performance indexed to chain average across all stores and neighborhoods.",
+      "Transaction count used as primary performance signal; per-store dollar productivity varies.",
+      "Cross-neighborhood comparisons assume consistent store-opening patterns over the panel window."
+    ],
     "telemetry": {
-      "input_tokens": 114154,
-      "output_tokens": 4335,
-      "cost_usd": 0.13582900000000003,
-      "turns": 10,
-      "converged": false,
-      "wall_time_s": 96.45
+      "input_tokens": 31187,
+      "output_tokens": 839,
+      "cost_usd": 0.035382000000000004,
+      "turns": 4,
+      "converged": true,
+      "wall_time_s": 10.89
     }
   },
   "contract_compliance": {
-    "headline_has_number": true,
-    "evidence_3_to_5_bullets": false,
-    "therefore_section_present": false,
-    "approved_therefore_opener": false,
+    "headline_has_number": false,
+    "evidence_3_to_5_bullets": true,
+    "therefore_section_present": true,
+    "approved_therefore_opener": true,
     "no_forbidden_verbs": true,
     "caveats_fence_parsed": true,
     "no_throat_clearing": true
@@ -39,6 +43,6 @@
   "notes": "",
   "phase_baseline": "4.6",
   "phase_compare": "5.4",
-  "compared_at": "2026-05-25T23:53:41Z",
-  "commit_sha": "fc6bba7"
+  "compared_at": "2026-05-26T00:55:23Z",
+  "commit_sha": "12ea5fb"
 }
