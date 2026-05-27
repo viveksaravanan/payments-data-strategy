@@ -1358,3 +1358,91 @@ without that refactor; the refactor is the proper architectural
 fix and is planned for the next release cycle.
 
 ### Status: Phase 5 closed. v4 picks up the unified-compute refactor.
+
+---
+
+## Phase 7 — Ship v3 to Hugging Face Spaces (2026-05-26)
+
+Phase 6 (the UI fix sprint — chat-input ``st.form(clear_on_submit=True)``,
+"Acting as" header alignment, chevron SVG toggle) was the last polish
+pass on the dashboard. Phase 7 is the deploy.
+
+**Scope:** refresh public-facing docs for v3, archive iteration markdowns,
+ship to the existing HF Space.
+
+**Doc refresh.** Three files updated to drop the v2.5 "Merchant Advisor"
+framing and reflect v3's actual agent shape (orchestrator + 4 specialists):
+
+- ``PLAN.md`` — stale "Phase 1.5 in progress" status replaced with a
+  pointer to this audit doc.
+- ``README.md`` — caveat "One of seven agents" rewritten; second ASCII
+  diagram caption updated; HF Spaces deploy section rewritten to
+  describe the regenerate-at-boot path (see below).
+- ``ARCHITECTURE.md`` — four v2.5 references updated (intro line,
+  insight-layer diagram label, §10.2 mapping table rows,
+  stakeholder-script bullet).
+
+**Archived to ``docs/archive/``:** six v3 iteration markdowns that
+were design inputs, not the public v3 story — V3_PHASE4_AUDIT,
+V3_DATA_QUERIES + Pass1 + Pass2, V3_QUESTIONS, V3_DASHBOARD_DESIGN.
+``V3_VISION.md`` and ``V3_AUDIT.md`` stay at root as the public v3
+narrative. Inline references in ``chart_patterns.md`` and five
+``src/dashboard/`` docstrings were repointed.
+
+**Deploy blocker hit: DB exceeds free-tier LFS limits.**
+
+The v3 Phase 1.5 per-viewer materialized lake brings ``data/payments.db``
+to ~2.9 GB. Both initial push attempts failed:
+
+- ``git push origin main`` — GitHub free LFS rejects files over 2 GB
+  per file (``Size must be less than or equal to 2147483648``).
+- ``git push hfspace main`` — HF Spaces free repo storage is 1 GB
+  total (``Repository storage limit reached (Max: 1 GB)``).
+
+HF Pro upgrade alone didn't lift the Space repo cap (the cap is
+per-Space repo storage, not account-wide). Rather than wrestle the
+quota, switched to **regenerate-at-boot**:
+
+- ``data/payments.db`` no longer tracked in git (``.gitignore``
+  exception removed; ``git rm --cached``).
+- ``git filter-branch --index-filter "git rm --cached --ignore-unmatch
+  data/payments.db" --prune-empty origin/main..HEAD`` rewrote 79
+  local commits to strip the LFS blob references. The 2.9 GB blob
+  is no longer reachable from any pushable commit.
+- ``streamlit_app.py`` rewritten: on cold boot, if the DB is missing,
+  ``subprocess.run([sys.executable, "-m", "src.generate.run_all"])``
+  then ``subprocess.run([sys.executable, "-m", "src.db.seed"])``
+  with a Streamlit spinner UI ("First-boot setup… ~2 minutes").
+  After the seed completes, ``st.rerun()`` re-enters the entry
+  point, which now finds the DB and renders the dashboard.
+
+HF Pro hardware keeps the container warm across visits, so the
+2-minute cold start is paid once per container instance (per build /
+restart), not per visitor.
+
+**Outcome.** Origin pushed clean (``45dd0a9..60498b1``, fast-forward,
+no LFS upload). HF Spaces pushed clean (``4950fc7..60498b1``). HF
+build kicked off automatically; live URL at
+https://huggingface.co/spaces/viveks2862/payments-data-strategy.
+
+**Deferred to v4:**
+
+- **Unified ``compute_finding()`` layer** — carry-over from Phase 5.5.2.
+  Still the right architectural fix for chart-vs-prose number alignment.
+- **HF token hygiene** — the auth token embedded in the local
+  ``hfspace`` git remote URL appeared in a transcript log during this
+  session. Rotate at huggingface.co/settings/tokens; safe to do
+  post-deploy since the live Space is now built and won't need a
+  re-push immediately.
+- **Public LICENSE file** — README still has the "(Add your license
+  here)" placeholder. Pick MIT / Apache 2.0 and commit a ``LICENSE``
+  file at root.
+- **CLAUDE.md still says lake is virtual** — line 50, "The lake is
+  **virtual** — implemented as parameterized query functions in
+  ``src/lake/views.py`` over the tenant tables. There are no physical
+  ``lake_*`` tables in SQLite." Phase 1.5 materialized the lake, so
+  this is stale. Update with v3 docs work, not as a deploy blocker.
+- **Sync GitHub origin's history** — origin was ~80 commits behind
+  before this push; that gap is now closed. No further action.
+
+### Status: Phase 7 closed. v3 shipped to Hugging Face Spaces.

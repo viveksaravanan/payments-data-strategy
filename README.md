@@ -11,6 +11,8 @@ license: mit
 
 # Payments Data Strategy Demo
 
+**Live demo:** https://huggingface.co/spaces/viveks2862/payments-data-strategy
+
 A working demo of the data architecture described in the Core Data Strategy & Solutions document — synthetic cross-merchant transaction data, a privacy-engine that exposes the cross-merchant lake as parameterized views, and an AI agent that answers natural-language questions about both a merchant's own data and privacy-preserved peer aggregates.
 
 ## What it shows
@@ -64,12 +66,15 @@ make demo
 
 ## Running on HuggingFace Spaces
 
-The dashboard is deployed as a HuggingFace Space using the **Docker SDK**. `data/payments.db` (~2.7 GB; tenant tables plus the per-viewer materialized lake added in v3 Phase 1.5) is shipped via Git LFS so cold starts skip generation — the container boots straight into the dashboard. The Space metadata at the top of this README configures the SDK + port; the `Dockerfile` at the repo root builds the image; the entry point is [`streamlit_app.py`](./streamlit_app.py) at the repo root.
+The dashboard is deployed as a HuggingFace Space using the **Docker SDK**. The Space metadata at the top of this README configures the SDK + port; the `Dockerfile` at the repo root builds the image; the entry point is [`streamlit_app.py`](./streamlit_app.py) at the repo root.
 
-- **Entry point:** `streamlit_app.py` — sets the import path, promotes `ANTHROPIC_API_KEY` from `st.secrets` into the environment, verifies the LFS-pulled DB exists, and runs `src/dashboard/app.py` via `runpy.run_path` (Streamlit reruns the entry script on every interaction; `runpy` bypasses Python's import cache so the dashboard re-executes cleanly).
-- **Required secret:** `ANTHROPIC_API_KEY` (configure under *Space settings → Secrets*).
-- **Cold-start time:** instant once the image is warm; LFS-shipped DB means no per-launch generation.
-- **Rebuild after a push:** HF Spaces rebuilds the Docker image with a warm layer cache, typically ~3–5 minutes.
+`data/payments.db` is **not** tracked in git — the v3 Phase 1.5 per-viewer materialized lake brings it to ~2.7 GB, beyond both GitHub free LFS (2 GB per file) and HF Spaces free repo storage (1 GB total). The entry point detects a missing DB on cold boot and regenerates it in-process from the committed catalogs by running `src.generate.run_all` then `src.db.seed` — about a 2-minute one-time setup per container. HF Pro hardware keeps the container warm so visitors after the first don't see the cold start.
+
+- **Entry point:** `streamlit_app.py` — sets the import path, promotes `ANTHROPIC_API_KEY` from `st.secrets` into the environment, regenerates the DB if it's missing, and runs `src/dashboard/app.py` via `runpy.run_path` (Streamlit reruns the entry script on every interaction; `runpy` bypasses Python's import cache so the dashboard re-executes cleanly).
+- **Required secret:** `ANTHROPIC_API_KEY` (configure under *Space settings → Variables and secrets*).
+- **Required tier:** HF Pro (or Spaces hardware with persistent compute). On free-tier Spaces the container restarts frequently and every visitor would pay the 2-minute cold start.
+- **First visitor cold start:** ~2 min (data generation + SQLite load). Subsequent visits served instantly from the same container.
+- **Rebuild after a push:** HF Spaces rebuilds the Docker image with a warm layer cache, typically ~3–5 minutes, then the first visitor triggers the seed.
 
 Generation still reads only from committed JSON catalogs under `data/catalogs/`; the local `make seed` path remains deterministic and reproducible from `RANDOM_SEED` for anyone who needs to rebuild the DB.
 
