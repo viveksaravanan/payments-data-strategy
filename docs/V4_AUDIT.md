@@ -1158,3 +1158,204 @@ These need user input before V4_DESIGN.md can lock.
    would replace. If the methodology report's html generation uses
    `D.<helper>` directly, Phase 4's helper restructuring will
    touch it. Worth confirming before Phase 4 lands.
+
+---
+
+## 9. Concrete inventory
+
+Three tables grounding the v4 design discussion in the actual qid /
+card / specialist surface as of `b1dc3d7`.
+
+### 9.1 The 30 qids and their patterns
+
+Source: `src/dashboard/questions.py::QUESTIONS` (suggested-question
+text + pattern), `src/dashboard/chat.py::QUESTION_RENDERERS` (the
+qid → render-function dispatch table; 30 entries),
+`src/dashboard/chart_takeaways.py::_REGISTRY` (29 full takeaway
+functions) + `_PATTERN_FALLBACKS` (D7 only).
+
+The "Specialist owner" column reflects which specialist's
+suggested-question slot the qid lives under in `questions.py`. The
+"Merchants" column reflects which merchants surface this qid as a
+suggested question — grocer-specific qids (P1/A1/etc.) are
+explicitly only in the GROCER block; T1/T2/T4 are reused verbatim
+across grocer + QSR + retail.
+
+| qid | Question text | Pattern | Specialist | Merchants |
+|---|---|---|---|---|
+| P1 | How do my prices compare to peer grocers across categories? | heatmap (cross_merchant_diverging) | pricing | KRG / ACM / WDX |
+| P2 | How does my pricing position compare across my staple vs non-food categories? | bars (two_panel) | pricing | KRG / ACM / WDX |
+| P3 | Which categories show the biggest pricing-leverage opportunity? | scatter | pricing | KRG / ACM / WDX |
+| A1 | Why is University City declining? Are peers seeing the same drop? | time series (vs peers) | anomaly | KRG / ACM / WDX |
+| A2 | Which of my stores show abnormal traffic recently? | table (with peer column) | anomaly | KRG / ACM / WDX |
+| A3 | Which SKUs or categories are spiking or dropping unusually? | table (with peer column) | anomaly | KRG / ACM / WDX |
+| D3 | What does my basket-mix look like compared to peers? Where am I over or under indexed? | bars (diverging) | demand | KRG / ACM / WDX |
+| D4 | Which categories over- or under-perform vs peers given my mix? | scatter (parity line) | demand | KRG / ACM / WDX |
+| D7 | What's driving my revenue gap vs peers this period? | waterfall × 2 (cross_merchant) | demand | KRG / ACM / WDX |
+| T1 | Which of my neighborhoods are over- or under-performing? | map (diverging) | trade | KRG / ACM / WDX / TBL / TJX |
+| T2 | Where do my customers live relative to my stores? | map (sequential) | trade | KRG / ACM / WDX / TBL / TJX |
+| T4 | Which neighborhoods show the biggest expansion opportunity? | map (score) | trade | KRG / ACM / WDX / TBL / TJX |
+| T-P1 | How is my average ticket trending across dayparts? | time series (own multi) | pricing | TBL |
+| T-P2 | Which menu categories have shifted in price over the last 90 days? | time series (own multi) | pricing | TBL |
+| T-P3 | What's my price distribution across stores? Are any outliers? | bars (own) | pricing | TBL |
+| T-A1 | Which of my stores has unusual traffic this week? | table (own) | anomaly | TBL |
+| T-A2 | Are any menu items spiking or dropping unusually? | table (own) | anomaly | TBL |
+| T-A3 | Which dayparts are running below my own baseline? | heatmap (own_only_diverging) | anomaly | TBL |
+| T-D1 | What does my menu mix look like? Where am I most concentrated? | bars (own) | demand | TBL |
+| T-D2 | Which categories are gaining or losing share over time? | time series (own multi) | demand | TBL |
+| T-D3 | What's driving my revenue change this week — traffic, ticket, or mix? | waterfall (own_vs_own_baseline) | demand | TBL |
+| R-P1 | How is my average ticket trending across categories? | time series (own multi) | pricing | TJX |
+| R-P2 | Which categories have the widest price spread within them? | table (own) | pricing | TJX |
+| R-P3 | What's my high-ticket vs low-ticket transaction split? | bars (grouped) | pricing | TJX |
+| R-A1 | Which of my stores has unusual traffic this week? | table (own) | anomaly | TJX |
+| R-A2 | Are any categories spiking or dropping unusually? | table (own; no peer column) | anomaly | TJX |
+| R-A3 | Which days of the week are running below my baseline? | heatmap (own_only_diverging) | anomaly | TJX |
+| R-D1 | What does my category mix look like? | bars (own) | demand | TJX |
+| R-D2 | Which categories are gaining or losing share over time? | time series (own multi) | demand | TJX |
+| R-D3 | What's driving my revenue change this week? | waterfall (own_vs_own_baseline) | demand | TJX |
+
+**Notes on the qid surface:**
+
+- 30 unique qids, 36 suggested-question slots (T1/T2/T4 appear
+  three times each in `questions.py::QUESTIONS` — once per segment
+  block — but resolve to the same render function and same Finding).
+- **D7 is the only qid without a full takeaway function** in
+  `chart_takeaways.py::_REGISTRY`. It uses `_PATTERN_FALLBACKS` at
+  `chart_takeaways.py:598` because it renders two waterfalls (one
+  per peer) and "no single sentence captures both" per the comment.
+  v4's `compute_finding("D7", ...)` should return a list of
+  Findings or a Finding with a `sub_findings` field — not a single
+  flat Finding. **This is the multi-headline shape constraint
+  flagged in §2.5 Risk 1.**
+- **T-A1 and R-A1 share the helper `store_anomalies_own_only`.**
+  Same compute, different qid keys, same takeaway function
+  (`_takeaway_store_anomalies_own_only`). v4 has a choice: collapse
+  to one shared qid with viewer-dependent labels, or keep two qid
+  keys both pointing at the same Finding compute. The latter is
+  simpler.
+- **T-D1 / R-D1 and T-D2 / R-D2 and T-D3 / R-D3** are similar
+  shared-helper triples. Same pattern.
+- **R-P1 and T-P2 share `category_unit_price_trends`** but with
+  different question framings (R-P1 is "ticket", T-P2 is "unit
+  price"). Different prompts, same data.
+- **Peer column suppression for RETAIL.** R-A2 uses
+  `category_anomalies` (same as A3) but the renderer omits the
+  peer column because TJX has no same-segment peers. The compute
+  is identical; the chart_pattern config differs. v4's Finding
+  shape should carry a "peer column available" flag the renderer
+  reads.
+
+### 9.2 The 15 dashboard cards and their ask_about_this dicts
+
+Source: grep for `ask_*\s*=\s*\{` patterns in
+`src/dashboard/views.py`. 15 distinct cards (Card 4.2 SKU
+performance carries two affordance variants via its top/bottom
+toggle but is one card; counted as one row below with both
+variants in the prefill column). Chart-pattern renderers in
+`chart_patterns.py` thread an `ask_about_this` kwarg through
+`_render_card_header` but **no `ask_about_this` dicts are defined
+in chart_patterns.py itself** — they're all assembled in views.py.
+
+| Card identifier | Section | Card content | `prefill` text | `specialist` | Maps to qid? |
+|---|---|---|---|---|---|
+| `kpi_revenue` (views.py:674) | KPI strip | Revenue this week + Δ vs prior 4w + sparkline | "What's driving the change in my revenue this week?" | anomaly | no |
+| `kpi_txns` (views.py:689) | KPI strip | Transactions this week + Δ + sparkline | "What's driving the change in my transaction count this week?" | anomaly | no |
+| `kpi_basket` (views.py:704) | KPI strip | Avg basket + Δ + sparkline | "What's changing about my average ticket?" | demand | no |
+| `kpi_customers` (views.py:719) | KPI strip | Unique customers + Δ + sparkline | "Is my customer count growing or declining? Why?" | demand | no |
+| `kpi_anomaly` (views.py:754) | KPI strip | Anomaly count this week + concerning/notable hint | "What's flagged this week?" | anomaly | no |
+| Card 2.1 `rev_traj` (views.py:562) | Performance | Revenue trajectory line chart (weekly) | "What's behind the revenue trajectory I'm seeing?" | anomaly | no (close to T-D3/R-D3 shape but not identical) |
+| Card 2.2 `txn_traj` (views.py:588) | Performance | Transaction trajectory + basket-driver takeaway | "What's driving the change in transaction count?" | anomaly | no |
+| Card 2.3 `hour_dow` (views.py:616) | Performance | Hour × DOW heatmap (sequential) | "What does my hour-by-day pattern tell me about my customer base?" | trade | no |
+| Card 3.1 `geo_map` (views.py:424) | Geography | Neighborhood performance map (diverging) | "Which of my neighborhoods are over- or under-performing, and is the issue mine or the market's?" | trade | **yes — T1** |
+| Card 3.2 `store_perf` (views.py:487) | Geography | Store performance distribution table (worst-first) | "Which stores are showing unusual traffic this week?" | anomaly | **partial — A2 for grocers, T-A1/R-A1 for TBL/TJX** |
+| Card 4.1 `cat_mix` (views.py:259) | Catalog | Category mix bars (top 8 + Other) | per-segment: grocers ask about over/under-index vs peers; TBL "menu mix"; TJX "category mix" | demand | **yes — D3 for grocers; T-D1 / R-D1 for TBL/TJX** |
+| Card 4.2 `sku_perf` (views.py:323) | Catalog | SKU performance table with top/bottom toggle | top view: "Tell me more about my top-performing SKUs..."; bottom view (per-segment): "Which SKUs or categories are spiking or dropping unusually?" | demand (top) / anomaly (bottom) | **partial — A3 / T-A2 / R-A2 on the bottom view** |
+| Card 5.1 `new_ret` (views.py:97) | Customers | New vs returning customers + Δ | "What's the composition of my customer base this week — are new customers growing or my base growing?" | demand | no |
+| Card 5.2 `freq` (views.py:136) | Customers | Transactions per customer (5 buckets) + cohort revenue share | "What does my customer frequency distribution tell me about loyalty?" | demand | no |
+| Card 5.3 `home_geo` (views.py:171) | Customers | Customer home density map (sequential) | "Where do my customers live relative to my stores?" | trade | **yes — T2** |
+
+**Notes on the card surface:**
+
+- **8 of 15 cards have no qid mapping at all.** All 5 KPI strip
+  cards, the 3 Performance trajectory cards (cards 2.1 / 2.2 / 2.3),
+  and the 3 Customers cards 5.1 / 5.2 are "dashboard-only" — they
+  carry no qid because no suggested question targets them. v4's
+  unified-compute layer needs to either invent synthetic qids for
+  these (e.g. `KPI_REV`, `PERF_REV_TRAJ`, `CUST_FREQ`) or accept
+  that `compute_finding(qid)` only covers the 7 cards that do map
+  to qids, with the other 8 still going through the legacy free-form
+  path.
+- **The card 3.1 / T1 mapping is the cleanest 1-to-1.** Both pull
+  from `neighborhood_performance`, same window, same diverging
+  encoding. If v4 wants a first test of "card_context with qid →
+  identical chart and prose," Card 3.1 is the candidate.
+- **Card 4.1 maps to different qids per merchant segment** (D3 for
+  grocers, T-D1 / R-D1 for TBL/TJX). The card's per-segment prefill
+  dict (`prefill_by_segment` at views.py:251) already encodes this.
+  CardContext.qid would need similar segment resolution.
+- **Card 4.2 maps to different qids per toggle state.** Top view →
+  no qid (just a top-N revenue ranking); bottom view → A3 / T-A2 /
+  R-A2 (the anomaly table qids). The toggle state is in
+  `state.sku_view_by_merchant`. CardContext.qid needs to read this.
+- **Card 3.2 and 4.2 are sort-direction inversions of the chat-side
+  anomaly tables.** `chart_patterns.py:397–412` explicitly
+  documents this: dashboard cards sort worst-first
+  (action-oriented); chat tables sort by absolute magnitude
+  (investigation-oriented). v4 should preserve this — the Finding
+  carries the raw rows; the renderer picks the sort.
+- **Specialist routing per card.** Out of 15: 5 anomaly, 6 demand
+  (Card 4.2 counts as demand on top view), 4 trade, 0 pricing.
+  **No card on the dashboard routes to the Pricing specialist.**
+  Pricing is reachable only via the chat panel's specialist
+  selector or the suggested-question pills. Worth noting — pricing
+  is structurally underrepresented in the affordance surface.
+
+### 9.3 Specialist-to-qid ownership table
+
+Sources: `src/dashboard/questions.py::QUESTIONS` (which specialist
+slot each qid lives under), `src/agents/prompts/*.md` (worked
+example sections), `src/agents/orchestrator.py::_KEYWORD_RULES`
+(keyword routing in the fallback path).
+
+| Specialist | qids in scope | Worked example qid in prompt | Keywords that route here |
+|---|---|---|---|
+| pricing | P1, P2, P3, T-P1, T-P2, T-P3, R-P1, R-P2, R-P3 (9 qids) | P1-like ("How am I priced on dairy vs peers?") at pricing.md:43 | "price", "pricing", "expensive", "cheap", "above market", "below market", "compare", "vs peer", "vs peers", "share trends", "category share" |
+| anomaly | A1, A2, A3, T-A1, T-A2, T-A3, R-A1, R-A2, R-A3 (9 qids) | A2-like ("Which of my stores are running below baseline this week?") at anomaly.md:181 | "anomaly", "unusual", "weird", "spike", "decline", "drop", "fell", "outlier", "why is", "why are", "what's wrong" |
+| demand | D3, D4, D7, T-D1, T-D2, T-D3, R-D1, R-D2, R-D3 (9 qids) | D3-like ("Which categories have grown the most in revenue share over the last 90 days?") at demand.md:202 | "slow", "slowing", "slow-mover", "slow mover", "forecast", "campaign", "promo", "demand", "uplift", "lapsed", "former", "ice cream", "clear inventory" |
+| trade | T1, T2, T4 (3 qids, reused across all 3 segments) | T4-like ("Where should I consider opening next?") at trade.md:182 | "location", "neighborhood", "area", "peers cluster", "expansion", "open a new store", "open new", "where should", "trade area", "underserved", "velocity", "catchment", "store performance" |
+
+**Notes on specialist-to-qid ownership:**
+
+- **9 / 9 / 9 / 3 split.** Pricing, anomaly, and demand each own 9
+  qids (3 per segment). Trade owns 3 qids that are reused verbatim
+  across all 3 segments. This asymmetry reflects that trade-area
+  geometry is segment-agnostic by design (`questions.py:99`).
+- **Worked-example coverage is one qid per specialist.** That's
+  the v4 few-shot expansion target (5 per specialist) per §4.4.
+- **Routing keyword collisions worth flagging:**
+  - `"share trends"` and `"category share"` route to **pricing**,
+    but conceptually those are demand questions (the demand
+    specialist owns D3/D4/T-D1/T-D2/R-D1/R-D2, all share questions).
+    A grocer typing "what's happening with my category share?"
+    routes to pricing today. Likely incorrect; v4 routing prompt
+    should rethink.
+  - `"store performance"` routes to **trade**, but several
+    dashboard cards with store-performance content
+    (Card 3.2, the SKU performance card 4.2 bottom view) route to
+    **anomaly**. The keyword fallback and the card affordance
+    disagree on what the user means.
+  - `"former"` (in demand's keyword list) is the only entry that
+    seems aimed at lapsed-buyer questions; very narrow and
+    English-specific. Worth keeping but flagging as fragile.
+  - `"velocity"` is in trade's list (trade.md mentions
+    "stores ranked by velocity") but velocity also fits demand
+    (slow-mover analysis). Ambiguous.
+- **The orchestrator prompt itself overrides keyword fallback when
+  the LLM router runs (`orchestrator.py:238`).** Keywords only
+  fire when the router fails or returns malformed JSON. The
+  collisions above are most visible in fallback / no-API scenarios.
+- **Segment-conditional ambiguous default** (`orchestrator.py:51`):
+  grocer → anomaly, qsr → demand, retail → pricing, unknown →
+  demand. This is the safety net when both the LLM router and
+  keyword fallback can't classify. Confirmed correct per
+  V3_AUDIT.md Phase 5.4 notes.
