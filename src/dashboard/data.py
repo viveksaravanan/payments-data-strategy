@@ -217,7 +217,7 @@ def _unpack_filters_key(key: tuple) -> dict:
 
 # Phase 4.4d removed payment-intelligence helpers (``payment_method_mix``,
 # ``card_network_mix``, ``entry_mode_trend``, ``wallet_adoption``). The
-# payment-intelligence section is NOT IN V3 per V3_PHASE4_AUDIT.md.
+# payment-intelligence section is NOT IN V3 per docs/archive/V3_PHASE4_AUDIT.md.
 
 
 # ---------------------------------------------------------------------------

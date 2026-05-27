@@ -683,7 +683,7 @@ Parameters changed:
   1.07 → 1.10, WDX 0.93 → 0.90. KRG remains 1.00/1.00 baseline.
   Symmetric multipliers around KRG so peer-average centers at KRG.
 
-Verification (V3_DATA_QUERIES_PASS1.md):
+Verification (docs/archive/V3_DATA_QUERIES_PASS1.md):
 - Section 3.3 customer-overlap distribution shifted from
   1.7/11.7/36.6/38.5/11.5 (orig) to 3.7/17.0/39.3/31.4/8.6 (P1).
   20.7% at 1-2 merchants vs 30% target; 31.4% at 4 merchants vs
@@ -734,7 +734,7 @@ merchant_id through metro.py and transactions.py):
   capped at original triangular ceiling to prevent unrealistic
   48-item baskets).
 
-Verification (V3_DATA_QUERIES_PASS2.md):
+Verification (docs/archive/V3_DATA_QUERIES_PASS2.md):
 - Section 4.5 trade area distribution: ACM 16/25 = 64% in
   affluent neighborhoods (above the 35-40% target). WDX 5/20 =
   25% in working-class neighborhoods (below the 35-40% target).

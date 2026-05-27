@@ -545,7 +545,7 @@ def render_performance_section(merchant_id: str, filters: dict) -> None:
     """Phase 4.4 Section 2 — Performance over time. Three cards in a
     row: Revenue trajectory, Transaction trajectory, Hour × DOW
     heatmap. Each carries an "Ask about this" affordance routing per
-    V3_DASHBOARD_DESIGN.md Section 5.5.
+    docs/archive/V3_DASHBOARD_DESIGN.md Section 5.5.
     """
     from . import chart_patterns as CP
 
@@ -645,7 +645,7 @@ def render_kpi_strip(merchant_id: str, filters: dict) -> None:
     """Phase 4.4 KPI strip: 5 Pattern 8 callouts in a row — Revenue,
     Transactions, Avg basket, Unique customers, Anomaly count. Each
     card carries an "Ask about this" affordance routing per
-    V3_DASHBOARD_DESIGN.md Section 5.5.
+    docs/archive/V3_DASHBOARD_DESIGN.md Section 5.5.
     """
     from . import chart_patterns as CP
 

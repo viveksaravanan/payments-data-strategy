@@ -56,7 +56,7 @@ DIVERGING_LOW   = "#C44536"   # red — own below peer / under-indexed
 DIVERGING_MID   = "#FFFFFF"   # white — on baseline
 DIVERGING_HIGH  = "#0F4C81"   # blue — own above peer / over-indexed
 
-# Sequential palette — V3_DASHBOARD_DESIGN.md Section 6.1 multi-stop
+# Sequential palette — docs/archive/V3_DASHBOARD_DESIGN.md Section 6.1 multi-stop
 # brand-family gradient. Used by Pattern 6 maps and Pattern 3
 # own-only-sequential mode. Five stops give finer resolution than the
 # previous two-stop ramp.

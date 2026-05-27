@@ -1,7 +1,7 @@
 """Question registry for the v3 dashboard's chat panel.
 
 Maps (merchant_segment, specialist) → list of 3 suggested questions.
-Each question has an ID matching V3_QUESTIONS.md, the question text
+Each question has an ID matching docs/archive/V3_QUESTIONS.md, the question text
 shown to the merchant, and the chart pattern the agent's response
 should render against (see chart_patterns.md).
 """

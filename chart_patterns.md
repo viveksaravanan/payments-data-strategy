@@ -1,10 +1,10 @@
 # Chart patterns
 
 The 9 chart patterns the v3 dashboard and agents follow. This file is
-the standalone reference duplicated from `V3_QUESTIONS.md` Section 4 —
+the standalone reference duplicated from `docs/archive/V3_QUESTIONS.md` Section 4 —
 Phase 4 implementation (chart helpers) and Phase 5 implementation
 (agent prompts) reference this file directly rather than paging
-through `V3_QUESTIONS.md`.
+through `docs/archive/V3_QUESTIONS.md`.
 
 **Purpose.** The 9 patterns are the contract between the dashboard
 renderer and the agents:
@@ -18,10 +18,10 @@ renderer and the agents:
 - Agents never invent a chart type outside the 9. If no pattern
   fits, the agent answers text-only.
 
-`V3_QUESTIONS.md` has the question-side detail — the 12 suggested
+`docs/archive/V3_QUESTIONS.md` has the question-side detail — the 12 suggested
 questions, the cuts, the rubric assessments. This file has the
 visualization-side detail — the patterns and their encoding rules.
-If the two files drift, `V3_QUESTIONS.md` is the source of truth.
+If the two files drift, `docs/archive/V3_QUESTIONS.md` is the source of truth.
 
 ---
 
@@ -346,4 +346,4 @@ metrics directly and don't need the filter.
 
 For the questions that anchor on each pattern — what they ask, the
 SQL shape behind them, the therefore-test, the rubric assessment —
-see `V3_QUESTIONS.md` Section 3.
+see `docs/archive/V3_QUESTIONS.md` Section 3.

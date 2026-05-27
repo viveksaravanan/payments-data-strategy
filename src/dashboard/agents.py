@@ -35,7 +35,7 @@ AGENT_LABELS = {
     "trade":   "Trade Area Intelligence Agent",
 }
 
-# Generic descriptions per V3_DASHBOARD_DESIGN.md Section 4 — written
+# Generic descriptions per docs/archive/V3_DASHBOARD_DESIGN.md Section 4 — written
 # to be true for any viewer (grocer, QSR, retail).
 AGENT_DESCRIPTIONS = {
     "pricing": "Benchmarks your pricing across categories and SKUs, surfaces where you're aligned or out of position.",
@@ -199,7 +199,7 @@ def dispatch(
     """Suggested-question entry point. Cached per session.
 
     On LLM unavailability or failure, returns an honest error
-    response. No mock fallback (per V3_DASHBOARD_DESIGN.md §7.3).
+    response. No mock fallback (per docs/archive/V3_DASHBOARD_DESIGN.md §7.3).
     """
     key: _CacheKey = (agent_id, question_id, merchant_id)
     cached = _cache_get(key)
