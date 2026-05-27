@@ -1,5 +1,14 @@
-"""HF Spaces entry point. Wraps src/dashboard/app.py."""
+"""HF Spaces entry point. Wraps src/dashboard/app.py.
+
+If data/payments.db is missing (cold container boot), regenerate it
+from the committed catalogs by running the two seed modules in-process.
+The DB is not tracked in git — it exceeds the HF Spaces free-tier
+1 GB repo cap once the v3 per-viewer materialized lake is included.
+HF Pro keeps the container warm, so this one-time ~2-minute setup
+runs per container instance, not per visitor.
+"""
 import os
+import subprocess
 import sys
 import runpy
 from pathlib import Path
@@ -19,14 +28,41 @@ try:
 except Exception:
     pass
 
-# Verify DB exists (LFS-tracked, should always be present in HF Spaces)
 DB_PATH = REPO_ROOT / "data" / "payments.db"
+
 if not DB_PATH.exists():
-    st.error(
-        f"Database not found at {DB_PATH}. "
-        "Check that Git LFS pulled the file correctly during Space build."
-    )
-    st.stop()
+    setup_slot = st.empty()
+    with setup_slot.container():
+        st.info(
+            "First-boot setup: generating the synthetic panel and "
+            "building the SQLite database. Takes ~2 minutes and "
+            "only runs once per container."
+        )
+        log_slot = st.empty()
+        with st.spinner("Step 1/2 — generating synthetic data…"):
+            result = subprocess.run(
+                [sys.executable, "-m", "src.generate.run_all"],
+                cwd=str(REPO_ROOT),
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                log_slot.code(result.stdout + result.stderr)
+                st.error("Data generation failed.")
+                st.stop()
+        with st.spinner("Step 2/2 — loading SQLite database…"):
+            result = subprocess.run(
+                [sys.executable, "-m", "src.db.seed"],
+                cwd=str(REPO_ROOT),
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                log_slot.code(result.stdout + result.stderr)
+                st.error("Database load failed.")
+                st.stop()
+    setup_slot.empty()
+    st.rerun()
 
 # Run the dashboard module — re-executes on every Streamlit rerun
 runpy.run_path(
