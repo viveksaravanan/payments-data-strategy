@@ -4,13 +4,20 @@ version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
     "anthropic>=0.40",
+    # duckdb: in-process OLAP engine; read/query layer for v4 (D3).
+    "duckdb>=1.0,<2.0",
     "faker>=30",
     "folium>=0.16",
     "matplotlib>=3.8,<4.0",
     "numpy>=2",
     "pandas>=2",
     "plotly>=5",
+    # pyarrow: Parquet IO. Pinned to a single minor version for
+    # deterministic Parquet writes (Wave 1 T18 — bytes equal across
+    # runs). Bump deliberately, not opportunistically.
+    "pyarrow==17.0.0",
     "python-dotenv>=1",
+    "pyyaml>=6",
     "streamlit>=1.39",
     "streamlit-folium>=0.20",
 ]
