@@ -173,16 +173,27 @@ _SEGMENT_ARCHETYPES = {
 # unambiguously detectable; weaker pairs ride the mission-driven
 # co-occurrence.
 
+# Boost factors tuned to keep P(B|A) realistic (~0.45-0.55) rather
+# than to hit a target lift. At the 3.5× boost first set, PASTA→SAUCE
+# and MILK→CEREAL landed at conditional ~0.43 (lift ~3.2x and ~2.9x)
+# — defensible but in the "weak, mushy" zone for the demo cross-sell
+# story. Bumped to 5.0× and 4.0× respectively so the conditional
+# lands in the realistic mid-50s without crossing into "60%+ of
+# pasta baskets contain sauce" territory (which reads as planted).
+#
+# Other pairs untouched — DIAPERS / CHIPS / BREAD / FORMULA each
+# already land in vivid+realistic territory because their items are
+# rarer (boost compounds better with low base rate).
 _AFFINITY_PAIRS: list[tuple[str, str, float]] = [
-    ("PASTA",   "SAUCE",   3.5),
-    ("SAUCE",   "PASTA",   3.5),
+    ("PASTA",   "SAUCE",   5.0),
+    ("SAUCE",   "PASTA",   5.0),
     ("CHIPS",   "SALSA",   3.0),
     ("SALSA",   "CHIPS",   3.0),
     ("DIAPERS", "WIPES",   3.0),
     ("WIPES",   "DIAPERS", 3.0),
     ("DIAPERS", "FORMULA", 2.2),
-    ("MILK",    "CEREAL",  2.5),
-    ("CEREAL",  "MILK",    2.5),
+    ("MILK",    "CEREAL",  4.0),
+    ("CEREAL",  "MILK",    4.0),
     ("BREAD",   "BUTTER",  2.0),
 ]
 
