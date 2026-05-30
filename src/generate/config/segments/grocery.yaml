@@ -1,0 +1,17 @@
+# Grocery segment archetype (DECISIONS D11-D20 grocery references).
+# Stage 3 ships the structural minimum required for D12 invariants
+# and for downstream sub-stages to find their config root.
+# Stage 4 sub-stages (4.1-4.8) extend this file with their specific
+# knobs — intensity tiers (D14.3), missions (D17.1), daypart (D15.4),
+# affinity matrix (D17.2), category price-sensitivity (D19.2), promo
+# type menu (D20.1).
+
+name: grocery
+
+# D13.4: gravity model distance decay. Grocery shoppers stay local.
+distance_decay:
+  beta: 2.0
+
+# D12 / D19.5: fixed catalog (versus ephemeral / rotating).
+catalog:
+  model: fixed

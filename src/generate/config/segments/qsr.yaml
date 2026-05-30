@@ -1,0 +1,11 @@
+# QSR (quick-service restaurant) segment archetype.
+# Stage 3 structural minimum; Stage 4 sub-stages extend.
+
+name: qsr
+
+# D13.4: very local / impulse / on-commute.
+distance_decay:
+  beta: 2.2
+
+catalog:
+  model: fixed

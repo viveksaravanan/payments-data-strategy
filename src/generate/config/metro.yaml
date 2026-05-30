@@ -1,0 +1,96 @@
+# Wave 1 metro config — the 8 zones per DECISIONS D13.1.
+# Fictional metro modeled on Charlotte (per D2 disclaimer);
+# names retained, geography is illustrative.
+#
+# Each profile field feeds a specific later layer:
+#   affluence       → basket size + premium-SKU propensity + payment mix (L5/L6)
+#   household_skew  → basket size (L5)
+#   age_skew        → QSR late-night + mobile-wallet adoption (L4/L6)
+#   density         → within-zone travel distance (L4)
+#   residential_weight → home-zone assignment for ~100k cards (L3)
+#
+# Centroids are approximate Charlotte-area lat/long (used as
+# store-anchor points per D13.4 ± jitter).
+#
+# D12 invariant: residential_weight values sum to 1.00.
+
+zones:
+  - id: center_city
+    name: "Center City"
+    archetype: "dense urban core"
+    affluence: 1.15
+    residential_weight: 0.08
+    density: high
+    household_skew: "small (1-2)"
+    age_skew: "young professional"
+    centroid: { lat: 35.2271, long: -80.8431 }
+
+  - id: dilworth
+    name: "Dilworth"
+    archetype: "established affluent"
+    affluence: 1.45
+    residential_weight: 0.12
+    density: medium
+    household_skew: "family (3-4)"
+    age_skew: "35-55"
+    centroid: { lat: 35.2046, long: -80.8553 }
+
+  - id: ballantyne
+    name: "Ballantyne"
+    archetype: "newer affluent exurb"
+    affluence: 1.40
+    residential_weight: 0.14
+    density: low
+    household_skew: "large family (4+)"
+    age_skew: "30-50"
+    centroid: { lat: 35.0531, long: -80.8493 }
+
+  - id: noda
+    name: "NoDa"
+    archetype: "trendy / gentrifying"
+    affluence: 1.10
+    residential_weight: 0.10
+    density: med-high
+    household_skew: "small"
+    age_skew: "young (25-35)"
+    centroid: { lat: 35.2479, long: -80.8095 }
+
+  - id: university_city
+    name: "University City"
+    archetype: "university district"
+    affluence: 0.80
+    residential_weight: 0.13
+    density: medium
+    household_skew: "students + some family"
+    age_skew: "18-30"
+    centroid: { lat: 35.3074, long: -80.7333 }
+
+  - id: eastway
+    name: "Eastway"
+    archetype: "working-class value corridor"
+    affluence: 0.75
+    residential_weight: 0.16
+    density: medium
+    household_skew: "larger households"
+    age_skew: "mixed"
+    centroid: { lat: 35.2301, long: -80.7676 }
+
+  - id: matthews
+    name: "Matthews"
+    archetype: "mainstream middle suburb"
+    affluence: 1.00
+    residential_weight: 0.19
+    density: low-med
+    household_skew: "family"
+    age_skew: "30-55"
+    centroid: { lat: 35.1168, long: -80.7237 }
+
+  - id: cabarrus_edge
+    name: "Cabarrus Edge"
+    archetype: "rural / exurban fringe"
+    affluence: 0.90
+    residential_weight: 0.08
+    density: low
+    household_skew: "large"
+    age_skew: "35-60"
+    centroid: { lat: 35.4087, long: -80.5795 }

@@ -1,0 +1,15 @@
+# Winn-Dixie — value grocery. Skews value corridor + university +
+# exurban per D13.2; never enters Dilworth.
+
+name: "Winn-Dixie"
+banner_code: WDX
+segment: grocery
+positioning_tier: value
+
+store_count: 5
+
+zone_placement_bias:
+  university_city: 1
+  eastway: 2
+  matthews: 1
+  cabarrus_edge: 1

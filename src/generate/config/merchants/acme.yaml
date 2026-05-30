@@ -1,0 +1,16 @@
+# Acme — premium grocery. Skews affluent/trendy; never enters the
+# value corridor or exurban fringe per D13.2.
+
+name: "Acme"
+banner_code: ACM
+segment: grocery
+positioning_tier: premium
+
+store_count: 5
+
+zone_placement_bias:
+  center_city: 1
+  dilworth: 1
+  ballantyne: 1
+  noda: 1
+  matthews: 1

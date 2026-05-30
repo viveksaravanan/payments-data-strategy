@@ -1,0 +1,18 @@
+# Taco Bell — QSR. Follows commercial corridors and the university
+# (late-night daypart, D15.4) per D13.2.
+
+name: "Taco Bell"
+banner_code: TBL
+segment: qsr
+positioning_tier: mainstream    # value menu lives in pricing config
+
+store_count: 9
+
+zone_placement_bias:
+  center_city: 1
+  ballantyne: 1
+  noda: 1
+  university_city: 2
+  eastway: 1
+  matthews: 2
+  cabarrus_edge: 1

@@ -1,0 +1,14 @@
+# Off-price retail segment archetype.
+# Stage 3 structural minimum; Stage 4 sub-stages extend.
+
+name: off_price
+
+# D13.4: shoppers willing to drive to a destination — gentlest decay.
+distance_decay:
+  beta: 1.3
+
+# D19.5 resolves the v3 "rotating assortment" question — keep a fixed
+# catalog for v4 (off-price modeled MSRP-anchor × deep discount, no
+# rotation).
+catalog:
+  model: fixed
