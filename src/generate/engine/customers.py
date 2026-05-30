@@ -67,9 +67,14 @@ _WALLET_ENROLL_RATE = 0.45
 # suburb), credit share is set just above 50% so the population-
 # blended credit/debit hits roughly the Fed 2025 ~35%/30% mix.
 # Affluent zones (1.40+) skew credit-heavy; value zones (0.75)
-# skew debit-heavy. Logistic on (affluence - 1.0), slope 1.6.
+# skew debit-heavy. Slope tuned at Stage 4.6 from 1.6 → 2.5 so the
+# emergent per-banner debit lean (D7.5: WDX > ACM) is vivid enough
+# to read in the data — at slope 1.6 the gap was only ~3pp after
+# gravity-driven cross-shopping smoothing. Slope 2.5 widens the
+# per-customer p(credit) spread without shifting population mean
+# (still ~54% credit at avg affluence 1.06, on the Fed anchor).
 _TENDER_CREDIT_BASE_LOGIT = 0.05   # log-odds at affluence=1.0
-_TENDER_CREDIT_SLOPE      = 1.6
+_TENDER_CREDIT_SLOPE      = 2.5
 
 
 def _draw_home_zone(
