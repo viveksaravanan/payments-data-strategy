@@ -146,9 +146,19 @@ def _sample_tier_budgets(
     return out
 
 
-def build_population(cfg: Config, rng: np.random.Generator) -> pd.DataFrame:
-    """Build the population frame: one row per card."""
-    n = int(cfg.global_["population"]["target_cards"])
+def build_population(
+    cfg: Config,
+    rng: np.random.Generator,
+    *,
+    n_cards: int | None = None,
+) -> pd.DataFrame:
+    """Build the population frame: one row per card.
+
+    ``n_cards`` overrides ``cfg.global_['population']['target_cards']``.
+    Used for pilot-mode runs (~5-10k cards) during Stage 4.5+
+    development where full-scale iteration is too slow.
+    """
+    n = int(n_cards if n_cards is not None else cfg.global_["population"]["target_cards"])
 
     # 1) Card IDs — deterministic from seed.
     card_ids = _make_card_ids(n, seed=int(cfg.global_["seed"]))
