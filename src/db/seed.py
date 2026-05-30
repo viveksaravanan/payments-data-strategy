@@ -1,3 +1,8 @@
+# Superseded by Wave 2 lake design; not wired into v4 generation.
+# Unwired from Makefile and streamlit_app.py in Wave 1 Stage 1.
+# tests/conftest.py keeps a transitional lazy import to bootstrap
+# legacy v3 tests; it retires when those tests retire in Stages 4-5.
+# Wave 2 replaces this file with the DuckDB+Parquet lake builder.
 """Load tenant CSVs into ``data/payments.db``.
 
 The DB file is rebuilt from scratch on every run so the seed is idempotent.

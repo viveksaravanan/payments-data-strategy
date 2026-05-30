@@ -34,9 +34,9 @@ in **`tools.py`** (shared across orchestrator-routed specialists).
 Prompts live in **`prompts/<name>.md`** loaded once at module import.
 
 Suggested-question dispatch from the chat panel routes through
-`src/dashboard/placeholders.py::dispatch` (which calls
-`_llm_dispatch`); free-form input routes through
-`placeholders.py::dispatch_orchestrated` (which calls the
+`src/dashboard/agents.py::dispatch` (which calls
+`_run_specialist`); free-form input routes through
+`src/dashboard/agents.py::dispatch_orchestrated` (which calls the
 orchestrator). The dispatch layer keeps the chat-history shape uniform
 across both paths.
 
@@ -167,21 +167,21 @@ the client — see `tests/test_agents.py` for the pattern.
 The v3 specialists themselves don't have a `mock=True` constructor arg
 — that was a v2 affordance on the legacy `MerchantAdvisor` (now
 archived). The dashboard's offline safety net is at the **dispatch**
-layer in `src/dashboard/placeholders.py`:
+layer in `src/dashboard/agents.py`:
 
-- `_llm_dispatch(agent_id, qid, merchant_id, …)` runs the specialist
-  via `spec.answer(...)`.
-- `_hardcoded_dispatch(agent_id, qid, merchant_id)` returns a canned
-  result for the suggested-question id, using Phase 1 placeholder
-  handlers registered in `HANDLERS`.
-- The dispatch wrapper falls back to `_hardcoded_dispatch` when
-  `ANTHROPIC_API_KEY` is missing or the LLM call raises. This keeps
-  the dashboard usable as a static demo without API credentials.
+- `_run_specialist(agent_id, qid, merchant_id, …)` instantiates the
+  specialist and runs `spec.answer(...)`.
+- `dispatch(agent_id, qid, merchant_id, …)` consults the per-session
+  cache (`st.session_state["llm_cache"]`) and falls through to
+  `_run_specialist` on miss; on LLM failure it builds an error
+  response via `_error_response`.
+- `dispatch_orchestrated(merchant_id, question, …)` runs the
+  orchestrator without caching for free-form questions; on failure
+  builds an error response via `_orchestrator_error_response`.
 
-When you add a new suggested question, register a `HANDLERS` entry so
-the fallback path doesn't surface "No placeholder handler is wired."
-Phase 1.5's question-curation pass made all live qids HANDLERS-covered;
-keep that property.
+A truly hardcoded "canned answer" fallback for offline demos is not
+present in v3 `agents.py`; the dispatch layer surfaces errors rather
+than substituting placeholder content.
 
 # Development workflow notes
 
