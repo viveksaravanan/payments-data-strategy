@@ -1,144 +1,115 @@
-# Payments Data Strategy Demo
+# Payments Data Strategy Demo (v4 / Wave 1)
 
 Synthetic cross-merchant transaction demo. Models **Verifone** at the
-intersection of POS data and payment data — observing baskets, payment fields,
-and merchant context across an installed base of merchants.
+intersection of POS data and payment data — observing baskets, payment
+fields, and merchant context across an installed base of merchants.
 
-The locked target for the data layer is `V2_5_DATA_DESIGN.md`. Read it
-before changing generator behavior, schema, or lake mechanics. The
-incremental refactor from v2 is tracked in `docs/V2_5_RECONCILIATION.md`.
+The locked source-of-truth for the data layer is `docs/DECISIONS.md`
+(D11-D20). Wave 1's build spec is `docs/SPEC_wave1_data_generation.md`.
+The current dataset's measured magnitudes against the SPEC §6 bands
+are in `docs/DQ_REPORT.md`. Read `docs/BASELINE.md` only for the v3
+"before" snapshot — it predates v4.
 
 ## The panel
 
 Five merchants in a single fictional metro modeled on Charlotte, NC:
 
-| Merchant | Segment | Stores |
-|---|---|---|
-| Kroger (KRG) | grocery | 30 |
-| Acme (ACM) | grocery | 25 |
-| Winn-Dixie (WDX) | grocery | 20 |
-| Taco Bell (TBL) | qsr | 40 |
-| TJ Maxx (TJX) | off_price_retail | 8 |
+| Merchant     | Segment      | Stores |
+|--------------|--------------|--------|
+| Kroger (KRG) | grocery      | 5      |
+| Acme (ACM)   | grocery      | 5      |
+| Winn-Dixie (WDX) | grocery  | 5      |
+| Taco Bell (TBL) | qsr       | 9      |
+| TJ Maxx (TJX) | off-price   | 5      |
 
-10,000 customers shared across the panel. 90-day window:
-**March 1, 2026 → May 29, 2026** (covers Easter Apr 5 and Memorial Day May 25).
+29 stores total (D13.2 matrix). ~100,000 cards shared across the
+panel with deliberate ~32% multi-merchant overlap (~6% all-three).
+90-day window: **March 1, 2026 → May 29, 2026**.
+
+Target ~1.67M transactions, ~10M line items at full scale; pilot mode
+runs at 5k cards (~83k txns, ~5 min build).
 
 ## Stack
 
-Python 3.11, uv, SQLite, Streamlit, Anthropic SDK, pytest. No frameworks
-beyond these.
+Python 3.11, uv, **DuckDB + Parquet** (D3, supersedes the v3 SQLite),
+pyarrow (pinned for deterministic Parquet writes), pytest, pyyaml,
+numpy, pandas. Anthropic SDK + Streamlit + Folium will return in
+Wave 3 (agents) and Wave 4 (dashboard).
 
 ## Commands
 
-- `make seed`      — generate raw + load SQLite
-- `make demo`      — seed + launch dashboard on `:8501`
-- `make test`      — run pytest
-- `make clean`     — wipe `data/` and the DB
-- `uv run python -m src.generate.run_all`        — generation only
-- `uv run python -m src.db.seed`                 — DB load only
-- `uv run streamlit run src/dashboard/app.py`    — dashboard only
+- `make seed`        — generate full-scale Parquet to `data/raw/` + `data/eval/`
+- `make seed-pilot`  — generate at 5k cards (~5 min)
+- `make test`        — pytest (engine tests + §6 acceptance battery)
+- `make test-quick`  — engine unit tests only (skip data-quality fixture)
+- `make dq-report`   — regenerate `docs/DQ_REPORT.md` from current Parquet
+- `make clean`       — wipe `data/raw/`, `data/eval/`
+
+The Wave 1 engine entry point is `python -m src.generate.engine.run_all`
+(optionally with `--scale N`). The v3 `src.generate.run_all` and
+`src.db.seed` modules were retired in Wave 1 Stage 7 — the v3 demo
+remains at git tag `v3-final` if needed.
 
 ## Conventions
 
-**Generation:**
-- All knobs in `src/generate/parameters.py`. See `DATA.md` for the spec
-  and `V2_5_DATA_DESIGN.md` Layer 4 for the generator algorithm.
-- Shared customer panel comes from `customers.py` — runs ONCE. Each
-  merchant generator picks participating customers from this panel,
-  weighted by `primary_grocer` / `secondary_grocer` / affinity type.
-- `customer_id` MUST be stable for a given physical customer across
-  merchants. It's a 16-char SHA-256 hash, generated directly in
-  `customers.py`. Tested in `tests/test_generation.py`.
-- No raw PAN, no `customer_name`, no `customer_email` — generator never
-  produces PII at any stage. There is no separate anonymization step.
-- No EBT, no cash, no declines — credit and debit only per strategy doc
-  §5.2 captured rails.
+**Generation (Wave 1):**
 
-**Privacy / lake:**
-- The lake is **virtual** — implemented as parameterized query functions
-  in `src/lake/views.py` over the tenant tables. There are no physical
-  `lake_*` tables in SQLite.
-- The lake **excludes the viewing merchant**. When Kroger queries the
-  lake, it sees the other four pseudonymized as `peer_a`..`peer_d`.
-- Privacy mechanisms (per `V2_5_DATA_DESIGN.md` Phase 2): generalization
-  (ZIP5→ZIP3, timestamp→date+2hr-bucket, txn_total→10-bin), k=5 cell
-  suppression on aggregate customer-dimension queries, and **suppression
-  of consumer linkage** — `customer_id` is dropped from lake output per
-  strategy doc §5.2 ("product-level; no consumer linkage").
+- The engine is **config-driven** (D12). Add a 6th merchant or a new
+  segment by editing YAML under `src/generate/config/` — no engine code
+  changes. See `src/generate/CLAUDE.md` for the layered details.
+- 8 causal layers per D11: geography → population → customers → trips
+  → baskets → payment → pricing → events. One module per layer in
+  `src/generate/engine/`.
+- All randomness flows from `cfg.global_['seed']` (default 42) threaded
+  through per-layer derived seeds. Two runs at the same seed produce
+  **content-identical Parquet** (T18 verified).
+- No PII at any stage. `card_id` is a 16-hex-char SHA-256 hash; no
+  names, no emails, no raw PANs, no EBT/cash/declines.
 
-**Database:**
-- SQLite, single file at `data/payments.db`.
-- Tenant tables only: `merchants`, `tenant_customers`, `tenant_stores`,
-  `tenant_products`, `tenant_promotions`, `tenant_transactions`,
-  `tenant_transaction_items`. No `lake_*` tables.
-- DB writes ONLY via `src/db/seed.py`. Reads via canned queries or agent
-  tools.
-- No PII reaches SQLite. If you find names/emails/PAN in the DB, that's
-  a bug.
+**Storage (Wave 1):**
 
-**Agents:**
-- Five user-facing agents: `orchestrator.py` (the Conversational
-  Business Advisor — routes free-form questions to a specialist via
-  a Haiku-based router with a keyword fallback) plus four specialists
-  in `pricing.py`, `anomaly.py`, `demand.py`, `trade.py`. Each
-  specialist subclasses `specialist.py::Specialist` (shared tool
-  loop, caveats parser, response shape). The chat panel calls into
-  the orchestrator for free-form input and dispatches directly to
-  specialists for suggested-question clicks.
-- Legacy v2 `advisor.py` (`MerchantAdvisor` class) has been archived
-  to `docs/archive/legacy_agent/advisor.py`; the orchestrator
-  superseded it. Tests for the archived class moved alongside.
-- Tool definitions in `tools.py`. Prompts in `prompts/*.md` (loaded
-  as files, never inlined as Python strings). The four specialist
-  prompts live there; the orchestrator's router prompt is
-  `prompts/orchestrator.md`.
-- The SQL tools enforce SELECT-only at the runner level. The tenant
-  tool requires `WHERE merchant_id = '<current_merchant>'`. The lake
-  tool runs SQL through `src/lake/views.py::get_lake_*` with the
-  viewing merchant threaded in — it cannot reference physical
-  `lake_*` tables (there are none).
-- Agents NEVER mutate the DB. `MAX_TURNS = 6` (specialists may bump
-  to 7 — see their class definitions).
+- DuckDB + Parquet (`src/storage/duckdb_io.py`). Engine builds rows
+  in pandas/numpy and writes Parquet via `write_parquet` /
+  `write_partitioned_parquet`; DuckDB is **read-only** at runtime.
+  `read_parquet` returns a DuckDB relation, never a DataFrame.
+- Deterministic writes: pyarrow pinned to 17.0.0, single-threaded,
+  alphabetical column order, explicit `sort_keys`, no nondeterministic
+  metadata.
 
-**Code:**
-- One module = one concern. Files under ~200 lines.
-- Final answers must include the SQL the agent ran. The dashboard
-  depends on this.
+**Output contract (SPEC §5):**
 
-## Gotchas
+- `data/raw/`: merchants, zones, stores, customers, products,
+  transactions, transaction_items, promotions. The Wave 2 lake will
+  read from here.
+- `data/eval/`: `anomalies_groundtruth` only. Physical separation
+  enforces "the answer key never reaches the lake / agents" by
+  construction.
 
-- Pass `RANDOM_SEED` from `parameters.py` everywhere — reproducibility
-  is required and tested.
-- SQLite needs `PRAGMA foreign_keys = ON` per connection. Done in
-  `seed.py`; do it anywhere else you open a connection.
-- Streamlit reruns the whole script on every interaction. Cache agent
-  clients with `@st.cache_resource`.
-- The Anthropic API key comes from `.env` via `python-dotenv`. Never
-  hardcode.
-- k=5 not k=50 (panel size; documented in `ARCHITECTURE.md`).
+**Acceptance:**
 
-## Out of scope today
+- 36 tests under `tests/data_quality/test_T01_to_T18.py` mapped to
+  SPEC §6 invariants T1-T18. Measured magnitudes published in
+  `docs/DQ_REPORT.md` next to each band.
+- Engine-layer unit tests under `tests/test_engine_*.py` cover the
+  D11 sub-stage invariants (one file per layer).
 
-Postgres. Auth/authz. Deployment. Real-time streaming (Kafka/Flink).
-L-diversity explicit verification. Differential privacy beyond a
-documented stub. Annual seasonality. EBT, cash, declined transactions.
-Demographics (age/income bands). The hardware/edge layer from strategy
-doc §3–§6 — data appears already-captured at the start of the pipeline.
-Specialist agent personas beyond the five already shipping
-(orchestrator + pricing + anomaly + demand + trade) — the strategy
-doc §10.2 names seven; the remaining two stay on the v4 roadmap.
+## Out of scope for Wave 1
+
+Anonymization engine, the cross-merchant lake (Wave 2). Agent
+unification (D8) and "ask-AI about this chart" (D9) — Wave 3.
+Dashboard refactor to consume Parquet via DuckDB — Wave 4.
+Production / S3 / Lambda backends — deferred. Fraud / tampering
+anomalies (D20.3) — explicitly out for v4.
 
 ## File guide
 
-- `V2_5_DATA_DESIGN.md` — locked source of truth for the data layer
-  (panel, schema, generator, lake views, anomalies).
-- `docs/V2_5_RECONCILIATION.md` — phased plan that tracked the v2 → v2.5
-  refactor (complete; kept for context).
-- `docs/archive/v2_audit.md` — historical audit of the pre-v2.5 codebase
-  (kept for context).
-- `PLAN.md` — build plan with time-boxed blocks and the demo script.
-- `DATA.md` — synthetic data specification (output side).
-- `ARCHITECTURE.md` — strategy-doc mapping and deferred items.
-- `README.md` — top-level overview for first-time readers.
-- `src/generate/CLAUDE.md` — generation-specific conventions.
-- `src/agents/CLAUDE.md` — agent-specific conventions.
+- `docs/DECISIONS.md` — D2-D20 locked source of truth.
+- `docs/SPEC_wave1_data_generation.md` — Wave 1 build spec.
+- `docs/DQ_REPORT.md` — current measured magnitudes vs §6 bands.
+- `docs/BASELINE.md` — v3 "before" snapshot (historical).
+- `src/generate/CLAUDE.md` — generation-specific architecture.
+- `src/generate/config/` — the YAML knobs that drive the engine.
+- `src/generate/engine/` — segment-agnostic 8-layer pipeline.
+- `src/storage/duckdb_io.py` — Parquet IO + DuckDB read.
+- `tests/data_quality/` — §6 acceptance battery.
+- `scripts/build_dq_report.py` — regenerate the DQ report.

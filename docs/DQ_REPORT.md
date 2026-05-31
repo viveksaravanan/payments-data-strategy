@@ -3,7 +3,7 @@
 **Generated at scale:** 5,000 cards (5.0% of full target)
 **Transactions:** 82,757  |  **Line items:** 539,640
 **Window:** 2026-03-01 → 2026-05-29
-
+ 
 Each acceptance invariant below shows the measured value next to its target band.
 Bands match SPEC §6 unless noted as pilot-adjusted.
 

@@ -1,93 +1,78 @@
-# Data generation
+# Data generation (v4)
 
-Module for synthetic data generation. Reads `parameters.py`. Writes CSVs to `data/raw/`.
+Config-driven synthetic data generator. Reads YAML configs from
+`config/`, runs the 8-layer causal pipeline through `engine/`,
+emits Parquet to `data/raw/` (tenant census) and `data/eval/`
+(answer key for the planted anomalies).
 
 ## Architecture
 
-- **`metro.py`** — Charlotte-metro geography helpers: ZIP5 → neighborhood
-  → metro region lookup, ZIP centroid + jitter for store coordinates,
-  per-segment store distribution. `assign_store_zips` accepts
-  `require_zips=` so each grocer's `build()` can guarantee a store
-  exists in the anomaly-anchor neighborhoods (University City for all
-  three grocers; Plaza Midwood for Kroger).
-- **`customers.py`** runs ONCE. Produces the shared 10,000-customer panel
-  with `customer_id` (16-char SHA-256, generated directly here — no PAN,
-  no PII), `home_zip5`, `behavioral_segment` (filler/stocker),
-  `grocer_affinity_type` (loyalist/splitter/three_chain/lapsed_light),
-  `primary_grocer`, `secondary_grocer`, `primary_card_type`,
-  `has_mobile_wallet`, `signup_date`. All merchant generators consume
-  this panel.
-- **`transactions.py`** holds the unified Layer 4 transaction generator.
-  Customer-centric loop (one pass over the 10K panel emitting all five
-  merchants' transactions), Steps 4a–4l per `V2_5_DATA_DESIGN.md`:
-  trip frequency, active-weeks variance, per-trip merchant choice,
-  basket archetypes, per-category quantity distributions, payment
-  generation. Anomaly hooks live here (UC keep-probability,
-  Plaza Midwood avocado weight, pasta-promo SKU weight).
-- **`kroger.py` / `acme.py` / `winn_dixie.py` / `taco_bell.py` /
-  `tjmaxx.py`** — five thin per-merchant wrappers (~50 lines each).
-  Each loads its catalog, builds its Charlotte stores, generates
-  promotions (each grocer reserves one slot for the pinned pasta
-  promo), and returns a `MerchantData` bundle for the unified
-  generator.
-- **`catalog_grocery.py`** + `catalog_acme.py` / `catalog_winn_dixie.py` /
-  `catalog_taco_bell.py` / `catalog_tjmaxx.py` — base + per-grocer
-  overlay model. Grocers share `data/catalogs/base_grocery_catalog.json`;
-  per-grocer overlays in `data/catalogs/overlays/` set inclusion list
-  and tier multipliers.
-- **`promotions.py`** — `tenant_promotions` rows (random per-segment
-  campaigns). Per-grocer counts: KRG 25 / ACM 20 / WDX 18 / TBL 6 /
-  TJX 4. Each grocer's `build()` reserves one slot for the pinned
-  pasta promo from `anomalies/`.
-- **`tax.py`** — five-tier tax model (0% exempt grocery / 4% snacks &
-  beverages / 7% non-food and prepared-food).
-- **`anomalies/`** — three Phase 6 planted signals: University City
-  decline (4-stage ramp), Plaza Midwood Kroger avocado spike (4-day
-  pattern), coordinated pasta promos (KRG lift / Acme failure /
-  WDX lift). See `DATA.md` §9 and `V2_5_DATA_DESIGN.md` "Planted
-  Anomalies" for specs.
-- **`run_all.py`** orchestrates: customers → 5 merchant generators →
-  unified `transactions.generate_all()` → write CSVs.
+The whole generator is **parameterized by configuration** (D12).
+Adding a 6th merchant or a new segment is a config addition — no
+engine-code change. The engine is **segment-agnostic**.
 
-## Cross-merchant invariant (critical)
+### Configs (`config/`)
 
-`customer_id` MUST be stable for a given physical customer across all
-merchants. It is the cross-merchant join key. Generated in `customers.py`
-as `sha256(HASH_SECRET + synthetic_pan)[:16]` where `synthetic_pan` is
-internal and never written to disk. Tested in `tests/test_generation.py`.
+- **`global.yaml`** — seed, 90-day window, per-segment volume
+  targets, expected_store_count, gravity model d0, population
+  target_cards.
+- **`metro.yaml`** — the 8 zones (D13.1) with residential weights,
+  affluence, density, household/age skew, centroid lat/long.
+- **`segments/{grocery,qsr,off_price}.yaml`** — per-segment
+  archetype (distance-decay β per D13.4, catalog model).
+- **`merchants/{kroger,acme,winn_dixie,taco_bell,tj_maxx}.yaml`** —
+  banner name, banner_code, segment ref, positioning_tier,
+  store_count, zone_placement_bias (matches D13.2 matrix).
 
-**Enforcement:** `customer_id` is generated only in `customers.py`.
-Merchant generators read it; they never compute new ids.
+D12 invariants enforced by `config/loader.py::load_config`:
+residential weights sum to 1.0; every merchant segment resolves;
+every zone_placement_bias references a real zone; store_count
+equals sum(placement); total stores match global expected count;
+volume targets exist and reconcile.
 
-## No PII, no EBT/cash/declines
+### Engine (`engine/`)
 
-The generator does not produce names, emails, raw PANs, or demographic
-bands. `customer_id` is computed in `customers.py` from a synthetic PAN
-that is never written to disk — there is no separate anonymization
-stage. Payment generation is credit + debit only per Layer 1's
-"captured rails" rule; cash, EBT, and declined transactions are out of
-scope for v2.5.
+One module per D11 causal layer. Each reads from the layers above
+and emits a DataFrame. `engine/run_all.py` orchestrates the chain
+and writes Parquet at the end.
 
-## Reproducibility
+```
+engine/
+  geography.py    Layer 1 (D13): 29 stores in 8 zones + centroids
+  population.py   Layer 2 (D14): ~100k cards w/ intensity tiers + cohort
+  customers.py    Layer 3 (D16): home zone, affluence, loyalty, card
+  trips.py        Layer 4 (D15+D15b): temporal placement + gravity store
+  baskets.py      Layer 5 (D17): mission + affinity + staples + size
+  payment.py      Layer 6 (D18): entry_mode + wallet_at_tap + connectivity
+  pricing.py      Layer 7 (D19): anchor × strategy × zone × time × noise
+  catalog.py      Layer 7 partner: per-merchant SKU table + base_price
+  events.py       Layer 8 (D20): promos + A1-A3 anomalies w/ ground truth
+  run_all.py      orchestrator + Parquet writers
+```
 
-All randomness is seeded from `parameters.RANDOM_SEED`. If you add a
-generator, take a `numpy.random.Generator` argument — don't call
-`np.random.*` directly. Direct calls use global state and break
-reproducibility.
+### Output contract (SPEC §5)
 
-The transaction generator is the slow path. Default config produces
-~230k–240k transactions in ~80 seconds. Volume target band is
-180k–250k (`tests/test_generation.py::test_total_volume_in_design_target`).
-If a change pushes over, vectorize with numpy.
+- `data/raw/`: merchants, zones, stores, customers, products,
+  transactions, transaction_items, promotions
+- `data/eval/`: anomalies_groundtruth (NEVER in data/raw/ — physical
+  separation per the Wave 1 plan amendment; Wave 2 lake reads
+  data/raw/*.parquet only)
 
-## Outputs
+## Conventions
 
-- `data/raw/customers.csv` — `customer_id` and panel attributes
-  (no PII)
-- `data/raw/merchants.csv`
-- `data/raw/stores.csv`
-- `data/raw/products.csv`
-- `data/raw/promotions.csv`
-- `data/raw/transactions.csv` — all merchants, distinguished by
-  `merchant_id`. References `customer_id` directly.
-- `data/raw/transaction_items.csv`
+- All randomness flows from one `np.random.default_rng(cfg.global_['seed'])`
+  per layer (with derived seeds). No direct `np.random.*` calls.
+- Iteration is in sorted config order so two runs at the same seed
+  produce content-identical Parquet (T18; Stage 2 deterministic-write
+  conventions).
+- Parquet writes go through `src/storage/duckdb_io.py` which pins
+  pyarrow, uses single-threaded writes, sorts columns alphabetically,
+  and accepts an explicit sort_keys.
+- The engine builds rows in pandas/numpy; DuckDB is the **read/query**
+  engine used by the acceptance tests + DQ report.
+
+## Pilot mode
+
+`engine/run_all.py --scale N` runs at N cards instead of the full
+100k. Used for fast iteration during development and by the
+`tests/data_quality/` battery (5k cards, ~5 min build).
