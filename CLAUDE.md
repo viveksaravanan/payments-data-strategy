@@ -40,15 +40,18 @@ Wave 3 (agents) and Wave 4 (dashboard).
 
 - `make seed`        — generate full-scale Parquet to `data/raw/` + `data/eval/`
 - `make seed-pilot`  — generate at 5k cards (~5 min)
-- `make test`        — pytest (engine tests + §6 acceptance battery)
+- `make test`        — pytest (engine tests + §6 acceptance battery + L-battery)
 - `make test-quick`  — engine unit tests only (skip data-quality fixture)
 - `make dq-report`   — regenerate `docs/DQ_REPORT.md` from current Parquet
+- `make lake`        — build the Wave 2 anonymized lake to `data/lake/*.parquet`
+- `make lake-report` — regenerate `docs/LAKE_REPORT.md` from `data/lake/`
 - `make clean`       — wipe `data/raw/`, `data/eval/`
 
 The Wave 1 engine entry point is `python -m src.generate.engine.run_all`
-(optionally with `--scale N`). The v3 `src.generate.run_all` and
-`src.db.seed` modules were retired in Wave 1 Stage 7 — the v3 demo
-remains at git tag `v3-final` if needed.
+(optionally with `--scale N`). The v3 `src.generate.run_all`,
+`src.db.seed`, and v3 lake modules (`src/lake/views.py`,
+`src/lake/peer_mapping.py`) were retired in Wave 1 Stage 7 +
+Wave 2 Stage 7. The v3 demo remains at git tag `v3-final` if needed.
 
 ## Conventions
 
@@ -93,23 +96,47 @@ remains at git tag `v3-final` if needed.
 - Engine-layer unit tests under `tests/test_engine_*.py` cover the
   D11 sub-stage invariants (one file per layer).
 
-## Out of scope for Wave 1
+**Wave 2 lake (closed):**
 
-Anonymization engine, the cross-merchant lake (Wave 2). Agent
-unification (D8) and "ask-AI about this chart" (D9) — Wave 3.
-Dashboard refactor to consume Parquet via DuckDB — Wave 4.
+- The five anonymized aggregate tables under `data/lake/` are built
+  by `src/lake/build.py` and orchestrated via `make lake`. Reads only
+  observable columns from `data/raw/` via `src/lake/observable_guard.py`
+  — the §1 invariant guards against reading planted profiles
+  (`customers.loyalty_type`, `zones.affluence`, etc.).
+- k≥50 floor on every published cell (not k=5 — the strategy-doc §8
+  bar) with a coarsening ladder (subcat→cat, week→month) and
+  suppression. Wave 1's T17 cleared k=50 by ~10× at full scale.
+- Dual-path: tenant queries scoped by `src/lake/isolation.py`; peer
+  reads pass through `src/lake/scope.py::scope_for_viewer` which
+  drops the viewer's rows, relabels peers as `segment_peer` /
+  `cross_segment`, and strips real `banner_code` (D24.1).
+- DP and l-diversity deferred — aggregate columns ARE the future
+  injection point (D24.3); no `publish()` seam shipped.
+
+## Out of scope for Wave 1+2
+
+Agent unification (D8) and "ask-AI about this chart" (D9) — Wave 3.
+Dashboard refactor to consume Parquet+lake via DuckDB — Wave 4.
 Production / S3 / Lambda backends — deferred. Fraud / tampering
-anomalies (D20.3) — explicitly out for v4.
+anomalies (D20.3) — explicitly out for v4. l-diversity and
+differential privacy — deferred per D21.3 / D24.3.
 
 ## File guide
 
-- `docs/DECISIONS.md` — D2-D20 locked source of truth.
+- `docs/DECISIONS.md` — D2-D24 locked source of truth.
 - `docs/SPEC_wave1_data_generation.md` — Wave 1 build spec.
-- `docs/DQ_REPORT.md` — current measured magnitudes vs §6 bands.
+- `docs/SPEC_wave2_anonymization_lake.md` — Wave 2 build spec.
+- `docs/DQ_REPORT.md` — Wave 1 measured magnitudes vs §6 bands.
+- `docs/LAKE_REPORT.md` — Wave 2 privacy-posture artifact: cell
+  counts, k-distribution, §8 applied-vs-deferred framing.
 - `docs/BASELINE.md` — v3 "before" snapshot (historical).
 - `src/generate/CLAUDE.md` — generation-specific architecture.
 - `src/generate/config/` — the YAML knobs that drive the engine.
 - `src/generate/engine/` — segment-agnostic 8-layer pipeline.
 - `src/storage/duckdb_io.py` — Parquet IO + DuckDB read.
-- `tests/data_quality/` — §6 acceptance battery.
+- `src/lake/` — Wave 2 anonymization + lake builders + scope/manifest.
+- `tests/data_quality/` — §6 acceptance battery (T1-T18).
+- `tests/lake/` — Wave 2 L1-L12 acceptance battery.
 - `scripts/build_dq_report.py` — regenerate the DQ report.
+- `scripts/build_lake.py` — build `data/lake/` from `data/raw/`.
+- `scripts/build_lake_report.py` — regenerate the lake report.
