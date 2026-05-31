@@ -665,6 +665,149 @@ def build_lake_trade_area() -> pd.DataFrame:
     ).reset_index(drop=True)
 
 
+# Mapping banner_code → segment for cohort-combination classification.
+# Observable from the merchants table (segment is on transactions too).
+_BANNER_TO_SEGMENT: dict[str, str] = {
+    "KRG": "grocery", "ACM": "grocery", "WDX": "grocery",
+    "TBL": "qsr",
+    "TJX": "off_price",
+}
+
+
+def _cohort_combination(segments_touched: frozenset[str]) -> str:
+    """Categorize a card by which segments it transacted in. Matches
+    Wave 1 D14.4's 7-archetype participation matrix."""
+    s = set(segments_touched)
+    if s == {"grocery"}:
+        return "grocery_only"
+    if s == {"qsr"}:
+        return "qsr_only"
+    if s == {"off_price"}:
+        return "retail_only"
+    if s == {"grocery", "qsr"}:
+        return "grocery_qsr"
+    if s == {"grocery", "off_price"}:
+        return "grocery_retail"
+    if s == {"qsr", "off_price"}:
+        return "qsr_retail"
+    if s == {"grocery", "qsr", "off_price"}:
+        return "all_three"
+    return "other"
+
+
 def build_lake_cross_merchant_cohorts() -> pd.DataFrame:
-    """Stage 4.5 — implemented in the next sub-stage commit."""
-    raise NotImplementedError("Stage 4.5 — pending sub-stage commit")
+    """Stage 4.5 — cross-merchant cohort aggregates (D23.3.5).
+
+    **The headline overlap table.** Built INSIDE the trusted boundary:
+    customer_token linkage across merchants is allowed in this single
+    build step, never elsewhere. Output publishes only aggregated
+    counts and **robust statistics (median + IQR + bands) — never a
+    raw mean** per D24.2 concentration risk.
+
+    Grain: behavioral home zone × cohort_combination. Cohort combo is
+    derived from which segments (grocery / qsr / off_price) a card
+    transacted in over the 90-day window. Combinations mirror Wave 1's
+    D14.4 participation matrix (7 archetypes — grocery_only,
+    grocery_qsr, all_three, etc.).
+
+    Columns:
+
+    * ``cohort_size`` — distinct cards in the cell.
+    * ``median_combined_spend`` — median of per-card total spend across
+      all banners they touched (robust to whale concentration).
+    * ``p25_combined_spend`` / ``p75_combined_spend`` — quartile
+      boundaries for the cell.
+    * ``median_total_txns`` — median per-card n_txns across all banners.
+    * ``frequency_band`` — textual band of the cohort's median frequency
+      (``"low"`` < 10 / ``"mid"`` 10-25 / ``"high"`` ≥ 25 txns).
+    * ``txn_count`` — total distinct transactions across the cohort
+      (the k guard).
+
+    **L3 / D24.2 guarantees** asserted in tests:
+
+    * No ``customer_token`` or per-customer rows in the output.
+    * Spend reported as median + quartiles, never raw mean.
+    """
+    stores_with_zone = _load_stores_with_zone()
+    # Trusted-boundary read: customer_token is observable (terminal saw
+    # the tap), and §2 explicitly permits cross-merchant linkage here.
+    txns = load_table(
+        "transactions",
+        columns=["txn_id", "customer_token", "store_id",
+                 "banner_code", "subtotal"],
+    )
+    txns = txns.merge(
+        stores_with_zone[["store_id", "derived_zone"]],
+        on="store_id",
+    )
+
+    # Per-card aggregates across ALL banners (the cross-merchant
+    # linkage point).
+    per_card = (
+        txns.groupby("customer_token")
+        .agg(
+            total_spend=("subtotal", "sum"),
+            total_txns=("txn_id", "count"),
+            banners_touched=("banner_code", lambda b: frozenset(b.unique())),
+        )
+        .reset_index()
+    )
+    per_card["segments_touched"] = per_card["banners_touched"].apply(
+        lambda bs: frozenset(_BANNER_TO_SEGMENT.get(b, "other") for b in bs)
+    )
+    per_card["cohort_combination"] = per_card["segments_touched"].apply(
+        _cohort_combination
+    )
+
+    # Behavioral home zone per card = most-frequented derived_zone
+    # across ALL their transactions.
+    home_zone = (
+        txns.groupby(["customer_token", "derived_zone"])
+        .size().rename("n_in_zone").reset_index()
+        .sort_values(["customer_token", "n_in_zone"], ascending=[True, False])
+        .drop_duplicates(subset=["customer_token"])
+        [["customer_token", "derived_zone"]]
+        .rename(columns={"derived_zone": "behavioral_home_zone"})
+    )
+    per_card = per_card.merge(home_zone, on="customer_token")
+
+    # Per (behavioral_home_zone, cohort_combination) aggregate using
+    # robust stats — median + IQR. NO raw mean.
+    cohort = (
+        per_card.groupby(["behavioral_home_zone", "cohort_combination"])
+        .agg(
+            cohort_size=("customer_token", "nunique"),
+            median_combined_spend=("total_spend", "median"),
+            p25_combined_spend=("total_spend", lambda s: s.quantile(0.25)),
+            p75_combined_spend=("total_spend", lambda s: s.quantile(0.75)),
+            median_total_txns=("total_txns", "median"),
+            txn_count=("total_txns", "sum"),
+        )
+        .reset_index()
+        .rename(columns={"behavioral_home_zone": "derived_zone"})
+    )
+
+    # Frequency band from median total txns. Cohort-level — robust
+    # category not per-customer.
+    def _freq_band(med: float) -> str:
+        if med < 10:
+            return "low"
+        if med < 25:
+            return "mid"
+        return "high"
+
+    cohort["frequency_band"] = cohort["median_total_txns"].apply(_freq_band)
+
+    # K-floor.
+    cohort = cohort[cohort["txn_count"] >= K_MIN].copy()
+
+    return cohort[[
+        "derived_zone", "cohort_combination",
+        "cohort_size", "median_combined_spend",
+        "p25_combined_spend", "p75_combined_spend",
+        "median_total_txns", "frequency_band",
+        "txn_count",
+    ]].sort_values(
+        ["derived_zone", "cohort_combination"],
+        kind="mergesort",
+    ).reset_index(drop=True)
