@@ -1,19 +1,21 @@
 """Shared fixtures for the Wave 1 §6 acceptance battery (T1-T18).
 
-Runs the engine once at the pilot scale, writes Parquet to
-``data/raw/`` + ``data/eval/``, then exposes the loaded tables via
-module-scope fixtures so each T-test queries shared dataframes
-rather than rebuilding.
+Two modes:
+1. **Existing Parquet on disk** — if ``data/raw/transactions.parquet``
+   already exists, the fixture loads tables directly from disk.
+   This is the path used after a deliberate full-scale generation
+   (``uv run python -m src.generate.engine.run_all``).
+2. **Pilot rebuild** — otherwise, build at the scale specified by
+   the ``WAVE1_TEST_SCALE`` env var (default 5000 cards). Used in
+   CI / quick iteration where the full 100k build is too slow.
 
-Pilot scale: 5,000 cards. Hits roughly 5% of the §5 contract's
-1.67M-txn target, which keeps the battery runnable in ~5 minutes
-while preserving distribution shapes well enough for T1-T18 bands.
-T17 small-cell readiness needs full-scale to bind in absolute
-counts, so its pilot check tests *proportionality* (cells grow
-roughly linearly with population).
+Scale is computed dynamically from the actual customers table size
+so the T-tests work at any scale (5k pilot, 100k full, anywhere
+in between).
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -22,12 +24,24 @@ import pytest
 from src.generate.config.loader import load_config
 from src.generate.engine.run_all import build_all, write_all, DATA_RAW, DATA_EVAL
 
-PILOT_CARDS = 5_000
+DEFAULT_PILOT_CARDS = 5_000
 CONFIG_ROOT = Path(__file__).resolve().parents[2] / "src" / "generate" / "config"
 
+_RAW_TABLE_NAMES = [
+    "merchants", "zones", "stores", "customers", "products",
+    "transactions", "transaction_items", "promotions",
+]
 
-def _parquet_exists() -> bool:
-    return (DATA_RAW / "transactions.parquet").exists()
+
+def _load_existing_tables() -> dict[str, pd.DataFrame]:
+    tables = {
+        name: pd.read_parquet(DATA_RAW / f"{name}.parquet")
+        for name in _RAW_TABLE_NAMES
+    }
+    tables["anomalies_groundtruth"] = pd.read_parquet(
+        DATA_EVAL / "anomalies_groundtruth.parquet"
+    )
+    return tables
 
 
 @pytest.fixture(scope="session")
@@ -36,12 +50,17 @@ def cfg():
 
 
 @pytest.fixture(scope="session")
-def pilot_tables() -> dict[str, pd.DataFrame]:
-    """Build the full pilot dataset once per session. Reuses Parquet
-    on disk if a prior test session already produced it at the
-    matching scale (transactions row-count ≈ expected pilot volume)."""
+def pilot_tables(cfg) -> dict[str, pd.DataFrame]:
+    """Return the engine output tables.
+
+    If data/raw/ already contains a full set of Parquet files,
+    they're loaded as-is — preserves intentional full-scale runs.
+    Otherwise builds at WAVE1_TEST_SCALE (default 5000).
+    """
+    if (DATA_RAW / "transactions.parquet").exists():
+        return _load_existing_tables()
+
     import shutil
-    # Rebuild always so we know scale is correct.
     if DATA_RAW.exists():
         shutil.rmtree(DATA_RAW)
     if DATA_EVAL.exists():
@@ -49,9 +68,18 @@ def pilot_tables() -> dict[str, pd.DataFrame]:
     DATA_RAW.mkdir(parents=True, exist_ok=True)
     DATA_EVAL.mkdir(parents=True, exist_ok=True)
 
-    tables = build_all(scale=PILOT_CARDS)
+    scale = int(os.environ.get("WAVE1_TEST_SCALE", str(DEFAULT_PILOT_CARDS)))
+    tables = build_all(scale=scale)
     write_all(tables)
     return tables
+
+
+@pytest.fixture(scope="session")
+def scale_frac(cfg, pilot_tables) -> float:
+    """Actual scale as a fraction of the full target (100k cards).
+    1.0 = full-scale; 0.05 = 5k pilot."""
+    target = cfg.global_["population"]["target_cards"]
+    return len(pilot_tables["customers"]) / target
 
 
 # Per-table accessor fixtures for terser test code

@@ -56,12 +56,14 @@ def main() -> None:
     n_cards = len(customers)
     n_txns = len(transactions)
     n_lines = len(items)
-    pilot_frac = n_cards / cfg.global_["population"]["target_cards"]
+    target_cards = cfg.global_["population"]["target_cards"]
+    scale_frac = n_cards / target_cards
+    scale_label = "FULL" if scale_frac >= 0.95 else f"{scale_frac*100:.1f}% pilot"
 
     lines: list[str] = []
     lines.append("# Wave 1 Data-Quality Report")
     lines.append("")
-    lines.append(f"**Generated at scale:** {n_cards:,} cards ({pilot_frac*100:.1f}% of full target)")
+    lines.append(f"**Generated at scale:** {n_cards:,} cards ({scale_label} — target {target_cards:,})")
     lines.append(f"**Transactions:** {n_txns:,}  |  **Line items:** {n_lines:,}")
     lines.append(f"**Window:** {cfg.global_['window']['start_date']} → {cfg.global_['window']['end_date']}")
     lines.append("")
@@ -70,11 +72,11 @@ def main() -> None:
     lines.append("")
 
     # ----- T1 volume
-    expected_total = cfg.global_["volume_targets"]["total"] * pilot_frac
+    expected_total = cfg.global_["volume_targets"]["total"] * scale_frac
     lines.append("## T1 — Volume")
     lines.append(f"- **Total txns:** {n_txns:,} (target ~{int(expected_total):,}, ±10%) — {_band(n_txns, 0.85*expected_total, 1.15*expected_total)}")
     for seg, key in (("grocery","grocery"),("qsr","qsr"),("off_price","off_price")):
-        expected = cfg.global_["volume_targets"][key] * pilot_frac
+        expected = cfg.global_["volume_targets"][key] * scale_frac
         actual = int((transactions["segment"] == seg).sum())
         lines.append(f"- **{seg}:** {actual:,} (target ~{int(expected):,}) — {_band(actual, 0.85*expected, 1.15*expected)}")
     lines.append("")
@@ -92,8 +94,12 @@ def main() -> None:
     # ----- T3 AUV
     lines.append("## T3 — Grocery store AUV (annualized)")
     g_revenue = transactions[transactions["segment"]=="grocery"].groupby("store_id")["subtotal"].sum()
-    auv_eq = g_revenue.mean() * (365 / 90) / pilot_frac
-    lines.append(f"- **AUV-equivalent:** ${auv_eq/1e6:.2f}M/yr (band $14-18M) — {_band(auv_eq, 14e6, 18e6)}")
+    auv_eq = g_revenue.mean() * (365 / 90) / scale_frac
+    auv_native = g_revenue.mean() * (365 / 90)
+    if scale_frac >= 0.95:
+        lines.append(f"- **AUV:** ${auv_native/1e6:.2f}M/yr (band $14-18M, full-scale direct) — {_band(auv_native, 14e6, 18e6)}")
+    else:
+        lines.append(f"- **AUV-equivalent (scaled 1/{scale_frac:.3f}):** ${auv_eq/1e6:.2f}M/yr (band $14-18M) — {_band(auv_eq, 14e6, 18e6)}")
     lines.append("")
 
     # ----- T4 DoW
@@ -241,16 +247,33 @@ def main() -> None:
     all_three_cards = set(by_card_seg[by_card_seg==3].index)
     cz = customers[customers["card_id"].isin(all_three_cards)][["card_id","home_zone"]]
     by_zone = cz.groupby("home_zone").size().sort_values(ascending=False)
-    lines.append("## T17 — Cross-merchant cell readiness (pilot)")
+    if scale_frac >= 0.95:
+        lines.append("## T17 — Cross-merchant cell readiness (FULL SCALE — Wave 2 gate)")
+    else:
+        lines.append(f"## T17 — Cross-merchant cell readiness ({scale_label})")
+    n_above_k5 = int((by_zone >= 5).sum())
+    n_zones_populated = int((by_zone >= 1).sum())
     for z, n in by_zone.items():
-        lines.append(f"- {z:<16}: {n} all-three cards")
+        flag = "" if n >= 5 else "  ⚠ <k=5"
+        lines.append(f"- {z:<16}: {n:,} all-three cards{flag}")
     lines.append("")
-    lines.append(f"At pilot ({pilot_frac*100:.0f}%), 8/8 zones host all-three cards. Full-scale will multiply ~{1/pilot_frac:.0f}×.")
+    lines.append(f"**{n_above_k5}/8 zones** survive k=5 anonymity.  **{n_zones_populated}/8 zones** populated.")
+    if scale_frac >= 0.95:
+        if n_above_k5 == 8:
+            lines.append("✓ Wave 2 lake grain (per-zone × all-three) holds as designed.")
+        else:
+            lines.append(f"⚠ Wave 2 must coarsen grain — {8 - n_above_k5} zone(s) below k=5 at full scale.")
+    else:
+        lines.append(f"Pilot projection: cells should multiply ~{1/scale_frac:.0f}× at full scale. Real gate requires full-scale measurement.")
     lines.append("")
 
     # ----- T18 reproducibility
     lines.append("## T18 — Reproducibility")
-    lines.append("- **Two engine runs at seed=42 produce content-identical Parquet** (Stage 2 deterministic-write conventions hold).")
+    lines.append("- **Verified content-identical at 500 cards** by the in-test reproducibility check (`test_T18_reproducibility_byte_or_content`).")
+    if scale_frac >= 0.95:
+        lines.append("- **Full-scale (100k) two-run hash diff: not performed.** Determinism at scale rests on construction: pinned pyarrow, single-threaded writes, sorted iteration, single-file (not chunked) writes, no parallelism. If you want a direct full-scale guarantee, rerun and compare via `scripts/hash_parquet.py`.")
+    else:
+        lines.append("- Full-scale (100k) two-run hash diff: not performed at this pilot scale.")
     lines.append("")
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
