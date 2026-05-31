@@ -144,15 +144,25 @@ _SEGMENT_MISSIONS = {
 # ----- D17.4 archetype size distributions ---------------------------
 
 # Archetype sizes tuned at Stage 4.7 for AOV reconciliation. D17.4
-# ratified grocery stockup range 15-30; tightened to (15,17,22) at
-# the low end to land blended grocery AOV in T2 band ($48-62).
+# ratified grocery ranges: stockup 15-30, fill_in 5-8, quick 2-3.
+# Stockup tightened to (15,17,22) at the low end of its range to
+# land its AOV on the $110 D17.4 anchor (measured: $115.82).
+# Fill_in tightened to (4,5,7) at the low end of its range —
+# blended AOV diagnostic showed fill_in running 70% over its
+# D17.4 $28 anchor because the mission mix includes baby_pet +
+# household_cleaning trips (high-anchor BABY/PET/HOUSEHOLD items
+# at real-world prices). D17.4's $28 implicitly assumed a narrower
+# mission mix; tightening fill_in size compensates without
+# perturbing real-world per-line prices. Lo=4 sits 1 below D17.4's
+# stated 5; flagged for a future D17 clarification but stays close
+# to spirit ("small fill-in trip with a couple of items").
 # QSR combo archetype dropped from (3,4,5) → (1,2,3): a single
 # "COMBO" SKU in the catalog represents the whole bundled meal
 # (entree + side + drink), not a constituent line, so a combo trip
 # is usually 1 combo + maybe a drink upgrade — basket size 1-3.
 _GROCERY_ARCHETYPES = {
     "stockup": (15, 17, 22),
-    "fill_in": (5, 6, 8),
+    "fill_in": (4, 5, 7),
     "quick":   (2, 2, 3),
 }
 _QSR_ARCHETYPES = {
@@ -250,10 +260,15 @@ def _pay_cycle_bucket(day_of_month: int) -> str:
 # strongly dominant for clothing and QSR fast food.
 _QTY_DISTRIBUTION_DEFAULT = {1: 0.85, 2: 0.12, 3: 0.025, 4: 0.005}
 _QTY_DISTRIBUTION_BY_CATEGORY = {
-    # Grocery — produce + beverages have legitimate multi-buy
-    "PRODUCE":   {1: 0.55, 2: 0.25, 3: 0.12, 4: 0.05, 5: 0.03},
+    # Grocery — produce + beverages have *some* multi-buy (a bag of
+    # apples + a bunch of bananas + a head of lettuce per produce
+    # category; a 12-pack of soda + a case of water per beverages),
+    # but mean qty for these used to run 1.78 / 1.55 in v3 baseline
+    # which inflated AOV well above D17.4's $55 anchor. Tightened
+    # at Stage 4.7 to means ~1.40 / 1.29.
+    "PRODUCE":   {1: 0.70, 2: 0.20, 3: 0.07, 4: 0.025, 5: 0.005},
     "DAIRY":     {1: 0.80, 2: 0.16, 3: 0.04},
-    "BEVERAGES": {1: 0.65, 2: 0.20, 3: 0.10, 4: 0.05},
+    "BEVERAGES": {1: 0.78, 2: 0.16, 3: 0.05, 4: 0.01},
     "BAKERY":    {1: 0.80, 2: 0.15, 3: 0.05},
     "PANTRY":    {1: 0.78, 2: 0.18, 3: 0.04},
     "SNACKS":    {1: 0.75, 2: 0.18, 3: 0.05, 4: 0.02},
