@@ -82,7 +82,9 @@ The guiding reference for capabilities and framing remains the Core Data Strateg
 | Grocery | 3 (Kroger / Acme / Winn-Dixie) | 5 | 15 | ~800 |
 | QSR | 1 (Taco Bell) | — | 9 | ~450 |
 | Off-price retail | 1 (TJ Maxx) | — | 5 | ~500 |
-| **Total** | | | **24** | |
+| **Total** | | | **29** | |
+
+*Total corrected 24 → 29 (Wave 1 Stage 4.1): the breakdown (15 grocery + 9 QSR + 5 off-price) and the volume math (1.08M + 365k + 225k ≈ 1.67M) always summed to 29; the "24" headline dropped the 5 off-price stores. D13.2's placement matrix (29) is authoritative; no volume rebalancing needed — the ~1.67M target was sized on 29 all along.*
 
 **Resulting volume (target band):**
 - Grocery: 15 × 800 × 90 ≈ **1.08M**
@@ -244,7 +246,7 @@ A fictional metro modeled on Charlotte's structure. Names are **Charlotte-style 
 
 Residential weights sum to 100% and drive where the ~100k customers live. **Affluence is a skew with within-zone variance, not a determinant** — no zone is monolithic. Each profile field feeds a specific later layer: affluence → basket size + premium-SKU propensity + payment mix; household skew → basket size; age skew → QSR late-night + mobile-wallet adoption; density → within-zone travel distance. Each zone has a centroid (lat/long) defined in the zone config.
 
-### D13.2 — Store placement (24 stores) by banner positioning
+### D13.2 — Store placement (29 stores) by banner positioning
 
 Stores are placed where their banner's positioning fits the zone — the source of explainable per-store differences. (Counts are the `store_count` × `zone_placement_bias` of each merchant config, D12.)
 
@@ -316,19 +318,23 @@ Activity within a segment is a **mixture of three intensity tiers** (more interp
 | Regular | 45% | 14–22 (~18) | ~1.5×/wk |
 | Occasional | 35% | 3–10 (~6) | top-up / secondary store |
 
-**QSR** (mean ~10.1):
+**QSR** (mean ~10.4):
 | Tier | Share | Trips/90d (μ) | Cadence |
 |---|---|---|---|
-| Heavy user | 15% | 30–55 (~40) | brand-loyal near-daily |
-| Regular | 35% | 8–15 (~11) | ~weekly |
+| Heavy user | 10% | 30–55 (~40) | brand-loyal near-daily |
+| Regular | 40% | 8–15 (~11) | ~weekly |
 | Occasional | 50% | 2–6 (~4) | long tail |
+
+*Share split revised 15/35/50 → 10/40/50 during Wave 1 Stage 4.2 calibration: at 15% heavy the weighted mean × active count overshot T1 by ~17%. Means (40/11/4, externally anchored) kept; the share split (always an internal estimate) corrected — the brand-loyal heavy tier is rarer than the first cut assumed. Lands ~374k QSR txns, mid-T1-band. Share-mix test tolerance ±6pp.*
 
 **Off-price retail** (mean ~6.1):
 | Tier | Share | Trips/90d (μ) | Cadence |
 |---|---|---|---|
-| Enthusiast | 12% | 10–20 (~16) | treasure-hunt regular |
-| Regular | 33% | 4–8 (~7) | ~monthly+ |
-| Occasional | 55% | 1–3 (~2.5) | one-and-done tail |
+| Enthusiast | 12% | 10–24 (~16) | treasure-hunt regular |
+| Regular | 33% | 4–10 (~7) | ~monthly+ |
+| Occasional | 55% | 1–4 (~2.5) | one-and-done tail |
+
+*Tier hi bounds widened (10–20→10–24, 4–8→4–10, 1–3→1–4) during Wave 1 Stage 4.2 calibration: the original ranges were too tight on the high side for `triangular(lo, μ, hi)` to realize the stated means, undershooting T1 by ~16%. Fix corrects the distribution geometry (the broken thing) — shares (12/33/55), means (16/7/2.5), and lo bounds all ratified unchanged; the hi bound is the heavy edge of the long tail, stated as ~range, widened to fit the reconciliation. Watch coupling to D17.8 basket heavy-tail (slightly more high-frequency cards).*
 
 The large occasional tiers are deliberate — real per-store distinct-card counts are dominated by occasionals, and **new-vs-returning analytics depend on this tail existing.** Small core/heavy tiers carry disproportionate volume (the 80/20 shape).
 
@@ -631,6 +637,8 @@ Two kinds of events layered onto built data: **promos** = expected business rhyt
 
 **Penetration & depth.** ~25–35% of grocery units on promotion (CPG benchmark); trade/consumer promo ~20% of CPG revenue (McKinsey, Nielsen). Depths: weekly ad 10–25%, holiday 15–30%, BOGO ~50%, clearance 20–50%, loss-leader deep on select KVIs. Coverage broad for weekly ad, narrow for LTO.
 
+*T15 band correction (full-scale validation): generated promo-unit share landed 24.6% — structurally stable (pilot and full-scale identical), sitting at the upper edge of real-world weekly-ad SKU coverage (the cited ~50–150 SKUs/week range). The data is on-anchor; the original 25% test floor was a hair too high. Per the "fix drift-from-anchor, leave band-edge-on-anchor" rule, the **T15 floor was lowered 25%→22%** (test corrected, data unchanged, no regeneration) — same reasoning as the blended-debit reframe. The CPG ~25–35% benchmark is an all-promo-types figure; our weekly-ad-dominant mix legitimately sits at its lower edge.*
+
 **Demand response (the piece the baseline lacked).** A promoted SKU gets a basket-inclusion + quantity **lift** during its window, scaled to discount depth × category elasticity (real lifts ~10–200%+). This makes promos detectable as *causal* — the Demand agent sees the spike, the Pricing agent ties it to the discount.
 
 **Cross-merchant divergence (D19.2 lever 4).** Merchants promote different SKUs in different weeks → price gaps flip week to week (dynamic pricing intelligence).
@@ -658,6 +666,152 @@ Promo penetration ~25–35% of grocery units; trade/consumer promo ~20% of CPG r
 
 ---
 
+## D21 — Wave 2: Anonymization model (Option A — structural k≥50) *(ratified)*
+
+Implements the Core Data Strategy §8 ("privacy by design," anonymization at the earliest point, no PII in the analytics layer). Governs how peer data is exposed in the lake.
+
+### D21.1 — Option A chosen: pre-aggregated, structurally k-anonymous lake
+**Decision.** The lake is **not** anonymized line items queried by arbitrary agent SQL. It is a small set of **pre-computed aggregate tables**, each vetted to **k ≥ 50 at build time**, that agents query. Peer comparison resolves to **category / subcategory grain** — as fine as k≥50 allows per cell — **never to individual peer SKUs.**
+
+**Rationale (Option A vs Option B).**
+- *Option A (chosen):* structural k≥50 (provably meets the doc's stated bar), eliminates the leaky-suppression hole, defends against differencing attacks. Cost: no literal peer-SKU-to-own-SKU comparison.
+- *Option B (rejected):* anonymized line items + arbitrary SQL → peer SKU-level visibility, but forces reactive k-enforcement, weak-k exposure, and differencing risk — inconsistent with "meaningful anonymization per the doc."
+- A single peer SKU at a peer store is, by definition, a small cell the doc says to **suppress**. "Follow §8" and "expose peer SKUs" are in direct conflict by the doc's own definition. Strategic insight is preserved at (sub)category grain; SKU-level detail lives on **own-tenant** data, which is unrestricted.
+
+### D21.2 — Why weak k and leaky suppression are rejected
+- **Weak k (baseline k=5):** a reported cell can represent as few as 5 people → near-isolation of individuals in small zones; and ships a 10× gap below the doc's stated k≥50, undercutting the privacy pitch.
+- **Leaky suppression (baseline §10.4 bug):** suppression only fires when a column is *named* `count`/`n` — protection depends on query phrasing, not cell risk. A 3-person cell under a column named `revenue` passes unprotected. Non-functional control.
+- **Pre-aggregation fixes both structurally:** if only k≥50-vetted cells exist in the lake, no small cell is reachable by any query, regardless of phrasing — and the subtraction needed for **differencing attacks** can't be constructed.
+
+### D21.3 — Techniques in scope for Wave 2 (vs deferred)
+**In:** on-device tokenization (already in generation), generalization (ZIP5→ZIP3, timestamp→date+hour-bucket, amount→bins), **k≥50 enforced structurally via pre-aggregation**, suppression of any cell below k≥50, viewer exclusion + peer relabel.
+**Deferred (post-validation hardening pass):** **l-diversity** and **differential privacy**. Rationale: validate the data and the aggregate lake first. The aggregate tables are **designed to accept a DP noise layer later** (Laplace on published counts/means, stated ε) without a rewrite — but Wave 2 ships k-anonymity + exclusion + relabel only. This makes Wave 2 a clean subset of §8, with the gap explicitly noted.
+
+### D21.4 — k threshold RESOLVED at full scale (T17 cleared)
+Designed for k≥50; **Wave 1's full-scale T17 (100k cards) confirmed all 8 zones clear it** — binding zone Cabarrus Edge holds **483 all-three cards (~10× over k≥50)**, largest (Matthews) 1,126. **The designed grain (per-zone × all-three; category×zone×week for metrics) locks as-is — no coarsening required**, with headroom for finer cuts if wanted. The coarsening ladder (subcat→cat→week→month, else suppress) remains in the builder as a **safety net** — expected to fire rarely, mainly on `lake_category_metrics` at its finest subcategory×zone×week cut. Do not lower k.
+
+---
+
+## D22 — Wave 2: Dual-path lake structure *(ratified)*
+
+Implements §8.3 dual path. Each merchant's agent sees two surfaces.
+
+### D22.1 — The two surfaces
+- **Own tenant data — full granularity, unanonymized.** The viewer's own merchant data down to SKU/store/day/customer. It is the viewer's proprietary data; no anonymization applied.
+- **Lake — all *other* merchants, anonymized & aggregated, viewer excluded.** Viewer's own merchant filtered out (`WHERE merchant != viewer`); peers relabeled (see D22.2). Only k≥50 pre-aggregated cells (D21).
+
+### D22.2 — Peer relabeling by *relationship* (not flat peer_a..d)
+Resolved at query time relative to the viewer, the lake carries a `peer_relationship` dimension:
+- **`segment_peer`** — same segment as viewer (for Kroger: the other grocers). The apples-to-apples competitive benchmark; valid for price/assortment/demand comparison.
+- **`cross_segment`** — different segment (for Kroger: Taco Bell, TJ Maxx). Valid for cross-shopping / trade-area / cohort analysis, **not** price benchmarking.
+This tells the agent *which* comparisons are valid (benchmark dairy vs segment peers, not vs Taco Bell). More meaningful than anonymous peer_a..d.
+
+### D22.3 — Single lake, query-time scoping (D4)
+One physical lake (no per-viewer 5× materialization). Viewer exclusion + peer relabel + relationship resolution are **query-time predicates/CTE wrap** over the single set.
+
+### D22.4 — Tenant-isolation guards (re-implemented over DuckDB/Parquet)
+The dual path is only real if an agent **cannot** reach a peer's full data through the tenant surface. Two guards (carried from baseline §10.11, re-implemented):
+- **Predicate check** — every tenant-surface query is verified scoped to the viewer's own merchant; a query referencing another merchant's tenant data is rejected.
+- **Query remap/wrap** — the agent's tenant query is wrapped so it can only ever resolve to the viewer's own merchant, regardless of what was written.
+Peers are reachable **only** through the anonymized lake. Without these guards the anonymization is theater (an agent could read peer raw data directly). The lake builder is also physically forbidden from reading `data/eval/` (anomaly answer key).
+
+### D22.5 — Example: "how is my dairy priced vs peers?" (Kroger)
+- *Own data:* full dairy detail, to SKU ("your PL milk $Y, national butter $Z").
+- *Lake:* `segment_peer` dairy index at category/subcategory grain, viewer excluded.
+- *Answer:* "Your dairy is ~4% below segment peers in Ballantyne; your PL dairy leads, but organic-dairy subcategory sits ~6% above peers." Dairy is high-volume → supports fine subcategory grain. Own side to SKU; peer side to (sub)category. Never peer-SKU.
+
+### D22.6 — Lake aggregate tables (drilled next, D23+)
+Pre-aggregated, k≥50-vetted tables powering the agents: `lake_category_metrics` (price/demand/anomaly baselining), `lake_payment_mix`, `lake_segment_mix`, `lake_trade_area`, `lake_cross_merchant_cohorts` (count-level overlap, k≥50 at zone grain — full-scale T17 confirms 483–1,126 all-three cards/zone). Each table's grain, columns, and consuming agent ratified in D23+.
+
+---
+
+## D23 — Wave 2: Lake aggregate tables, enrichment & observable-data rule *(ratified)*
+
+The five pre-aggregated tables (D22.6), how they're built, enriched, and the governing provenance rule.
+
+### D23.1 — Governing rule: lake derives ONLY from observable data (tested invariant)
+The lake may be built **only** from what a terminal/merchant actually observes: transactions, transaction_items, and **store location**. **Generation-time latent/profile columns are NEVER source columns** — specifically forbidden: `customer.segment`, `customer.preference_vector`, `customer.loyalty_type`, wallet-enrollment flag, `zone.affluence`/`zone.density`/`zone.age` profiles, and any other generation scaffolding.
+**Enforced as a build-time test:** the lake builder asserts it never reads the forbidden columns; CI fails if it does. This is the invariant that mechanically prevents scaffolding leaks (it would have caught the segment_mix and zone-profile bugs). Rationale: per D1, the data position is "what the terminals see" — reading planted labels is reading the answer key, indefensible to an exec.
+**Free validation test:** behaviorally-derived constructs (segments, zone character) *should* correlate with the planted ones without reading them — if they do, generation is coherent; if not, flag.
+
+### D23.2 — Zones: geography observable, character derived from behavior
+- **Zone as grouping key = observable.** Stores grouped by location (lat/long → geographic grouping / ZIP3 per generalization). A merchant knows its store's zone because it knows where the store is. Zone grain is unchanged from the data model; only its *provenance* is corrected.
+- **Zone character = derived from behavior, NOT the planted profile.** Any "affluent/value" characterization is inferred from observable behavior in the zone (avg basket, premium-vs-value banner volume mix, price posture, promo sensitivity). **No external census enrichment** (considered and declined — keep to what's in the data). The planted `zone.affluence` is never read (D23.1).
+
+### D23.3 — The five tables (grain, columns, consumers, k-posture)
+All carry: `peer_relationship` (segment_peer | cross_segment, resolved per viewer at query time), `txn_count` (the k guard), and **consistent shared dimension keys** (aligned `zone`, time grain, category taxonomy) so cross-table joins work.
+
+**1. `lake_category_metrics`** — the workhorse
+- Grain: merchant × category (× subcategory where ≥ k) × zone × week
+- Columns: price_index (vs metro mean), revenue_index, units_index, basket_penetration_share, promo_active_share, wow_delta, txn_count
+- Consumers: Pricing, Demand, Anomaly
+- k: grocery cat×zone×week ≈ 250+ txns — clears comfortably; subcat falls back to cat where thin. **The one table where the coarsening ladder may fire** (finest grain); full-scale T17 confirms the cohort/zone tables clear with ~10× margin.
+
+**2. `lake_payment_mix`** — payment optimization
+- Grain: merchant × payment-attr × zone (× month)
+- Columns: contactless/chip/swipe shares, mobile_wallet_share (+provider split), debit/credit share, network mix, txn_count
+- Consumers: Payment Optimization. k: coarse attrs → fat cells, clears easily.
+
+**3. `lake_segment_mix`** — segmentation (BEHAVIORAL, not planted)
+- Grain: merchant × derived_behavioral_segment × zone
+- Behavioral segments computed from **observable features only**: frequency (trips/period), basket/spend band, recency/regularity, weekday/weekend skew, promo share, private-label share, price-index-paid, payment behavior, daypart. Clustered → segments. **Never reads `customer.segment`.**
+- Columns: segment share, per-segment avg basket/frequency band, txn_count (count-level → k≥50 at zone grain)
+- Consumers: Segmentation
+
+**4. `lake_trade_area`** — location/trade-area
+- Grain: zone × category (× merchant)
+- Columns: merchant/store density, category presence & mix, zone category-volume index, share_of_zone by merchant
+- Consumers: Location/Trade-Area. k: zone-level → most aggregated, never in question.
+
+**5. `lake_cross_merchant_cohorts`** — headline overlap
+- Grain: zone × merchant-combination (grocery+QSR, all-three, etc.)
+- Built INSIDE trusted boundary (token linkage across merchants allowed there); **only aggregated counts/bands published** — never a customer-level cross-merchant row.
+- Columns: cohort_size (count), **median/banded combined-spend (NOT raw mean — see D24.2 concentration risk)**, cross-shop frequency band
+- Consumers: Conversational Advisor, Segmentation, Trade-Area. k: full-scale T17 confirms 483–1,126 all-three/zone → clears k≥50 by ~10–22×. Independent of the SKU question — pure count-level.
+
+### D23.4 — Enrichment spec (what makes the lake useful, not just rollups)
+Every table stores **interpretable comparatives**, computed at build time inside the trusted boundary — not raw counts:
+- **Indices** (value ÷ metro/category mean) — instantly interpretable, comparable across categories/merchants.
+- **Peer-relative position** — precomputed vs segment_peer aggregate at matching grain.
+- **Trend/delta** — wow/period change (gives demand/anomaly a derivative).
+- **Share/penetration** — normalized so small/large merchants compare.
+- **txn_count** carried so agent + privacy layer always know the cell is safe.
+Agents reason over clean comparatives, not raw rows (faster, consistent, no differencing surface).
+
+### D23.5 — Build & query loop (worked example)
+**Build (trusted, once):** raw transactions+items+stores → join → group to safe grain → **k guard** (coarsen subcat→cat→month until ≥50, else drop) → **enrich** (indices/deltas/shares) → store. Output cells carry no customer/SKU/single-store — only safe, enriched comparatives.
+**Query (agent, Kroger "dairy vs peers"):** (a) own tenant surface, full grain, to SKU; (b) lake: `WHERE category='dairy' AND zone=… AND merchant != 'Kroger' AND peer_relationship='segment_peer'`. **Reason:** compare own detail vs peer index → "dairy ~4% below segment peers; organic-dairy 7% below — margin room."
+
+### D23.6 — Own-store vs zone-peers (multi-store grocer)
+Peer benchmark is at **zone** grain, so "how is my store doing vs peers" = own store vs **segment peers in that store's zone**. A multi-store grocer benchmarks store-by-store against each store's local competitive context ("Ballantyne store lags zone peers on dairy; University City store leads"). Two own-stores in one zone share the same peer benchmark (correct — same competitive context). **Underperforming SKUs:** vs own baseline = full SKU detail; vs peers = category grain + own-SKU drill-down (never peer-SKU).
+
+### D23.7 — Coverage & freeform boundaries
+- **In scope (strong):** all peer-comparison questions on price/demand/payment/segment/location/overlap; own-data anything.
+- **Lake requirements for cross-table freeform:** consistent intersecting keys (D23.3) + **grain/coverage metadata published** per table (declares finest grain + what it does NOT carry) so agents know their limits.
+- **Deliberate gaps (agent must decline gracefully, not hallucinate):** peer-SKU detail (Option A), peer grain finer than table (e.g., daily peer pricing), open-ended speculation. **Freeform robustness lives in agent design (Wave 3)** — recorded as forward requirement: Conversational Advisor needs decomposition + explicit out-of-scope/decline behavior.
+- **Zone summary table:** deferred (five tables share clean `zone` key → agent joins on demand). Add later only if neighborhood-overview questions prove central.
+
+---
+
+## D24 — Wave 2: Honest limits of the anonymization (recorded to prevent over-claiming) *(ratified)*
+
+The lake is defensible, but three limits must be stated plainly — a privacy report that omits them is worse than one that names them. This matches the project standard (D-purpose): traceable, no over-claiming.
+
+### D24.1 — Small-N peer set is *pseudonymous*, not anonymous
+With only 5 merchants, relabeling peers `segment_peer`/`cross_segment` (or peer_a..d) is **pseudonymization, not true anonymity**: a viewer who knows there are only 2 other grocers can often de-anonymize a `segment_peer` benchmark by elimination. This is acceptable for the demo (the *aggregate cell* is still k≥50, so no individual *consumer* is exposed — the leak is only *which competitor*, which is a business-confidentiality matter, not a privacy/PII one), **but it must be stated, not implied away.**
+- **Enforcement:** the query-time wrapper MUST strip the real peer merchant identity before returning to the agent — the agent surface receives only the relabeled token. (An L-test asserts the real merchant name never reaches the agent.) Real `merchant` may exist *inside* the lake (needed to resolve relationship per viewer); it must not *exit* to the viewer.
+- **Honest framing:** in production with many merchants per segment, relabeling approaches true anonymity; at demo scale (5 merchants) it's pseudonymous and the report says so.
+
+### D24.2 — Cohort published statistics carry residual concentration risk (until DP)
+k≥50 guarantees a cohort is *large enough*, but **a published mean can still leak if spend is concentrated** (one whale dominates the average) — k-anonymity doesn't catch this; l-diversity / bounded-sensitivity / DP does, and those are deferred (D21.3). Mitigation now: **publish robust statistics (median / banded) for cohort spend, never raw means** (D23.3 table 5 updated). Full fix lands with the deferred DP layer.
+
+### D24.3 — Wave 2 is a *subset* of §8; the report states the gap
+Wave 2 ships: tokenization (generation), generalization, **structural k≥50**, suppression, viewer exclusion + relabel. **Deferred (named in §8, NOT yet applied):** **l-diversity** and **differential privacy**. The build report MUST explicitly list these as deferred-with-reason — an exec reading a §8-framed privacy report that silently omits two named techniques is a worse outcome than one that says "in / deferred / why." Honesty about the deferral is more defensible than apparent completeness.
+
+**DP injection point (resolved):** no `publish()` seam is built in Wave 2 — enforcement scaffolding around an identity no-op is complexity for zero behavior, and an unenforced seam is theater. Instead, the **published aggregate columns in the five lake tables ARE the future DP injection point**: when DP is added, Laplace noise applies to those aggregate values at build time, no schema change. Keeping aggregates as clean numeric columns is the only forward-readiness needed.
+
+---
+
 ## Open items (decide before / during `SPEC.md`)
 
 1. **Phase sequencing — NOT YET DECIDED.** Options: (a) data realism first, then agents; (b) agent unification first; (c) both in parallel. Note D9 must follow D8 regardless.
@@ -668,9 +822,12 @@ Promo penetration ~25–35% of grocery units; trade/consumer promo ~20% of CPG r
 6. **Grocery catalog depth — RESOLVED (D17.6):** keep ~1,100 SKUs for v4; revisit only if affinity-discoverability tests come back thin.
 7. **TJ Maxx assortment fidelity — RESOLVED (D19.5):** fixed catalog, no rotation.
 8. **Anomaly scope — RESOLVED (D20):** 3 business anomalies (A1–A3); fraud/tampering (A4–A5) out of scope for v4. Anomaly agent scoped to business anomalies, must not claim fraud detection.
-9. **Execution plan — pending capture (NEXT).** Branch strategy (`v4` integration branch off `main`, short-lived feature branches, `v3-final` tag), dependency-gated waves (0: cleanup/test scaffolding; 1: data+config+storage; 2: anonymization+lake; 3: agent contract+chart library; 4: dashboard+ask-AI), test-first gating per wave, cleanup-as-Wave-0. **Open sub-question:** convert DECISIONS→SPEC per-wave just-in-time (lean, leaning this) vs. all up front.
-10. **Agent & dashboard detailed design — pending.** D8 (unification), D9 (ask-AI), and the strategy-doc agents decided at principle level, not yet drilled. Note from D20.3: Anomaly agent is business-anomaly-only in v4. Slated for Waves 3–4 / their per-wave SPEC.
+9. **Execution plan — RESOLVED.** Branch strategy + dependency-gated waves confirmed; per-wave just-in-time SPECs. `main` frozen on `v3-final`; all waves accumulate on `v4`; no merge to main until v4 complete.
+10. **Agent & dashboard detailed design — pending.** D8 (unification), D9 (ask-AI), strategy-doc agents at principle level. Anomaly agent business-only (D20.3). Slated for Waves 3–4.
+11. **Wave 1 (data generation) — COMPLETE at full scale.** Committed on `v4` (18 commits, 210 tests green at 100k). 35/35 acceptance invariants pass; full-scale DQ report in `docs/DQ_REPORT.md`. T11 affinities vivid + scale-invariant, T14 pricing flips real, AOV on $55 anchor, **T17 (Wave 2 gate) cleared — 483–1,126 all-three cards/zone, ~10× over k≥50**. `data/raw/` (1.66M txns) frozen as final, gitignored (local-only). Closing corrections: T15 band 25%→22% (data on-anchor), QSR shares 10/40/50, off-price hi-bounds widened, D5 store total 24→29. Deferred to Wave 1.5 (optional): basket-builder vectorization, A2 anomaly crispness — both dropped from critical path (no regeneration planned).
+12. **Wave 2 anonymization & lake — DESIGN COMPLETE, READY TO HAND OFF (D21–D24).** Option A structural k≥50 (D21), dual path + relationship relabel + isolation guards (D22), five lake tables + enrichment + observable-data-only invariant + behavioral zones (D23), honest-limits (D24: small-N pseudonymity, cohort-mean→median, §8 deferral stated). **SPEC finalized:** `SPEC_wave2_anonymization_lake.md` — gate met (T17 resolved), reads frozen `data/raw/`, commits to `v4` (no PR). l-diversity + DP deferred; aggregate columns are the future DP injection point (D24.3). **Unblocked — hand off when ready.**
+13. **Agent design (Wave 3) — forward requirements recorded:** Anomaly agent business-only (D20.3); Conversational Advisor needs query decomposition + graceful out-of-scope/decline behavior (D23.7); agents reason over enriched comparatives + grain metadata. Next planning drill.
 
 ---
 
-*This record supersedes `docs/BASELINE.md` only where explicitly noted; the baseline remains the accurate "before" snapshot for everything else. Next step: turn these decisions into `SPEC.md`, then validate against the live code in Claude Code plan mode before implementing.*
+*This record supersedes `docs/BASELINE.md` only where explicitly noted; the baseline remains the accurate "before" snapshot for everything else. **Status: Wave 1 complete on `v4` (full-scale validated); Wave 2 SPEC ready to hand off; Wave 3 (agents) is the next design drill.** Per-wave SPECs are the execution contract; this doc is the cumulative source of truth.*
