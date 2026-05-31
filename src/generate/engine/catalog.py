@@ -75,6 +75,136 @@ _PRIVATE_LABEL_SHARE = {
 }
 
 
+# Anchor base prices per (segment, category, subcategory). Mid-of-range
+# value; per-SKU spread within the subcategory comes from the position
+# index plus per-SKU competitive index (Stage 4.7 pricing). Real-world
+# 2025 anchors per D19.1.
+
+_ANCHOR_PRICE_MID: dict[tuple[str, str, str], float] = {
+    # Grocery (per-unit prices, mid-range)
+    ("grocery", "DAIRY",     "MILK"):       3.49,
+    ("grocery", "DAIRY",     "CHEESE"):     4.99,
+    ("grocery", "DAIRY",     "YOGURT"):     2.49,
+    ("grocery", "DAIRY",     "BUTTER"):     4.49,
+    ("grocery", "DAIRY",     "EGGS"):       3.79,
+    ("grocery", "BAKERY",    "BREAD"):      3.49,
+    ("grocery", "BAKERY",    "ROLLS"):      3.79,
+    ("grocery", "BAKERY",    "PASTRIES"):   4.49,
+    ("grocery", "BAKERY",    "BAGELS"):     3.99,
+    ("grocery", "PRODUCE",   "FRUIT"):      2.99,
+    ("grocery", "PRODUCE",   "VEGETABLE"):  2.49,
+    ("grocery", "PRODUCE",   "SALAD"):      4.49,
+    ("grocery", "PRODUCE",   "HERBS"):      2.79,
+    ("grocery", "MEAT",      "BEEF"):       7.49,
+    ("grocery", "MEAT",      "POULTRY"):    5.99,
+    ("grocery", "MEAT",      "PORK"):       5.49,
+    ("grocery", "MEAT",      "SEAFOOD"):    9.99,
+    ("grocery", "MEAT",      "DELI"):       7.99,
+    ("grocery", "FROZEN",    "FROZEN_MEAL"): 4.49,
+    ("grocery", "FROZEN",    "ICE_CREAM"):   5.49,
+    ("grocery", "FROZEN",    "FROZEN_VEG"):  2.99,
+    ("grocery", "FROZEN",    "FROZEN_PIZZA"): 6.49,
+    ("grocery", "PANTRY",    "PASTA"):      2.49,
+    ("grocery", "PANTRY",    "SAUCE"):      3.99,
+    ("grocery", "PANTRY",    "CANNED"):     1.99,
+    ("grocery", "PANTRY",    "RICE"):       3.99,
+    ("grocery", "PANTRY",    "CEREAL"):     4.49,
+    ("grocery", "PANTRY",    "COFFEE"):     9.99,
+    ("grocery", "PANTRY",    "SOUP"):       2.49,
+    ("grocery", "SNACKS",    "CHIPS"):      4.49,
+    ("grocery", "SNACKS",    "SALSA"):      3.99,
+    ("grocery", "SNACKS",    "COOKIES"):    3.99,
+    ("grocery", "SNACKS",    "CRACKERS"):   3.49,
+    ("grocery", "SNACKS",    "CANDY"):      2.49,
+    ("grocery", "SNACKS",    "NUTS"):       7.49,
+    ("grocery", "BEVERAGES", "SODA"):       4.99,
+    ("grocery", "BEVERAGES", "WATER"):      4.49,
+    ("grocery", "BEVERAGES", "JUICE"):      4.49,
+    ("grocery", "BEVERAGES", "TEA"):        3.49,
+    ("grocery", "BEVERAGES", "ENERGY"):     2.49,
+    ("grocery", "HOUSEHOLD", "CLEANING"):   5.49,
+    ("grocery", "HOUSEHOLD", "PAPER"):      11.99,
+    ("grocery", "HOUSEHOLD", "LAUNDRY"):    12.99,
+    ("grocery", "HOUSEHOLD", "STORAGE"):    6.99,
+    ("grocery", "PERSONAL",  "TOOTHPASTE"): 3.99,
+    ("grocery", "PERSONAL",  "SOAP"):       5.49,
+    ("grocery", "PERSONAL",  "SHAMPOO"):    7.99,
+    ("grocery", "PERSONAL",  "DEODORANT"):  4.99,
+    ("grocery", "BABY",      "DIAPERS"):    24.99,
+    ("grocery", "BABY",      "WIPES"):      6.99,
+    ("grocery", "BABY",      "FORMULA"):    29.99,
+    ("grocery", "BABY",      "BABY_FOOD"):  2.49,
+    ("grocery", "PET",       "PET_FOOD"):   17.99,
+    ("grocery", "PET",       "PET_TREATS"): 6.49,
+    ("grocery", "PET",       "PET_SUPPLIES"): 12.99,
+
+    # QSR (per-item menu prices)
+    ("qsr", "TACO",  "CRUNCHY"):    1.99,
+    ("qsr", "TACO",  "SOFT"):       2.19,
+    ("qsr", "TACO",  "SPECIALTY"):  3.49,
+    ("qsr", "BURR",  "BEAN"):       2.49,
+    ("qsr", "BURR",  "BEEF"):       3.49,
+    ("qsr", "BURR",  "CHICKEN"):    3.99,
+    ("qsr", "BURR",  "SPECIALTY"):  5.49,
+    ("qsr", "COMBO", "LUNCH_COMBO"):  7.99,
+    ("qsr", "COMBO", "DINNER_COMBO"): 8.99,
+    ("qsr", "SIDE",  "NACHO"):      2.99,
+    ("qsr", "SIDE",  "FRIES"):      2.49,
+    ("qsr", "SIDE",  "CINNAMON"):   2.79,
+    ("qsr", "DRINK", "SODA"):       2.49,
+    ("qsr", "DRINK", "COFFEE"):     2.79,
+    ("qsr", "DRINK", "SWEET_TEA"):  2.49,
+    ("qsr", "DRINK", "WATER"):      1.99,
+    ("qsr", "BFAST", "BREAKFAST_BURR"): 3.99,
+    ("qsr", "BFAST", "CRUNCHWRAP"): 4.49,
+    ("qsr", "BFAST", "EGG_DISH"):   3.49,
+
+    # Off-price retail (per-item prices)
+    ("off_price", "WOM", "TOP"):       17.99,
+    ("off_price", "WOM", "BOTTOM"):    24.99,
+    ("off_price", "WOM", "DRESS"):     34.99,
+    ("off_price", "WOM", "OUTERWEAR"): 59.99,
+    ("off_price", "MEN", "TOP"):       19.99,
+    ("off_price", "MEN", "BOTTOM"):    29.99,
+    ("off_price", "MEN", "OUTERWEAR"): 54.99,
+    ("off_price", "KID", "TOP"):       12.99,
+    ("off_price", "KID", "BOTTOM"):    14.99,
+    ("off_price", "KID", "OUTERWEAR"): 24.99,
+    ("off_price", "HOM", "DECOR"):     19.99,
+    ("off_price", "HOM", "KITCHEN"):   17.99,
+    ("off_price", "HOM", "BATH"):      14.99,
+    ("off_price", "HOM", "BEDDING"):   39.99,
+    ("off_price", "ACC", "BAG"):       34.99,
+    ("off_price", "ACC", "JEWELRY"):   17.99,
+    ("off_price", "ACC", "BELT"):      14.99,
+    ("off_price", "SHO", "WOMEN"):     34.99,
+    ("off_price", "SHO", "MEN"):       39.99,
+    ("off_price", "SHO", "KID"):       19.99,
+    ("off_price", "BTY", "FRAGRANCE"): 19.99,
+    ("off_price", "BTY", "MAKEUP"):    14.99,
+    ("off_price", "BTY", "SKINCARE"):  17.99,
+}
+
+
+def _base_price_for_canonical(segment: str, category: str, subcategory: str,
+                              position: int, n_in_subcat: int) -> float:
+    """Per-SKU base price. Anchor mid for the (cat, subcat) ± a
+    position-driven spread so SKUs within a subcategory vary
+    realistically without per-SKU noise (deterministic).
+
+    Spread: ±20% around the anchor, distributed evenly by position.
+    """
+    anchor = _ANCHOR_PRICE_MID.get((segment, category, subcategory))
+    if anchor is None:
+        anchor = 5.00  # fallback
+    if n_in_subcat <= 1:
+        return round(anchor, 2)
+    # Linear ramp from -20% to +20% by position 1..n.
+    t = (position - 1) / max(1, n_in_subcat - 1)
+    spread_factor = 0.80 + 0.40 * t
+    return round(anchor * spread_factor, 2)
+
+
 _SEGMENT_BANNERS = {
     "grocery":   ("ACM", "KRG", "WDX"),
     "qsr":       ("TBL",),
@@ -128,15 +258,27 @@ def build_catalog(cfg: Config, rng: np.random.Generator) -> pd.DataFrame:
     Stage 4.7.
 
     Columns: ``sku, merchant_id, banner_code, segment, category,
-    subcategory, canonical_id, private_label``. Pricing fields
-    (base_price, etc.) are added at Stage 4.7.
+    subcategory, canonical_id, private_label, base_price``.
+    base_price added at Stage 4.7 — the shared "anchor" the
+    pricing layer modulates per merchant + zone + time + line.
     """
     rows: list[dict] = []
     for segment in ("grocery", "qsr", "off_price"):
         canonicals = _canonical_skus_for_segment(segment)
         pl_flags = _mark_private_label(canonicals, segment, rng)
+        # Count SKUs per (cat, subcat) to drive the position-based price spread.
+        subcat_counts: dict[tuple[str, str], int] = {}
+        for canon in canonicals:
+            key = (canon["category"], canon["subcategory"])
+            subcat_counts[key] = subcat_counts.get(key, 0) + 1
+
         for banner in _SEGMENT_BANNERS[segment]:
             for canon, pl in zip(canonicals, pl_flags):
+                n_in_subcat = subcat_counts[(canon["category"], canon["subcategory"])]
+                base_price = _base_price_for_canonical(
+                    segment, canon["category"], canon["subcategory"],
+                    canon["position"], n_in_subcat,
+                )
                 rows.append({
                     "sku":          f"{banner}-{canon['canonical_id']}",
                     "merchant_id":  banner,
@@ -146,6 +288,7 @@ def build_catalog(cfg: Config, rng: np.random.Generator) -> pd.DataFrame:
                     "subcategory":  canon["subcategory"],
                     "canonical_id": canon["canonical_id"],
                     "private_label": bool(pl),
+                    "base_price":   base_price,
                 })
 
     df = pd.DataFrame(rows)

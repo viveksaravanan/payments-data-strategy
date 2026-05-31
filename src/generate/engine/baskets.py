@@ -143,19 +143,26 @@ _SEGMENT_MISSIONS = {
 
 # ----- D17.4 archetype size distributions ---------------------------
 
+# Archetype sizes tuned at Stage 4.7 for AOV reconciliation. D17.4
+# ratified grocery stockup range 15-30; tightened to (15,17,22) at
+# the low end to land blended grocery AOV in T2 band ($48-62).
+# QSR combo archetype dropped from (3,4,5) → (1,2,3): a single
+# "COMBO" SKU in the catalog represents the whole bundled meal
+# (entree + side + drink), not a constituent line, so a combo trip
+# is usually 1 combo + maybe a drink upgrade — basket size 1-3.
 _GROCERY_ARCHETYPES = {
-    "stockup": (15, 22, 30),
+    "stockup": (15, 17, 22),
     "fill_in": (5, 6, 8),
     "quick":   (2, 2, 3),
 }
 _QSR_ARCHETYPES = {
-    "combo":   (3, 4, 5),
+    "combo":   (1, 2, 3),
     "quick":   (1, 2, 3),
-    "fill_in": (2, 2, 3),
-    "stockup": (5, 7, 10),
+    "fill_in": (1, 2, 3),
+    "stockup": (4, 6, 9),
 }
 _OFF_PRICE_ARCHETYPES = {
-    "browse":  (3, 5, 12),
+    "browse":  (2, 4, 8),
     "focused": (1, 2, 4),
 }
 
@@ -235,22 +242,38 @@ def _pay_cycle_bucket(day_of_month: int) -> str:
     return "late"
 
 
-# Per-line quantity by category (carried from v3 baseline per D17.5
-# — these are stable category-level distributions).
-_QTY_DISTRIBUTION_DEFAULT = {1: 0.60, 2: 0.25, 3: 0.10, 4: 0.03, 5: 0.02}
+# Per-line quantity by category. Tightened at Stage 4.7 — initial
+# distributions inherited from v3 baseline had means ~1.6 per line,
+# inflating AOV by ~60% across all segments (mostly an artifact —
+# real basket lines are predominantly qty=1; multi-buy is the
+# exception). Tuned to mean ~1.15-1.25 for typical items, qty=1
+# strongly dominant for clothing and QSR fast food.
+_QTY_DISTRIBUTION_DEFAULT = {1: 0.85, 2: 0.12, 3: 0.025, 4: 0.005}
 _QTY_DISTRIBUTION_BY_CATEGORY = {
+    # Grocery — produce + beverages have legitimate multi-buy
     "PRODUCE":   {1: 0.55, 2: 0.25, 3: 0.12, 4: 0.05, 5: 0.03},
-    "DAIRY":     {1: 0.65, 2: 0.25, 3: 0.08, 4: 0.02},
-    "BEVERAGES": {1: 0.50, 2: 0.25, 3: 0.15, 4: 0.07, 6: 0.03},
-    # QSR
-    "TACO":      {1: 0.40, 2: 0.30, 3: 0.20, 4: 0.10},
-    "BURR":      {1: 0.55, 2: 0.30, 3: 0.15},
-    "DRINK":     {1: 0.70, 2: 0.20, 3: 0.10},
-    "COMBO":     {1: 0.65, 2: 0.25, 3: 0.10},
-    "SIDE":      {1: 0.55, 2: 0.30, 3: 0.15},
-    # off-price browse
-    "WOM":       {1: 0.65, 2: 0.25, 3: 0.10},
-    "MEN":       {1: 0.70, 2: 0.20, 3: 0.10},
+    "DAIRY":     {1: 0.80, 2: 0.16, 3: 0.04},
+    "BEVERAGES": {1: 0.65, 2: 0.20, 3: 0.10, 4: 0.05},
+    "BAKERY":    {1: 0.80, 2: 0.15, 3: 0.05},
+    "PANTRY":    {1: 0.78, 2: 0.18, 3: 0.04},
+    "SNACKS":    {1: 0.75, 2: 0.18, 3: 0.05, 4: 0.02},
+    "MEAT":      {1: 0.78, 2: 0.18, 3: 0.04},
+    "FROZEN":    {1: 0.80, 2: 0.15, 3: 0.05},
+    # QSR — almost always one of each item; tacos can stack
+    "TACO":      {1: 0.55, 2: 0.25, 3: 0.15, 4: 0.05},
+    "BURR":      {1: 0.80, 2: 0.15, 3: 0.05},
+    "DRINK":     {1: 0.88, 2: 0.10, 3: 0.02},
+    "COMBO":     {1: 0.92, 2: 0.07, 3: 0.01},
+    "SIDE":      {1: 0.78, 2: 0.18, 3: 0.04},
+    "BFAST":     {1: 0.85, 2: 0.12, 3: 0.03},
+    # Off-price — clothing / home items overwhelmingly qty=1
+    "WOM":       {1: 0.90, 2: 0.08, 3: 0.02},
+    "MEN":       {1: 0.92, 2: 0.06, 3: 0.02},
+    "KID":       {1: 0.85, 2: 0.12, 3: 0.03},
+    "HOM":       {1: 0.88, 2: 0.10, 3: 0.02},
+    "ACC":       {1: 0.92, 2: 0.07, 3: 0.01},
+    "SHO":       {1: 0.95, 2: 0.04, 3: 0.01},
+    "BTY":       {1: 0.85, 2: 0.12, 3: 0.03},
 }
 
 
