@@ -343,8 +343,95 @@ def build_lake_category_metrics() -> pd.DataFrame:
 # =========================================================================
 
 def build_lake_payment_mix() -> pd.DataFrame:
-    """Stage 4.2 — implemented in the next sub-stage commit."""
-    raise NotImplementedError("Stage 4.2 — pending sub-stage commit")
+    """Stage 4.2 — payment-method shares per merchant × zone × month
+    (D23.3.2).
+
+    One row per (banner, zone, month) cell with share columns for
+    entry mode, tender, network, mobile-wallet enrollment + provider
+    split, and connectivity. Cells with txn_count < K_MIN are suppressed
+    (the ladder rarely fires here — 1.66M txns / (5 banners × 8 zones
+    × 3 months) ≈ 13,800 per cell at full scale).
+
+    Per the SPEC §4.2 / D23.3.2: the agent-relevant per-cell shares
+    are precomputed at build time, indexed for the Payment Optimization
+    agent (Wave 3).
+    """
+    stores_with_zone = _load_stores_with_zone()
+    txns = load_table(
+        "transactions",
+        columns=["txn_id", "store_id", "banner_code", "txn_ts",
+                 "tender", "network", "entry_mode",
+                 "wallet_at_tap", "wallet_provider",
+                 "connectivity_type"],
+    )
+    txns["month_start"] = _month_start(txns["txn_ts"])
+    txns = txns.merge(
+        stores_with_zone[["store_id", "derived_zone"]],
+        on="store_id",
+    )
+
+    # One row per (banner, zone, month). Aggregate at the cell level.
+    keys = ["banner_code", "derived_zone", "month_start"]
+    grouped = txns.groupby(keys)
+
+    def _share(series: pd.Series, target: str) -> float:
+        if len(series) == 0:
+            return 0.0
+        return float((series == target).mean())
+
+    def _provider_share_within_wallet(
+        provider_series: pd.Series,
+        wallet_series: pd.Series,
+        target: str,
+    ) -> float:
+        mask = wallet_series.astype(bool)
+        if mask.sum() == 0:
+            return 0.0
+        return float((provider_series[mask] == target).mean())
+
+    rows = []
+    for (banner, zone, month), grp in grouped:
+        n = len(grp)
+        if n < K_MIN:
+            continue
+        rows.append({
+            "banner_code": banner,
+            "derived_zone": zone,
+            "month_start": month,
+            "txn_count": int(n),
+            # Entry mode shares (D18.1).
+            "contactless_share": _share(grp["entry_mode"], "contactless"),
+            "chip_share":        _share(grp["entry_mode"], "chip"),
+            "swipe_share":       _share(grp["entry_mode"], "swipe"),
+            "manual_share":      _share(grp["entry_mode"], "manual"),
+            # Tender + network (D16.3).
+            "credit_share":      _share(grp["tender"], "credit"),
+            "debit_share":       _share(grp["tender"], "debit"),
+            "visa_share":        _share(grp["network"], "visa"),
+            "mc_share":          _share(grp["network"], "mc"),
+            "amex_share":        _share(grp["network"], "amex"),
+            "discover_share":    _share(grp["network"], "discover"),
+            # Mobile wallet (D18.2).
+            "wallet_share":      float(grp["wallet_at_tap"].mean()),
+            "apple_share_within_wallet": _provider_share_within_wallet(
+                grp["wallet_provider"], grp["wallet_at_tap"], "apple",
+            ),
+            "google_share_within_wallet": _provider_share_within_wallet(
+                grp["wallet_provider"], grp["wallet_at_tap"], "google",
+            ),
+            "samsung_share_within_wallet": _provider_share_within_wallet(
+                grp["wallet_provider"], grp["wallet_at_tap"], "samsung",
+            ),
+            # Connectivity (D18.3).
+            "wifi_share":        _share(grp["connectivity_type"], "wifi"),
+            "ethernet_share":    _share(grp["connectivity_type"], "ethernet"),
+            "cellular_share":    _share(grp["connectivity_type"], "cellular"),
+        })
+
+    return pd.DataFrame(rows).sort_values(
+        ["banner_code", "derived_zone", "month_start"],
+        kind="mergesort",
+    ).reset_index(drop=True)
 
 
 def build_lake_segment_mix() -> pd.DataFrame:
