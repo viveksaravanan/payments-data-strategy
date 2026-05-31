@@ -1,30 +1,19 @@
-"""Parameterized lake view-builders.
+"""Wave 2 lake package.
 
-The lake is a virtual layer in v2.5 — there are no physical ``lake_*``
-tables in SQLite (Phase 5c removes the v2 ones). Instead, lake access
-goes through query functions in ``src.lake.views`` that take a viewing
-merchant as input, exclude that merchant's data, pseudonymize peer
-merchants per the per-merchant peer mapping (`peer_a`..`peer_d`), and
-apply privacy generalizations (ZIP3, time bucketing, txn-total binning,
-opaque IDs, no consumer linkage).
+Module layout is being built incrementally per
+``docs/SPEC_wave2_anonymization_lake.md`` §§1-7. The public Wave 2 API
+re-exports (``build_lake``, ``scope_for_viewer``, ``manifest``) are
+populated at Stage 7. Until then, lake consumers import directly from
+the per-stage modules:
 
-Usage::
+* ``src.lake.observable_guard`` — §1 invariant accessor (Stage 1)
+* ``src.lake.isolation`` — §2 tenant guards (Stage 2)
+* ``src.lake.zones`` — §3 zone derivation (Stage 3)
+* ``src.lake.build`` — §4 five-table builder (Stage 4)
+* ``src.lake.scope`` — §5 query-time viewer scoping (Stage 5)
+* ``src.lake.manifest`` — §5 grain metadata (Stage 5)
 
-    from src.lake import get_lake_transactions, get_lake_stores
-    df = get_lake_transactions("KRG")  # Kroger's view of the lake
+The legacy v2.5 ``views.py`` + ``peer_mapping.py`` (k=5, flat
+``peer_a``..``peer_d``) are retired at Stage 7 — they target the wrong
+threshold and wrong relabel scheme for Wave 2.
 """
-from .views import (  # noqa: F401
-    HOUR_BUCKETS,
-    K_ANONYMITY_K,
-    TOTAL_BINS,
-    apply_k_anonymity,
-    generate_opaque_id,
-    get_lake_stores,
-    get_lake_transactions,
-    lake_stores_sql,
-    lake_transactions_sql,
-    register_lake_functions,
-    to_hour_bucket,
-    to_total_bin,
-)
-from .peer_mapping import build_peer_mapping, peer_case_sql  # noqa: F401
