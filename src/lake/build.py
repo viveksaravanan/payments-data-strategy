@@ -435,8 +435,140 @@ def build_lake_payment_mix() -> pd.DataFrame:
 
 
 def build_lake_segment_mix() -> pd.DataFrame:
-    """Stage 4.3 — implemented in the next sub-stage commit."""
-    raise NotImplementedError("Stage 4.3 — pending sub-stage commit")
+    """Stage 4.3 — BEHAVIORAL segment mix per merchant × zone (D23.3.3).
+
+    **The §1 acid test.** Behavioral segments are derived from
+    observable transaction features only:
+
+    * frequency: txns per card at the banner in the 90-day window
+    * basket spend: avg subtotal per txn at the banner
+
+    Cards are bucketed within each banner by per-banner medians of
+    these two features into four behavioral segments:
+
+    * ``premium_loyalist`` (high freq AND high basket)
+    * ``frequent_value``   (high freq AND lower basket)
+    * ``occasional_premium`` (lower freq AND high basket)
+    * ``occasional``        (lower freq AND lower basket)
+
+    Each card's "behavioral home zone" at the banner is its most-
+    frequently-visited derived_zone there (NOT planted home_zone).
+    Per (banner, derived_zone, behavioral_segment) cell, we publish
+    n_cards, share-of-zone at banner, median basket, median freq,
+    and txn_count.
+
+    **The build NEVER reads ``customers.loyalty_type`` or
+    ``customers.primary_banner`` or ``customers.home_zone``.** Those
+    are planted state, forbidden by §1. The L01 static scan + the
+    explicit input column whitelist (only ``customer_token``,
+    ``store_id``, ``banner_code``, ``txn_id``, ``txn_ts``,
+    ``subtotal``) enforce this. The validation test in
+    ``test_L04c_segment_mix.py`` checks the derived segments
+    correlate with the planted ``loyalty_type`` AFTER the build
+    runs, reading the planted column only inside the test.
+    """
+    stores_with_zone = _load_stores_with_zone()
+    txns = load_table(
+        "transactions",
+        columns=["txn_id", "customer_token", "store_id",
+                 "banner_code", "subtotal"],
+    )
+    txns = txns.merge(
+        stores_with_zone[["store_id", "derived_zone"]],
+        on="store_id",
+    )
+
+    # ---- Per (card, banner) observable features ---------------------
+    per_card_banner = (
+        txns.groupby(["customer_token", "banner_code"])
+        .agg(
+            n_txns=("txn_id", "count"),
+            avg_basket=("subtotal", "mean"),
+        )
+        .reset_index()
+    )
+
+    # Behavioral home zone at banner: most-frequented derived_zone.
+    home_zone_at_banner = (
+        txns.groupby(["customer_token", "banner_code", "derived_zone"])
+        .size().rename("n_in_zone").reset_index()
+    )
+    home_zone_at_banner = (
+        home_zone_at_banner
+        .sort_values(["customer_token", "banner_code", "n_in_zone"],
+                     ascending=[True, True, False])
+        .drop_duplicates(subset=["customer_token", "banner_code"])
+        [["customer_token", "banner_code", "derived_zone"]]
+        .rename(columns={"derived_zone": "behavioral_home_zone"})
+    )
+    per_card_banner = per_card_banner.merge(
+        home_zone_at_banner,
+        on=["customer_token", "banner_code"],
+    )
+
+    # ---- Bucket into 4 behavioral segments per banner ---------------
+# Per-banner medians, then vectorized bucket assignment (no .apply
+    # with include_groups since pandas 2.x removed that flag).
+    medians = (
+        per_card_banner.groupby("banner_code")
+        .agg(median_freq=("n_txns", "median"),
+             median_basket=("avg_basket", "median"))
+        .reset_index()
+    )
+    per_card_banner = per_card_banner.merge(medians, on="banner_code")
+    hi_freq = per_card_banner["n_txns"] >= per_card_banner["median_freq"]
+    hi_basket = per_card_banner["avg_basket"] >= per_card_banner["median_basket"]
+    per_card_banner["behavioral_segment"] = np.where(
+        hi_freq & hi_basket, "premium_loyalist",
+        np.where(
+            hi_freq & ~hi_basket, "frequent_value",
+            np.where(
+                ~hi_freq & hi_basket, "occasional_premium",
+                "occasional",
+            ),
+        ),
+    )
+    per_card_banner = per_card_banner.drop(
+        columns=["median_freq", "median_basket"]
+    )
+
+    # ---- Aggregate per (banner, zone, segment) ----------------------
+    cell = (
+        per_card_banner
+        .groupby(["banner_code", "behavioral_home_zone", "behavioral_segment"])
+        .agg(
+            n_cards=("customer_token", "nunique"),
+            median_basket=("avg_basket", "median"),
+            median_freq=("n_txns", "median"),
+            sum_txn_count=("n_txns", "sum"),
+        )
+        .reset_index()
+        .rename(columns={
+            "behavioral_home_zone": "derived_zone",
+            "sum_txn_count": "txn_count",
+        })
+    )
+
+    # ---- Compute share of zone at banner -----------------------------
+    zone_total = (
+        cell.groupby(["banner_code", "derived_zone"])["n_cards"]
+        .sum().rename("zone_n_cards_at_banner")
+    )
+    cell = cell.merge(
+        zone_total, on=["banner_code", "derived_zone"], how="left",
+    )
+    cell["share_of_zone_at_banner"] = (
+        cell["n_cards"] / cell["zone_n_cards_at_banner"]
+    )
+
+    # ---- k floor + sort ---------------------------------------------
+    cell = cell[cell["txn_count"] >= K_MIN].copy()
+    cell = cell.drop(columns=["zone_n_cards_at_banner"])
+
+    return cell.sort_values(
+        ["banner_code", "derived_zone", "behavioral_segment"],
+        kind="mergesort",
+    ).reset_index(drop=True)
 
 
 def build_lake_trade_area() -> pd.DataFrame:
