@@ -2,6 +2,10 @@
 .streamlit/secrets.toml
 data/raw/*
 !data/raw/.gitkeep
+data/eval/*
+!data/eval/.gitkeep
+data/lake/*
+!data/lake/.gitkeep
 data/anon/**/*
 !data/anon/**/.gitkeep
 data/*.db

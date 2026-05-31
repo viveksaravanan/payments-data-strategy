@@ -1,4 +1,4 @@
-.PHONY: seed seed-pilot demo test test-quick clean dq-report
+.PHONY: seed seed-pilot demo test test-quick clean dq-report lake lake-report
 
 # v4: generate the tenant census Parquet at full scale.
 seed:
@@ -19,6 +19,15 @@ test-quick:
 # Regenerate the Markdown DQ report from the current Parquet output.
 dq-report:
 	uv run python scripts/build_dq_report.py
+
+# Wave 2: build the five anonymized lake tables from data/raw/
+# to data/lake/*.parquet.
+lake:
+	uv run python scripts/build_lake.py
+
+# Wave 2: regenerate the Markdown lake report from data/lake/.
+lake-report:
+	uv run python scripts/build_lake_report.py
 
 # v4 demo path is rebuilt in Wave 4 (dashboard adapts to Parquet via
 # DuckDB). For the working v3 demo, check out tag v3-final.
