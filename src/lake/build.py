@@ -572,8 +572,97 @@ def build_lake_segment_mix() -> pd.DataFrame:
 
 
 def build_lake_trade_area() -> pd.DataFrame:
-    """Stage 4.4 — implemented in the next sub-stage commit."""
-    raise NotImplementedError("Stage 4.4 — pending sub-stage commit")
+    """Stage 4.4 — zone × category (× merchant) trade-area metrics
+    (D23.3.4).
+
+    Per-cell columns:
+
+    * ``store_count`` — number of this merchant's stores in the zone.
+    * ``cell_units`` — total category units from this merchant in the
+      zone over the 90-day window.
+    * ``cell_revenue`` — total category revenue from this merchant.
+    * ``share_of_zone`` — cell_units / sum of category units in the
+      zone across all merchants. Sums to ~1.0 per (zone, category).
+    * ``zone_category_volume_index`` — zone's total category volume
+      ÷ metro-wide mean category volume per zone. Lifts above 1 = the
+      zone over-indexes on this category.
+    * ``txn_count`` — distinct transactions in the cell (k guard).
+
+    Zone-level grain → cells are large at full scale; ladder rarely
+    fires.
+    """
+    stores_with_zone = _load_stores_with_zone()
+    txns = load_table(
+        "transactions",
+        columns=["txn_id", "store_id", "banner_code"],
+    )
+    items = load_table(
+        "transaction_items",
+        columns=["txn_id", "category", "qty", "line_total"],
+    )
+    txns = txns.merge(
+        stores_with_zone[["store_id", "derived_zone"]],
+        on="store_id",
+    )
+    items = items.merge(
+        txns[["txn_id", "banner_code", "derived_zone"]],
+        on="txn_id",
+    )
+
+    # Per (banner, zone, category) aggregate.
+    cell = (
+        items.groupby(["banner_code", "derived_zone", "category"])
+        .agg(
+            cell_units=("qty", "sum"),
+            cell_revenue=("line_total", "sum"),
+            txn_count=("txn_id", "nunique"),
+        )
+        .reset_index()
+    )
+
+    # Per (banner, zone) store count for trade-area density.
+    store_count = (
+        stores_with_zone.groupby(["banner_code", "derived_zone"])
+        .size().rename("store_count").reset_index()
+    )
+    cell = cell.merge(store_count, on=["banner_code", "derived_zone"], how="left")
+
+    # Share of zone: cell_units / sum over banners in (zone, category).
+    zone_cat_total = (
+        cell.groupby(["derived_zone", "category"])["cell_units"]
+        .sum().rename("zone_cat_total_units")
+    )
+    cell = cell.merge(
+        zone_cat_total, on=["derived_zone", "category"], how="left",
+    )
+    cell["share_of_zone"] = cell["cell_units"] / cell["zone_cat_total_units"]
+
+    # Zone category volume index: zone's category volume ÷ metro mean
+    # of zone-level totals for that category. > 1 = zone over-indexes
+    # on the category.
+    metro_cat_mean = (
+        cell.groupby(["derived_zone", "category"])["cell_units"]
+        .sum()
+        .groupby("category").mean()
+        .rename("metro_cat_zone_mean")
+    )
+    cell = cell.merge(metro_cat_mean, on="category", how="left")
+    cell["zone_category_volume_index"] = (
+        cell["zone_cat_total_units"] / cell["metro_cat_zone_mean"]
+    )
+
+    # K-floor.
+    cell = cell[cell["txn_count"] >= K_MIN].copy()
+    cell = cell.drop(columns=["zone_cat_total_units", "metro_cat_zone_mean"])
+
+    return cell[[
+        "banner_code", "derived_zone", "category",
+        "store_count", "cell_units", "cell_revenue",
+        "share_of_zone", "zone_category_volume_index", "txn_count",
+    ]].sort_values(
+        ["derived_zone", "category", "banner_code"],
+        kind="mergesort",
+    ).reset_index(drop=True)
 
 
 def build_lake_cross_merchant_cohorts() -> pd.DataFrame:
