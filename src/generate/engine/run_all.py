@@ -202,25 +202,47 @@ _SORT_KEYS: dict[str, list[str]] = {
 }
 
 
-def write_all(tables: dict[str, pd.DataFrame]) -> None:
-    """Write tables to data/raw/ and data/eval/ per the §5 contract."""
-    DATA_RAW.mkdir(parents=True, exist_ok=True)
-    DATA_EVAL.mkdir(parents=True, exist_ok=True)
+def write_all(
+    tables: dict[str, pd.DataFrame],
+    *,
+    output_root: Path | None = None,
+) -> None:
+    """Write tables to ``<output_root>/raw/`` and ``<output_root>/eval/``
+    per the §5 contract.
 
-    # Tenant census → data/raw/
+    Parameters
+    ----------
+    tables
+        Dict of dataframes from ``build_all``.
+    output_root
+        Parent directory for ``raw/`` and ``eval/`` subdirectories.
+        Defaults to ``data/`` (the production location). Tests pass a
+        ``tmp_path`` so they never write to the production data dir.
+    """
+    if output_root is None:
+        raw_dir = DATA_RAW
+        eval_dir = DATA_EVAL
+    else:
+        raw_dir = output_root / "raw"
+        eval_dir = output_root / "eval"
+
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    eval_dir.mkdir(parents=True, exist_ok=True)
+
+    # Tenant census → <output_root>/raw/
     raw_tables = {
         k: v for k, v in tables.items() if k != "anomalies_groundtruth"
     }
     for name, df in raw_tables.items():
-        path = DATA_RAW / f"{name}.parquet"
+        path = raw_dir / f"{name}.parquet"
         write_parquet(df, path, sort_keys=_SORT_KEYS[name])
-        print(f"  wrote {path.relative_to(REPO_ROOT)}  ({len(df):,} rows)")
+        print(f"  wrote {path}  ({len(df):,} rows)")
 
-    # Answer key → data/eval/  (NOT data/raw/, by physical separation)
+    # Answer key → <output_root>/eval/  (NOT raw/, by physical separation)
     eval_df = tables["anomalies_groundtruth"]
-    eval_path = DATA_EVAL / "anomalies_groundtruth.parquet"
+    eval_path = eval_dir / "anomalies_groundtruth.parquet"
     write_parquet(eval_df, eval_path, sort_keys=_SORT_KEYS["anomalies_groundtruth"])
-    print(f"  wrote {eval_path.relative_to(REPO_ROOT)}  ({len(eval_df):,} rows)")
+    print(f"  wrote {eval_path}  ({len(eval_df):,} rows)")
 
 
 def main(scale: int | None = None) -> None:

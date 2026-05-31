@@ -1,30 +1,33 @@
 """Shared fixtures for the Wave 1 §6 acceptance battery (T1-T18).
 
-Two modes:
-1. **Existing Parquet on disk** — if ``data/raw/transactions.parquet``
-   already exists, the fixture loads tables directly from disk.
-   This is the path used after a deliberate full-scale generation
-   (``uv run python -m src.generate.engine.run_all``).
-2. **Pilot rebuild** — otherwise, build at the scale specified by
-   the ``WAVE1_TEST_SCALE`` env var (default 5000 cards). Used in
-   CI / quick iteration where the full 100k build is too slow.
+Loads the on-disk Parquet from ``data/raw/`` and ``data/eval/`` as
+read-only. **Tests never write to the production data paths** —
+the suite is run *against* a previously-materialized generation,
+not as a side-effect of test invocation. If ``data/raw/`` is
+empty, the fixture ``pytest.skip``s with a pointer to ``make seed``.
 
 Scale is computed dynamically from the actual customers table size
 so the T-tests work at any scale (5k pilot, 100k full, anywhere
 in between).
+
+**Test-isolation fix (Wave 2 audit):** previous versions of this
+fixture silently rebuilt at pilot scale (``shutil.rmtree(DATA_RAW)``
++ ``write_all(tables)``) when ``data/raw/`` was missing, which
+clobbered Wave 1's frozen full-scale dataset whenever the
+generation directory happened to be cleared. Replaced with an
+explicit skip — the harness is now an observer of the published
+artifact, not a participant in producing it.
 """
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
 from src.generate.config.loader import load_config
-from src.generate.engine.run_all import build_all, write_all, DATA_RAW, DATA_EVAL
+from src.generate.engine.run_all import DATA_RAW, DATA_EVAL
 
-DEFAULT_PILOT_CARDS = 5_000
 CONFIG_ROOT = Path(__file__).resolve().parents[2] / "src" / "generate" / "config"
 
 _RAW_TABLE_NAMES = [
@@ -51,27 +54,22 @@ def cfg():
 
 @pytest.fixture(scope="session")
 def pilot_tables(cfg) -> dict[str, pd.DataFrame]:
-    """Return the engine output tables.
+    """Return the engine output tables read from disk.
 
-    If data/raw/ already contains a full set of Parquet files,
-    they're loaded as-is — preserves intentional full-scale runs.
-    Otherwise builds at WAVE1_TEST_SCALE (default 5000).
+    Skips the data-quality battery if ``data/raw/`` is empty —
+    materialize Wave 1's output first with ``make seed`` (or
+    ``uv run python -m src.generate.engine.run_all``). The
+    fixture is **read-only**; it never writes to the production
+    data paths.
     """
-    if (DATA_RAW / "transactions.parquet").exists():
-        return _load_existing_tables()
-
-    import shutil
-    if DATA_RAW.exists():
-        shutil.rmtree(DATA_RAW)
-    if DATA_EVAL.exists():
-        shutil.rmtree(DATA_EVAL)
-    DATA_RAW.mkdir(parents=True, exist_ok=True)
-    DATA_EVAL.mkdir(parents=True, exist_ok=True)
-
-    scale = int(os.environ.get("WAVE1_TEST_SCALE", str(DEFAULT_PILOT_CARDS)))
-    tables = build_all(scale=scale)
-    write_all(tables)
-    return tables
+    if not (DATA_RAW / "transactions.parquet").exists():
+        pytest.skip(
+            "data/raw/ missing — run `make seed` to materialize "
+            "Wave 1 output before running the data-quality battery. "
+            "The battery is an observer of the on-disk artifact, "
+            "not a participant in producing it."
+        )
+    return _load_existing_tables()
 
 
 @pytest.fixture(scope="session")
