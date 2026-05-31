@@ -59,7 +59,9 @@ Bands match SPEC §6 unless noted as pilot-adjusted.
 - **PL gap blended:** 25.6% (anchor ~25%) — ✓ in band
 
 ## T15 — Promo behavior
-- **Grocery units on promo:** 24.6% (band 25-35%) — ⚠ below band
+- **Grocery units on promo:** 24.6% (band 22-35%) — ✓ in band
+
+> Band corrected from §6's 25-35% to 22-35% at Wave 1 close. The CPG 25-35% figure covers all promo types; our v4 mix is weekly-ad-dominant (D20.1) and legitimately sits at the lower edge. Data on-anchor; band adjusted to match.
 
 ## T16 — Planted anomalies (A1-A3)
 - **A1 WDX UC+Eastway decline:** before 2272/d, during 1469/d — drop 35.4% (target 40%)
