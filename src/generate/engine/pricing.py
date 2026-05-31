@@ -178,13 +178,24 @@ def build_priced_items(
     stores: pd.DataFrame,
     zones: pd.DataFrame,
     rng: np.random.Generator,
+    *,
+    promo_depth_lookup: dict | None = None,
+    promo_id_lookup: dict | None = None,
 ) -> pd.DataFrame:
-    """Compute unit_price and line_total per basket item.
+    """Compute unit_price, discount, line_total, and promo_id per
+    basket item.
 
-    Returns a frame with one row per basket line and the extended
-    schema ``[trip_id, line_id, sku, canonical_id, category,
-    subcategory, qty, unit_price, line_total]``.
+    Returns a frame with one row per basket line and the schema
+    ``[trip_id, line_id, sku, canonical_id, category, subcategory,
+    qty, unit_price, discount, promo_id, line_total]``.
+
+    promo_depth_lookup and promo_id_lookup (Stage 4.8 — D20):
+    ``{(date, sku) → depth_pct}`` and ``{(date, sku) → promo_id}``.
+    When a line's (txn_date, sku) is in the lookup, unit_price is
+    reduced by the depth, and promo_id is set on the line.
     """
+    promo_depth_lookup = promo_depth_lookup or {}
+    promo_id_lookup = promo_id_lookup or {}
     window_start = pd.Timestamp(cfg.global_["window"]["start_date"])
     total_days = int(cfg.global_["window"]["days"])
 
@@ -264,10 +275,25 @@ def build_priced_items(
     # 6) line noise
     noise = 1.0 + rng.uniform(-_LINE_NOISE_MAGNITUDE, _LINE_NOISE_MAGNITUDE, size=n)
 
-    unit_price = np.round(
+    pre_promo_unit_price = np.round(
         base * pm_cat_mult * pl_mult * comp_idx * zone_mult * drift * noise,
         2,
     )
+
+    # ----- Promo discount + promo_id (Stage 4.8) -----------------
+    discount = np.zeros(n, dtype=float)
+    promo_id = np.empty(n, dtype=object)
+    if promo_depth_lookup:
+        trip_dates = txn_ts.dt.date.to_numpy()
+        sku_arr = items["sku"].to_numpy()
+        for i in range(n):
+            key = (trip_dates[i], str(sku_arr[i]))
+            depth = promo_depth_lookup.get(key)
+            if depth is not None:
+                discount[i] = round(pre_promo_unit_price[i] * depth, 2)
+                promo_id[i] = promo_id_lookup.get(key)
+
+    unit_price = np.round(pre_promo_unit_price - discount, 2)
     line_total = np.round(unit_price * items["qty"].to_numpy(), 2)
 
     out = items[
@@ -275,5 +301,7 @@ def build_priced_items(
          "subcategory", "qty"]
     ].copy()
     out["unit_price"] = unit_price
+    out["discount"] = discount
+    out["promo_id"] = promo_id
     out["line_total"] = line_total
     return out.sort_values(["trip_id", "line_id"], kind="mergesort").reset_index(drop=True)

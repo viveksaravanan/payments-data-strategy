@@ -384,13 +384,30 @@ def build_basket_items(
     customers: pd.DataFrame,
     catalog: pd.DataFrame,
     rng: np.random.Generator,
+    *,
+    promo_depth_lookup: dict | None = None,
+    a2_boost_lookup: dict | None = None,
+    a3_basket_mult_lookup: dict | None = None,
+    lift_coefficient: float = 6.0,
 ) -> pd.DataFrame:
     """Per-trip basket items.
 
     Returns one row per line item with columns:
     ``[trip_id, line_id, sku, canonical_id, category, subcategory,
        qty]``.
+
+    Event hooks (Stage 4.8 — D20):
+    - ``promo_depth_lookup`` {(date, sku) → depth}: boost SKU draw
+      weight by (1 + lift_coefficient × depth) when on promo. Drives
+      T15 demand lift.
+    - ``a2_boost_lookup`` {(date, store_id, category) → mult}: boost
+      category weight at one store during the window (A2 spike).
+    - ``a3_basket_mult_lookup`` {(date, banner) → mult}: multiplier
+      on PASTA subcategory weight during A3 pasta-promo windows.
     """
+    promo_depth_lookup = promo_depth_lookup or {}
+    a2_boost_lookup = a2_boost_lookup or {}
+    a3_basket_mult_lookup = a3_basket_mult_lookup or {}
     sku_pool = _build_sku_pool(catalog)
     affinity = _build_affinity_lookup()
     cust_idx = customers.set_index("card_id")
@@ -405,21 +422,33 @@ def build_basket_items(
     records: list[tuple] = []
 
     # Iterate trips in trip_id order (already sorted by build_trips).
+    have_events = bool(
+        promo_depth_lookup or a2_boost_lookup or a3_basket_mult_lookup
+    )
     trips_iter = trips.itertuples(index=False)
     for tr in trips_iter:
         trip_id = tr.trip_id
         card_id = tr.card_id
         segment = tr.segment
         banner  = tr.banner_code
+        store_id = str(tr.store_id)
         txn_ts  = tr.txn_ts
 
         # Pay-cycle bucket from trip date.
-        dom = pd.Timestamp(txn_ts).day
+        ts = pd.Timestamp(txn_ts)
+        dom = ts.day
+        trip_date = ts.date()
         bucket = _pay_cycle_bucket(dom)
         mission_name = _pick_mission(rng, segment, bucket)
         mission = _SEGMENT_MISSIONS[segment][mission_name]
         archetype = mission["archetype"]
         size = _sample_basket_size(rng, segment, archetype)
+
+        # Per-trip A3 pasta basket multiplier (1.0 = neutral).
+        a3_pasta_mult = (
+            float(a3_basket_mult_lookup.get((trip_date, banner), 1.0))
+            if a3_basket_mult_lookup else 1.0
+        )
 
         # Resolve staples for this card+segment.
         staple_key = (card_id, segment)
@@ -453,7 +482,15 @@ def build_basket_items(
 
         # 2) Fill remaining slots from mission categories.
         cat_names = list(mission["categories"].keys())
-        cat_probs = np.array(list(mission["categories"].values()), dtype=float)
+        cat_probs_raw = list(mission["categories"].values())
+        # A2 category boost — if a category-spike anomaly is active
+        # at this store today, multiply the category's weight.
+        if a2_boost_lookup:
+            cat_probs_raw = [
+                cp * float(a2_boost_lookup.get((trip_date, store_id, cn), 1.0))
+                for cn, cp in zip(cat_names, cat_probs_raw)
+            ]
+        cat_probs = np.array(cat_probs_raw, dtype=float)
         cat_probs = cat_probs / cat_probs.sum()
 
         attempts = 0
@@ -472,6 +509,20 @@ def build_basket_items(
                 for partner, boost in affinity.get(anchor_sub, []):
                     mask = pool["subcategory"].to_numpy() == partner
                     weights[mask] *= boost
+            # Event-driven weight adjustments (Stage 4.8):
+            if have_events:
+                pool_skus = pool["sku"].to_numpy()
+                pool_subcats = pool["subcategory"].to_numpy()
+                # Promo demand lift: SKUs on promo today get boost.
+                if promo_depth_lookup:
+                    for j, s in enumerate(pool_skus):
+                        depth = promo_depth_lookup.get((trip_date, str(s)))
+                        if depth is not None:
+                            weights[j] *= (1.0 + lift_coefficient * depth)
+                # A3 pasta basket multiplier (per banner + date).
+                if a3_pasta_mult != 1.0 and category == "PANTRY":
+                    pasta_mask = pool_subcats == "PASTA"
+                    weights[pasta_mask] *= a3_pasta_mult
             weights = weights / weights.sum()
             idx = int(rng.choice(len(pool), p=weights))
             sku = str(pool.iloc[idx]["sku"])
