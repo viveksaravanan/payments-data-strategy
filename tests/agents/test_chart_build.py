@@ -1,0 +1,285 @@
+"""Stage 1b tests — deterministic chart builder (SPEC §1.3, D25.2/.3).
+
+The structural guarantee: every numeric appearing in a built figure
+must trace to a cell in the result. We can't easily assert "every
+numeric in the figure is in the result" — Plotly figures aren't
+that introspectable — but we CAN assert:
+
+* The builder rejects intents that name columns not present in
+  ``result`` (``MissingColumnError``). The model can't sneak in a
+  numeric by naming a column the data doesn't have.
+* The builder rejects unknown ``kind`` values (``UnsupportedIntentError``).
+* Each per-kind builder fills its primary numeric channels from the
+  result's named columns (verified by reading the trace data back).
+
+These three checks structurally enforce the "values come from data,
+not from the model" guarantee.
+"""
+from __future__ import annotations
+
+import pandas as pd
+import plotly.graph_objects as go
+import pytest
+
+from src.agents.chart_build import (
+    MissingColumnError,
+    UnsupportedIntentError,
+    build_chart,
+)
+
+
+# ---------------------------------------------------------------------
+# Fixtures: a small merged result the per-kind builders can read.
+# ---------------------------------------------------------------------
+
+@pytest.fixture
+def time_series_result() -> pd.DataFrame:
+    return pd.DataFrame([
+        {"period_start": "2026-04-05", "own_value": 1.05,
+         "peer_benchmark": 1.00, "gap": 0.05},
+        {"period_start": "2026-04-12", "own_value": 1.10,
+         "peer_benchmark": 1.02, "gap": 0.08},
+        {"period_start": "2026-04-19", "own_value": 1.08,
+         "peer_benchmark": 1.04, "gap": 0.04},
+    ])
+
+
+@pytest.fixture
+def comparison_result() -> pd.DataFrame:
+    return pd.DataFrame([
+        {"category": "DAIRY", "own_value": 1.05, "peer_benchmark": 1.00},
+        {"category": "MEAT",  "own_value": 0.98, "peer_benchmark": 1.02},
+        {"category": "PRODUCE", "own_value": 1.12, "peer_benchmark": 1.05},
+    ])
+
+
+@pytest.fixture
+def heatmap_result() -> pd.DataFrame:
+    return pd.DataFrame([
+        {"category": "DAIRY",   "zone": "Z01", "gap": 0.05},
+        {"category": "DAIRY",   "zone": "Z02", "gap": -0.03},
+        {"category": "MEAT",    "zone": "Z01", "gap": 0.02},
+        {"category": "MEAT",    "zone": "Z02", "gap": -0.01},
+        {"category": "PRODUCE", "zone": "Z01", "gap": 0.08},
+        {"category": "PRODUCE", "zone": "Z02", "gap": 0.04},
+    ])
+
+
+# ---------------------------------------------------------------------
+# Unsupported / missing-key validation
+# ---------------------------------------------------------------------
+
+def test_unknown_kind_raises(time_series_result) -> None:
+    with pytest.raises(UnsupportedIntentError) as exc:
+        build_chart({"kind": "not_a_real_kind", "title": "X"},
+                    time_series_result)
+    assert "not_a_real_kind" in str(exc.value)
+
+
+def test_missing_required_key_raises(time_series_result) -> None:
+    """time_series_vs_peers needs ``x`` + ``series`` — missing them
+    raises UnsupportedIntentError."""
+    with pytest.raises(UnsupportedIntentError) as exc:
+        build_chart(
+            {"kind": "time_series_vs_peers", "title": "Trend"},
+            time_series_result,
+        )
+    assert "x" in str(exc.value) or "series" in str(exc.value)
+
+
+def test_named_column_not_in_result_raises(time_series_result) -> None:
+    """The structural guarantee — every column-name in intent must
+    exist in result. If the model names a fake column, MissingColumnError."""
+    with pytest.raises(MissingColumnError) as exc:
+        build_chart(
+            {"kind": "time_series_vs_peers", "title": "Trend",
+             "x": "period_start", "series": ["fake_column"]},
+            time_series_result,
+        )
+    assert "fake_column" in str(exc.value)
+
+
+def test_list_intent_value_validated_per_element(time_series_result) -> None:
+    """``series`` is a list of column names — the builder checks each
+    element, not just the list as a whole."""
+    with pytest.raises(MissingColumnError):
+        build_chart(
+            {"kind": "time_series_vs_peers", "title": "X",
+             "x": "period_start",
+             "series": ["own_value", "ghost_column"]},
+            time_series_result,
+        )
+
+
+# ---------------------------------------------------------------------
+# Per-kind smoke + numeric-source-tracing
+# ---------------------------------------------------------------------
+
+def test_time_series_pulls_y_from_result(time_series_result) -> None:
+    fig = build_chart(
+        {"kind": "time_series_vs_peers", "title": "Trend",
+         "x": "period_start",
+         "series": ["own_value", "peer_benchmark"],
+         "y_format": "index"},
+        time_series_result,
+    )
+    assert isinstance(fig, go.Figure)
+    # Trace y-values are exactly the result columns (no model-supplied
+    # values sneaking in).
+    own_trace = fig.data[0]
+    peer_trace = fig.data[1]
+    assert list(own_trace.y) == time_series_result["own_value"].tolist()
+    assert list(peer_trace.y) == time_series_result["peer_benchmark"].tolist()
+    assert list(own_trace.x) == time_series_result["period_start"].tolist()
+
+
+def test_cross_merchant_comparison_pulls_x_from_result(comparison_result) -> None:
+    fig = build_chart(
+        {"kind": "cross_merchant_comparison", "title": "Pricing vs peers",
+         "x": "category",
+         "series": ["own_value", "peer_benchmark"],
+         "y_format": "index"},
+        comparison_result,
+    )
+    own_bar = fig.data[0]
+    peer_bar = fig.data[1]
+    # Horizontal bars — values on x, labels on y.
+    assert list(own_bar.x) == comparison_result["own_value"].tolist()
+    assert list(peer_bar.x) == comparison_result["peer_benchmark"].tolist()
+    assert list(own_bar.y) == comparison_result["category"].tolist()
+
+
+def test_heatmap_pulls_values_from_result(heatmap_result) -> None:
+    fig = build_chart(
+        {"kind": "heatmap", "title": "Gap heatmap",
+         "row": "category", "col": "zone", "value": "gap",
+         "palette": "diverging"},
+        heatmap_result,
+    )
+    z = fig.data[0].z
+    # The pivot table values are present in the figure trace.
+    pivot = heatmap_result.pivot_table(
+        index="category", columns="zone", values="gap", aggfunc="mean",
+    )
+    for r in range(z.shape[0]):
+        for c in range(z.shape[1]):
+            assert z[r][c] == pivot.values[r][c]
+
+
+def test_scatter_quadrant_pulls_xy_from_result() -> None:
+    df = pd.DataFrame([
+        {"store_id": "S1", "x_metric": 1.0, "y_metric": 0.5, "size_metric": 10},
+        {"store_id": "S2", "x_metric": 1.2, "y_metric": 0.8, "size_metric": 14},
+    ])
+    fig = build_chart(
+        {"kind": "scatter_quadrant", "title": "Stores",
+         "x": "x_metric", "y": "y_metric",
+         "label": "store_id", "size": "size_metric"},
+        df,
+    )
+    trace = fig.data[0]
+    assert list(trace.x) == df["x_metric"].tolist()
+    assert list(trace.y) == df["y_metric"].tolist()
+    assert list(trace.text) == df["store_id"].tolist()
+
+
+def test_waterfall_pulls_drivers_from_result() -> None:
+    df = pd.DataFrame([
+        {"driver": "Volume", "contribution": 0.10},
+        {"driver": "Mix",    "contribution": -0.03},
+        {"driver": "Promo",  "contribution": 0.02},
+    ])
+    fig = build_chart(
+        {"kind": "waterfall", "title": "Gap drivers",
+         "x": "driver", "y": "contribution"},
+        df,
+    )
+    trace = fig.data[0]
+    assert list(trace.x) == df["driver"].tolist()
+    assert list(trace.y) == df["contribution"].tolist()
+
+
+def test_kpi_callout_reads_first_row_value() -> None:
+    df = pd.DataFrame([{"index_value": 1.12, "delta": 0.05}])
+    fig = build_chart(
+        {"kind": "kpi_callout", "title": "Price index",
+         "value": "index_value", "delta": "delta"},
+        df,
+    )
+    indicator = fig.data[0]
+    # Plotly Indicator's value is the cell.
+    assert indicator.value == 1.12
+
+
+def test_kpi_callout_empty_result_raises() -> None:
+    df = pd.DataFrame([{"index_value": 1.12}]).iloc[0:0]
+    with pytest.raises(MissingColumnError):
+        build_chart(
+            {"kind": "kpi_callout", "title": "X", "value": "index_value"},
+            df,
+        )
+
+
+def test_small_multiples_facets_from_column() -> None:
+    df = pd.DataFrame([
+        {"category": "DAIRY",   "week": "W1", "own_value": 1.05},
+        {"category": "DAIRY",   "week": "W2", "own_value": 1.10},
+        {"category": "MEAT",    "week": "W1", "own_value": 0.98},
+        {"category": "MEAT",    "week": "W2", "own_value": 1.02},
+        {"category": "PRODUCE", "week": "W1", "own_value": 1.12},
+        {"category": "PRODUCE", "week": "W2", "own_value": 1.15},
+    ])
+    fig = build_chart(
+        {"kind": "small_multiples", "title": "By category",
+         "facet": "category", "x": "week", "series": ["own_value"]},
+        df,
+    )
+    # One trace per facet (3 facets → 3 traces).
+    assert len(fig.data) == 3
+
+
+def test_table_drilldown_columns_from_result(comparison_result) -> None:
+    fig = build_chart(
+        {"kind": "table_drilldown", "title": "Comparison",
+         "columns": ["category", "own_value", "peer_benchmark"]},
+        comparison_result,
+    )
+    table = fig.data[0]
+    # Header values are the requested columns.
+    assert list(table.header.values) == ["category", "own_value", "peer_benchmark"]
+    # Cell values are the columns from the result.
+    assert list(table.cells.values[0]) == comparison_result["category"].tolist()
+    assert list(table.cells.values[1]) == comparison_result["own_value"].tolist()
+
+
+def test_geo_map_pulls_lat_lon_from_result() -> None:
+    df = pd.DataFrame([
+        {"store_id": "S1", "lat": 35.23, "lon": -80.84, "metric": 1.05},
+        {"store_id": "S2", "lat": 35.20, "lon": -80.80, "metric": 0.95},
+    ])
+    fig = build_chart(
+        {"kind": "geo_map", "title": "Stores",
+         "lat": "lat", "lon": "lon", "value": "metric",
+         "label": "store_id"},
+        df,
+    )
+    trace = fig.data[0]
+    assert list(trace.lat) == df["lat"].tolist()
+    assert list(trace.lon) == df["lon"].tolist()
+
+
+# ---------------------------------------------------------------------
+# All nine kinds registered
+# ---------------------------------------------------------------------
+
+def test_all_nine_kinds_routable() -> None:
+    """The D25.3 vocabulary is exactly nine kinds; the builder
+    dispatch table must cover all of them so the model can't pick an
+    intent that has no builder."""
+    from src.agents.chart_build import _BUILDERS
+    expected = {
+        "time_series_vs_peers", "cross_merchant_comparison", "heatmap",
+        "scatter_quadrant", "waterfall", "geo_map", "kpi_callout",
+        "small_multiples", "table_drilldown",
+    }
+    assert set(_BUILDERS.keys()) == expected
