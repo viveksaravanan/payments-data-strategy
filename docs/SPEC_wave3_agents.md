@@ -55,12 +55,13 @@ A typical answer reads own-tenant (full grain, to SKU) AND lake (peer benchmark 
 - Tests: chart values equal the result columns exactly (no model-supplied values path exists); an intent naming a missing column fails cleanly.
 
 ### 1.4 The claims validator (D25.4) — the defensibility mechanism
-Strict guarantee, graceful handling. Three tiers:
+Strict guarantee, graceful handling. **Validation covers EVERY number that appears in the prose, not only declared claims** — a number in prose with no backing claim is a validation failure (the model must not be able to evade validation by failing to declare a figure). Three tiers:
 1. Number traces to a cell or declared derivation, recomputes within tolerance → pass.
 2. Within ~1% relative tolerance (configurable `CLAIM_TOLERANCE`) → pass, normalize to true value (the anti-brittleness valve for "≈", "roughly", rounding).
-3. Doesn't trace → **strip the number or one correction pass; do NOT hard-reject the response.** If correction also fails → fall back to "I can't substantiate that figure" for that number only.
+3. Doesn't trace (or is undeclared) → **strip the containing clause cleanly (not just the digits — no dangling fragments) or one correction pass; do NOT hard-reject the response.** If correction also fails → fall back to "I can't substantiate that figure" for that number only.
+- **Undeclared-number scan:** the validator parses the prose for numeric tokens and confirms each is covered by a passing claim. Uncovered number → tier 3. This closes the "just don't declare it" bypass — the guarantee holds regardless of model diligence.
 - **Derivation grammar — closed:** `difference (a−b)`, `ratio/share (a/total)`, `pct_change ((a−b)/b)`, `aggregate (sum/mean over cells)`. Each claim declares `{op, operands→cells}`; validator recomputes. No arbitrary model math.
-- Tests: a fabricated number is stripped (never shown as fact); a legit rounded number passes; each derivation op recomputes correctly on a fixture; an out-of-grammar derivation is rejected.
+- Tests: a fabricated *declared* number is stripped; a fabricated *undeclared* number in prose is also caught and stripped; a legit rounded number passes; each derivation op recomputes correctly on a fixture; an out-of-grammar derivation is rejected; stripping removes the whole clause (no fragments).
 
 **Gate:** the contract, merge, chart builder, and validator all exist with tests green, exercised by a stub agent before any real agent is built.
 
@@ -125,16 +126,12 @@ Keep v3's Haiku router + keyword fallback (baseline §6.3). **Change the "no mat
 
 ---
 
-## 6. Golden tests (D27) — lightweight regression net
+## 6. Agent regression testing — DEFERRED to v5 (D27.2)
 
-~5–7 tests, scoped to routing + grain/decline (numbers-correctness is carried live by §1.4). Reuse v3 cassette infra (record/replay, deterministic CI).
-- One canonical question per specialist → asserts correct routing + correct table/grain used.
-- 1–2 Advisor decline cases → asserts graceful refusal on out-of-grain (e.g. peer-SKU), no hallucinated number.
-- Each test also runs the §1.4 validator against live lake data (free — reuses the runtime check).
-- **Assert behavior/grounding, NEVER exact prose wording or chart styling.**
-- Re-record discipline (D27.5): a golden failing = real regression (fix code) OR intended change (re-certify deliberately). Never re-record reflexively to silence.
+**No golden tests, no cassette infrastructure in Wave 3.** v3's cassettes are invalid against the refactored agents (new prompts/lake/contract), and without cassettes golden tests need live LLM calls (slow, costly, non-deterministic). Golden tests only ever covered routing + grain/decline; the **D25 validator carries numbers live** and the **§6.5 preview harness** is the human-reviewed routing/decline backstop. So the Wave 3 quality bar = D25 runtime validator + §6.5 harness; automated agent-regression (a fresh deterministic replay layer + golden set) is a v5 item.
 
-**Gate:** golden tests green; cassettes recorded + certified.
+- Delete/do-not-port v3's cassette infra (`tests/cassettes/`, `record_baseline_cassettes.py`, `run_phase5_regression.py`) — invalid against refactored agents.
+- Per-agent unit tests (Stage 2/3) still exist — routing, grain-respect, contract-validity on synthetic fixtures, no live LLM.
 
 ---
 

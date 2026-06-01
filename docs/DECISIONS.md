@@ -903,31 +903,27 @@ Keep the Haiku router + keyword fallback (baseline §6.3), but the "no match" ta
 
 ---
 
-## D27 — Wave 3: Agent golden tests (lightweight regression net) *(ratified)*
+## D27 — Wave 3: Agent quality bar (golden tests deferred to v5) *(ratified)*
 
-What "correct" means for an agent (the D10 commitment), scoped honestly around what D25 already guarantees.
+What "correct" means for an agent, and why the automated-regression layer is deferred.
 
-### D27.1 — D25's runtime validator is the real numbers guarantee (not the golden tests)
-The D25 claims-validator runs on **every** agent response in production — each number validated against the data (cell or declared derivation) before return. "Did a number hallucinate" is therefore already caught live, on every response, golden tests or not. **D25 is the load-bearing wall; golden tests are not the numbers-correctness net.**
+### D27.1 — D25's runtime validator is the real guarantee (always-on)
+The D25 claims-validator runs on **every** agent response in production — every number validated against the data (cell or declared derivation) before return, including undeclared prose numbers (D25.4). "Did a number hallucinate" is caught live, on every response. **This is the load-bearing wall and it ships in Wave 3.**
 
-### D27.2 — Golden tests cover only what D25 doesn't: routing + grain/decline
-The two things the runtime validator doesn't check:
-- **Routing** — orchestrator sends the question to the expected agent (pricing → Pricing; ill-fitting → Advisor; not force-routed). D25 doesn't care which agent answered.
-- **Grain discipline / decline behavior** — an agent that *should decline* an out-of-grain request (e.g. peer-SKU) must decline gracefully, not answer at the wrong grain. D25 validates numbers that *are* present; it can't catch a should-have-declined.
+### D27.2 — Golden tests + cassettes DROPPED from Wave 3, deferred to v5
+Originally planned: ~5–7 cassette-replayed golden tests covering routing + grain/decline. **Dropped, because:**
+- v3's existing cassettes are invalid against the refactored agents (new prompts, new lake, new response shape) — adapting them = re-recording everything anyway.
+- Without cassettes, golden tests need live LLM calls — slow, costly per CI run, non-deterministic — not viable for the default suite.
+- Golden tests only ever covered **routing + grain/decline** (numbers are carried live by D25.1). That coverage is modest insurance, not the guarantee.
+- The **§6.5 preview harness** (`AGENT_PREVIEW.html`, human-reviewed) already catches routing/decline problems by eyeball at the review checkpoint.
 
-### D27.3 — Scope: ~5–7 tests, not a heavyweight suite
-One canonical question per agent (routing check) + 1–2 Advisor decline cases (out-of-grain → graceful refusal). Small enough that hand-certification is a quick eyeball ("did it route right and respect grain"), not a numbers re-litigation (D25 owns numbers).
+So the Wave 3 quality bar = **D25 runtime validator (numbers, always-on) + §6.5 preview harness (routing/decline, human-reviewed)**. Automated agent-regression testing (golden tests + a fresh cassette/replay layer) is a **v5** item.
 
-### D27.4 — Mechanism: reuse v3 cassette infra (it already exists)
-- **Cassette = deterministic replay input** (record the LLM's tool calls / intent / prose once), so CI runs without live API calls. The cassette is NOT the assertion — it's "what the LLM did," replayed.
-- **Assertions = the test:** (a) routing-correct, (b) grain-respected / declines-when-it-should, (c) the D25 validator still passes against live data (free — reuses the runtime check).
-- The assertions check *behavior and grounding*, never exact prose wording or chart styling (those vary).
-
-### D27.5 — Re-record discipline (so goldens don't rot)
-A golden failing means **either** a real regression (fix the code) **or** an intended behavior change (re-certify deliberately, update cassette + assertions). **Never** re-record reflexively to silence a failure — that rots the golden into "whatever the code does now." Numbers-correctness is not re-litigated per golden; D25's live validator carries it.
-
-### D27.6 — Necessity (honest framing)
-Golden tests are **cheap insurance, not strictly necessary.** Wave 3 could ship on D25's runtime validation alone with defensible numbers. The golden set adds a regression net for routing + decline behavior — the failure mode where a later change (e.g. Wave 4) silently breaks routing and you'd otherwise find out by noticing, not by a test. ~5–7 tests is worth it for a demo under exec scrutiny that will keep being iterated; it is not a load-bearing wall.
+### D27.3 — What this means in practice
+- Wave 3 ships no `tests/agents/test_golden_*.py` and no cassette infrastructure.
+- Per-agent unit tests still exist (Stage 2/3 — routing, grain-respect, contract-validity on synthetic fixtures, no live LLM).
+- The human-review checkpoint (§6.5) is the routing/decline backstop for v4.
+- v5 revisit: build a fresh deterministic replay layer + golden set once the agents have stabilized.
 
 ---
 
