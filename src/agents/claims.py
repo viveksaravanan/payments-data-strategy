@@ -352,47 +352,93 @@ def _approximately_equal(a: float, b: float, tolerance: float) -> bool:
     return abs(a - b) / scale <= tolerance
 
 
-# Clause boundaries — sentence terminators + comma-clause boundaries +
-# conjunctions. Stripping picks the smallest clause around the offending
-# span so we keep as much of the sentence as possible.
-_CLAUSE_SPLIT_RE = re.compile(
-    r"(?<=[.!?])\s+(?=[A-Z])"          # sentence end → next capitalized
-    r"|(?:,\s+(?:but|however|while|whereas|though|and|or|so|yet)\b)"
-    r"|(?:\s*[—–-]\s+)"                 # em-dash / en-dash clause
-)
+# Clause boundaries — distinguished by KIND so the stripper can
+# treat them differently:
+#
+# * sentence: ". X" → the period belongs to the LEFT clause; the
+#   stripper keeps the period when the left clause survives.
+# * sep (comma-conjunction or em-dash): ", but" → the punctuation
+#   is a SEPARATOR between clauses; the stripper consumes the
+#   separator (drops both the comma and the conjunction) so no
+#   dangling ", but" fragments remain.
+_BOUNDARY_PATTERNS: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"(?<=[.!?])\s+(?=[A-Z])"), "sentence"),
+    (
+        re.compile(
+            r",\s+(?:but|however|while|whereas|though|and|or|so|yet)\b\s*"
+        ),
+        "sep",
+    ),
+    (re.compile(r"\s*[—–]\s+"), "sep"),
+]
+
+
+def _find_boundaries(prose: str) -> list[tuple[int, int, str]]:
+    """Return (start, end, kind) tuples for every clause boundary in
+    ``prose``, sorted by start position."""
+    boundaries: list[tuple[int, int, str]] = []
+    for pattern, kind in _BOUNDARY_PATTERNS:
+        for m in pattern.finditer(prose):
+            boundaries.append((m.start(), m.end(), kind))
+    boundaries.sort(key=lambda b: b[0])
+    return boundaries
 
 
 def _strip_clause(prose: str, span: tuple[int, int]) -> str:
-    """Remove the smallest clause containing ``span``. The clause is
-    bounded by sentence terminators, comma-conjunctions, or em-dashes.
-    Leaves the surrounding prose intact and well-formed (no dangling
-    fragments)."""
+    """Remove the smallest clause containing ``span``. Clause bounds
+    are sentence ends, comma-conjunctions, or em-dashes. Treats
+    separators (comma-conj, em-dash) as consumable so no dangling
+    fragments remain (no ``", but"`` orphans)."""
     start, end = span
-    # Find clause boundaries left of start and right of end.
-    boundaries = [
-        (m.start(), m.end()) for m in _CLAUSE_SPLIT_RE.finditer(prose)
-    ]
+    boundaries = _find_boundaries(prose)
+
+    # Find the boundary just left of `start` (the closest one whose
+    # end is at or before `start`).
     left = 0
-    right = len(prose)
-    for bstart, bend in boundaries:
+    left_kind: str | None = None
+    for bstart, bend, kind in boundaries:
         if bend <= start:
-            left = bend
-        elif bstart >= end and right == len(prose):
-            right = bstart
+            # If kind is 'sep', the separator goes WITH the stripped
+            # clause — start the kept-left region BEFORE the separator.
+            # If kind is 'sentence', keep the terminator on the left.
+            left = bstart if kind == "sep" else bend
+            left_kind = kind
+        else:
             break
-    # Sentence-level fallback when no clause boundary is present.
-    # If the entire matched region is a single sentence, drop it whole
-    # including any trailing sentence terminator (and the space before).
-    chunk = prose[left:right]
-    # Trim trailing punctuation/spaces from the kept-left side and
-    # leading from the kept-right side.
+
+    # Find the boundary just right of `end` (the first boundary that
+    # starts at or after `end`).
+    right = len(prose)
+    right_kind: str | None = None
+    for bstart, bend, kind in boundaries:
+        if bstart >= end:
+            # If kind is 'sep', the separator goes WITH the stripped
+            # clause — start the kept-right region AFTER the separator.
+            # If kind is 'sentence', start the kept-right region after
+            # the period+space (so the next sentence stands alone).
+            right = bend if kind == "sep" else bend
+            right_kind = kind
+            break
+
     before = prose[:left].rstrip()
     after = prose[right:].lstrip()
-    # Collapse double terminators (e.g. ". .") that can arise.
+
+    # If we lost the terminator for the LEFT clause (because we
+    # consumed a comma-conjunction), put one back so the surviving
+    # left clause reads as a complete sentence.
+    if (
+        before
+        and not before.endswith((".", "!", "?"))
+        and left_kind == "sep"
+    ):
+        before = before + "."
+
+    # Collapse double terminators (". .") that can arise when stripping
+    # a complete sentence between two sentence boundaries.
     if before.endswith(".") and after.startswith("."):
-        after = after[1:].lstrip()
+        after = after.lstrip(".").lstrip()
+
     if before and after:
-        # Re-stitch with a single space.
         return f"{before} {after}".strip()
     return (before or after).strip()
 

@@ -83,6 +83,18 @@ def _agent_for_qid(qid: str) -> str:
 
 def _render_chart_html(resp: AgentResponse) -> str:
     if resp.chart is None:
+        # Surface what the model intended even when build failed —
+        # gives the reviewer the model's chart kind + named columns
+        # without making them dig through caveats.
+        intent = resp.chart_intent or {}
+        if intent:
+            intent_pretty = json.dumps(intent, indent=2, default=str)
+            return (
+                f"<em>(chart skipped — intent below)</em>"
+                f"<pre style='font-size:11px; background:#F3F4F6; "
+                f"padding:8px; border-radius:4px;'>"
+                f"{html_escape.escape(intent_pretty)}</pre>"
+            )
         return "<em>(no chart)</em>"
     return resp.chart.to_html(
         include_plotlyjs="cdn", full_html=False, default_height=420,

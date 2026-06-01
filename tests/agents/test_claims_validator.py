@@ -326,6 +326,36 @@ def test_source_does_not_resolve_strips_clause(merged_dairy) -> None:
     assert "Dairy" in rep.prose
 
 
+def test_clause_strip_consumes_leading_comma_conjunction() -> None:
+    """Regression — Checkpoint 2 review caught the harness leaving
+    ", but" as a dangling fragment when stripping the right-side
+    clause of a "X, but Y" sentence. The fix: comma-conjunctions are
+    separators that get consumed entirely, not boundaries that get
+    kept. Exercised at the ``_strip_clause`` unit level so we don't
+    have to set up a full validator fixture."""
+    from src.agents.claims import _strip_clause
+    import re
+    prose = "Your dairy is up 5%, but produce fell 30%. Meat held flat."
+    span = re.search(r"30%", prose).span()
+    out = _strip_clause(prose, span)
+    assert "30%" not in out
+    assert ", but" not in out
+    assert "Your dairy is up 5%." in out
+    assert "Meat held flat." in out
+
+
+def test_clause_strip_consumes_leading_however_conjunction() -> None:
+    """Same regression for 'however' — common in formal prose."""
+    from src.agents.claims import _strip_clause
+    import re
+    prose = "Your dairy is up 5%, however produce fell 30%."
+    span = re.search(r"30%", prose).span()
+    out = _strip_clause(prose, span)
+    assert "30%" not in out
+    assert "however" not in out
+    assert "Your dairy is up 5%." in out
+
+
 def test_clause_strip_leaves_no_dangling_fragment(merged_dairy) -> None:
     """User amendment 2: stripping is clause-level, not digit-level.
     The bad number is in the middle of a sentence; the WHOLE sentence

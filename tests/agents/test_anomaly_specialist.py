@@ -96,13 +96,15 @@ def test_anomaly_prompt_never_mentions_fraud_signals() -> None:
     """Every prohibited word is absent from the prompt as a
     POSITIVE statement (the prompt MENTIONS each word in the "never
     say" rule, so we check the file in a more nuanced way)."""
-    prompt = AnomalyDetectionSpecialist.PROMPT_PATH.read_text()
+    # Normalize whitespace so phrases broken across line wraps still match.
+    prompt_raw = AnomalyDetectionSpecialist.PROMPT_PATH.read_text()
+    prompt = " ".join(prompt_raw.split())
     # The prompt MAY mention these words inside the prohibition
     # statement — that's fine. What we check: the prohibition
     # statement IS present and explicit.
     assert "Never say fraud" in prompt
     assert "panel doesn't contain any fraud signals" in prompt or "no fraud" in prompt.lower()
-    assert "D20.3" in prompt
+    assert "D20.3" in prompt_raw
 
 
 def test_anomaly_prompt_business_anomalies_only() -> None:

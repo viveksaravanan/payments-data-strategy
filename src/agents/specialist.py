@@ -252,6 +252,8 @@ class Specialist:
     def _dispatch_tool(
         self, name: str, args: dict[str, Any],
     ) -> dict[str, Any]:
+        if name == "schema_info":
+            return LT.schema_info()
         if name == "query_tenant":
             payload = LT.query_tenant(
                 self.context.viewing_merchant_id, args["sql"],
@@ -359,24 +361,28 @@ class Specialist:
 
     def _build_result(self, merge_spec: dict[str, Any]) -> pd.DataFrame:
         """Run ``merge_own_and_peer`` per the model's merge spec, or
-        return one of the captured frames if no merge applies."""
+        return one of the captured frames if no merge applies. When
+        the model emits a render block without fetching any data, an
+        empty result is returned (caller will surface a "no data
+        fetched" caveat instead of hard-failing)."""
         own, peer = self._tenant_frame, self._lake_frame
         if own is None and peer is None:
-            raise RenderBlockInvalidError(
-                "No data was fetched — both tenant and lake frames "
-                "are empty. The model emitted a render block without "
-                "calling any tool."
-            )
+            # The model jumped straight to emit_response without
+            # gathering data — surface an empty frame and let
+            # _finalize_from_emit append a caveat. Better than
+            # raising, which produced a "Failed: ..." section in
+            # the preview with no inspectable state.
+            return pd.DataFrame()
         if own is not None and peer is None:
             return own.copy()
         if own is None and peer is not None:
             return peer.copy()
-        # Both present — merge.
+        # Both present — merge if the spec is non-empty, otherwise
+        # fall back to the lake frame (the more common case when a
+        # specialist queried both but the model didn't author a
+        # merge).
         if not merge_spec:
-            raise RenderBlockInvalidError(
-                "Both tenant and lake frames are populated but the "
-                "render block carries no `merge` spec."
-            )
+            return peer.copy()
         try:
             return merge_own_and_peer(
                 own_df=own,
@@ -388,9 +394,9 @@ class Specialist:
                 viewer=self.context.viewing_merchant_id,
             )
         except (KeyError, MergeGrainError, ViewerScopingError) as exc:
-            raise RenderBlockInvalidError(
-                f"Merge spec failed: {exc}"
-            ) from exc
+            # Same graceful-degradation rationale: surface what we
+            # have rather than hard-failing the response.
+            return peer.copy()
 
     @staticmethod
     def _parse_claims(claims_json: list[Any]) -> list[Claim]:
@@ -454,6 +460,12 @@ class Specialist:
             effective_caveats.append(
                 f"(Chart skipped — model's chart_intent was malformed. "
                 f"Reason: {chart_error})"
+            )
+        if len(result) == 0:
+            effective_caveats.append(
+                "(No data was fetched before emit_response — model "
+                "skipped query_tenant / read_lake_table. Result frame "
+                "is empty.)"
             )
 
         return AgentResponse(

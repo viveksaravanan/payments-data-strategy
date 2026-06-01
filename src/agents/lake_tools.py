@@ -62,6 +62,145 @@ class LakeToolError(ValueError):
 # query_tenant
 # ---------------------------------------------------------------------
 
+_TENANT_TABLE_DESCRIPTIONS: dict[str, dict[str, Any]] = {
+    "transactions": {
+        "description": (
+            "One row per transaction. Every row has banner_code; "
+            "every tenant query MUST include WHERE banner_code = "
+            "'<viewer>'."
+        ),
+        "primary_key": ["txn_id"],
+        "join_keys": {
+            "store_id":      "→ stores.store_id (which store rang the txn)",
+            "customer_token": "→ customers.card_id (hashed card id)",
+        },
+    },
+    "transaction_items": {
+        "description": (
+            "Line items — one row per (txn_id, line_id). Carries "
+            "category, subcategory, sku, canonical_id, qty, unit_price, "
+            "discount, line_total, promo_id. NOTE: NO banner_code on "
+            "this table — scope by joining to transactions and using "
+            "transactions.banner_code = '<viewer>'."
+        ),
+        "primary_key": ["txn_id", "line_id"],
+        "join_keys": {
+            "txn_id":       "→ transactions.txn_id",
+            "sku":          "→ products.sku (your SKU's product row)",
+            "canonical_id": (
+                "→ products.canonical_id (cross-merchant canonical "
+                "product key — same canonical_id maps to the same "
+                "product at every banner)"
+            ),
+            "promo_id":     "→ promotions.promo_id (when not null)",
+        },
+    },
+    "stores": {
+        "description": (
+            "One row per store. Has banner_code; scope by "
+            "banner_code = '<viewer>'."
+        ),
+        "primary_key": ["store_id"],
+    },
+    "products": {
+        "description": (
+            "One row per SKU. Has banner_code; scope by "
+            "banner_code = '<viewer>' for own catalogue."
+        ),
+        "primary_key": ["sku"],
+        "join_keys": {
+            "canonical_id": (
+                "shared cross-merchant key — the same canonical_id "
+                "is in every grocer's catalogue at the same "
+                "(category, subcategory)"
+            ),
+        },
+    },
+    "promotions": {
+        "description": "One row per promo. Has merchant_id; scope it.",
+        "primary_key": ["promo_id"],
+    },
+    "merchants": {
+        "description": (
+            "Reference table of the 5 merchants. merchant_id is the "
+            "banner code. Available for joining but rarely needed."
+        ),
+        "primary_key": ["merchant_id"],
+    },
+}
+
+
+_LAKE_TABLES_FOR_SCHEMA = [
+    "lake_category_metrics",
+    "lake_payment_mix",
+    "lake_segment_mix",
+    "lake_trade_area",
+    "lake_cross_merchant_cohorts",
+]
+
+
+def schema_info() -> dict[str, Any]:
+    """Return tenant + lake table schemas with join hints.
+
+    Tenant tables: columns introspected from
+    ``data/raw/<table>.parquet`` (no static drift if Wave 1 changes
+    the schema); descriptions + join hints from
+    ``_TENANT_TABLE_DESCRIPTIONS``.
+
+    Lake tables: dimensions + metrics + excludes + k_floor read
+    from the Wave 2 manifest. No fixed column lists for the lake —
+    the manifest is the contract.
+
+    Always-on, no input, cheap.
+    """
+    import pyarrow.parquet as pq
+
+    tenant: dict[str, Any] = {}
+    for name, info in _TENANT_TABLE_DESCRIPTIONS.items():
+        path = DATA_RAW / f"{name}.parquet"
+        if not path.exists():
+            continue
+        schema = pq.read_schema(path)
+        columns = [
+            {"name": f.name, "type": str(f.type)}
+            for f in schema
+        ]
+        tenant[name] = {
+            "description": info["description"],
+            "primary_key": info.get("primary_key", []),
+            "join_keys": info.get("join_keys", {}),
+            "columns": columns,
+        }
+
+    lake: dict[str, Any] = {}
+    for table in _LAKE_TABLES_FOR_SCHEMA:
+        try:
+            spec = manifest_for(table)
+        except KeyError:
+            continue
+        lake[table] = {
+            "finest_grain": spec["finest_grain"],
+            "dimensions":   spec["dimensions"],
+            "metrics":      spec["metrics"],
+            "excludes":     spec["excludes"],
+            "k_floor":      spec["k_floor"],
+        }
+
+    tips = [
+        "Always call schema_info first; it tells you the real column names so you don't burn turns guessing.",
+        "transaction_items has NO banner_code — scope it by joining to transactions and filtering transactions.banner_code = '<viewer>'.",
+        "Join transaction_items → products via sku for product detail; via canonical_id for cross-merchant.",
+        "Lake reads are by table name + filters; no SQL. Filter keys must be in the table's dimensions list.",
+        "Lake automatically excludes your own merchant. Real banner_code never reaches you — peer_relationship (segment_peer | cross_segment) is what you see.",
+    ]
+
+    return {
+        "tenant": tenant,
+        "lake":   lake,
+        "tips":   tips,
+    }
+
+
 def query_tenant(viewer: str, sql: str) -> dict[str, Any]:
     """Run a viewer-scoped SQL query against the tenant census.
 
@@ -223,6 +362,23 @@ def _df_to_payload(df: pd.DataFrame, **extra: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------------
 # Tool schemas — for the Anthropic SDK
 # ---------------------------------------------------------------------
+
+SCHEMA_INFO_TOOL = {
+    "name": "schema_info",
+    "description": (
+        "Return the column lists + join hints for tenant tables "
+        "(`data/raw/`) and the lake table manifests. Call this ONCE "
+        "at the start of every answer — it costs nothing, prevents "
+        "guessing column names, and tells you which keys to join "
+        "on. Without it, your SQL will reference columns that don't "
+        "exist and you'll burn tool turns failing."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {},
+    },
+}
+
 
 QUERY_TENANT_TOOL = {
     "name": "query_tenant",
@@ -459,7 +615,12 @@ EMIT_RESPONSE_TOOL = {
 }
 
 
-TOOLS_SPECIALIST = [QUERY_TENANT_TOOL, READ_LAKE_TOOL, EMIT_RESPONSE_TOOL]
+TOOLS_SPECIALIST = [
+    SCHEMA_INFO_TOOL,
+    QUERY_TENANT_TOOL,
+    READ_LAKE_TOOL,
+    EMIT_RESPONSE_TOOL,
+]
 
 
 def _lake_tables_list() -> list[str]:
