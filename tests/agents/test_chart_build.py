@@ -272,6 +272,149 @@ def test_geo_map_pulls_lat_lon_from_result() -> None:
 # All nine kinds registered
 # ---------------------------------------------------------------------
 
+def test_cross_merchant_comparison_aggregates_and_caps_runaway_rows() -> None:
+    """Regression — Checkpoint 2 v3 batch 8 produced a 74,880px bar
+    chart on P1 because the model plotted 1,248 category × zone × week
+    rows as separate bars. The builder now aggregates by the chart's
+    `x` column AND caps to MAX_BARS bars + MAX_HEIGHT_PX height."""
+    from src.agents.chart_build import MAX_BARS, MAX_HEIGHT_PX
+    df = pd.DataFrame({
+        "category": (["DAIRY"] * 40 + ["MEAT"] * 40 + ["PRODUCE"] * 40
+                     + [f"C{i:03d}" for i in range(40)]),
+        # 4 unique categories above + 40 unique => 44 distinct x values.
+        "own_value":      list(range(160)),
+        "peer_benchmark": [v * 1.1 for v in range(160)],
+    })
+    fig = build_chart(
+        {"kind": "cross_merchant_comparison", "title": "Pricing",
+         "x": "category",
+         "series": ["own_value", "peer_benchmark"],
+         "y_format": "index"},
+        df,
+    )
+    # Each trace has at most MAX_BARS bars (post-aggregation).
+    own_bar = fig.data[0]
+    assert len(own_bar.x) <= MAX_BARS
+    # Height capped.
+    assert fig.layout.height <= MAX_HEIGHT_PX
+    # The aggregation collapsed the 40 DAIRY rows to one value.
+    cat_values = list(own_bar.y)
+    assert "DAIRY" in cat_values
+    assert cat_values.count("DAIRY") == 1
+
+
+def test_time_series_aggregates_to_one_point_per_x() -> None:
+    """Regression — the builder must aggregate by `x` so a merge
+    frame with category × zone × week produces one point per week,
+    not a jagged trace with multiple values at each week."""
+    from src.agents.chart_build import MAX_TIME_POINTS, MAX_HEIGHT_PX
+    df = pd.DataFrame({
+        "period_start": (
+            ["2026-03-01"] * 5 + ["2026-03-08"] * 5 + ["2026-03-15"] * 5
+        ),
+        # Same week appears 5× (across zones/categories).
+        "own_value":      list(range(15)),
+        "peer_benchmark": [v * 1.05 for v in range(15)],
+    })
+    fig = build_chart(
+        {"kind": "time_series_vs_peers", "title": "Trend",
+         "x": "period_start",
+         "series": ["own_value", "peer_benchmark"],
+         "y_format": "index"},
+        df,
+    )
+    own_trace = fig.data[0]
+    # One point per unique week (3), not 15.
+    assert len(own_trace.x) == 3
+    assert fig.layout.height <= MAX_HEIGHT_PX
+
+
+def test_waterfall_sums_drivers_and_caps() -> None:
+    """Waterfall must sum contributions per driver label and cap to
+    MAX_WATERFALL_BARS so dumping 200 raw rows doesn't produce an
+    unreadable chart."""
+    from src.agents.chart_build import MAX_HEIGHT_PX
+    df = pd.DataFrame({
+        # Three drivers, each appearing twice — totals should be summed.
+        "driver":       ["Vol", "Mix", "Promo", "Vol", "Mix", "Promo"],
+        "contribution": [0.05, -0.02, 0.01, 0.05, -0.01, 0.01],
+    })
+    fig = build_chart(
+        {"kind": "waterfall", "title": "Gap drivers",
+         "x": "driver", "y": "contribution"},
+        df,
+    )
+    trace = fig.data[0]
+    # 3 unique drivers — one bar each, summed.
+    assert len(trace.x) == 3
+    # Vol summed = 0.05 + 0.05 = 0.10.
+    by_label = dict(zip(list(trace.x), list(trace.y)))
+    assert by_label["Vol"] == pytest.approx(0.10)
+    assert by_label["Mix"] == pytest.approx(-0.03)
+    assert fig.layout.height <= MAX_HEIGHT_PX
+
+
+def test_scatter_quadrant_dedupes_by_label_and_caps() -> None:
+    """Scatter takes the first row per label (when label column is
+    given) so a duplicated-label merge doesn't render N markers per
+    store. Total points capped to MAX_SCATTER_POINTS."""
+    from src.agents.chart_build import MAX_HEIGHT_PX, MAX_SCATTER_POINTS
+    df = pd.DataFrame({
+        "store_id": ["S1", "S2", "S3", "S1", "S2"],
+        "x_metric": [1.0, 1.2, 0.9, 1.0, 1.2],
+        "y_metric": [0.5, 0.8, 0.6, 0.5, 0.8],
+    })
+    fig = build_chart(
+        {"kind": "scatter_quadrant", "title": "Stores",
+         "x": "x_metric", "y": "y_metric", "label": "store_id"},
+        df,
+    )
+    trace = fig.data[0]
+    # 3 unique stores; duplicates dropped.
+    assert len(trace.x) == 3
+    assert fig.layout.height <= MAX_HEIGHT_PX
+
+
+def test_heatmap_caps_rows_and_cols() -> None:
+    """Heatmap pivot is capped at MAX_HEATMAP_ROWS × MAX_HEATMAP_COLS."""
+    from src.agents.chart_build import (
+        MAX_HEATMAP_COLS, MAX_HEATMAP_ROWS, MAX_HEIGHT_PX,
+    )
+    rows = [f"R{i:03d}" for i in range(50)]
+    cols = [f"C{i:03d}" for i in range(50)]
+    df = pd.DataFrame([
+        {"row": r, "col": c, "value": (i + j) * 0.01}
+        for i, r in enumerate(rows) for j, c in enumerate(cols)
+    ])
+    fig = build_chart(
+        {"kind": "heatmap", "title": "Big matrix",
+         "row": "row", "col": "col", "value": "value"},
+        df,
+    )
+    z = fig.data[0].z
+    assert z.shape[0] <= MAX_HEATMAP_ROWS
+    assert z.shape[1] <= MAX_HEATMAP_COLS
+    assert fig.layout.height <= MAX_HEIGHT_PX
+
+
+def test_small_multiples_caps_facets() -> None:
+    """Small multiples capped at MAX_FACETS subplots."""
+    from src.agents.chart_build import MAX_FACETS, MAX_HEIGHT_PX
+    facets = [f"F{i:02d}" for i in range(20)]
+    df = pd.DataFrame([
+        {"facet": f, "x": w, "own_value": (i + w) * 0.1}
+        for i, f in enumerate(facets) for w in range(4)
+    ])
+    fig = build_chart(
+        {"kind": "small_multiples", "title": "Per facet",
+         "facet": "facet", "x": "x", "series": ["own_value"]},
+        df,
+    )
+    # One trace per facet, capped.
+    assert len(fig.data) <= MAX_FACETS
+    assert fig.layout.height <= MAX_HEIGHT_PX
+
+
 def test_table_drilldown_caps_runaway_row_count() -> None:
     """Regression — Checkpoint 2 batch 7 produced a 21,530px-tall
     table chart because the model dumped a 700-row result into

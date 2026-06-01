@@ -195,6 +195,68 @@ def _y_axis_title(y_format: str | None) -> str:
 
 
 # ---------------------------------------------------------------------
+# Universal chart-builder guardrails: aggregate the result to the
+# chart's natural grain BEFORE rendering, and cap per-kind series
+# length + figure height. Without this, the model can emit a chart
+# intent that plots every row of a multi-thousand-row merge frame —
+# producing a 74,880px-tall figure (Checkpoint 2 batch 8 saw this).
+# ---------------------------------------------------------------------
+
+MAX_HEIGHT_PX = 720
+MAX_BARS = 30                # cross_merchant_comparison
+MAX_TIME_POINTS = 60         # time_series_vs_peers per series
+MAX_SCATTER_POINTS = 200     # scatter_quadrant
+MAX_WATERFALL_BARS = 30      # waterfall
+MAX_FACETS = 9               # small_multiples
+MAX_HEATMAP_ROWS = 25        # heatmap rows
+MAX_HEATMAP_COLS = 25        # heatmap cols
+MAX_GEO_MARKERS = 200        # geo_map
+
+
+def _aggregate_by(
+    df: pd.DataFrame,
+    by: list[str],
+    value_cols: list[str],
+    *,
+    agg: str = "mean",
+) -> pd.DataFrame:
+    """Group ``df`` by ``by`` and aggregate every column in
+    ``value_cols`` with ``agg``. Returns the grouped frame with the
+    ``by`` keys as columns (reset_index). Non-grouped/non-value
+    columns are dropped; we keep only what the chart will plot, so
+    figure data stays terse."""
+    cols_present = [c for c in by + value_cols if c in df.columns]
+    by_present = [c for c in by if c in df.columns]
+    val_present = [c for c in value_cols if c in df.columns]
+    if not by_present or not val_present:
+        return df
+    # ``sort=False`` preserves the order rows first appeared in
+    # ``df`` so the chart's x-axis follows the data's natural
+    # sequence (the model can sort upstream if it wants).
+    return (
+        df[cols_present]
+        .groupby(by_present, as_index=False, sort=False)
+        .agg({c: agg for c in val_present})
+    )
+
+
+def _cap_to_n(df: pd.DataFrame, n: int) -> tuple[pd.DataFrame, bool]:
+    """Return ``(capped_df, truncated)``. When ``len(df) > n``, the
+    head is kept and ``truncated`` is True."""
+    if len(df) <= n:
+        return df, False
+    return df.head(n).copy(), True
+
+
+def _decorate_title(title: str, *, truncated_note: str | None) -> str:
+    if not truncated_note:
+        return title or ""
+    if not title:
+        return truncated_note
+    return f"{title}  ({truncated_note})"
+
+
+# ---------------------------------------------------------------------
 # Per-kind builders
 # ---------------------------------------------------------------------
 
@@ -202,13 +264,29 @@ def _build_time_series(intent: dict, result: pd.DataFrame) -> go.Figure:
     _require_keys(intent, "time_series_vs_peers", ["x", "series"])
     _require_columns(result, intent, ["x", "series"])
 
+    # Aggregate to one point per (x). Without this, a merge frame
+    # with category × zone × week produces multiple values per
+    # week and the trace becomes jagged spaghetti.
+    aggregated = _aggregate_by(
+        result, by=[intent["x"]], value_cols=list(intent["series"]),
+        agg="mean",
+    )
+    capped, truncated = _cap_to_n(aggregated, MAX_TIME_POINTS)
+    title = _decorate_title(
+        intent.get("title", ""),
+        truncated_note=(
+            f"first {MAX_TIME_POINTS} of {len(aggregated)} periods"
+            if truncated else None
+        ),
+    )
+
     fig = go.Figure()
     palette_cycle = [ACCENT, PEER_A, PEER_B, PEER_AGGREGATE]
     for i, col in enumerate(intent["series"]):
         is_own = i == 0
         fig.add_trace(go.Scatter(
-            x=result[intent["x"]],
-            y=result[col],
+            x=capped[intent["x"]],
+            y=capped[col],
             mode="lines+markers",
             name=col,
             line=dict(
@@ -220,14 +298,14 @@ def _build_time_series(intent: dict, result: pd.DataFrame) -> go.Figure:
             connectgaps=False,
         ))
     fig.update_layout(
-        title=intent.get("title", ""),
+        title=title,
         hoverlabel=HOVERLABEL,
         yaxis_title=_y_axis_title(intent.get("y_format")),
         hovermode="x unified",
         plot_bgcolor="white",
         paper_bgcolor="white",
         margin=dict(l=40, r=40, t=40, b=40),
-        height=360,
+        height=min(360, MAX_HEIGHT_PX),
         showlegend=True,
     )
     fig.update_xaxes(showgrid=False, zeroline=False)
@@ -241,25 +319,38 @@ def _build_cross_merchant_comparison(
     _require_keys(intent, "cross_merchant_comparison", ["x", "series"])
     _require_columns(result, intent, ["x", "series"])
 
+    aggregated = _aggregate_by(
+        result, by=[intent["x"]], value_cols=list(intent["series"]),
+        agg="mean",
+    )
+    capped, truncated = _cap_to_n(aggregated, MAX_BARS)
+    title = _decorate_title(
+        intent.get("title", ""),
+        truncated_note=(
+            f"first {MAX_BARS} of {len(aggregated)} {intent['x']} values"
+            if truncated else None
+        ),
+    )
+
     fig = go.Figure()
     palette_cycle = [ACCENT, PEER_A, PEER_B, PEER_AGGREGATE]
     for i, col in enumerate(intent["series"]):
         fig.add_trace(go.Bar(
-            y=result[intent["x"]],
-            x=result[col],
+            y=capped[intent["x"]],
+            x=capped[col],
             name=col,
             orientation="h",
             marker=dict(color=palette_cycle[i % len(palette_cycle)]),
         ))
     fig.update_layout(
-        title=intent.get("title", ""),
+        title=title,
         hoverlabel=HOVERLABEL,
         xaxis_title=_y_axis_title(intent.get("y_format")),
         barmode="group",
         plot_bgcolor="white",
         paper_bgcolor="white",
         margin=dict(l=80, r=40, t=40, b=40),
-        height=max(220, 60 * len(result)),
+        height=min(max(220, 60 * len(capped)), MAX_HEIGHT_PX),
     )
     fig.update_xaxes(showgrid=True, gridcolor=GRID_LINE)
     fig.update_yaxes(showgrid=False)
@@ -274,6 +365,12 @@ def _build_heatmap(intent: dict, result: pd.DataFrame) -> go.Figure:
         index=intent["row"], columns=intent["col"],
         values=intent["value"], aggfunc="mean",
     )
+    # Cap to keep the figure readable. Heatmaps with hundreds of
+    # rows or cols become noise.
+    if pivot.shape[0] > MAX_HEATMAP_ROWS:
+        pivot = pivot.iloc[:MAX_HEATMAP_ROWS]
+    if pivot.shape[1] > MAX_HEATMAP_COLS:
+        pivot = pivot.iloc[:, :MAX_HEATMAP_COLS]
     palette = intent.get("palette", "diverging")
     if palette == "diverging":
         colorscale = [
@@ -295,7 +392,7 @@ def _build_heatmap(intent: dict, result: pd.DataFrame) -> go.Figure:
         title=intent.get("title", ""),
         hoverlabel=HOVERLABEL,
         margin=dict(l=80, r=40, t=40, b=40),
-        height=400,
+        height=min(400, MAX_HEIGHT_PX),
     )
     return fig
 
@@ -304,20 +401,36 @@ def _build_scatter_quadrant(intent: dict, result: pd.DataFrame) -> go.Figure:
     _require_keys(intent, "scatter_quadrant", ["x", "y"])
     _require_columns(result, intent, ["x", "y", "label", "size"])
 
-    marker_size = result[intent["size"]] if "size" in intent else 12
-    text = result[intent["label"]] if "label" in intent else None
+    # Cap points to keep the figure readable. If a label column is
+    # present, prefer the head per label so we don't drop entire
+    # label groups; otherwise take the head of the result.
+    df = result
+    if "label" in intent and intent["label"] in result.columns:
+        df = result.drop_duplicates(subset=[intent["label"]], keep="first")
+    capped, truncated = _cap_to_n(df, MAX_SCATTER_POINTS)
+    title = _decorate_title(
+        intent.get("title", ""),
+        truncated_note=(
+            f"first {MAX_SCATTER_POINTS} of {len(df)} points"
+            if truncated else None
+        ),
+    )
+
+    marker_size = capped[intent["size"]] if "size" in intent else 12
+    text = capped[intent["label"]] if "label" in intent else None
     fig = go.Figure(go.Scatter(
-        x=result[intent["x"]], y=result[intent["y"]],
+        x=capped[intent["x"]], y=capped[intent["y"]],
         mode="markers+text" if text is not None else "markers",
         text=text, textposition="top center",
         marker=dict(size=marker_size, color=ACCENT, line=dict(color="white", width=1)),
     ))
     fig.update_layout(
-        title=intent.get("title", ""),
+        title=title,
         hoverlabel=HOVERLABEL,
         xaxis_title=intent["x"], yaxis_title=intent["y"],
         plot_bgcolor="white", paper_bgcolor="white",
-        margin=dict(l=60, r=40, t=40, b=60), height=420,
+        margin=dict(l=60, r=40, t=40, b=60),
+        height=min(420, MAX_HEIGHT_PX),
     )
     fig.update_xaxes(showgrid=True, gridcolor=GRID_LINE, zeroline=True,
                      zerolinecolor=BASELINE_LINE)
@@ -329,19 +442,33 @@ def _build_scatter_quadrant(intent: dict, result: pd.DataFrame) -> go.Figure:
 def _build_waterfall(intent: dict, result: pd.DataFrame) -> go.Figure:
     _require_keys(intent, "waterfall", ["x", "y"])
     _require_columns(result, intent, ["x", "y"])
-    measures = ["relative"] * len(result)
+    # Aggregate (sum) contributions by driver label; a waterfall is
+    # only meaningful with one bar per driver.
+    aggregated = _aggregate_by(
+        result, by=[intent["x"]], value_cols=[intent["y"]], agg="sum",
+    )
+    capped, truncated = _cap_to_n(aggregated, MAX_WATERFALL_BARS)
+    title = _decorate_title(
+        intent.get("title", ""),
+        truncated_note=(
+            f"first {MAX_WATERFALL_BARS} of {len(aggregated)} drivers"
+            if truncated else None
+        ),
+    )
+    measures = ["relative"] * len(capped)
     fig = go.Figure(go.Waterfall(
-        x=result[intent["x"]], y=result[intent["y"]],
+        x=capped[intent["x"]], y=capped[intent["y"]],
         measure=measures,
         increasing=dict(marker=dict(color=DIVERGING_HIGH)),
         decreasing=dict(marker=dict(color=DIVERGING_LOW)),
         totals=dict(marker=dict(color=TEXT_2)),
     ))
     fig.update_layout(
-        title=intent.get("title", ""),
+        title=title,
         hoverlabel=HOVERLABEL,
         plot_bgcolor="white", paper_bgcolor="white",
-        margin=dict(l=60, r=40, t=40, b=40), height=360,
+        margin=dict(l=60, r=40, t=40, b=40),
+        height=min(360, MAX_HEIGHT_PX),
     )
     return fig
 
@@ -349,10 +476,30 @@ def _build_waterfall(intent: dict, result: pd.DataFrame) -> go.Figure:
 def _build_geo_map(intent: dict, result: pd.DataFrame) -> go.Figure:
     _require_keys(intent, "geo_map", ["lat", "lon"])
     _require_columns(result, intent, ["lat", "lon", "value", "label"])
-    color = result[intent["value"]] if "value" in intent else ACCENT
-    text = result[intent["label"]] if "label" in intent else None
-    lats = result[intent["lat"]]
-    lons = result[intent["lon"]]
+    # Aggregate one point per (lat, lon). Without this a merge frame
+    # produces a stack of markers at each store coordinate.
+    by = [intent["lat"], intent["lon"]]
+    value_cols: list[str] = []
+    if "value" in intent and intent["value"] in result.columns:
+        value_cols.append(intent["value"])
+    aggregated = (
+        _aggregate_by(result, by=by, value_cols=value_cols, agg="mean")
+        if value_cols
+        else result[by].drop_duplicates().reset_index(drop=True)
+    )
+    if "label" in intent and intent["label"] in result.columns:
+        # Pick the first label per coordinate so the marker text matches.
+        label_map = (
+            result[by + [intent["label"]]]
+            .drop_duplicates(subset=by, keep="first")
+            .reset_index(drop=True)
+        )
+        aggregated = aggregated.merge(label_map, on=by, how="left")
+    capped, _ = _cap_to_n(aggregated, MAX_GEO_MARKERS)
+    color = capped[intent["value"]] if "value" in intent and intent["value"] in capped.columns else ACCENT
+    text = capped[intent["label"]] if "label" in intent and intent["label"] in capped.columns else None
+    lats = capped[intent["lat"]]
+    lons = capped[intent["lon"]]
     fig = go.Figure(go.Scattermap(
         lat=lats, lon=lons, mode="markers+text",
         text=text, textposition="top center",
@@ -369,7 +516,7 @@ def _build_geo_map(intent: dict, result: pd.DataFrame) -> go.Figure:
                  center=dict(lat=center_lat, lon=center_lon),
                  zoom=10),
         margin=dict(l=0, r=0, t=40, b=0),
-        height=420,
+        height=min(420, MAX_HEIGHT_PX),
     )
     return fig
 
@@ -410,12 +557,31 @@ def _build_small_multiples(intent: dict, result: pd.DataFrame) -> go.Figure:
     )
     _require_columns(result, {"facet": intent["facet"], "x": intent["x"],
                               "y": series_col}, ["facet", "x", "y"])
-    facets = sorted(result[intent["facet"]].dropna().unique().tolist())
+    # Aggregate (facet, x) → mean series so each facet's sub-line is
+    # one point per x value.
+    aggregated = _aggregate_by(
+        result,
+        by=[intent["facet"], intent["x"]],
+        value_cols=[series_col],
+        agg="mean",
+    )
+    facets = sorted(aggregated[intent["facet"]].dropna().unique().tolist())
+    truncated_facets = False
+    if len(facets) > MAX_FACETS:
+        facets = facets[:MAX_FACETS]
+        truncated_facets = True
+    title = _decorate_title(
+        intent.get("title", ""),
+        truncated_note=(
+            f"first {MAX_FACETS} of {len(aggregated[intent['facet']].unique())} facets"
+            if truncated_facets else None
+        ),
+    )
     cols = min(3, len(facets)) or 1
     rows = (len(facets) + cols - 1) // cols
     fig = make_subplots(rows=rows, cols=cols, subplot_titles=facets)
     for i, f in enumerate(facets):
-        sub = result[result[intent["facet"]] == f]
+        sub = aggregated[aggregated[intent["facet"]] == f]
         r, c = i // cols + 1, i % cols + 1
         fig.add_trace(
             go.Scatter(
@@ -426,8 +592,8 @@ def _build_small_multiples(intent: dict, result: pd.DataFrame) -> go.Figure:
             row=r, col=c,
         )
     fig.update_layout(
-        title=intent.get("title", ""),
-        height=240 * rows,
+        title=title,
+        height=min(240 * rows, MAX_HEIGHT_PX),
         margin=dict(l=40, r=40, t=60, b=40),
         plot_bgcolor="white", paper_bgcolor="white",
     )

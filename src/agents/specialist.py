@@ -125,8 +125,19 @@ class Specialist:
 
     # ---- Prompt rendering -------------------------------------------
 
+    _SHARED_RULES_PATH = (
+        Path(__file__).parent / "prompts" / "_shared_answering_rules.md"
+    )
+
     def _render_prompt(self) -> str:
         raw = self.PROMPT_PATH.read_text()
+        # Inject the shared answering rules at the end of every
+        # specialist prompt so the four Checkpoint 2 v3 failure
+        # modes (wrong-filter, defer-to-clarification, ungrounded
+        # prose, mislabel) get the same treatment regardless of
+        # which specialist the dispatch resolves to.
+        if self._SHARED_RULES_PATH.exists():
+            raw = raw.rstrip() + "\n\n---\n\n" + self._SHARED_RULES_PATH.read_text()
         return (
             raw.replace("{{viewer_id}}", self.context.viewing_merchant_id)
                .replace("{{viewer_name}}", self.context.viewing_merchant_name)
@@ -167,19 +178,30 @@ class Specialist:
             #    model pick which one (typically query_tenant /
             #    read_lake_table to gather data).
             #  - Final 2 turns OR once enough data has been gathered
-            #    (both tenant + lake frames captured, or one is
-            #    captured and the model has been at it for several
+            #    (both tenant + lake frames non-empty, or one is
+            #    non-empty and the model has been at it for several
             #    turns): pin to emit_response so the model can't keep
             #    re-querying. Haiku's default behavior is to keep
             #    refining tenant SQL forever without ever finalizing;
             #    pinning ensures convergence.
+            #
+            # NOTE — "captured" means a populated frame. An empty
+            # result (e.g. lake filter returned 0 rows + diagnostic)
+            # does NOT count as captured because the model needs to
+            # retry with a corrected filter before finalizing.
+            tenant_ready = (
+                self._tenant_frame is not None
+                and len(self._tenant_frame) > 0
+            )
+            lake_ready = (
+                self._lake_frame is not None
+                and len(self._lake_frame) > 0
+            )
             ready_to_emit = (
-                # Both frames captured OR
-                (self._tenant_frame is not None
-                 and self._lake_frame is not None)
-                # One frame captured + enough exploration done OR
-                or (turn >= 3 and (self._tenant_frame is not None
-                                    or self._lake_frame is not None))
+                # Both frames populated OR
+                (tenant_ready and lake_ready)
+                # One populated + enough exploration done OR
+                or (turn >= 3 and (tenant_ready or lake_ready))
                 # Hard wall: last 2 turns of the budget.
                 or turn >= self.MAX_TURNS - 2
             )
