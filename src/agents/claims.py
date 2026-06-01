@@ -52,9 +52,17 @@ CLAIM_TOLERANCE = 0.01   # ~1% relative; configurable per-call
 @dataclass
 class CellLookup:
     """A single-cell lookup: filter result rows, then take ``column``
-    from the (assumed unique) match."""
+    from the match.
+
+    When the filter matches multiple rows, ``agg`` must be set to one
+    of ``"sum"`` or ``"mean"`` so the lookup is unambiguous. With
+    ``agg=None`` (the default) a multi-row match raises — that's the
+    closed-grammar safety net against accidentally aggregating when
+    the model meant a single cell.
+    """
     row_filter: dict[str, Any]
     column: str
+    agg: AggregateFunc | None = None     # noqa: F821 — forward ref
 
     def resolve(self, result: pd.DataFrame) -> float:
         df = result
@@ -65,11 +73,16 @@ class CellLookup:
                 f"CellLookup row_filter={self.row_filter} matched 0 rows."
             )
         if len(df) > 1:
-            raise LookupError(
-                f"CellLookup row_filter={self.row_filter} matched "
-                f"{len(df)} rows; expected exactly 1. Use Derivation "
-                f"with op='aggregate' if you mean a sum/mean."
-            )
+            if self.agg is None:
+                raise LookupError(
+                    f"CellLookup row_filter={self.row_filter} matched "
+                    f"{len(df)} rows; expected exactly 1, or set agg "
+                    f"= 'sum'|'mean' to aggregate."
+                )
+            values = df[self.column].astype(float).tolist()
+            if self.agg == "sum":
+                return float(sum(values))
+            return float(sum(values) / len(values))
         return float(df.iloc[0][self.column])
 
 

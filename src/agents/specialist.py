@@ -1,50 +1,66 @@
-"""Base class for Phase 2 LLM-backed specialist agents.
+"""Wave 3 specialist base class.
 
-A specialist owns:
-  - A `MerchantContext` (viewer binding).
-  - A prompt template (Markdown, persona / scope / tool guidance).
-  - A tool list (Anthropic SDK input_schema format).
-  - A bounded tool loop (hard cap = MAX_TURNS, mirrors the existing
-    MerchantAdvisor pattern).
-  - State accumulators: SQL log, last query result table, chart figure,
-    cost telemetry.
+A specialist:
 
-Subclasses (PricingSpecialist, AnomalySpecialist, etc.) override:
-  - AGENT_LABEL (display name for the chat panel).
-  - PROMPT_PATH (path to the persona prompt).
-  - Optionally TOOLS (default = T.TOOLS_SPECIALIST).
+* Owns a viewer (``MerchantContext``).
+* Owns a prompt template (Markdown, persona + scope + tool guidance).
+* Runs a bounded tool loop using ``src.agents.lake_tools`` —
+  ``query_tenant`` and ``read_lake_table``.
+* Parses the model's final turn for a fenced ``render`` block
+  (merge spec + chart_intent + claims) and a fenced ``caveats``
+  block. The render block is the structured §1 contract emission.
+* Merges the captured tenant + lake frames into one comparison
+  result (``response.merge_own_and_peer``).
+* Builds the chart deterministically (``chart_build.build_chart``).
+* Validates the prose against the result + claims
+  (``claims.validate_claims``) — strict guarantee, graceful handling.
+* Returns ``AgentResponse`` (D25.1).
+
+Subclasses (Pricing, Demand, Trade-Area, Anomaly) override:
+
+* ``AGENT_LABEL`` — display name for the chat panel.
+* ``PROMPT_PATH`` — persona prompt.
+* Optionally ``MAX_TURNS``.
+
+Everything else lives in this base.
 """
 from __future__ import annotations
 
 import json
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
 import pandas as pd
 
+from src.agents import lake_tools as LT
 from src.agents import llm as L
-from src.agents import tools as T
+from src.agents.chart_build import (
+    MissingColumnError,
+    UnsupportedIntentError,
+    build_chart,
+)
+from src.agents.claims import (
+    CellLookup,
+    Claim,
+    Derivation,
+    validate_claims,
+)
 from src.agents.context import MerchantContext
+from src.agents.response import (
+    AgentResponse,
+    MergeGrainError,
+    SqlSurface,
+    Telemetry,
+    ViewerScopingError,
+    merge_own_and_peer,
+)
 
-# Default turn cap. Bumped from 8 to 10 in Phase 5.1.9 because
-# chart-takeaway injection adds an analytical reconciliation
-# workflow: agent's initial query may use a different window than
-# the chart, requires re-query to match, plus the normal
-# query → chart → respond sequence. Net: 10 gives reasonable
-# headroom for the common case.
+
 DEFAULT_MAX_TURNS = 10
-# Output budget per turn. Bumped 2048 → 4096 in Phase 5.1.10 so
-# the trailing caveats fence never gets truncated mid-stream when
-# the chart-takeaway reconciliation context inflates the response.
-# Haiku output is cheap (~$5/M); allocating doesn't cost — we only
-# pay for tokens actually generated.
 MAX_TOKENS = 4096
 
-# Phase 2A.5: per-turn progress narration. The Specialist fires
-# progress(turn_idx, message) at the start of each turn so the
-# dashboard can show forward motion in the spinner.
+
 PROGRESS_MESSAGES = [
     "Looking up your data…",
     "Comparing with peer data…",
@@ -52,180 +68,134 @@ PROGRESS_MESSAGES = [
     "Finalizing analysis…",
 ]
 
-# Caveats block: the prompt instructs the agent to append a fenced
-# JSON list at the very end. The renderer parses it out into a
-# structured `caveats` field so the dashboard can render it muted.
-_CAVEATS_RE = re.compile(
-    r"```caveats\s*\n(.*?)\n```\s*$",
-    re.DOTALL | re.IGNORECASE,
-)
+
+# ---------------------------------------------------------------------
+# Public errors
+# ---------------------------------------------------------------------
+
+class RenderBlockMissingError(ValueError):
+    """The model's final assistant turn did not include a parseable
+    ``render`` fenced block. Without it the specialist can't build
+    the §1 AgentResponse — bug in the prompt or model output."""
 
 
-# ---------------------------------------------------------------------------
-# Response
-# ---------------------------------------------------------------------------
-
-@dataclass
-class SpecialistResponse:
-    agent:         str
-    prose:         str
-    table:         pd.DataFrame | None = None
-    chart:         Any | None = None      # go.Figure if present
-    caveats:       list[str] = field(default_factory=list)
-    sql:           list[dict[str, Any]] = field(default_factory=list)
-    converged:     bool = True
-    turns:         int = 0
-    input_tokens:  int = 0
-    output_tokens: int = 0
-    cost_usd:      float = 0.0
-
-    def to_dict(self) -> dict[str, Any]:
-        """Shape the dashboard's chat panel expects from `dispatch()`."""
-        return {
-            "agent":   self.agent,
-            "prose":   self.prose,
-            "table":   self.table,
-            "chart":   self.chart,
-            "caveats": list(self.caveats),
-            "sql":     list(self.sql),
-            "telemetry": {
-                "input_tokens":  self.input_tokens,
-                "output_tokens": self.output_tokens,
-                "cost_usd":      self.cost_usd,
-                "turns":         self.turns,
-                "converged":     self.converged,
-            },
-        }
+class RenderBlockInvalidError(ValueError):
+    """The render block was present but its shape doesn't match the
+    expected schema (missing merge / chart_intent / claims)."""
 
 
-# ---------------------------------------------------------------------------
-# Base class
-# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------
+# Specialist
+# ---------------------------------------------------------------------
 
 class Specialist:
-    """Subclass-with-class-vars pattern. Override the four class
-    attributes; the loop is the same."""
+    """Wave 3 specialist base class. Subclasses set the four class
+    attributes; the loop, parsing, merging, chart, and validation
+    are common."""
 
     AGENT_LABEL: str = ""
     PROMPT_PATH: Path | None = None
-    TOOLS: list[dict[str, Any]] = T.TOOLS_SPECIALIST
+    TOOLS: list[dict[str, Any]] = LT.TOOLS_SPECIALIST
     MODEL: str = L.MODEL_SPECIALIST
     MAX_TURNS: int = DEFAULT_MAX_TURNS
+
+    # Subclasses override these to tell the merge step what to merge
+    # on. ``MERGE_DEFAULT`` is used when the model's render block
+    # doesn't supply its own (typically only when no own-side query
+    # ran, e.g. Advisor on payment_mix).
+    MERGE_REQUIRED: bool = True
 
     def __init__(self, context: MerchantContext) -> None:
         if not self.AGENT_LABEL or self.PROMPT_PATH is None:
             raise NotImplementedError(
-                f"{type(self).__name__} must set AGENT_LABEL and PROMPT_PATH."
+                f"{type(self).__name__} must set AGENT_LABEL + PROMPT_PATH."
             )
         self.context = context
         self._system_prompt = self._render_prompt()
 
-        # Per-call state. Reset on every answer().
-        self._sql_log:    list[dict[str, Any]] = []
-        self._last_table: dict[str, Any] | None = None
-        self._chart:      Any | None = None
-        self._in_tokens:  int = 0
-        self._out_tokens: int = 0
-        self._cost_usd:   float = 0.0
+        # Per-call state
+        self._sql_log:      list[dict[str, Any]] = []
+        self._tenant_frame: pd.DataFrame | None = None
+        self._lake_frame:   pd.DataFrame | None = None
+        self._lake_manifest: dict[str, Any] | None = None
+        self._in_tokens:    int = 0
+        self._out_tokens:   int = 0
+        self._cost_usd:     float = 0.0
 
-    # ---- Prompt rendering ----------------------------------------------
+    # ---- Prompt rendering -------------------------------------------
 
     def _render_prompt(self) -> str:
         raw = self.PROMPT_PATH.read_text()
         return (
-            raw
-            .replace("{{viewer_id}}",      self.context.viewing_merchant_id)
-            .replace("{{viewer_name}}",    self.context.viewing_merchant_name)
-            .replace("{{viewer_segment}}", self.context.viewing_merchant_segment)
+            raw.replace("{{viewer_id}}", self.context.viewing_merchant_id)
+               .replace("{{viewer_name}}", self.context.viewing_merchant_name)
+               .replace(
+                   "{{viewer_segment}}",
+                   self.context.viewing_merchant_segment,
+               )
         )
 
-    # ---- Public ---------------------------------------------------------
+    # ---- Public ------------------------------------------------------
 
     def answer(
         self,
         question: str,
         *,
-        progress: "Callable[[int, str], None] | None" = None,
-        on_token: "Callable[[str], None] | None" = None,
-    ) -> SpecialistResponse:
-        """Run the bounded tool loop and return a structured response.
+        progress: Callable[[int, str], None] | None = None,
+        on_token: Callable[[str], None] | None = None,
+    ) -> AgentResponse:
+        """Run the bounded tool loop and produce an AgentResponse."""
+        self._reset_state()
 
-        Optional callbacks (Phase 2A.5):
-          - `progress(turn_index, message)` fires at the start of each
-            turn so the dashboard can update its spinner with forward
-            motion.
-          - `on_token(text)` fires for each text delta when streaming.
-            When provided, the LLM call uses Anthropic's streaming API
-            and emits text deltas as they arrive (typically only the
-            final non-tool-use turn produces meaningful streamed text).
-        """
-        # Reset per-call state
-        self._sql_log    = []
-        self._last_table = None
-        self._chart      = None
-        self._in_tokens  = 0
-        self._out_tokens = 0
-        self._cost_usd   = 0.0
-
-        messages: list[dict[str, Any]] = [{"role": "user", "content": question}]
-        use_streaming = on_token is not None
+        messages: list[dict[str, Any]] = [
+            {"role": "user", "content": question}
+        ]
+        final_text = ""
 
         for turn in range(self.MAX_TURNS):
             if progress is not None:
-                progress(turn, PROGRESS_MESSAGES[min(turn, len(PROGRESS_MESSAGES) - 1)])
+                progress(
+                    turn,
+                    PROGRESS_MESSAGES[
+                        min(turn, len(PROGRESS_MESSAGES) - 1)
+                    ],
+                )
 
-            if use_streaming:
-                resp, tel = L.call_with_tools_streaming(
-                    model=self.MODEL,
-                    system=self._system_prompt,
-                    tools=self.TOOLS,
-                    messages=messages,
-                    max_tokens=MAX_TOKENS,
-                    on_text_delta=on_token,
-                )
-            else:
-                resp, tel = L.call_with_tools(
-                    model=self.MODEL,
-                    system=self._system_prompt,
-                    tools=self.TOOLS,
-                    messages=messages,
-                    max_tokens=MAX_TOKENS,
-                )
+            resp, tel = L.call_with_tools(
+                model=self.MODEL,
+                system=self._system_prompt,
+                tools=self.TOOLS,
+                messages=messages,
+                max_tokens=MAX_TOKENS,
+            )
             self._in_tokens  += tel.input_tokens
             self._out_tokens += tel.output_tokens
             self._cost_usd   += tel.cost_usd
-
             messages.append({"role": "assistant", "content": resp.content})
 
             if resp.stop_reason != "tool_use":
-                text = self._extract_text(resp.content)
-                return self._finalize(text, converged=True, turns=turn + 1)
+                final_text = self._extract_text(resp.content)
+                return self._finalize(
+                    final_text, converged=True, turns=turn + 1,
+                )
 
-            # Process all tool_use blocks in this turn before going back
-            # to the model. The model can mix text + multiple tool_use
-            # blocks in the same response; we acknowledge them all in
-            # one user message.
             tool_results: list[dict[str, Any]] = []
             for block in resp.content:
                 if getattr(block, "type", "") != "tool_use":
                     continue
                 try:
                     result = self._dispatch_tool(
-                        block.name, dict(block.input or {}),
+                        block.name, dict(block.input or {})
                     )
                     is_error = False
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:               # noqa: BLE001
                     result = {"error": f"{type(exc).__name__}: {exc}"}
                     is_error = True
-                # Phase 2A.5: trim the payload returned to the LLM —
-                # cap rows, round floats, drop empty columns. The
-                # specialist's `_last_table` keeps the full-precision
-                # version for rendering.
+                # Strip the full frame before sending to the LLM
+                # (the specialist already captured it in state).
                 payload_for_llm = (
-                    T.trim_for_llm(result)
-                    if (not is_error and isinstance(result, dict)
-                         and "rows" in result)
-                    else result
+                    {k: v for k, v in result.items() if k != "frame"}
+                    if isinstance(result, dict) else result
                 )
                 tool_results.append({
                     "type":        "tool_result",
@@ -235,43 +205,219 @@ class Specialist:
                 })
             messages.append({"role": "user", "content": tool_results})
 
-        # Loop exhausted without a final answer.
-        partial = (
-            "(I couldn't converge on a full answer in "
-            f"{self.MAX_TURNS} turns. Showing the best-effort partial — see "
-            "the SQL below for what I queried.)"
+        # Loop exhausted without final text.
+        return self._finalize(
+            "(I couldn't converge on an answer in "
+            f"{self.MAX_TURNS} turns.)",
+            converged=False, turns=self.MAX_TURNS,
         )
-        return self._finalize(partial, converged=False, turns=self.MAX_TURNS)
 
-    # ---- Internals ------------------------------------------------------
+    # ---- Tool dispatch ----------------------------------------------
 
-    def _dispatch_tool(self, name: str, args: dict[str, Any]) -> dict[str, Any]:
-        ctx = self.context
-        if name == "schema_info":
-            return ctx.schema_info()
-
+    def _dispatch_tool(
+        self, name: str, args: dict[str, Any],
+    ) -> dict[str, Any]:
         if name == "query_tenant":
-            res = ctx.query_tenant(args["query"])
-            self._sql_log.append(
-                {"tool": "tenant", "query": args["query"], "row_count": res.get("row_count", 0)}
+            payload = LT.query_tenant(
+                self.context.viewing_merchant_id, args["sql"],
             )
-            self._last_table = res
-            return res
-
-        if name == "query_lake":
-            res = ctx.query_lake(args["query"])
-            self._sql_log.append(
-                {"tool": "lake", "query": args["query"], "row_count": res.get("row_count", 0)}
+            self._tenant_frame = payload["frame"]
+            self._sql_log.append({
+                "surface": "tenant",
+                "query":   args["sql"],
+                "row_count": payload["row_count"],
+            })
+            return payload
+        if name == "read_lake_table":
+            payload = LT.read_lake_table(
+                self.context.viewing_merchant_id,
+                args["table"],
+                args.get("filters") or {},
             )
-            self._last_table = res
-            return res
-
-        if name == "make_chart":
-            fig = ctx.make_chart(args)
-            self._chart = fig
-            return T.make_chart_ack(args)
-
+            self._lake_frame = payload["frame"]
+            self._lake_manifest = payload["manifest"]
+            self._sql_log.append({
+                "surface":   "lake",
+                "query":     f"read_lake_table({args['table']!r}, "
+                             f"filters={args.get('filters') or {}})",
+                "row_count": payload["row_count"],
+            })
+            return payload
         raise ValueError(f"Unknown tool: {name}")
+
+    # ---- Finalize ----------------------------------------------------
+
+    def _finalize(
+        self, text: str, *, converged: bool, turns: int,
+    ) -> AgentResponse:
+        """Parse the model's final response into an AgentResponse.
+
+        Steps:
+        1. Parse fenced render block: ``{merge, chart_intent,
+           claims}``. ``RenderBlockMissingError`` if absent.
+        2. Parse fenced caveats block (optional, default []).
+        3. Merge tenant + lake frames per the model's merge spec.
+           If only one source was queried (e.g. Advisor on a single
+           lake table), use that frame as ``result`` directly.
+        4. Build the chart from the chart_intent + result.
+        5. Validate prose against claims + result; ``cleaned_prose``
+           replaces the raw text in the response.
+        """
+        render = LT.parse_render_block(text)
+        caveats = LT.parse_caveats_block(text)
+        prose = LT.strip_render_and_caveats_blocks(text)
+
+        if render is None:
+            if self.MERGE_REQUIRED or not converged:
+                raise RenderBlockMissingError(
+                    "Model's final response did not include a parseable "
+                    "`render` fenced block. Expected JSON with keys "
+                    "{merge, chart_intent, claims}."
+                )
+            # Soft case: produce a minimal response with just prose.
+            return self._minimal_response(
+                prose=prose, caveats=caveats, converged=converged,
+                turns=turns,
+            )
+
+        result = self._build_result(render.get("merge") or {})
+        chart_intent = render.get("chart_intent") or {}
+        claims = self._parse_claims(render.get("claims") or [])
+
+        try:
+            chart = build_chart(chart_intent, result)
+        except (MissingColumnError, UnsupportedIntentError) as exc:
+            raise RenderBlockInvalidError(
+                f"chart_intent failed to build: {exc}"
+            ) from exc
+
+        report = validate_claims(prose, claims, result)
+
+        return AgentResponse(
+            result=result,
+            chart_intent=chart_intent,
+            chart=chart,
+            prose=report.prose,
+            claims=claims,
+            caveats=caveats,
+            sql=[
+                SqlSurface(
+                    surface=s["surface"], query=s["query"],
+                    row_count=s["row_count"],
+                ) for s in self._sql_log
+            ],
+            grain_notes=list((self._lake_manifest or {}).get("excludes", [])),
+            telemetry=Telemetry(
+                model=self.MODEL,
+                input_tokens=self._in_tokens,
+                output_tokens=self._out_tokens,
+                cost_usd=self._cost_usd,
+                turns=turns,
+                converged=converged,
+            ),
+        )
+
+    def _build_result(self, merge_spec: dict[str, Any]) -> pd.DataFrame:
+        """Run ``merge_own_and_peer`` per the model's merge spec, or
+        return one of the captured frames if no merge applies."""
+        own, peer = self._tenant_frame, self._lake_frame
+        if own is None and peer is None:
+            raise RenderBlockInvalidError(
+                "No data was fetched — both tenant and lake frames "
+                "are empty. The model emitted a render block without "
+                "calling any tool."
+            )
+        if own is not None and peer is None:
+            return own.copy()
+        if own is None and peer is not None:
+            return peer.copy()
+        # Both present — merge.
+        if not merge_spec:
+            raise RenderBlockInvalidError(
+                "Both tenant and lake frames are populated but the "
+                "render block carries no `merge` spec."
+            )
+        try:
+            return merge_own_and_peer(
+                own_df=own,
+                peer_df=peer,
+                on=list(merge_spec.get("on") or []),
+                own_value_col=merge_spec["own_value_col"],
+                peer_value_col=merge_spec["peer_value_col"],
+                gap_op=merge_spec.get("gap_op", "difference"),
+                viewer=self.context.viewing_merchant_id,
+            )
+        except (KeyError, MergeGrainError, ViewerScopingError) as exc:
+            raise RenderBlockInvalidError(
+                f"Merge spec failed: {exc}"
+            ) from exc
+
+    @staticmethod
+    def _parse_claims(claims_json: list[Any]) -> list[Claim]:
+        """Parse the model's JSON list of claims into typed Claim
+        objects. Tolerates extra keys; raises on missing required keys."""
+        out: list[Claim] = []
+        for c in claims_json:
+            if not isinstance(c, dict):
+                continue
+            try:
+                source = _parse_claim_source(c.get("source") or {})
+                out.append(Claim(
+                    text_span=str(c["text_span"]),
+                    value=float(c["value"]),
+                    source=source,
+                ))
+            except (KeyError, TypeError, ValueError):
+                continue
+        return out
+
+    def _minimal_response(
+        self, *, prose: str, caveats: list[str], converged: bool, turns: int,
+    ) -> AgentResponse:
+        """Build an AgentResponse for the soft case (no merge required,
+        no render block). Result = whichever frame was captured;
+        chart_intent + claims empty. Used by Advisor on simple
+        single-table answers, never by specialists with merge-required."""
+        result = (
+            self._tenant_frame if self._tenant_frame is not None
+            else (self._lake_frame
+                  if self._lake_frame is not None
+                  else pd.DataFrame())
+        )
+        return AgentResponse(
+            result=result,
+            chart_intent={},
+            chart=None,
+            prose=prose,
+            claims=[],
+            caveats=caveats,
+            sql=[
+                SqlSurface(
+                    surface=s["surface"], query=s["query"],
+                    row_count=s["row_count"],
+                ) for s in self._sql_log
+            ],
+            grain_notes=list((self._lake_manifest or {}).get("excludes", [])),
+            telemetry=Telemetry(
+                model=self.MODEL,
+                input_tokens=self._in_tokens,
+                output_tokens=self._out_tokens,
+                cost_usd=self._cost_usd,
+                turns=turns,
+                converged=converged,
+            ),
+        )
+
+    # ---- Helpers -----------------------------------------------------
+
+    def _reset_state(self) -> None:
+        self._sql_log = []
+        self._tenant_frame = None
+        self._lake_frame = None
+        self._lake_manifest = None
+        self._in_tokens = 0
+        self._out_tokens = 0
+        self._cost_usd = 0.0
 
     @staticmethod
     def _extract_text(content_blocks: list[Any]) -> str:
@@ -280,45 +426,36 @@ class Specialist:
             if getattr(b, "type", "") == "text"
         )
 
-    def _finalize(
-        self, text: str, *, converged: bool, turns: int,
-    ) -> SpecialistResponse:
-        prose, caveats = self._split_caveats(text)
-        table_df: pd.DataFrame | None = None
-        if self._last_table and self._last_table.get("rows"):
-            table_df = pd.DataFrame(
-                self._last_table["rows"],
-                columns=self._last_table["columns"],
-            )
-        return SpecialistResponse(
-            agent=self.AGENT_LABEL,
-            prose=prose.strip(),
-            table=table_df,
-            chart=self._chart,
-            caveats=caveats,
-            sql=list(self._sql_log),
-            converged=converged,
-            turns=turns,
-            input_tokens=self._in_tokens,
-            output_tokens=self._out_tokens,
-            cost_usd=self._cost_usd,
-        )
 
-    @staticmethod
-    def _split_caveats(text: str) -> tuple[str, list[str]]:
-        """Pull a trailing ```caveats\\n[...]``` JSON-list block out of
-        the prose. Returns (prose_without_block, caveats_list). If the
-        block is missing or malformed, returns (text, [])."""
-        m = _CAVEATS_RE.search(text)
-        if not m:
-            return text, []
-        body = m.group(1).strip()
-        try:
-            caveats = json.loads(body)
-            if not isinstance(caveats, list):
-                return text, []
-            caveats = [str(c).strip() for c in caveats if c]
-        except Exception:  # noqa: BLE001
-            return text, []
-        prose = text[: m.start()].rstrip()
-        return prose, caveats
+def _parse_claim_source(src: dict[str, Any]) -> CellLookup | Derivation:
+    """Parse a claim source from JSON. Supported shapes:
+
+    * ``{"type": "CellLookup", "row_filter": {...}, "column": "..."}``
+    * ``{"type": "Derivation", "op": "...", "operands": [...]
+         [, "agg": "..."]}``
+
+    ``Derivation.operands`` is a list of CellLookup-shaped dicts.
+    """
+    kind = src.get("type")
+    if kind == "CellLookup":
+        return CellLookup(
+            row_filter=dict(src.get("row_filter") or {}),
+            column=str(src["column"]),
+            agg=src.get("agg"),
+        )
+    if kind == "Derivation":
+        operands = [
+            CellLookup(
+                row_filter=dict(o.get("row_filter") or {}),
+                column=str(o["column"]),
+                agg=o.get("agg"),
+            )
+            for o in (src.get("operands") or [])
+            if isinstance(o, dict)
+        ]
+        return Derivation(
+            op=src["op"],
+            operands=operands,
+            agg=src.get("agg"),
+        )
+    raise ValueError(f"Unknown claim source type {kind!r}")

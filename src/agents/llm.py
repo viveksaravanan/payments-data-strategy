@@ -24,19 +24,24 @@ load_dotenv()
 
 # Model strings.
 #
-# Phase 2A.6 switched specialists from Sonnet 4.6 to Haiku 4.5 for
-# cost/latency. Phase 5.1.8 attempted to bump specialists back to
-# Sonnet 4.6 after four prompt-based mitigations didn't fully bind
-# Haiku to faithful number grounding. Phase 5.1.8b reverted that
-# bump after the Sonnet smoke confirmed the issue was architectural,
-# not model capability: the agent and the chart helper were using
-# different analytical windows (45/45 split vs weekly trajectory)
-# on the same data, producing real but divergent numbers. The fix
-# is chart-takeaway pre-injection (Phase 5.1.9), not a model bump.
-# Haiku 4.5 retained for cost (5–10× lower) and latency (2–3×
-# faster). See docs/V3_AGENTS_DESIGN.md §10.
-MODEL_SPECIALIST = "claude-haiku-4-5-20251001"
-MODEL_ROUTER     = "claude-haiku-4-5-20251001"
+# D25.8 model configuration:
+#   * Orchestrator/router: always Haiku (`claude-haiku-4-5-20251001`)
+#     — routing is a cheap classification, no reasoning depth needed.
+#   * Specialists + Advisor: Haiku by default, Sonnet-switchable via
+#     the SPECIALIST_MODEL env var. Wave 3 is the "answer quality
+#     matters" wave; the config knob lets you trade cost for
+#     reasoning quality on the agents that do the chart-intent +
+#     claims + validation-aware prose work, without touching the
+#     router. Default Haiku keeps demo cost low; flip to Sonnet
+#     when answer quality needs it.
+#
+# Wave 3 deprecates the v3 fixed-Haiku-for-all configuration; the
+# router stays hardcoded but specialists read SPECIALIST_MODEL at
+# import time. Allowed values: any model identifier in _PRICING.
+MODEL_ROUTER = "claude-haiku-4-5-20251001"
+MODEL_SPECIALIST = os.environ.get(
+    "SPECIALIST_MODEL", "claude-haiku-4-5-20251001",
+)
 
 # Anthropic pricing (per Mtoken). Sonnet 4.6: $3 in / $15 out.
 # Haiku 4.5: $1 in / $5 out. Used only for the in-dashboard cost

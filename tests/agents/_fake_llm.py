@@ -1,0 +1,124 @@
+"""Deterministic fake LLM for specialist tests.
+
+``patch_llm(scripted_responses)`` monkey-patches
+``src.agents.llm.call_with_tools`` to emit a scripted sequence of
+``(response, telemetry)`` tuples. Each scripted response is a
+``ScriptedResponse`` describing what content blocks to emit and the
+stop_reason. The fake works with the real Anthropic content-block
+shape so the specialist's content extraction and tool dispatch run
+unchanged.
+
+Usage in a test:
+
+    with patch_llm(monkeypatch, [
+        scripted_tool_use("query_tenant", {"sql": "SELECT ..."}),
+        scripted_tool_use("read_lake_table",
+                           {"table": "lake_category_metrics",
+                            "filters": {"category": "DAIRY"}}),
+        scripted_text(\"\"\"Your dairy price index is 1.062 above peers.
+
+```render
+{...}
+```\"\"\"),
+    ]):
+        response = specialist.answer("...")
+"""
+from __future__ import annotations
+
+from contextlib import contextmanager
+from dataclasses import dataclass, field
+from typing import Any, Iterator
+
+from src.agents import llm as L
+
+
+@dataclass
+class _TextBlock:
+    type: str = "text"
+    text: str = ""
+
+
+@dataclass
+class _ToolUseBlock:
+    type: str = "tool_use"
+    id: str = "tool_use_id"
+    name: str = ""
+    input: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class _FakeResponse:
+    content: list[Any]
+    stop_reason: str           # "end_turn" or "tool_use"
+
+
+@dataclass
+class ScriptedResponse:
+    """One scripted LLM turn. ``content_blocks`` are emitted as the
+    response's content array; ``stop_reason`` decides whether the
+    specialist loop continues."""
+    content_blocks: list[Any]
+    stop_reason: str
+
+
+def scripted_text(text: str) -> ScriptedResponse:
+    """A final assistant turn — pure text, stop_reason='end_turn'."""
+    return ScriptedResponse(
+        content_blocks=[_TextBlock(text=text)],
+        stop_reason="end_turn",
+    )
+
+
+def scripted_tool_use(
+    name: str, args: dict[str, Any], *, block_id: str = "tu_1",
+) -> ScriptedResponse:
+    """A tool-using turn — emit one tool_use block, stop_reason='tool_use'."""
+    return ScriptedResponse(
+        content_blocks=[_ToolUseBlock(id=block_id, name=name, input=args)],
+        stop_reason="tool_use",
+    )
+
+
+def scripted_multi_tool_use(
+    calls: list[tuple[str, dict[str, Any]]],
+) -> ScriptedResponse:
+    """A turn that emits multiple tool_use blocks in one assistant message."""
+    blocks = [
+        _ToolUseBlock(id=f"tu_{i}", name=name, input=args)
+        for i, (name, args) in enumerate(calls)
+    ]
+    return ScriptedResponse(content_blocks=blocks, stop_reason="tool_use")
+
+
+@contextmanager
+def patch_llm(
+    monkeypatch, script: list[ScriptedResponse],
+) -> Iterator[None]:
+    """Replace ``L.call_with_tools`` with a fake that drains
+    ``script`` in order. Each call returns the next scripted response;
+    running off the end of the script raises an AssertionError so
+    tests fail loudly on unexpected extra turns."""
+    iterator = iter(script)
+
+    def _fake_call(*, model, system, tools, messages, max_tokens):
+        try:
+            step = next(iterator)
+        except StopIteration:
+            raise AssertionError(
+                "Fake LLM ran out of scripted responses. The specialist "
+                "made more turns than the test anticipated."
+            )
+        resp = _FakeResponse(
+            content=step.content_blocks,
+            stop_reason=step.stop_reason,
+        )
+        tel = L.CallTelemetry(
+            model=model,
+            input_tokens=10,
+            output_tokens=10,
+            elapsed_sec=0.001,
+        )
+        return resp, tel
+
+    monkeypatch.setattr(L, "call_with_tools", _fake_call)
+    yield
