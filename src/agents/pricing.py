@@ -1,8 +1,16 @@
-"""Pricing & Benchmarking Agent — Phase 2A specialist.
+"""Pricing & Benchmarking Agent — Wave 3 specialist.
 
-Subclass of `Specialist` with the pricing persona and prompt. The tool
-list is the default `TOOLS_SPECIALIST` (schema_info, query_tenant,
-query_lake, make_chart). The model is Sonnet 4.6 per Phase 2 decision.
+Thin subclass of ``Specialist``. The base class drives the bounded
+tool loop (``query_tenant`` + ``read_lake_table`` from
+``src.agents.lake_tools``), parses the model's final render block,
+merges own + peer frames, builds the chart deterministically, and
+runs the §1.4 claims validator. The Pricing prompt at
+``prompts/pricing.md`` provides the persona + grain discipline.
+
+Surface: ``lake_category_metrics`` — `price_index`,
+`promo_active_share`, `basket_penetration_share`. Excludes carried
+into ``grain_notes``: no peer SKU, no peer store_id, no daily peer
+grain (week is finest temporal).
 """
 from __future__ import annotations
 
@@ -14,8 +22,4 @@ from src.agents.specialist import Specialist
 class PricingSpecialist(Specialist):
     AGENT_LABEL = "Pricing & Benchmarking Agent"
     PROMPT_PATH = Path(__file__).parent / "prompts" / "pricing.md"
-    # Phase 5.1.5: standardized to 8 across all specialists.
-    # Phase 5.1.9: bumped to 10 to accommodate the analytical
-    # reconciliation step chart-takeaway injection adds (agent may
-    # need to re-query with the takeaway's analytical window).
     MAX_TURNS = 10
