@@ -1,4 +1,4 @@
-.PHONY: seed seed-pilot demo test test-quick clean dq-report lake lake-report
+.PHONY: seed seed-pilot demo test test-quick clean dq-report lake lake-report agent-preview
 
 # v4: generate the tenant census Parquet at full scale.
 seed:
@@ -28,6 +28,13 @@ lake:
 # Wave 2: regenerate the Markdown lake report from data/lake/.
 lake-report:
 	uv run python scripts/build_lake_report.py
+
+# Wave 3: generate docs/AGENT_PREVIEW.html — the human-review surface
+# for the L1-L12 agents over the suggested-question registry. Needs
+# ANTHROPIC_API_KEY in the environment for the live LLM calls.
+# Override --merchant on the command line if you want a different viewer.
+agent-preview:
+	uv run python scripts/preview_agent.py --merchant KRG --batch
 
 # v4 demo path is rebuilt in Wave 4 (dashboard adapts to Parquet via
 # DuckDB). For the working v3 demo, check out tag v3-final.
