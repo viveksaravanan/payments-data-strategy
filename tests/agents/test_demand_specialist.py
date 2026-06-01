@@ -23,7 +23,7 @@ from src.agents.demand import DemandForecastingSpecialist
 from src.agents.response import AgentResponse
 from tests.agents._fake_llm import (
     patch_llm,
-    scripted_text,
+    scripted_emit_response,
     scripted_tool_use,
 )
 
@@ -43,50 +43,43 @@ def test_demand_canonical_question_units_index(viewer_krg, monkeypatch) -> None:
         "WHERE t.banner_code = 'KRG' AND i.category = 'DAIRY' "
         "GROUP BY i.category"
     )
-    final_text = """Your dairy own units total ground vs the peer units_index average of 0.93.
-
-```render
-{
-  "merge": {
-    "on": ["category"],
-    "own_value_col": "own_units",
-    "peer_value_col": "units_index",
-    "gap_op": "difference"
-  },
-  "chart_intent": {
-    "kind": "cross_merchant_comparison",
-    "x": "category",
-    "series": ["own_value", "peer_benchmark"],
-    "y_format": "index",
-    "title": "Dairy demand vs peer baseline",
-    "takeaway": "Peer units index averages just below 1.0."
-  },
-  "claims": [
-    {
-      "text_span": "0.93",
-      "value": 0.93,
-      "source": {
-        "type": "CellLookup",
-        "row_filter": {"category": "DAIRY"},
-        "column": "peer_benchmark",
-        "agg": "mean"
-      }
-    }
-  ]
-}
-```
-
-```caveats
-["Window: 2026-03-01 to 2026-05-29.", "Peer set is 2 grocers (segment_peer)."]
-```
-"""
+    emit = scripted_emit_response(
+        prose="Your dairy own units total ground vs the peer "
+              "units_index average of 0.93.",
+        merge={
+            "on": ["category"],
+            "own_value_col": "own_units",
+            "peer_value_col": "units_index",
+            "gap_op": "difference",
+        },
+        chart_intent={
+            "kind": "cross_merchant_comparison",
+            "x": "category",
+            "series": ["own_value", "peer_benchmark"],
+            "y_format": "index",
+            "title": "Dairy demand vs peer baseline",
+            "takeaway": "Peer units index averages just below 1.0.",
+        },
+        claims=[{
+            "text_span": "0.93",
+            "value": 0.93,
+            "source": {
+                "type": "CellLookup",
+                "row_filter": {"category": "DAIRY"},
+                "column": "peer_benchmark",
+                "agg": "mean",
+            },
+        }],
+        caveats=["Window: 2026-03-01 to 2026-05-29.",
+                 "Peer set is 2 grocers (segment_peer)."],
+    )
     script = [
         scripted_tool_use("query_tenant", {"sql": own_sql}),
         scripted_tool_use("read_lake_table", {
             "table": "lake_category_metrics",
             "filters": {"category": "DAIRY", "grain": "cat_week"},
         }),
-        scripted_text(final_text),
+        emit,
     ]
     specialist = DemandForecastingSpecialist(viewer_krg)
     with patch_llm(monkeypatch, script):

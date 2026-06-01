@@ -156,22 +156,32 @@ def call_with_tools(
     messages: list[dict[str, Any]],
     tools: list[dict[str, Any]],
     max_tokens: int = 2048,
+    tool_choice: dict[str, Any] | None = None,
 ) -> tuple[Any, CallTelemetry]:
     """Wrap `client.messages.create` with retry + telemetry.
 
     Returns `(response, telemetry)`. The caller drives the tool loop;
     this function is one model invocation. Retries on transient errors
     (rate limit, transient connection) up to MAX_RETRIES.
+
+    ``tool_choice`` is forwarded to the Anthropic SDK when provided —
+    e.g. ``{"type": "any"}`` forces the model to call SOME tool every
+    turn (preventing free-text exits), or
+    ``{"type": "tool", "name": "emit_response"}`` forces a specific
+    tool. ``None`` (default) lets the model choose freely.
     """
     c = _client()
     last_err: Exception | None = None
     for attempt in range(MAX_RETRIES):
         t0 = time.monotonic()
         try:
-            resp = c.messages.create(
+            kwargs: dict[str, Any] = dict(
                 model=model, system=system, tools=tools,
                 messages=messages, max_tokens=max_tokens,
             )
+            if tool_choice is not None:
+                kwargs["tool_choice"] = tool_choice
+            resp = c.messages.create(**kwargs)
             elapsed = time.monotonic() - t0
             usage = getattr(resp, "usage", None)
             tel = CallTelemetry(

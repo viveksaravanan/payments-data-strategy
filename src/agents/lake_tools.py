@@ -293,7 +293,173 @@ READ_LAKE_TOOL = {
 }
 
 
-TOOLS_SPECIALIST = [QUERY_TENANT_TOOL, READ_LAKE_TOOL]
+EMIT_RESPONSE_TOOL = {
+    "name": "emit_response",
+    "description": (
+        "Call this tool ONCE to finish your answer. This is how the "
+        "agent loop ends — the structured response you emit here is "
+        "what the user sees. You MUST call emit_response exactly "
+        "once at the end of every answer; do not emit a free-text "
+        "final turn. The validator and chart builder run on the "
+        "structured args you pass."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "prose": {
+                "type": "string",
+                "description": (
+                    "2-5 sentence executive-readable answer. Every metric "
+                    "number you state here MUST be backed by an entry in "
+                    "the `claims` list, OR fall outside the metric/structural "
+                    "scanner (years, entity counts like \"5 stores\" are exempt)."
+                ),
+            },
+            "merge": {
+                "type": "object",
+                "description": (
+                    "Join spec for own + peer frames. Leave empty {} when "
+                    "answering from a single source (advisor on a lake "
+                    "table, or own-only analysis). Required when BOTH "
+                    "query_tenant and read_lake_table were called and a "
+                    "comparison is needed."
+                ),
+                "properties": {
+                    "on": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Join keys present in both frames.",
+                    },
+                    "own_value_col": {"type": "string"},
+                    "peer_value_col": {"type": "string"},
+                    "gap_op": {
+                        "type": "string",
+                        "enum": ["difference", "ratio"],
+                    },
+                },
+            },
+            "chart_intent": {
+                "type": "object",
+                "description": (
+                    "Chart shape — names result columns, never values. "
+                    "Per-kind required fields (besides `kind` and "
+                    "`title`):\n"
+                    "  - time_series_vs_peers: `x` (time col), `series` "
+                    "(list of value cols), `y_format`.\n"
+                    "  - cross_merchant_comparison: `x` (label col), "
+                    "`series` (list of value cols), `y_format`.\n"
+                    "  - heatmap: `row`, `col`, `value`.\n"
+                    "  - scatter_quadrant: `x`, `y` (and optional "
+                    "`label`, `size`).\n"
+                    "  - waterfall: `x` (label col), `y` (value col).\n"
+                    "  - geo_map: `lat`, `lon`.\n"
+                    "  - kpi_callout: `value` (numeric col — uses "
+                    "first row).\n"
+                    "  - small_multiples: `facet`, `x`, `series`.\n"
+                    "  - table_drilldown: `columns` (list of cols)."
+                ),
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "time_series_vs_peers",
+                            "cross_merchant_comparison",
+                            "heatmap",
+                            "scatter_quadrant",
+                            "waterfall",
+                            "geo_map",
+                            "kpi_callout",
+                            "small_multiples",
+                            "table_drilldown",
+                        ],
+                    },
+                    "title": {"type": "string"},
+                    "takeaway": {"type": "string"},
+                    "x": {"type": "string"},
+                    "y": {"type": "string"},
+                    "series": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                    },
+                    "y_format": {
+                        "type": "string",
+                        "enum": ["index", "currency", "pct",
+                                 "count", "raw"],
+                    },
+                    "row": {"type": "string"},
+                    "col": {"type": "string"},
+                    "value": {"type": "string"},
+                    "label": {"type": "string"},
+                    "size": {"type": "string"},
+                    "delta": {"type": "string"},
+                    "facet": {"type": "string"},
+                    "columns": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                    },
+                    "lat": {"type": "string"},
+                    "lon": {"type": "string"},
+                    "palette": {
+                        "type": "string",
+                        "enum": ["diverging", "sequential"],
+                    },
+                },
+                "required": ["kind"],
+            },
+            "claims": {
+                "type": "array",
+                "description": (
+                    "Each metric numeric in prose must be backed by a "
+                    "claim here. Source is CellLookup (one cell, "
+                    "optionally aggregated across matching rows) or "
+                    "Derivation (closed grammar: difference, ratio, "
+                    "pct_change, aggregate(sum|mean over operand cells))."
+                ),
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "text_span": {"type": "string"},
+                        "value": {"type": "number"},
+                        "source": {
+                            "type": "object",
+                            "properties": {
+                                "type": {
+                                    "type": "string",
+                                    "enum": ["CellLookup", "Derivation"],
+                                },
+                                "row_filter": {"type": "object"},
+                                "column": {"type": "string"},
+                                "agg": {
+                                    "type": "string",
+                                    "enum": ["sum", "mean"],
+                                },
+                                "op": {
+                                    "type": "string",
+                                    "enum": ["difference", "ratio",
+                                             "pct_change", "aggregate"],
+                                },
+                                "operands": {
+                                    "type": "array",
+                                    "items": {"type": "object"},
+                                },
+                            },
+                        },
+                    },
+                    "required": ["text_span", "value", "source"],
+                },
+            },
+            "caveats": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Short clarifying notes (peer set, window, etc).",
+            },
+        },
+        "required": ["prose", "chart_intent", "claims"],
+    },
+}
+
+
+TOOLS_SPECIALIST = [QUERY_TENANT_TOOL, READ_LAKE_TOOL, EMIT_RESPONSE_TOOL]
 
 
 def _lake_tables_list() -> list[str]:

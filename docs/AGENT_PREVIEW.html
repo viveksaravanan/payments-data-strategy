@@ -1,0 +1,1474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Wave 3 Agent Preview — KRG</title>
+  <style>
+body { font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+       max-width: 1100px; margin: 24px auto; padding: 0 16px;
+       color: #1A1F2E; line-height: 1.4; }
+h1 { border-bottom: 2px solid #0F4C81; padding-bottom: 4px; }
+h2 { color: #0F4C81; margin-top: 32px; }
+h3 { color: #4A5161; margin-top: 16px; }
+section.qa { border: 1px solid #E5E7EB; padding: 16px 20px;
+             margin: 20px 0; border-radius: 6px; background: #FAFBFC; }
+blockquote.prose { background: #FFFFFF; border-left: 4px solid #0F4C81;
+                   padding: 12px 16px; margin: 8px 0;
+                   font-size: 15px; white-space: pre-wrap; }
+table.result-table { border-collapse: collapse; margin: 8px 0; font-size: 12px; }
+table.result-table th, table.result-table td {
+    border: 1px solid #E5E7EB; padding: 4px 8px; text-align: left; }
+table.result-table th { background: #F3F4F6; }
+.sql-block { background: #FFFFFF; border: 1px solid #E5E7EB;
+             padding: 8px 12px; margin: 6px 0; border-radius: 4px; }
+.sql-block .surface { font-weight: bold; color: #0F4C81; }
+.sql-block pre { margin: 4px 0; white-space: pre-wrap; font-size: 12px;
+                 color: #4A5161; }
+.hint { color: #9CA3AF; font-size: 12px; }
+.question, .routing { margin: 4px 0; }
+.telemetry { color: #4A5161; font-family: monospace; font-size: 12px; }
+.error { color: #C44536; }
+</style>
+</head>
+<body>
+  <h1>Wave 3 Agent Preview — KRG</h1>
+  <p class="hint">Generated 2026-05-31T21:38:07.
+     Charts are live Plotly figures; tables and claims are read off the
+     merged result; prose is the post-validator output (numbers stripped
+     or normalized per §1.4).</p>
+  
+<section class="qa">
+  <h2>P1 — How do my prices compare to peer grocers across categories?</h2>
+  <p class="question"><strong>Q:</strong> How do my prices compare to peer grocers across categories?</p>
+  <p class="routing"><strong>Routed:</strong> pricing
+     <span class="hint">— Direct dispatch from suggested-question pill &#x27;P1&#x27;</span>
+  </p>
+  <h3>Prose (post-validator)</h3>
+  <blockquote class="prose">I need to access your transaction schema to properly query your own pricing data. The peer benchmark data shows category-level price indices and key metrics across zones and weeks, but I&#x27;m unable to extract your own average prices at this moment due to a schema issue. Once I can retrieve your SKU-level transaction data, I&#x27;ll be able to compare your pricing directly against peer baselines across all major categories (Dairy, Produce, Meat, etc.), showing whether you&#x27;re trading at a premium or discount and identifying opportunities for margin optimization.</blockquote>
+  <h3>Chart</h3>
+  <div class="chart"><em>(no chart)</em></div>
+  <h3>Merged result</h3>
+  <table class="dataframe result-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>basket_penetration_share</th>
+      <th>category</th>
+      <th>derived_zone</th>
+      <th>grain</th>
+      <th>period_start</th>
+      <th>price_index</th>
+      <th>promo_active_share</th>
+      <th>revenue_index</th>
+      <th>subcategory</th>
+      <th>txn_count</th>
+      <th>units_index</th>
+      <th>wow_delta</th>
+      <th>peer_relationship</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0.093401</td>
+      <td>BABY</td>
+      <td>Z04</td>
+      <td>subcat_week</td>
+      <td>2026-03-01</td>
+      <td>1.080732</td>
+      <td>0.100950</td>
+      <td>0.900676</td>
+      <td>BABY_FOOD</td>
+      <td>627</td>
+      <td>0.834559</td>
+      <td>NaN</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>0.089675</td>
+      <td>BABY</td>
+      <td>Z04</td>
+      <td>subcat_week</td>
+      <td>2026-03-08</td>
+      <td>1.076277</td>
+      <td>0.154472</td>
+      <td>0.946256</td>
+      <td>BABY_FOOD</td>
+      <td>555</td>
+      <td>0.881282</td>
+      <td>-0.123515</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>0.073728</td>
+      <td>BABY</td>
+      <td>Z04</td>
+      <td>subcat_week</td>
+      <td>2026-03-15</td>
+      <td>1.074369</td>
+      <td>0.000000</td>
+      <td>0.857566</td>
+      <td>BABY_FOOD</td>
+      <td>442</td>
+      <td>0.796233</td>
+      <td>-0.178862</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>0.086821</td>
+      <td>BABY</td>
+      <td>Z04</td>
+      <td>subcat_week</td>
+      <td>2026-03-22</td>
+      <td>1.056121</td>
+      <td>0.386792</td>
+      <td>0.910506</td>
+      <td>BABY_FOOD</td>
+      <td>473</td>
+      <td>0.861691</td>
+      <td>0.049505</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>0.086364</td>
+      <td>BABY</td>
+      <td>Z04</td>
+      <td>subcat_week</td>
+      <td>2026-03-29</td>
+      <td>1.092087</td>
+      <td>0.132022</td>
+      <td>0.922251</td>
+      <td>BABY_FOOD</td>
+      <td>520</td>
+      <td>0.845271</td>
+      <td>0.119497</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>0.096682</td>
+      <td>BABY</td>
+      <td>Z04</td>
+      <td>subcat_week</td>
+      <td>2026-04-05</td>
+      <td>1.053873</td>
+      <td>0.450549</td>
+      <td>0.908092</td>
+      <td>BABY_FOOD</td>
+      <td>606</td>
+      <td>0.861350</td>
+      <td>0.150281</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>0.089954</td>
+      <td>BABY</td>
+      <td>Z04</td>
+      <td>subcat_week</td>
+      <td>2026-04-12</td>
+      <td>1.036782</td>
+      <td>0.402017</td>
+      <td>0.937528</td>
+      <td>BABY_FOOD</td>
+      <td>514</td>
+      <td>0.906202</td>
+      <td>-0.152625</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>0.079255</td>
+      <td>BABY</td>
+      <td>Z04</td>
+      <td>subcat_week</td>
+      <td>2026-04-19</td>
+      <td>1.064461</td>
+      <td>0.110236</td>
+      <td>1.024661</td>
+      <td>BABY_FOOD</td>
+      <td>447</td>
+      <td>0.967742</td>
+      <td>-0.085014</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>0.094438</td>
+      <td>BABY</td>
+      <td>Z04</td>
+      <td>subcat_week</td>
+      <td>2026-04-26</td>
+      <td>1.104528</td>
+      <td>0.164450</td>
+      <td>1.141290</td>
+      <td>BABY_FOOD</td>
+      <td>579</td>
+      <td>1.038184</td>
+      <td>0.302362</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>0.094690</td>
+      <td>BABY</td>
+      <td>Z04</td>
+      <td>subcat_week</td>
+      <td>2026-05-03</td>
+      <td>1.060879</td>
+      <td>0.159420</td>
+      <td>0.948946</td>
+      <td>BABY_FOOD</td>
+      <td>658</td>
+      <td>0.901206</td>
+      <td>0.084643</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>0.072995</td>
+      <td>BABY</td>
+      <td>Z04</td>
+      <td>subcat_week</td>
+      <td>2026-05-10</td>
+      <td>1.050057</td>
+      <td>0.104137</td>
+      <td>0.931844</td>
+      <td>BABY_FOOD</td>
+      <td>516</td>
+      <td>0.890441</td>
+      <td>-0.218506</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>0.089128</td>
+      <td>BABY</td>
+      <td>Z04</td>
+      <td>subcat_week</td>
+      <td>2026-05-17</td>
+      <td>1.029915</td>
+      <td>0.368778</td>
+      <td>1.086334</td>
+      <td>BABY_FOOD</td>
+      <td>614</td>
+      <td>1.060164</td>
+      <td>0.261056</td>
+      <td>segment_peer</td>
+    </tr>
+  </tbody>
+</table><p class="hint"><em>… showing 12 of 11193 rows.</em></p>
+  <h3>Claims</h3>
+  <em>(no claims)</em>
+  <h3>SQL surfaces</h3>
+  <div class="sql-block"><span class="surface">lake</span> <span class="hint">(11193 rows)</span><pre>read_lake_table(&#x27;lake_category_metrics&#x27;, filters={})</pre></div>
+  <h3>Grain notes (from manifest)</h3>
+  <ul><li>no peer SKU (own side reaches SKU via the tenant surface)</li><li>no peer store_id</li><li>no per-customer rows</li><li>no daily grain (week is finest temporal)</li></ul>
+  <h3>Caveats</h3>
+  <ul><li>Unable to complete analysis — schema mapping needed for transaction_items and transactions tables.</li><li>Peer benchmark data is available (segment peers across zones Z04–Z08, weeks 2026-03-01 through 2026-05-24) but own pricing could not be extracted.</li><li>(Chart skipped — model&#x27;s chart_intent was malformed. Reason: UnsupportedIntentError: Unknown ChartIntent.kind=None. Valid kinds: [&#x27;cross_merchant_comparison&#x27;, &#x27;geo_map&#x27;, &#x27;heatmap&#x27;, &#x27;kpi_callout&#x27;, &#x27;scatter_quadrant&#x27;, &#x27;small_multiples&#x27;, &#x27;table_drilldown&#x27;, &#x27;time_series_vs_peers&#x27;, &#x27;waterfall&#x27;])</li></ul>
+  <h3>Telemetry</h3>
+  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=4 · in=27444 · out=878 · $0.0318</p>
+</section>
+
+
+<section class="qa">
+  <h2>P2 — How does my pricing position compare across my staple vs non-food categories?</h2>
+  <p class="question"><strong>Q:</strong> How does my pricing position compare across my staple vs non-food categories?</p>
+  <p class="routing"><strong>Routed:</strong> pricing
+     <span class="hint">— Direct dispatch from suggested-question pill &#x27;P2&#x27;</span>
+  </p>
+  <h3>Prose (post-validator)</h3>
+  <blockquote class="prose">I have your own pricing at category grain, but I need to fetch the peer benchmarks to show you how your staple vs non-food pricing compares to the market. Let me pull your peer indices now.</blockquote>
+  <h3>Chart</h3>
+  <div class="chart"><em>(no chart)</em></div>
+  <h3>Merged result</h3>
+  <table class="dataframe result-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>category</th>
+      <th>category_group</th>
+      <th>avg_price</th>
+      <th>sku_count</th>
+      <th>line_count</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>BABY</td>
+      <td>Non-Food</td>
+      <td>13.6274</td>
+      <td>54</td>
+      <td>134292</td>
+    </tr>
+    <tr>
+      <td>BAKERY</td>
+      <td>Staple</td>
+      <td>3.4095</td>
+      <td>72</td>
+      <td>280765</td>
+    </tr>
+    <tr>
+      <td>BEVERAGES</td>
+      <td>Non-Food</td>
+      <td>3.7067</td>
+      <td>100</td>
+      <td>359246</td>
+    </tr>
+    <tr>
+      <td>DAIRY</td>
+      <td>Staple</td>
+      <td>3.5001</td>
+      <td>94</td>
+      <td>350924</td>
+    </tr>
+    <tr>
+      <td>FROZEN</td>
+      <td>Staple</td>
+      <td>4.5549</td>
+      <td>88</td>
+      <td>198473</td>
+    </tr>
+    <tr>
+      <td>HOUSEHOLD</td>
+      <td>Non-Food</td>
+      <td>8.1747</td>
+      <td>72</td>
+      <td>207079</td>
+    </tr>
+    <tr>
+      <td>MEAT</td>
+      <td>Staple</td>
+      <td>6.3600</td>
+      <td>88</td>
+      <td>496521</td>
+    </tr>
+    <tr>
+      <td>PANTRY</td>
+      <td>Non-Food</td>
+      <td>3.3741</td>
+      <td>156</td>
+      <td>464436</td>
+    </tr>
+    <tr>
+      <td>PERSONAL</td>
+      <td>Non-Food</td>
+      <td>5.2144</td>
+      <td>74</td>
+      <td>102102</td>
+    </tr>
+    <tr>
+      <td>PET</td>
+      <td>Non-Food</td>
+      <td>11.5280</td>
+      <td>60</td>
+      <td>118383</td>
+    </tr>
+    <tr>
+      <td>PRODUCE</td>
+      <td>Staple</td>
+      <td>2.6421</td>
+      <td>87</td>
+      <td>446912</td>
+    </tr>
+    <tr>
+      <td>SNACKS</td>
+      <td>Non-Food</td>
+      <td>3.7301</td>
+      <td>130</td>
+      <td>327863</td>
+    </tr>
+  </tbody>
+</table>
+  <h3>Claims</h3>
+  <em>(no claims)</em>
+  <h3>SQL surfaces</h3>
+  <div class="sql-block"><span class="surface">tenant</span> <span class="hint">(12 rows)</span><pre>
+SELECT
+  p.category,
+  CASE 
+    WHEN p.category IN (&#x27;DAIRY&#x27;, &#x27;MEAT&#x27;, &#x27;PRODUCE&#x27;, &#x27;BAKERY&#x27;, &#x27;FROZEN&#x27;) THEN &#x27;Staple&#x27;
+    ELSE &#x27;Non-Food&#x27;
+  END AS category_group,
+  ROUND(AVG(ti.unit_price), 4) AS avg_price,
+  COUNT(DISTINCT ti.sku) AS sku_count,
+  COUNT(*) AS line_count
+FROM transaction_items ti
+JOIN products p ON ti.sku = p.sku
+WHERE p.banner_code = &#x27;KRG&#x27;
+GROUP BY p.category
+ORDER BY p.category
+</pre></div>
+  <h3>Grain notes (from manifest)</h3>
+  <em>(none)</em>
+  <h3>Caveats</h3>
+  <ul><li>(Chart skipped — model&#x27;s chart_intent was malformed. Reason: UnsupportedIntentError: ChartIntent kind=&#x27;kpi_callout&#x27; missing required keys: [&#x27;value&#x27;]. Got: [&#x27;kind&#x27;])</li></ul>
+  <h3>Telemetry</h3>
+  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=4 · in=17539 · out=774 · $0.0214</p>
+</section>
+
+<section class="qa"><h2>P3 — Which categories show the biggest pricing-leverage opportunity?</h2><p class="error">Failed: RenderBlockInvalidError: No data was fetched — both tenant and lake frames are empty. The model emitted a render block without calling any tool.</p></section>
+
+<section class="qa">
+  <h2>A1 — Why is University City declining? Are peers seeing the same drop?</h2>
+  <p class="question"><strong>Q:</strong> Why is University City declining? Are peers seeing the same drop?</p>
+  <p class="routing"><strong>Routed:</strong> anomaly
+     <span class="hint">— Direct dispatch from suggested-question pill &#x27;A1&#x27;</span>
+  </p>
+  <h3>Prose (post-validator)</h3>
+  <blockquote class="prose">I need to clarify which zone you&#x27;re asking about. &quot;University City&quot; doesn&#x27;t match our derived zone nomenclature (which uses codes like Z01, Z02, etc.). Could you provide either the specific derived_zone code, store name, or geographic coordinates for the location you&#x27;re concerned about? Once I have that, I can pull your zone&#x27;s weekly demand and pricing trends and compare them against peer metro performance to determine whether the decline is idiosyncratic to your operation or metro-wide.</blockquote>
+  <h3>Chart</h3>
+  <div class="chart"><em>(no chart)</em></div>
+  <h3>Merged result</h3>
+  <table class="dataframe result-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>banner_code</th>
+      <th>connectivity_type</th>
+      <th>customer_token</th>
+      <th>discount_total</th>
+      <th>entry_mode</th>
+      <th>n_lines</th>
+      <th>network</th>
+      <th>segment</th>
+      <th>store_id</th>
+      <th>subtotal</th>
+      <th>tender</th>
+      <th>txn_id</th>
+      <th>txn_ts</th>
+      <th>wallet_at_tap</th>
+      <th>wallet_provider</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>KRG</td>
+      <td>ethernet</td>
+      <td>0000d34c5baf753e</td>
+      <td>0.0</td>
+      <td>contactless</td>
+      <td>2</td>
+      <td>mc</td>
+      <td>grocery</td>
+      <td>KRG-NC-0003</td>
+      <td>11.05</td>
+      <td>debit</td>
+      <td>T-00000001</td>
+      <td>2026-03-11 21:35:58</td>
+      <td>False</td>
+      <td>None</td>
+    </tr>
+  </tbody>
+</table>
+  <h3>Claims</h3>
+  <em>(no claims)</em>
+  <h3>SQL surfaces</h3>
+  <div class="sql-block"><span class="surface">tenant</span> <span class="hint">(1 rows)</span><pre>
+SELECT * FROM transactions WHERE banner_code = &#x27;KRG&#x27; LIMIT 1
+</pre></div>
+  <h3>Grain notes (from manifest)</h3>
+  <em>(none)</em>
+  <h3>Caveats</h3>
+  <ul><li>(Chart skipped — model&#x27;s chart_intent was malformed. Reason: UnsupportedIntentError: ChartIntent kind=&#x27;kpi_callout&#x27; missing required keys: [&#x27;value&#x27;]. Got: [&#x27;kind&#x27;])</li></ul>
+  <h3>Telemetry</h3>
+  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=7 · in=27639 · out=941 · $0.0323</p>
+</section>
+
+
+<section class="qa">
+  <h2>A2 — Which of my stores show abnormal traffic recently?</h2>
+  <p class="question"><strong>Q:</strong> Which of my stores show abnormal traffic recently?</p>
+  <p class="routing"><strong>Routed:</strong> anomaly
+     <span class="hint">— Direct dispatch from suggested-question pill &#x27;A2&#x27;</span>
+  </p>
+  <h3>Prose (post-validator)</h3>
+  <blockquote class="prose">Your 5 stores show no extreme traffic anomalies in the most recent week (week of 2026-05-25). To determine if this is normal seasonality or an operational anomaly, we would need peer comparison. , but this appears to be a stable, structural characteristic (smaller footprint or trade area) rather than a recent decline.</blockquote>
+  <h3>Chart</h3>
+  <div class="chart"><div>                        <script>window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
+        <script charset="utf-8" src="https://cdn.plot.ly/plotly-3.5.0.min.js" integrity="sha256-fHbNLP+GlIXN+efbQec78UkemUz3NJp7UmfGxC1tNxs=" crossorigin="anonymous"></script>                <div id="a889e6f4-8dd2-4b81-8064-b5233c4ee808" class="plotly-graph-div" style="height:360px; width:100%;"></div>            <script>                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("a889e6f4-8dd2-4b81-8064-b5233c4ee808")) {                    Plotly.newPlot(                        "a889e6f4-8dd2-4b81-8064-b5233c4ee808",                        [{"connectgaps":false,"line":{"color":"#0F4C81","dash":"solid","width":3},"marker":{"size":8},"mode":"lines+markers","name":"store_id","x":["2026-05-25T00:00:00.000000","2026-05-25T00:00:00.000000","2026-05-25T00:00:00.000000","2026-05-25T00:00:00.000000","2026-05-25T00:00:00.000000","2026-05-18T00:00:00.000000","2026-05-18T00:00:00.000000","2026-05-18T00:00:00.000000","2026-05-18T00:00:00.000000","2026-05-18T00:00:00.000000","2026-05-11T00:00:00.000000","2026-05-11T00:00:00.000000","2026-05-11T00:00:00.000000","2026-05-11T00:00:00.000000","2026-05-11T00:00:00.000000","2026-05-04T00:00:00.000000","2026-05-04T00:00:00.000000","2026-05-04T00:00:00.000000","2026-05-04T00:00:00.000000","2026-05-04T00:00:00.000000","2026-04-27T00:00:00.000000","2026-04-27T00:00:00.000000","2026-04-27T00:00:00.000000","2026-04-27T00:00:00.000000","2026-04-27T00:00:00.000000","2026-04-20T00:00:00.000000","2026-04-20T00:00:00.000000","2026-04-20T00:00:00.000000","2026-04-20T00:00:00.000000","2026-04-20T00:00:00.000000","2026-04-13T00:00:00.000000","2026-04-13T00:00:00.000000","2026-04-13T00:00:00.000000","2026-04-13T00:00:00.000000","2026-04-13T00:00:00.000000","2026-04-06T00:00:00.000000","2026-04-06T00:00:00.000000","2026-04-06T00:00:00.000000","2026-04-06T00:00:00.000000","2026-04-06T00:00:00.000000","2026-03-30T00:00:00.000000","2026-03-30T00:00:00.000000","2026-03-30T00:00:00.000000","2026-03-30T00:00:00.000000","2026-03-30T00:00:00.000000","2026-03-23T00:00:00.000000","2026-03-23T00:00:00.000000","2026-03-23T00:00:00.000000","2026-03-23T00:00:00.000000","2026-03-23T00:00:00.000000","2026-03-16T00:00:00.000000","2026-03-16T00:00:00.000000","2026-03-16T00:00:00.000000","2026-03-16T00:00:00.000000","2026-03-16T00:00:00.000000","2026-03-09T00:00:00.000000","2026-03-09T00:00:00.000000","2026-03-09T00:00:00.000000","2026-03-09T00:00:00.000000","2026-03-09T00:00:00.000000","2026-03-02T00:00:00.000000","2026-03-02T00:00:00.000000","2026-03-02T00:00:00.000000","2026-03-02T00:00:00.000000","2026-03-02T00:00:00.000000","2026-02-23T00:00:00.000000","2026-02-23T00:00:00.000000","2026-02-23T00:00:00.000000","2026-02-23T00:00:00.000000","2026-02-23T00:00:00.000000"],"y":["KRG-NC-0001","KRG-NC-0002","KRG-NC-0003","KRG-NC-0004","KRG-NC-0005","KRG-NC-0001","KRG-NC-0002","KRG-NC-0003","KRG-NC-0004","KRG-NC-0005","KRG-NC-0001","KRG-NC-0002","KRG-NC-0003","KRG-NC-0004","KRG-NC-0005","KRG-NC-0001","KRG-NC-0002","KRG-NC-0003","KRG-NC-0004","KRG-NC-0005","KRG-NC-0001","KRG-NC-0002","KRG-NC-0003","KRG-NC-0004","KRG-NC-0005","KRG-NC-0001","KRG-NC-0002","KRG-NC-0003","KRG-NC-0004","KRG-NC-0005","KRG-NC-0001","KRG-NC-0002","KRG-NC-0003","KRG-NC-0004","KRG-NC-0005","KRG-NC-0001","KRG-NC-0002","KRG-NC-0003","KRG-NC-0004","KRG-NC-0005","KRG-NC-0001","KRG-NC-0002","KRG-NC-0003","KRG-NC-0004","KRG-NC-0005","KRG-NC-0001","KRG-NC-0002","KRG-NC-0003","KRG-NC-0004","KRG-NC-0005","KRG-NC-0001","KRG-NC-0002","KRG-NC-0003","KRG-NC-0004","KRG-NC-0005","KRG-NC-0001","KRG-NC-0002","KRG-NC-0003","KRG-NC-0004","KRG-NC-0005","KRG-NC-0001","KRG-NC-0002","KRG-NC-0003","KRG-NC-0004","KRG-NC-0005","KRG-NC-0001","KRG-NC-0002","KRG-NC-0003","KRG-NC-0004","KRG-NC-0005"],"type":"scatter"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"hoverlabel":{"font":{"family":"-apple-system, system-ui, sans-serif","size":13,"color":"#1F2937"},"bgcolor":"#FFFFFF","bordercolor":"#E5E7EB"},"margin":{"l":40,"r":40,"t":40,"b":40},"title":{"text":"Store-Level Transaction Count Trend (12 weeks)"},"yaxis":{"title":{"text":""},"showgrid":true,"gridcolor":"rgba(128, 128, 128, 0.10)"},"hovermode":"x unified","plot_bgcolor":"white","paper_bgcolor":"white","height":360,"showlegend":true,"xaxis":{"showgrid":false,"zeroline":false}},                        {"responsive": true}                    )                };            </script>        </div></div>
+  <h3>Merged result</h3>
+  <table class="dataframe result-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>store_id</th>
+      <th>period_start</th>
+      <th>txn_count</th>
+      <th>revenue</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>KRG-NC-0001</td>
+      <td>2026-05-25</td>
+      <td>4209</td>
+      <td>207223.26</td>
+    </tr>
+    <tr>
+      <td>KRG-NC-0002</td>
+      <td>2026-05-25</td>
+      <td>4956</td>
+      <td>234688.31</td>
+    </tr>
+    <tr>
+      <td>KRG-NC-0003</td>
+      <td>2026-05-25</td>
+      <td>4452</td>
+      <td>211785.19</td>
+    </tr>
+    <tr>
+      <td>KRG-NC-0004</td>
+      <td>2026-05-25</td>
+      <td>4827</td>
+      <td>231848.47</td>
+    </tr>
+    <tr>
+      <td>KRG-NC-0005</td>
+      <td>2026-05-25</td>
+      <td>3683</td>
+      <td>171734.21</td>
+    </tr>
+    <tr>
+      <td>KRG-NC-0001</td>
+      <td>2026-05-18</td>
+      <td>6364</td>
+      <td>310926.60</td>
+    </tr>
+    <tr>
+      <td>KRG-NC-0002</td>
+      <td>2026-05-18</td>
+      <td>7452</td>
+      <td>363673.02</td>
+    </tr>
+    <tr>
+      <td>KRG-NC-0003</td>
+      <td>2026-05-18</td>
+      <td>6929</td>
+      <td>335575.66</td>
+    </tr>
+    <tr>
+      <td>KRG-NC-0004</td>
+      <td>2026-05-18</td>
+      <td>7261</td>
+      <td>352662.63</td>
+    </tr>
+    <tr>
+      <td>KRG-NC-0005</td>
+      <td>2026-05-18</td>
+      <td>5442</td>
+      <td>257829.99</td>
+    </tr>
+    <tr>
+      <td>KRG-NC-0001</td>
+      <td>2026-05-11</td>
+      <td>6502</td>
+      <td>326382.01</td>
+    </tr>
+    <tr>
+      <td>KRG-NC-0002</td>
+      <td>2026-05-11</td>
+      <td>7696</td>
+      <td>379163.54</td>
+    </tr>
+  </tbody>
+</table><p class="hint"><em>… showing 12 of 70 rows.</em></p>
+  <h3>Claims</h3>
+  <ul><li><code>Transaction counts ranged from 3,683 (KRG-NC-0005) to 4,956 (KRG-NC-0002)</code> = <strong>3683.0</strong> <span class="hint">via CellLookup</span></li><li><code>Transaction counts ranged from 3,683 (KRG-NC-0005) to 4,956 (KRG-NC-0002)</code> = <strong>4956.0</strong> <span class="hint">via CellLookup</span></li><li><code>18% spread</code> = <strong>0.18</strong> <span class="hint">via Derivation</span></li><li><code>The prior week (2026-05-18) all stores averaged ~6,700 transactions, but the most recent week shows a 33% drop</code> = <strong>-0.33</strong> <span class="hint">via Derivation</span></li></ul>
+  <h3>SQL surfaces</h3>
+  <div class="sql-block"><span class="surface">tenant</span> <span class="hint">(1 rows)</span><pre>
+SELECT *
+FROM transactions
+WHERE banner_code = &#x27;KRG&#x27;
+LIMIT 1
+</pre></div><div class="sql-block"><span class="surface">tenant</span> <span class="hint">(70 rows)</span><pre>
+SELECT
+  store_id,
+  DATE_TRUNC(&#x27;week&#x27;, txn_ts)::DATE AS period_start,
+  COUNT(DISTINCT txn_id) AS txn_count,
+  SUM(subtotal) AS revenue
+FROM transactions
+WHERE banner_code = &#x27;KRG&#x27;
+GROUP BY store_id, DATE_TRUNC(&#x27;week&#x27;, txn_ts)
+ORDER BY period_start DESC, store_id
+</pre></div>
+  <h3>Grain notes (from manifest)</h3>
+  <em>(none)</em>
+  <h3>Caveats</h3>
+  <ul><li>Data shown is 12 weeks of own-store transactions. No peer benchmark available without zone/category data.</li><li>KRG-NC-0005 shows consistent 10–15% underperformance but is stable and likely reflects store characteristics (size, location).</li><li>33% week-over-week drop is synchronized across all stores—suggests metro-wide seasonality or external factor, not store-specific anomaly.</li></ul>
+  <h3>Telemetry</h3>
+  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=4 · in=16196 · out=1523 · $0.0238</p>
+</section>
+
+
+<section class="qa">
+  <h2>A3 — Which SKUs or categories are spiking or dropping unusually?</h2>
+  <p class="question"><strong>Q:</strong> Which SKUs or categories are spiking or dropping unusually?</p>
+  <p class="routing"><strong>Routed:</strong> anomaly
+     <span class="hint">— Direct dispatch from suggested-question pill &#x27;A3&#x27;</span>
+  </p>
+  <h3>Prose (post-validator)</h3>
+  <blockquote class="prose">I need to clarify the schema before I can identify spiking or dropping SKUs and categories. The transactions table contains summary-level transaction metadata (store, tender, timestamp), but the transaction_items table does not include a product_id column—it only has line_id, txn_id, line_total, and subcategory.
+
+To detect unusual spikes or drops, I would typically:
+1. Query your own category and subcategory volumes week-over-week.
+2. Compare against peer `wow_delta` and `units_index` from lake_category_metrics.
+3. Flag categories where your trend diverges from the metro baseline.
+
+**Can you clarify:** Are you looking for anomalies at the **category level** (e.g., DAIRY, PRODUCE) or the **SKU level** (individual products)? The lake publishes only category and subcategory data, so peer comparisons are limited to that grain. If you need SKU-level anomalies, I can pull your own transaction_items data by subcategory and time, but I cannot compare to anonymized peer SKU data.</blockquote>
+  <h3>Chart</h3>
+  <div class="chart"><em>(no chart)</em></div>
+  <h3>Merged result</h3>
+  <table class="dataframe result-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>banner_code</th>
+      <th>connectivity_type</th>
+      <th>customer_token</th>
+      <th>discount_total</th>
+      <th>entry_mode</th>
+      <th>n_lines</th>
+      <th>network</th>
+      <th>segment</th>
+      <th>store_id</th>
+      <th>subtotal</th>
+      <th>tender</th>
+      <th>txn_id</th>
+      <th>txn_ts</th>
+      <th>wallet_at_tap</th>
+      <th>wallet_provider</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>KRG</td>
+      <td>ethernet</td>
+      <td>0000d34c5baf753e</td>
+      <td>0.0</td>
+      <td>contactless</td>
+      <td>2</td>
+      <td>mc</td>
+      <td>grocery</td>
+      <td>KRG-NC-0003</td>
+      <td>11.05</td>
+      <td>debit</td>
+      <td>T-00000001</td>
+      <td>2026-03-11 21:35:58</td>
+      <td>False</td>
+      <td>None</td>
+    </tr>
+  </tbody>
+</table>
+  <h3>Claims</h3>
+  <em>(no claims)</em>
+  <h3>SQL surfaces</h3>
+  <div class="sql-block"><span class="surface">tenant</span> <span class="hint">(1 rows)</span><pre>
+SELECT *
+FROM transactions
+WHERE banner_code = &#x27;KRG&#x27;
+LIMIT 1
+</pre></div>
+  <h3>Grain notes (from manifest)</h3>
+  <em>(none)</em>
+  <h3>Caveats</h3>
+  <ul><li>(Chart skipped — model&#x27;s chart_intent was malformed. Reason: UnsupportedIntentError: ChartIntent kind=&#x27;table_drilldown&#x27; missing required keys: [&#x27;columns&#x27;]. Got: [&#x27;kind&#x27;])</li></ul>
+  <h3>Telemetry</h3>
+  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=7 · in=27627 · out=1108 · $0.0332</p>
+</section>
+
+
+<section class="qa">
+  <h2>D3 — What does my basket-mix look like compared to peers? Where am I over or under in</h2>
+  <p class="question"><strong>Q:</strong> What does my basket-mix look like compared to peers? Where am I over or under indexed?</p>
+  <p class="routing"><strong>Routed:</strong> demand
+     <span class="hint">— Direct dispatch from suggested-question pill &#x27;D3&#x27;</span>
+  </p>
+  <h3>Prose (post-validator)</h3>
+  <blockquote class="prose">Based on peer segment mix data across your zones, I can see the behavioral composition of shopper traffic at competitor stores. However, I need to query your own transaction data to directly compare your basket mix against this peer benchmark. , and</blockquote>
+  <h3>Chart</h3>
+  <div class="chart"><em>(no chart)</em></div>
+  <h3>Merged result</h3>
+  <table class="dataframe result-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>behavioral_segment</th>
+      <th>derived_zone</th>
+      <th>median_basket</th>
+      <th>median_freq</th>
+      <th>n_cards</th>
+      <th>share_of_zone_at_banner</th>
+      <th>txn_count</th>
+      <th>peer_relationship</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>frequent_value</td>
+      <td>Z04</td>
+      <td>47.399333</td>
+      <td>8.0</td>
+      <td>2194</td>
+      <td>0.193287</td>
+      <td>22892</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>occasional</td>
+      <td>Z04</td>
+      <td>32.370000</td>
+      <td>2.0</td>
+      <td>3556</td>
+      <td>0.313276</td>
+      <td>7587</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>occasional_premium</td>
+      <td>Z04</td>
+      <td>80.530000</td>
+      <td>2.0</td>
+      <td>3071</td>
+      <td>0.270549</td>
+      <td>7089</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>premium_loyalist</td>
+      <td>Z04</td>
+      <td>66.887000</td>
+      <td>9.0</td>
+      <td>2530</td>
+      <td>0.222888</td>
+      <td>27715</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>frequent_value</td>
+      <td>Z05</td>
+      <td>48.336250</td>
+      <td>12.0</td>
+      <td>7533</td>
+      <td>0.285958</td>
+      <td>101030</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>occasional</td>
+      <td>Z05</td>
+      <td>32.280000</td>
+      <td>2.0</td>
+      <td>5425</td>
+      <td>0.205937</td>
+      <td>11291</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>occasional_premium</td>
+      <td>Z05</td>
+      <td>82.310000</td>
+      <td>2.0</td>
+      <td>4623</td>
+      <td>0.175493</td>
+      <td>10462</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>premium_loyalist</td>
+      <td>Z05</td>
+      <td>65.875268</td>
+      <td>13.0</td>
+      <td>8762</td>
+      <td>0.332612</td>
+      <td>122366</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>frequent_value</td>
+      <td>Z07</td>
+      <td>47.375789</td>
+      <td>10.0</td>
+      <td>1087</td>
+      <td>0.190401</td>
+      <td>12671</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>occasional</td>
+      <td>Z07</td>
+      <td>30.268333</td>
+      <td>1.0</td>
+      <td>1840</td>
+      <td>0.322298</td>
+      <td>3395</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>occasional_premium</td>
+      <td>Z07</td>
+      <td>86.585000</td>
+      <td>2.0</td>
+      <td>1419</td>
+      <td>0.248555</td>
+      <td>2794</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>premium_loyalist</td>
+      <td>Z07</td>
+      <td>66.737500</td>
+      <td>10.0</td>
+      <td>1363</td>
+      <td>0.238746</td>
+      <td>16006</td>
+      <td>segment_peer</td>
+    </tr>
+  </tbody>
+</table><p class="hint"><em>… showing 12 of 80 rows.</em></p>
+  <h3>Claims</h3>
+  <em>(no claims)</em>
+  <h3>SQL surfaces</h3>
+  <div class="sql-block"><span class="surface">lake</span> <span class="hint">(80 rows)</span><pre>read_lake_table(&#x27;lake_segment_mix&#x27;, filters={})</pre></div>
+  <h3>Grain notes (from manifest)</h3>
+  <ul><li>no time grain (window-level only)</li><li>no per-customer rows</li><li>no peer SKU</li><li>segments are DERIVED behaviorally — not the planted loyalty_type</li></ul>
+  <h3>Caveats</h3>
+  <ul><li>(Chart skipped — model&#x27;s chart_intent was malformed. Reason: chart build raised: AttributeError: &#x27;str&#x27; object has no attribute &#x27;get&#x27;)</li></ul>
+  <h3>Telemetry</h3>
+  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=4 · in=21102 · out=733 · $0.0248</p>
+</section>
+
+
+<section class="qa">
+  <h2>D4 — Which categories over- or under-perform vs peers given my mix?</h2>
+  <p class="question"><strong>Q:</strong> Which categories over- or under-perform vs peers given my mix?</p>
+  <p class="routing"><strong>Routed:</strong> demand
+     <span class="hint">— Direct dispatch from suggested-question pill &#x27;D4&#x27;</span>
+  </p>
+  <h3>Prose (post-validator)</h3>
+  <blockquote class="prose">I need to understand your current category mix and performance versus peers. Let me retrieve your category-level units and revenue performance versus peer indices to identify which categories are over- or under-performing.</blockquote>
+  <h3>Chart</h3>
+  <div class="chart"><em>(no chart)</em></div>
+  <h3>Merged result</h3>
+  <table class="dataframe result-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>banner_code</th>
+      <th>connectivity_type</th>
+      <th>customer_token</th>
+      <th>discount_total</th>
+      <th>entry_mode</th>
+      <th>n_lines</th>
+      <th>network</th>
+      <th>segment</th>
+      <th>store_id</th>
+      <th>subtotal</th>
+      <th>tender</th>
+      <th>txn_id</th>
+      <th>txn_ts</th>
+      <th>wallet_at_tap</th>
+      <th>wallet_provider</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>KRG</td>
+      <td>ethernet</td>
+      <td>0000d34c5baf753e</td>
+      <td>0.0</td>
+      <td>contactless</td>
+      <td>2</td>
+      <td>mc</td>
+      <td>grocery</td>
+      <td>KRG-NC-0003</td>
+      <td>11.05</td>
+      <td>debit</td>
+      <td>T-00000001</td>
+      <td>2026-03-11 21:35:58</td>
+      <td>False</td>
+      <td>None</td>
+    </tr>
+  </tbody>
+</table>
+  <h3>Claims</h3>
+  <em>(no claims)</em>
+  <h3>SQL surfaces</h3>
+  <div class="sql-block"><span class="surface">tenant</span> <span class="hint">(1 rows)</span><pre>
+SELECT * FROM transactions WHERE banner_code = &#x27;KRG&#x27; LIMIT 1
+</pre></div>
+  <h3>Grain notes (from manifest)</h3>
+  <em>(none)</em>
+  <h3>Caveats</h3>
+  <ul><li>Awaiting category transaction detail to compare your mix performance against peer benchmarks</li><li>(Chart skipped — model&#x27;s chart_intent was malformed. Reason: UnsupportedIntentError: ChartIntent kind=&#x27;cross_merchant_comparison&#x27; missing required keys: [&#x27;x&#x27;, &#x27;series&#x27;]. Got: [&#x27;kind&#x27;])</li></ul>
+  <h3>Telemetry</h3>
+  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=7 · in=27075 · out=1061 · $0.0324</p>
+</section>
+
+
+<section class="qa">
+  <h2>D7 — What&#x27;s driving my revenue gap vs peers this period?</h2>
+  <p class="question"><strong>Q:</strong> What&#x27;s driving my revenue gap vs peers this period?</p>
+  <p class="routing"><strong>Routed:</strong> demand
+     <span class="hint">— Direct dispatch from suggested-question pill &#x27;D7&#x27;</span>
+  </p>
+  <h3>Prose (post-validator)</h3>
+  <blockquote class="prose">I need to refine my query approach to access your Kroger transaction detail. From the peer benchmark data available, I can see that revenue gaps vary significantly by category, zone, and</blockquote>
+  <h3>Chart</h3>
+  <div class="chart"><em>(no chart)</em></div>
+  <h3>Merged result</h3>
+  <table class="dataframe result-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>basket_penetration_share</th>
+      <th>category</th>
+      <th>derived_zone</th>
+      <th>grain</th>
+      <th>period_start</th>
+      <th>price_index</th>
+      <th>promo_active_share</th>
+      <th>revenue_index</th>
+      <th>subcategory</th>
+      <th>txn_count</th>
+      <th>units_index</th>
+      <th>wow_delta</th>
+      <th>peer_relationship</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0.093401</td>
+      <td>BABY</td>
+      <td>Z04</td>
+      <td>subcat_week</td>
+      <td>2026-03-01</td>
+      <td>1.080732</td>
+      <td>0.100950</td>
+      <td>0.900676</td>
+      <td>BABY_FOOD</td>
+      <td>627</td>
+      <td>0.834559</td>
+      <td>NaN</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>0.089675</td>
+      <td>BABY</td>
+      <td>Z04</td>
+      <td>subcat_week</td>
+      <td>2026-03-08</td>
+      <td>1.076277</td>
+      <td>0.154472</td>
+      <td>0.946256</td>
+      <td>BABY_FOOD</td>
+      <td>555</td>
+      <td>0.881282</td>
+      <td>-0.123515</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>0.073728</td>
+      <td>BABY</td>
+      <td>Z04</td>
+      <td>subcat_week</td>
+      <td>2026-03-15</td>
+      <td>1.074369</td>
+      <td>0.000000</td>
+      <td>0.857566</td>
+      <td>BABY_FOOD</td>
+      <td>442</td>
+      <td>0.796233</td>
+      <td>-0.178862</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>0.086821</td>
+      <td>BABY</td>
+      <td>Z04</td>
+      <td>subcat_week</td>
+      <td>2026-03-22</td>
+      <td>1.056121</td>
+      <td>0.386792</td>
+      <td>0.910506</td>
+      <td>BABY_FOOD</td>
+      <td>473</td>
+      <td>0.861691</td>
+      <td>0.049505</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>0.086364</td>
+      <td>BABY</td>
+      <td>Z04</td>
+      <td>subcat_week</td>
+      <td>2026-03-29</td>
+      <td>1.092087</td>
+      <td>0.132022</td>
+      <td>0.922251</td>
+      <td>BABY_FOOD</td>
+      <td>520</td>
+      <td>0.845271</td>
+      <td>0.119497</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>0.096682</td>
+      <td>BABY</td>
+      <td>Z04</td>
+      <td>subcat_week</td>
+      <td>2026-04-05</td>
+      <td>1.053873</td>
+      <td>0.450549</td>
+      <td>0.908092</td>
+      <td>BABY_FOOD</td>
+      <td>606</td>
+      <td>0.861350</td>
+      <td>0.150281</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>0.089954</td>
+      <td>BABY</td>
+      <td>Z04</td>
+      <td>subcat_week</td>
+      <td>2026-04-12</td>
+      <td>1.036782</td>
+      <td>0.402017</td>
+      <td>0.937528</td>
+      <td>BABY_FOOD</td>
+      <td>514</td>
+      <td>0.906202</td>
+      <td>-0.152625</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>0.079255</td>
+      <td>BABY</td>
+      <td>Z04</td>
+      <td>subcat_week</td>
+      <td>2026-04-19</td>
+      <td>1.064461</td>
+      <td>0.110236</td>
+      <td>1.024661</td>
+      <td>BABY_FOOD</td>
+      <td>447</td>
+      <td>0.967742</td>
+      <td>-0.085014</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>0.094438</td>
+      <td>BABY</td>
+      <td>Z04</td>
+      <td>subcat_week</td>
+      <td>2026-04-26</td>
+      <td>1.104528</td>
+      <td>0.164450</td>
+      <td>1.141290</td>
+      <td>BABY_FOOD</td>
+      <td>579</td>
+      <td>1.038184</td>
+      <td>0.302362</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>0.094690</td>
+      <td>BABY</td>
+      <td>Z04</td>
+      <td>subcat_week</td>
+      <td>2026-05-03</td>
+      <td>1.060879</td>
+      <td>0.159420</td>
+      <td>0.948946</td>
+      <td>BABY_FOOD</td>
+      <td>658</td>
+      <td>0.901206</td>
+      <td>0.084643</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>0.072995</td>
+      <td>BABY</td>
+      <td>Z04</td>
+      <td>subcat_week</td>
+      <td>2026-05-10</td>
+      <td>1.050057</td>
+      <td>0.104137</td>
+      <td>0.931844</td>
+      <td>BABY_FOOD</td>
+      <td>516</td>
+      <td>0.890441</td>
+      <td>-0.218506</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>0.089128</td>
+      <td>BABY</td>
+      <td>Z04</td>
+      <td>subcat_week</td>
+      <td>2026-05-17</td>
+      <td>1.029915</td>
+      <td>0.368778</td>
+      <td>1.086334</td>
+      <td>BABY_FOOD</td>
+      <td>614</td>
+      <td>1.060164</td>
+      <td>0.261056</td>
+      <td>segment_peer</td>
+    </tr>
+  </tbody>
+</table><p class="hint"><em>… showing 12 of 11193 rows.</em></p>
+  <h3>Claims</h3>
+  <em>(no claims)</em>
+  <h3>SQL surfaces</h3>
+  <div class="sql-block"><span class="surface">lake</span> <span class="hint">(11193 rows)</span><pre>read_lake_table(&#x27;lake_category_metrics&#x27;, filters={})</pre></div>
+  <h3>Grain notes (from manifest)</h3>
+  <ul><li>no peer SKU (own side reaches SKU via the tenant surface)</li><li>no peer store_id</li><li>no per-customer rows</li><li>no daily grain (week is finest temporal)</li></ul>
+  <h3>Caveats</h3>
+  <ul><li>Unable to extract own Kroger transaction detail due to schema mismatch; peer data loaded but merge requires clarification on which time window and category focus</li><li>(Chart skipped — model&#x27;s chart_intent was malformed. Reason: MissingColumnError: &#x27;ChartIntent references columns not in result: [&quot;x=\&#x27;week\&#x27;&quot;, &quot;series contains \&#x27;KRG\&#x27;&quot;, &quot;series contains \&#x27;segment_peer\&#x27;&quot;]. Result columns: [\&#x27;basket_penetration_share\&#x27;, \&#x27;category\&#x27;, \&#x27;derived_zone\&#x27;, \&#x27;grain\&#x27;, \&#x27;period_start\&#x27;, \&#x27;price_index\&#x27;, \&#x27;promo_active_share\&#x27;, \&#x27;revenue_index\&#x27;, \&#x27;subcategory\&#x27;, \&#x27;txn_count\&#x27;, \&#x27;units_index\&#x27;, \&#x27;wow_delta\&#x27;, \&#x27;peer_relationship\&#x27;]&#x27;)</li></ul>
+  <h3>Telemetry</h3>
+  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=4 · in=29043 · out=736 · $0.0327</p>
+</section>
+
+
+<section class="qa">
+  <h2>T1 — Which of my neighborhoods are over- or under-performing?</h2>
+  <p class="question"><strong>Q:</strong> Which of my neighborhoods are over- or under-performing?</p>
+  <p class="routing"><strong>Routed:</strong> trade
+     <span class="hint">— Direct dispatch from suggested-question pill &#x27;T1&#x27;</span>
+  </p>
+  <h3>Prose (post-validator)</h3>
+  <blockquote class="prose">I need additional context to assess your neighborhood performance. Could you clarify what you&#x27;d like me to measure? For example:
+
+- **By category** (e.g., &quot;How are my dairy and fresh produce zones performing?&quot;)
+- **By store** (e.g., &quot;Which of my stores are over/under-performing vs. their zones?&quot;)
+- **Specific zones** (e.g., &quot;How do Z01 through Z10 compare?&quot;)
+
+Once you specify the comparison axis (category, stores, or zones) and the performance metric that matters most to you (market share, volume index, transaction frequency, etc.), I can pull peer density data and your own store performance to show you where you&#x27;re winning and where there&#x27;s opportunity.</blockquote>
+  <h3>Chart</h3>
+  <div class="chart"><em>(no chart)</em></div>
+  <h3>Merged result</h3>
+  <table class="dataframe result-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>banner_code</th>
+      <th>connectivity_type</th>
+      <th>customer_token</th>
+      <th>discount_total</th>
+      <th>entry_mode</th>
+      <th>n_lines</th>
+      <th>network</th>
+      <th>segment</th>
+      <th>store_id</th>
+      <th>subtotal</th>
+      <th>tender</th>
+      <th>txn_id</th>
+      <th>txn_ts</th>
+      <th>wallet_at_tap</th>
+      <th>wallet_provider</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>KRG</td>
+      <td>ethernet</td>
+      <td>0000d34c5baf753e</td>
+      <td>0.0</td>
+      <td>contactless</td>
+      <td>2</td>
+      <td>mc</td>
+      <td>grocery</td>
+      <td>KRG-NC-0003</td>
+      <td>11.05</td>
+      <td>debit</td>
+      <td>T-00000001</td>
+      <td>2026-03-11 21:35:58</td>
+      <td>False</td>
+      <td>None</td>
+    </tr>
+  </tbody>
+</table>
+  <h3>Claims</h3>
+  <em>(no claims)</em>
+  <h3>SQL surfaces</h3>
+  <div class="sql-block"><span class="surface">tenant</span> <span class="hint">(1 rows)</span><pre>
+SELECT * FROM transactions WHERE banner_code = &#x27;KRG&#x27; LIMIT 1
+</pre></div>
+  <h3>Grain notes (from manifest)</h3>
+  <em>(none)</em>
+  <h3>Caveats</h3>
+  <ul><li>(Chart skipped — model&#x27;s chart_intent was malformed. Reason: UnsupportedIntentError: ChartIntent kind=&#x27;kpi_callout&#x27; missing required keys: [&#x27;value&#x27;]. Got: [&#x27;kind&#x27;])</li></ul>
+  <h3>Telemetry</h3>
+  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=7 · in=27287 · out=895 · $0.0318</p>
+</section>
+
+
+<section class="qa">
+  <h2>T2 — Where do my customers live relative to my stores?</h2>
+  <p class="question"><strong>Q:</strong> Where do my customers live relative to my stores?</p>
+  <p class="routing"><strong>Routed:</strong> trade
+     <span class="hint">— Direct dispatch from suggested-question pill &#x27;T2&#x27;</span>
+  </p>
+  <h3>Prose (post-validator)</h3>
+  <blockquote class="prose">I need more specificity to answer this question properly. &quot;Where do my customers live relative to my stores?&quot; can be addressed in two ways:
+
+1. **Store location &amp; density**: I can show you how many Kroger stores you operate by metro region (urban core, inner suburbs, outer suburbs), and total transaction volume per store.
+
+2. **Trade area coverage**: I can analyze which zones have high Kroger customer density vs. peer demand you may or may not be capturing—using the trade area metrics (share of zone, volume index).
+
+Which would be most helpful? For example:
+- &quot;Show me my store footprint and where transaction volume is concentrated&quot;
+- &quot;Which zones have strong Kroger demand but thin store coverage?&quot;
+- &quot;How does my market share compare to peers in my key zones?&quot;</blockquote>
+  <h3>Chart</h3>
+  <div class="chart"><em>(no chart)</em></div>
+  <h3>Merged result</h3>
+  <table class="dataframe result-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>banner_code</th>
+      <th>latitude</th>
+      <th>longitude</th>
+      <th>merchant_id</th>
+      <th>metro_region</th>
+      <th>neighborhood</th>
+      <th>open_date</th>
+      <th>store_id</th>
+      <th>zone_id</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>KRG</td>
+      <td>35.066010</td>
+      <td>-80.851563</td>
+      <td>KRG</td>
+      <td>outer_suburbs</td>
+      <td>Ballantyne</td>
+      <td>2019-05-17</td>
+      <td>KRG-NC-0001</td>
+      <td>ballantyne</td>
+    </tr>
+    <tr>
+      <td>KRG</td>
+      <td>35.216190</td>
+      <td>-80.840917</td>
+      <td>KRG</td>
+      <td>urban_core</td>
+      <td>Center City</td>
+      <td>2017-03-06</td>
+      <td>KRG-NC-0002</td>
+      <td>center_city</td>
+    </tr>
+    <tr>
+      <td>KRG</td>
+      <td>35.129905</td>
+      <td>-80.718433</td>
+      <td>KRG</td>
+      <td>outer_suburbs</td>
+      <td>Matthews</td>
+      <td>2024-08-04</td>
+      <td>KRG-NC-0003</td>
+      <td>matthews</td>
+    </tr>
+    <tr>
+      <td>KRG</td>
+      <td>35.258224</td>
+      <td>-80.815319</td>
+      <td>KRG</td>
+      <td>inner_suburbs</td>
+      <td>NoDa</td>
+      <td>2024-07-21</td>
+      <td>KRG-NC-0004</td>
+      <td>noda</td>
+    </tr>
+    <tr>
+      <td>KRG</td>
+      <td>35.323125</td>
+      <td>-80.722165</td>
+      <td>KRG</td>
+      <td>inner_suburbs</td>
+      <td>University City</td>
+      <td>2016-06-07</td>
+      <td>KRG-NC-0005</td>
+      <td>university_city</td>
+    </tr>
+  </tbody>
+</table>
+  <h3>Claims</h3>
+  <em>(no claims)</em>
+  <h3>SQL surfaces</h3>
+  <div class="sql-block"><span class="surface">tenant</span> <span class="hint">(5 rows)</span><pre>
+SELECT *
+FROM stores
+WHERE banner_code = &#x27;KRG&#x27;
+LIMIT 5
+</pre></div>
+  <h3>Grain notes (from manifest)</h3>
+  <em>(none)</em>
+  <h3>Caveats</h3>
+  <ul><li>(Chart skipped — model&#x27;s chart_intent was malformed. Reason: UnsupportedIntentError: ChartIntent kind=&#x27;kpi_callout&#x27; missing required keys: [&#x27;value&#x27;]. Got: [&#x27;kind&#x27;])</li></ul>
+  <h3>Telemetry</h3>
+  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=6 · in=23357 · out=936 · $0.0280</p>
+</section>
+
+
+<section class="qa">
+  <h2>T4 — Which neighborhoods show the biggest expansion opportunity?</h2>
+  <p class="question"><strong>Q:</strong> Which neighborhoods show the biggest expansion opportunity?</p>
+  <p class="routing"><strong>Routed:</strong> trade
+     <span class="hint">— Direct dispatch from suggested-question pill &#x27;T4&#x27;</span>
+  </p>
+  <h3>Prose (post-validator)</h3>
+  <blockquote class="prose">I need to refine my query to your data schema. Based on the peer trade-area data available, I can tell you that **expansion opportunity is highest in zones where you hold low share of category volume against high peer demand**. The lake_trade_area table shows `share_of_zone` (your unit share per category) and `zone_category_volume_index` (peer volume density). , while Could you clarify your store schema so I can join your store-level data to zones, or tell me: **which zones are you currently in, and which ones have you not yet entered?** That will let me pinpoint the highest-opportunity neighborhoods by matching your coverage against peer density.</blockquote>
+  <h3>Chart</h3>
+  <div class="chart"><em>(no chart)</em></div>
+  <h3>Merged result</h3>
+  <table class="dataframe result-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>category</th>
+      <th>cell_revenue</th>
+      <th>cell_units</th>
+      <th>derived_zone</th>
+      <th>share_of_zone</th>
+      <th>store_count</th>
+      <th>txn_count</th>
+      <th>zone_category_volume_index</th>
+      <th>peer_relationship</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>ACC</td>
+      <td>240248.31</td>
+      <td>22662</td>
+      <td>Z01</td>
+      <td>1.0</td>
+      <td>1</td>
+      <td>16394</td>
+      <td>0.837138</td>
+      <td>cross_segment</td>
+    </tr>
+    <tr>
+      <td>BABY</td>
+      <td>240534.64</td>
+      <td>18052</td>
+      <td>Z01</td>
+      <td>1.0</td>
+      <td>1</td>
+      <td>9760</td>
+      <td>0.348313</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>BAKERY</td>
+      <td>123651.21</td>
+      <td>39689</td>
+      <td>Z01</td>
+      <td>1.0</td>
+      <td>1</td>
+      <td>19352</td>
+      <td>0.346923</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>BEVERAGES</td>
+      <td>181456.56</td>
+      <td>52129</td>
+      <td>Z01</td>
+      <td>1.0</td>
+      <td>1</td>
+      <td>20954</td>
+      <td>0.344673</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>BFAST</td>
+      <td>32669.21</td>
+      <td>8663</td>
+      <td>Z01</td>
+      <td>1.0</td>
+      <td>1</td>
+      <td>6345</td>
+      <td>0.533765</td>
+      <td>cross_segment</td>
+    </tr>
+    <tr>
+      <td>BTY</td>
+      <td>73722.65</td>
+      <td>9113</td>
+      <td>Z01</td>
+      <td>1.0</td>
+      <td>1</td>
+      <td>6640</td>
+      <td>0.833791</td>
+      <td>cross_segment</td>
+    </tr>
+    <tr>
+      <td>BURR</td>
+      <td>56809.43</td>
+      <td>14947</td>
+      <td>Z01</td>
+      <td>1.0</td>
+      <td>1</td>
+      <td>9478</td>
+      <td>0.546882</td>
+      <td>cross_segment</td>
+    </tr>
+    <tr>
+      <td>COMBO</td>
+      <td>107209.15</td>
+      <td>13623</td>
+      <td>Z01</td>
+      <td>1.0</td>
+      <td>1</td>
+      <td>9952</td>
+      <td>0.541399</td>
+      <td>cross_segment</td>
+    </tr>
+    <tr>
+      <td>DAIRY</td>
+      <td>159798.06</td>
+      <td>49756</td>
+      <td>Z01</td>
+      <td>1.0</td>
+      <td>1</td>
+      <td>20936</td>
+      <td>0.349836</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>DRINK</td>
+      <td>40662.48</td>
+      <td>17236</td>
+      <td>Z01</td>
+      <td>1.0</td>
+      <td>1</td>
+      <td>12610</td>
+      <td>0.543279</td>
+      <td>cross_segment</td>
+    </tr>
+    <tr>
+      <td>FROZEN</td>
+      <td>120345.16</td>
+      <td>28650</td>
+      <td>Z01</td>
+      <td>1.0</td>
+      <td>1</td>
+      <td>14084</td>
+      <td>0.354503</td>
+      <td>segment_peer</td>
+    </tr>
+    <tr>
+      <td>HOM</td>
+      <td>240667.82</td>
+      <td>23170</td>
+      <td>Z01</td>
+      <td>1.0</td>
+      <td>1</td>
+      <td>12375</td>
+      <td>0.839955</td>
+      <td>cross_segment</td>
+    </tr>
+  </tbody>
+</table><p class="hint"><em>… showing 12 of 173 rows.</em></p>
+  <h3>Claims</h3>
+  <em>(no claims)</em>
+  <h3>SQL surfaces</h3>
+  <div class="sql-block"><span class="surface">lake</span> <span class="hint">(173 rows)</span><pre>read_lake_table(&#x27;lake_trade_area&#x27;, filters={})</pre></div>
+  <h3>Grain notes (from manifest)</h3>
+  <ul><li>no time grain (window-level only)</li><li>no peer subcategory</li><li>no per-customer rows</li></ul>
+  <h3>Caveats</h3>
+  <ul><li>(Chart skipped — model&#x27;s chart_intent was malformed. Reason: UnsupportedIntentError: ChartIntent kind=&#x27;kpi_callout&#x27; missing required keys: [&#x27;value&#x27;]. Got: [&#x27;kind&#x27;])</li></ul>
+  <h3>Telemetry</h3>
+  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=4 · in=21966 · out=843 · $0.0262</p>
+</section>
+
+</body>
+</html>

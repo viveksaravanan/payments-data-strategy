@@ -90,6 +90,27 @@ def scripted_multi_tool_use(
     return ScriptedResponse(content_blocks=blocks, stop_reason="tool_use")
 
 
+def scripted_emit_response(
+    *,
+    prose: str,
+    chart_intent: dict[str, Any],
+    claims: list[dict[str, Any]] | None = None,
+    merge: dict[str, Any] | None = None,
+    caveats: list[str] | None = None,
+) -> ScriptedResponse:
+    """Helper for the Wave 3 normal exit path: model calls
+    ``emit_response`` with the structured response args. The
+    specialist's loop captures the args via ``_emit_args`` and
+    finalizes via ``_finalize_from_emit``."""
+    return scripted_tool_use("emit_response", {
+        "prose": prose,
+        "merge": merge if merge is not None else {},
+        "chart_intent": chart_intent,
+        "claims": claims if claims is not None else [],
+        "caveats": caveats if caveats is not None else [],
+    })
+
+
 @contextmanager
 def patch_llm(
     monkeypatch, script: list[ScriptedResponse],
@@ -100,7 +121,8 @@ def patch_llm(
     tests fail loudly on unexpected extra turns."""
     iterator = iter(script)
 
-    def _fake_call(*, model, system, tools, messages, max_tokens):
+    def _fake_call(*, model, system, tools, messages, max_tokens,
+                   tool_choice=None):
         try:
             step = next(iterator)
         except StopIteration:

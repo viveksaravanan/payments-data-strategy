@@ -36,12 +36,13 @@ def test_chart_takeaways_module_deleted() -> None:
 def test_no_make_chart_in_lake_tools() -> None:
     """The Wave 3 tool surface has no `make_chart` tool — chart
     construction goes through `chart_build.build_chart` deterministically
-    from the merged result."""
+    from the merged result. The three Wave 3 tools are query_tenant
+    (own data) + read_lake_table (peer data, scoped) + emit_response
+    (structured terminator that feeds the §1 contract)."""
     from src.agents import lake_tools as LT
     tool_names = {t["name"] for t in LT.TOOLS_SPECIALIST}
     assert "make_chart" not in tool_names
-    # The two Wave 3 tools are present.
-    assert tool_names == {"query_tenant", "read_lake_table"}
+    assert tool_names == {"query_tenant", "read_lake_table", "emit_response"}
 
 
 def test_specialist_tools_list_does_not_offer_make_chart() -> None:

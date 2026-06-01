@@ -60,69 +60,25 @@ case (use the lake frame as the source of truth directly).
 - `cohort_size` is a **count** (structural integer). It does NOT need
   a backing claim.
 
-## The render contract
+## Finishing your answer — `emit_response`
 
-```render
-{
-  "merge": {
-    "on": ["derived_zone", "category"],
-    "own_value_col": "own_store_units",
-    "peer_value_col": "share_of_zone",
-    "gap_op": "difference"
-  },
-  "chart_intent": {
-    "kind": "scatter_quadrant",
-    "x": "share_of_zone",
-    "y": "zone_category_volume_index",
-    "label": "derived_zone",
-    "title": "Trade-area density by zone",
-    "takeaway": "Z05 and Z08 over-index on dairy demand."
-  },
-  "claims": [
-    {
-      "text_span": "42%",
-      "value": 0.42,
-      "source": {
-        "type": "CellLookup",
-        "row_filter": {"derived_zone": "Z05", "category": "DAIRY"},
-        "column": "share_of_zone"
-      }
-    }
-  ]
-}
-```
+**You finish every answer by calling the `emit_response` tool — exactly
+once, at the end. Do NOT write a free-text final turn.**
 
-```caveats
-["Peer set is 2 grocers.", "Window-level (90 days)."]
-```
+For zone-density questions, supply a non-empty `merge` keyed on
+`["derived_zone", "category"]`. For cohort-only answers (lake-only),
+supply `merge={}` — the lake frame becomes the result directly.
 
-### Cohort-only answer (no own merge)
+Pick `chart_intent.kind` from: `scatter_quadrant` (density vs index),
+`cross_merchant_comparison` (zones side-by-side), `table_drilldown`
+(cohort listings), `kpi_callout` (single headline).
 
-When you only read the cohort table, emit an empty `merge` block:
+`claims` cover every metric numeric in your prose:
+- Trade-area: `CellLookup` on `share_of_zone` / `zone_category_volume_index`.
+- Cohorts: `CellLookup` on `median_combined_spend` /
+  `p25_combined_spend` / `p75_combined_spend` / `cohort_size`.
 
-```render
-{
-  "merge": {},
-  "chart_intent": {
-    "kind": "table_drilldown",
-    "title": "Cross-merchant cohort overlap",
-    "columns": ["derived_zone", "cohort_combination", "cohort_size",
-                "median_combined_spend", "frequency_band"]
-  },
-  "claims": [
-    {
-      "text_span": "$1,420",
-      "value": 1420,
-      "source": {
-        "type": "CellLookup",
-        "row_filter": {"derived_zone": "Z05",
-                       "cohort_combination": "all_three"},
-        "column": "median_combined_spend"
-      }
-    }
-  ]
-}
-```
+Structural integers (`cohort_size`, `store_count`) don't need claims.
 
 ## Decline-gracefully
 

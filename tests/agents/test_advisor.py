@@ -27,7 +27,7 @@ from src.agents.context import MerchantContext
 from src.agents.response import AgentResponse
 from tests.agents._fake_llm import (
     patch_llm,
-    scripted_text,
+    scripted_emit_response,
     scripted_tool_use,
 )
 
@@ -45,43 +45,35 @@ def test_advisor_payment_mix_question(viewer_krg, monkeypatch) -> None:
     """Single-table lake read → empty merge → lake frame as result.
     Chart kind matches the intent; grain notes carry "no weekly"
     Exclude from the manifest."""
-    final_text = """Across your zones, the segment-peer contactless share averages 0.62.
-
-```render
-{
-  "merge": {},
-  "chart_intent": {
-    "kind": "cross_merchant_comparison",
-    "x": "derived_zone",
-    "series": ["contactless_share"],
-    "y_format": "pct",
-    "title": "Peer contactless share by zone",
-    "takeaway": "Peer contactless adoption averages 62%."
-  },
-  "claims": [
-    {
-      "text_span": "0.62",
-      "value": 0.62,
-      "source": {
-        "type": "CellLookup",
-        "row_filter": {},
-        "column": "contactless_share",
-        "agg": "mean"
-      }
-    }
-  ]
-}
-```
-
-```caveats
-["Payment mix at monthly grain."]
-```
-"""
+    emit = scripted_emit_response(
+        prose="Across your zones, the segment-peer contactless share "
+              "averages 0.62.",
+        merge={},
+        chart_intent={
+            "kind": "cross_merchant_comparison",
+            "x": "derived_zone",
+            "series": ["contactless_share"],
+            "y_format": "pct",
+            "title": "Peer contactless share by zone",
+            "takeaway": "Peer contactless adoption averages 62%.",
+        },
+        claims=[{
+            "text_span": "0.62",
+            "value": 0.62,
+            "source": {
+                "type": "CellLookup",
+                "row_filter": {},
+                "column": "contactless_share",
+                "agg": "mean",
+            },
+        }],
+        caveats=["Payment mix at monthly grain."],
+    )
     script = [
         scripted_tool_use("read_lake_table", {
             "table": "lake_payment_mix",
         }),
-        scripted_text(final_text),
+        emit,
     ]
     advisor = ConversationalAdvisor(viewer_krg)
     with patch_llm(monkeypatch, script):
@@ -105,43 +97,35 @@ def test_advisor_segment_mix_uses_derived_labels(viewer_krg, monkeypatch) -> Non
     """Segment mix reads return rows with ``behavioral_segment`` ∈
     the four derived labels. The Advisor's prose must not call them
     "loyalty_type"."""
-    final_text = """The frequent_value segment averages 0.25 share of zone at banner across peers.
-
-```render
-{
-  "merge": {},
-  "chart_intent": {
-    "kind": "cross_merchant_comparison",
-    "x": "behavioral_segment",
-    "series": ["share_of_zone_at_banner"],
-    "y_format": "pct",
-    "title": "Peer behavioral segment mix",
-    "takeaway": "frequent_value averages around 0.25 share at banner."
-  },
-  "claims": [
-    {
-      "text_span": "0.25",
-      "value": 0.25,
-      "source": {
-        "type": "CellLookup",
-        "row_filter": {"behavioral_segment": "frequent_value"},
-        "column": "share_of_zone_at_banner",
-        "agg": "mean"
-      }
-    }
-  ]
-}
-```
-
-```caveats
-["Behavioral segments are DERIVED — not loyalty_type."]
-```
-"""
+    emit = scripted_emit_response(
+        prose="The frequent_value segment averages 0.25 share of zone "
+              "at banner across peers.",
+        merge={},
+        chart_intent={
+            "kind": "cross_merchant_comparison",
+            "x": "behavioral_segment",
+            "series": ["share_of_zone_at_banner"],
+            "y_format": "pct",
+            "title": "Peer behavioral segment mix",
+            "takeaway": "frequent_value averages around 0.25 share at banner.",
+        },
+        claims=[{
+            "text_span": "0.25",
+            "value": 0.25,
+            "source": {
+                "type": "CellLookup",
+                "row_filter": {"behavioral_segment": "frequent_value"},
+                "column": "share_of_zone_at_banner",
+                "agg": "mean",
+            },
+        }],
+        caveats=["Behavioral segments are DERIVED — not loyalty_type."],
+    )
     script = [
         scripted_tool_use("read_lake_table", {
             "table": "lake_segment_mix",
         }),
-        scripted_text(final_text),
+        emit,
     ]
     advisor = ConversationalAdvisor(viewer_krg)
     with patch_llm(monkeypatch, script):

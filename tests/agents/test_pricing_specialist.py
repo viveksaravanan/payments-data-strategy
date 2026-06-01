@@ -30,6 +30,7 @@ from src.agents.pricing import PricingSpecialist
 from src.agents.response import AgentResponse
 from tests.agents._fake_llm import (
     patch_llm,
+    scripted_emit_response,
     scripted_text,
     scripted_tool_use,
 )
@@ -67,43 +68,36 @@ def test_pricing_canonical_question_produces_agentresponse(
     # claim uses CellLookup with agg='mean' over the matching cells
     # — the natural way for the model to assert "averaged across
     # zones and weeks".
-    final_text = """Your dairy own price averages 3.50 in your zones, indicating elevated category cost.
-
-```render
-{
-  "merge": {
-    "on": ["category"],
-    "own_value_col": "own_avg_price",
-    "peer_value_col": "price_index",
-    "gap_op": "difference"
-  },
-  "chart_intent": {
-    "kind": "cross_merchant_comparison",
-    "x": "category",
-    "series": ["own_value", "peer_benchmark"],
-    "y_format": "index",
-    "title": "Dairy pricing vs peers",
-    "takeaway": "Average own dairy price across zones and weeks."
-  },
-  "claims": [
-    {
-      "text_span": "3.50",
-      "value": 3.50,
-      "source": {
-        "type": "CellLookup",
-        "row_filter": {"category": "DAIRY"},
-        "column": "own_value",
-        "agg": "mean"
-      }
-    }
-  ]
-}
-```
-
-```caveats
-["Peer set is 2 grocers.", "Window: 2026-03-01 to 2026-05-29."]
-```
-"""
+    emit = scripted_emit_response(
+        prose="Your dairy own price averages 3.50 in your zones, "
+              "indicating elevated category cost.",
+        merge={
+            "on": ["category"],
+            "own_value_col": "own_avg_price",
+            "peer_value_col": "price_index",
+            "gap_op": "difference",
+        },
+        chart_intent={
+            "kind": "cross_merchant_comparison",
+            "x": "category",
+            "series": ["own_value", "peer_benchmark"],
+            "y_format": "index",
+            "title": "Dairy pricing vs peers",
+            "takeaway": "Average own dairy price across zones and weeks.",
+        },
+        claims=[{
+            "text_span": "3.50",
+            "value": 3.50,
+            "source": {
+                "type": "CellLookup",
+                "row_filter": {"category": "DAIRY"},
+                "column": "own_value",
+                "agg": "mean",
+            },
+        }],
+        caveats=["Peer set is 2 grocers.",
+                 "Window: 2026-03-01 to 2026-05-29."],
+    )
 
     script = [
         scripted_tool_use("query_tenant", {"sql": own_sql}),
@@ -111,7 +105,7 @@ def test_pricing_canonical_question_produces_agentresponse(
             "table": "lake_category_metrics",
             "filters": {"category": "DAIRY", "grain": "cat_week"},
         }),
-        scripted_text(final_text),
+        emit,
     ]
 
     specialist = PricingSpecialist(viewer_krg)

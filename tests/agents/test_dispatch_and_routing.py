@@ -33,6 +33,7 @@ from src.agents.orchestrator import (
 from src.agents.response import AgentResponse
 from tests.agents._fake_llm import (
     patch_llm,
+    scripted_emit_response,
     scripted_text,
     scripted_tool_use,
 )
@@ -150,40 +151,30 @@ def test_dispatch_pill_goes_direct_to_pricing(monkeypatch) -> None:
         "WHERE t.banner_code = 'KRG' AND i.category = 'DAIRY' "
         "GROUP BY i.category"
     )
-    final_text = """Your dairy own price averages 3.50 across zones.
-
-```render
-{
-  "merge": {
-    "on": ["category"],
-    "own_value_col": "own_avg_price",
-    "peer_value_col": "price_index",
-    "gap_op": "difference"
-  },
-  "chart_intent": {
-    "kind": "cross_merchant_comparison",
-    "x": "category",
-    "series": ["own_value", "peer_benchmark"]
-  },
-  "claims": [
-    {
-      "text_span": "3.50",
-      "value": 3.50,
-      "source": {
-        "type": "CellLookup",
-        "row_filter": {"category": "DAIRY"},
-        "column": "own_value",
-        "agg": "mean"
-      }
-    }
-  ]
-}
-```
-
-```caveats
-[]
-```
-"""
+    emit_pricing = scripted_emit_response(
+        prose="Your dairy own price averages 3.50 across zones.",
+        merge={
+            "on": ["category"],
+            "own_value_col": "own_avg_price",
+            "peer_value_col": "price_index",
+            "gap_op": "difference",
+        },
+        chart_intent={
+            "kind": "cross_merchant_comparison",
+            "x": "category",
+            "series": ["own_value", "peer_benchmark"],
+        },
+        claims=[{
+            "text_span": "3.50",
+            "value": 3.50,
+            "source": {
+                "type": "CellLookup",
+                "row_filter": {"category": "DAIRY"},
+                "column": "own_value",
+                "agg": "mean",
+            },
+        }],
+    )
     # No API key needed because pill skips routing.
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     script = [
@@ -192,7 +183,7 @@ def test_dispatch_pill_goes_direct_to_pricing(monkeypatch) -> None:
             "table": "lake_category_metrics",
             "filters": {"category": "DAIRY", "grain": "cat_week"},
         }),
-        scripted_text(final_text),
+        emit_pricing,
     ]
     with patch_llm(monkeypatch, script):
         decision, resp = dispatch_pill(
@@ -212,41 +203,31 @@ def test_dispatch_pill_advisor_target_works(monkeypatch) -> None:
     """Pills can also route directly to the Advisor for payment /
     segment pills."""
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    final_text = """Across your zones, peer contactless share averages 0.62.
-
-```render
-{
-  "merge": {},
-  "chart_intent": {
-    "kind": "cross_merchant_comparison",
-    "x": "derived_zone",
-    "series": ["contactless_share"],
-    "y_format": "pct"
-  },
-  "claims": [
-    {
-      "text_span": "0.62",
-      "value": 0.62,
-      "source": {
-        "type": "CellLookup",
-        "row_filter": {},
-        "column": "contactless_share",
-        "agg": "mean"
-      }
-    }
-  ]
-}
-```
-
-```caveats
-[]
-```
-"""
+    emit_advisor = scripted_emit_response(
+        prose="Across your zones, peer contactless share averages 0.62.",
+        merge={},
+        chart_intent={
+            "kind": "cross_merchant_comparison",
+            "x": "derived_zone",
+            "series": ["contactless_share"],
+            "y_format": "pct",
+        },
+        claims=[{
+            "text_span": "0.62",
+            "value": 0.62,
+            "source": {
+                "type": "CellLookup",
+                "row_filter": {},
+                "column": "contactless_share",
+                "agg": "mean",
+            },
+        }],
+    )
     script = [
         scripted_tool_use("read_lake_table", {
             "table": "lake_payment_mix",
         }),
-        scripted_text(final_text),
+        emit_advisor,
     ]
     with patch_llm(monkeypatch, script):
         decision, resp = dispatch_pill(
@@ -274,47 +255,37 @@ def test_dispatch_freeform_routes_via_keyword_fallback(monkeypatch) -> None:
         "WHERE t.banner_code = 'KRG' AND i.category = 'DAIRY' "
         "GROUP BY i.category"
     )
-    final_text = """Your dairy own price averages 3.50.
-
-```render
-{
-  "merge": {
-    "on": ["category"],
-    "own_value_col": "own_avg_price",
-    "peer_value_col": "price_index",
-    "gap_op": "difference"
-  },
-  "chart_intent": {
-    "kind": "cross_merchant_comparison",
-    "x": "category",
-    "series": ["own_value", "peer_benchmark"]
-  },
-  "claims": [
-    {
-      "text_span": "3.50",
-      "value": 3.50,
-      "source": {
-        "type": "CellLookup",
-        "row_filter": {"category": "DAIRY"},
-        "column": "own_value",
-        "agg": "mean"
-      }
-    }
-  ]
-}
-```
-
-```caveats
-[]
-```
-"""
+    emit_pricing = scripted_emit_response(
+        prose="Your dairy own price averages 3.50.",
+        merge={
+            "on": ["category"],
+            "own_value_col": "own_avg_price",
+            "peer_value_col": "price_index",
+            "gap_op": "difference",
+        },
+        chart_intent={
+            "kind": "cross_merchant_comparison",
+            "x": "category",
+            "series": ["own_value", "peer_benchmark"],
+        },
+        claims=[{
+            "text_span": "3.50",
+            "value": 3.50,
+            "source": {
+                "type": "CellLookup",
+                "row_filter": {"category": "DAIRY"},
+                "column": "own_value",
+                "agg": "mean",
+            },
+        }],
+    )
     script = [
         scripted_tool_use("query_tenant", {"sql": own_sql}),
         scripted_tool_use("read_lake_table", {
             "table": "lake_category_metrics",
             "filters": {"category": "DAIRY", "grain": "cat_week"},
         }),
-        scripted_text(final_text),
+        emit_pricing,
     ]
     with patch_llm(monkeypatch, script):
         decision, resp = dispatch_freeform(
@@ -332,41 +303,31 @@ def test_dispatch_freeform_ambiguous_question_to_advisor(monkeypatch) -> None:
     """Free-form ambiguous question (no keyword match) → Advisor.
     The Advisor handles it via the scripted tool flow."""
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    final_text = """Across zones, peer contactless share averages 0.62.
-
-```render
-{
-  "merge": {},
-  "chart_intent": {
-    "kind": "cross_merchant_comparison",
-    "x": "derived_zone",
-    "series": ["contactless_share"],
-    "y_format": "pct"
-  },
-  "claims": [
-    {
-      "text_span": "0.62",
-      "value": 0.62,
-      "source": {
-        "type": "CellLookup",
-        "row_filter": {},
-        "column": "contactless_share",
-        "agg": "mean"
-      }
-    }
-  ]
-}
-```
-
-```caveats
-[]
-```
-"""
+    emit_advisor = scripted_emit_response(
+        prose="Across zones, peer contactless share averages 0.62.",
+        merge={},
+        chart_intent={
+            "kind": "cross_merchant_comparison",
+            "x": "derived_zone",
+            "series": ["contactless_share"],
+            "y_format": "pct",
+        },
+        claims=[{
+            "text_span": "0.62",
+            "value": 0.62,
+            "source": {
+                "type": "CellLookup",
+                "row_filter": {},
+                "column": "contactless_share",
+                "agg": "mean",
+            },
+        }],
+    )
     script = [
         scripted_tool_use("read_lake_table", {
             "table": "lake_payment_mix",
         }),
-        scripted_text(final_text),
+        emit_advisor,
     ]
     with patch_llm(monkeypatch, script):
         decision, resp = dispatch_freeform(

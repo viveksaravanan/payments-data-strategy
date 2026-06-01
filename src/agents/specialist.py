@@ -118,6 +118,7 @@ class Specialist:
         self._tenant_frame: pd.DataFrame | None = None
         self._lake_frame:   pd.DataFrame | None = None
         self._lake_manifest: dict[str, Any] | None = None
+        self._emit_args:    dict[str, Any] | None = None
         self._in_tokens:    int = 0
         self._out_tokens:   int = 0
         self._cost_usd:     float = 0.0
@@ -161,12 +162,39 @@ class Specialist:
                     ],
                 )
 
+            # tool_choice strategy:
+            #  - Early turns: "any" — force a tool call but let the
+            #    model pick which one (typically query_tenant /
+            #    read_lake_table to gather data).
+            #  - Final 2 turns OR once enough data has been gathered
+            #    (both tenant + lake frames captured, or one is
+            #    captured and the model has been at it for several
+            #    turns): pin to emit_response so the model can't keep
+            #    re-querying. Haiku's default behavior is to keep
+            #    refining tenant SQL forever without ever finalizing;
+            #    pinning ensures convergence.
+            ready_to_emit = (
+                # Both frames captured OR
+                (self._tenant_frame is not None
+                 and self._lake_frame is not None)
+                # One frame captured + enough exploration done OR
+                or (turn >= 3 and (self._tenant_frame is not None
+                                    or self._lake_frame is not None))
+                # Hard wall: last 2 turns of the budget.
+                or turn >= self.MAX_TURNS - 2
+            )
+            tool_choice = (
+                {"type": "tool", "name": "emit_response"}
+                if ready_to_emit
+                else {"type": "any"}
+            )
             resp, tel = L.call_with_tools(
                 model=self.MODEL,
                 system=self._system_prompt,
                 tools=self.TOOLS,
                 messages=messages,
                 max_tokens=MAX_TOKENS,
+                tool_choice=tool_choice,
             )
             self._in_tokens  += tel.input_tokens
             self._out_tokens += tel.output_tokens
@@ -203,6 +231,13 @@ class Specialist:
                     "content":     json.dumps(payload_for_llm, default=str),
                     "is_error":    is_error,
                 })
+
+            # If the model called emit_response, it has produced the
+            # structured final response — terminate the loop.
+            if self._emit_args is not None:
+                return self._finalize_from_emit(
+                    converged=True, turns=turn + 1,
+                )
             messages.append({"role": "user", "content": tool_results})
 
         # Loop exhausted without final text.
@@ -243,6 +278,11 @@ class Specialist:
                 "row_count": payload["row_count"],
             })
             return payload
+        if name == "emit_response":
+            # Capture args; the loop checks ``_emit_args`` after the
+            # tool batch and exits if set.
+            self._emit_args = args
+            return {"ok": True}
         raise ValueError(f"Unknown tool: {name}")
 
     # ---- Finalize ----------------------------------------------------
@@ -371,6 +411,77 @@ class Specialist:
                 continue
         return out
 
+    def _finalize_from_emit(
+        self, *, converged: bool, turns: int,
+    ) -> AgentResponse:
+        """Build the AgentResponse from the args the model passed to
+        the ``emit_response`` tool. This is the Wave 3 normal exit
+        path; the legacy fenced-block parser in ``_finalize`` is the
+        fallback for soft cases (Advisor) that don't require
+        emit_response."""
+        args = self._emit_args or {}
+        merge_spec = args.get("merge") or {}
+        chart_intent = args.get("chart_intent") or {}
+        claims_raw = args.get("claims") or []
+        prose = (args.get("prose") or "").strip()
+        caveats = list(args.get("caveats") or [])
+
+        result = self._build_result(merge_spec)
+        claims = self._parse_claims(claims_raw)
+
+        # Build the chart gracefully — if chart_intent is malformed
+        # (model omitted per-kind required fields, named a column
+        # that isn't in the result, etc.), set chart=None and surface
+        # the reason in caveats. The prose + claims + result still
+        # get the §1.4 treatment and reach the user. This trades a
+        # missing chart for a delivered prose answer; the alternative
+        # was raising and emitting nothing.
+        chart = None
+        chart_error: str | None = None
+        try:
+            chart = build_chart(chart_intent, result)
+        except (MissingColumnError, UnsupportedIntentError, KeyError) as exc:
+            chart_error = f"{type(exc).__name__}: {exc}"
+        except Exception as exc:                          # noqa: BLE001
+            # Unexpected error from a per-kind builder (NaN values in
+            # a Plotly indicator, etc.); same fallback path.
+            chart_error = f"chart build raised: {type(exc).__name__}: {exc}"
+
+        report = validate_claims(prose, claims, result)
+
+        effective_caveats = list(caveats)
+        if chart_error:
+            effective_caveats.append(
+                f"(Chart skipped — model's chart_intent was malformed. "
+                f"Reason: {chart_error})"
+            )
+
+        return AgentResponse(
+            result=result,
+            chart_intent=chart_intent,
+            chart=chart,
+            prose=report.prose,
+            claims=claims,
+            caveats=effective_caveats,
+            sql=[
+                SqlSurface(
+                    surface=s["surface"], query=s["query"],
+                    row_count=s["row_count"],
+                ) for s in self._sql_log
+            ],
+            grain_notes=list(
+                (self._lake_manifest or {}).get("excludes", []),
+            ),
+            telemetry=Telemetry(
+                model=self.MODEL,
+                input_tokens=self._in_tokens,
+                output_tokens=self._out_tokens,
+                cost_usd=self._cost_usd,
+                turns=turns,
+                converged=converged,
+            ),
+        )
+
     def _minimal_response(
         self, *, prose: str, caveats: list[str], converged: bool, turns: int,
     ) -> AgentResponse:
@@ -415,6 +526,7 @@ class Specialist:
         self._tenant_frame = None
         self._lake_frame = None
         self._lake_manifest = None
+        self._emit_args = None
         self._in_tokens = 0
         self._out_tokens = 0
         self._cost_usd = 0.0

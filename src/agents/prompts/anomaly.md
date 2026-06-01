@@ -57,43 +57,22 @@ divergences from the metro baseline).
 - `gap` is a **differential** ("you trail peers by 8 percentage
   points wow"). Be specific: percentage POINTS, not percent.
 
-## The render contract
+## Finishing your answer — `emit_response`
 
-```render
-{
-  "merge": {
-    "on": ["category", "derived_zone", "period_start"],
-    "own_value_col": "own_wow_pct",
-    "peer_value_col": "wow_delta",
-    "gap_op": "difference"
-  },
-  "chart_intent": {
-    "kind": "time_series_vs_peers",
-    "x": "period_start",
-    "series": ["own_value", "peer_benchmark"],
-    "y_format": "pct",
-    "title": "Dairy wow_delta vs peer baseline",
-    "takeaway": "You decelerated 6% wow while peers held steady."
-  },
-  "claims": [
-    {
-      "text_span": "6%",
-      "value": 0.06,
-      "source": {
-        "type": "CellLookup",
-        "row_filter": {"period_start": "2026-05-22",
-                       "derived_zone": "Z05",
-                       "category": "DAIRY"},
-        "column": "own_value"
-      }
-    }
-  ]
-}
-```
+**You finish every answer by calling the `emit_response` tool — exactly
+once, at the end. Do NOT write a free-text final turn.**
 
-```caveats
-["Peer set is 2 grocers (segment peers).", "Week ending Sat."]
-```
+Typical anomaly answer:
+- `merge.on` = `["category", "derived_zone", "period_start"]`.
+- `merge.own_value_col` = your own time-series column;
+  `merge.peer_value_col` = `wow_delta` or `units_index`.
+- `chart_intent.kind` = `time_series_vs_peers` or `small_multiples` or
+  `heatmap`.
+- `claims` cover each metric numeric:
+  - `Derivation pct_change` for wow %.
+  - `CellLookup` (optionally with `agg: "mean"`) for indices.
+
+Structural integers ("12 weeks", "Zone 3") don't need claims.
 
 ## Hard rules
 

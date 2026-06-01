@@ -24,7 +24,7 @@ from src.agents.context import MerchantContext
 from src.agents.response import AgentResponse
 from tests.agents._fake_llm import (
     patch_llm,
-    scripted_text,
+    scripted_emit_response,
     scripted_tool_use,
 )
 
@@ -41,50 +41,43 @@ def test_anomaly_canonical_operational_question(viewer_krg, monkeypatch) -> None
         "WHERE t.banner_code = 'KRG' AND i.category = 'DAIRY' "
         "GROUP BY i.category"
     )
-    final_text = """Dairy peer wow_delta averages near 0, suggesting market-wide flat demand.
-
-```render
-{
-  "merge": {
-    "on": ["category"],
-    "own_value_col": "own_units",
-    "peer_value_col": "wow_delta",
-    "gap_op": "difference"
-  },
-  "chart_intent": {
-    "kind": "time_series_vs_peers",
-    "x": "category",
-    "series": ["own_value", "peer_benchmark"],
-    "y_format": "pct",
-    "title": "Dairy own units vs peer wow_delta",
-    "takeaway": "Peer wow_delta averages near zero."
-  },
-  "claims": [
-    {
-      "text_span": "0",
-      "value": 0,
-      "source": {
-        "type": "CellLookup",
-        "row_filter": {"category": "DAIRY"},
-        "column": "peer_benchmark",
-        "agg": "mean"
-      }
-    }
-  ]
-}
-```
-
-```caveats
-["Peer set is 2 grocers (segment peers).", "Window: 90 days."]
-```
-"""
+    emit = scripted_emit_response(
+        prose="Dairy peer wow_delta averages near 0, suggesting "
+              "market-wide flat demand.",
+        merge={
+            "on": ["category"],
+            "own_value_col": "own_units",
+            "peer_value_col": "wow_delta",
+            "gap_op": "difference",
+        },
+        chart_intent={
+            "kind": "time_series_vs_peers",
+            "x": "category",
+            "series": ["own_value", "peer_benchmark"],
+            "y_format": "pct",
+            "title": "Dairy own units vs peer wow_delta",
+            "takeaway": "Peer wow_delta averages near zero.",
+        },
+        claims=[{
+            "text_span": "0",
+            "value": 0,
+            "source": {
+                "type": "CellLookup",
+                "row_filter": {"category": "DAIRY"},
+                "column": "peer_benchmark",
+                "agg": "mean",
+            },
+        }],
+        caveats=["Peer set is 2 grocers (segment peers).",
+                 "Window: 90 days."],
+    )
     script = [
         scripted_tool_use("query_tenant", {"sql": own_sql}),
         scripted_tool_use("read_lake_table", {
             "table": "lake_category_metrics",
             "filters": {"category": "DAIRY", "grain": "cat_week"},
         }),
-        scripted_text(final_text),
+        emit,
     ]
     specialist = AnomalyDetectionSpecialist(viewer_krg)
     with patch_llm(monkeypatch, script):

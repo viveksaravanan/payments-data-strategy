@@ -88,42 +88,22 @@ The bare multiplier is meaningless without the denominator.
 - `behavioral_segment` is a **derived bucket** — NEVER call it
   `loyalty_type`.
 
-## The render contract
+## Finishing your answer — `emit_response`
 
-```render
-{
-  "merge": {},
-  "chart_intent": {
-    "kind": "cross_merchant_comparison",
-    "x": "derived_zone",
-    "series": ["contactless_share"],
-    "y_format": "pct",
-    "title": "Contactless share by zone vs peers",
-    "takeaway": "Your contactless adoption sits 4pp above peers."
-  },
-  "claims": [
-    {
-      "text_span": "62%",
-      "value": 0.62,
-      "source": {
-        "type": "CellLookup",
-        "row_filter": {"derived_zone": "Z05"},
-        "column": "contactless_share"
-      }
-    }
-  ]
-}
-```
+**You finish every answer by calling the `emit_response` tool — exactly
+once, at the end. Do NOT write a free-text final turn.**
 
-```caveats
-["Payment mix at monthly grain.", "Peer set is 2 grocers (segment peers)."]
-```
+The most common Advisor pattern is a single lake-table read: leave
+`merge={}`, the lake frame becomes the result. Supply a non-empty
+`merge` only when you queried BOTH `query_tenant` and `read_lake_table`
+and need a side-by-side comparison.
 
-### When you have BOTH tenant and lake frames
+`claims` cover every metric numeric in your prose. Use `CellLookup`
+with `agg: "mean"` for cross-zone averages; `Derivation pct_change` for
+month-over-month deltas; `Derivation aggregate` for sums/means of
+declared cells.
 
-Provide a `merge` spec like the specialists do (see the Pricing
-prompt). When you only read a single lake table, leave `merge` empty —
-the lake frame becomes the result.
+Structural integers ("8 zones", "100k cards") don't need claims.
 
 ### Charts
 

@@ -51,58 +51,26 @@ Then write 2–5 sentences and emit the structured response.
   3 percentage points" — be specific about whether it's points or
   percent.
 
-## The render contract
+## Finishing your answer — `emit_response`
 
-End every final assistant turn with the two fenced blocks:
+**You finish every answer by calling the `emit_response` tool — exactly
+once, at the end. Do NOT write a free-text final turn.**
 
-```render
-{
-  "merge": {
-    "on": ["category", "period_start"],
-    "own_value_col": "<your own time-series column>",
-    "peer_value_col": "<lake metric column>",
-    "gap_op": "difference"
-  },
-  "chart_intent": {
-    "kind": "time_series_vs_peers",
-    "x": "period_start",
-    "series": ["own_value", "peer_benchmark"],
-    "y_format": "index",
-    "title": "Dairy units vs peer baseline",
-    "takeaway": "You decelerated 4% wow while peers held flat."
-  },
-  "claims": [
-    {
-      "text_span": "4%",
-      "value": 0.04,
-      "source": {
-        "type": "Derivation",
-        "op": "pct_change",
-        "operands": [
-          {"row_filter": {"period_start": "2026-05-22"}, "column": "own_value"},
-          {"row_filter": {"period_start": "2026-05-15"}, "column": "own_value"}
-        ]
-      }
-    }
-  ]
-}
-```
+The tool takes `prose`, `merge`, `chart_intent`, `claims`, `caveats`.
+See the tool's input schema for the field shapes.
 
-```caveats
-["Peer set is 2 grocers (segment peers).", "Week ending Sat; 12 weeks shown."]
-```
-
-### Render-block rules
-
-- `chart_intent.kind`: prefer `time_series_vs_peers` when there's a
-  weekly trajectory; `cross_merchant_comparison` when comparing across
-  categories at one point in time; `waterfall` for driver decomposition.
-- Claims may use:
-  - `CellLookup` with optional `agg: "sum"|"mean"` for multi-row
-    aggregates ("dairy averages 1.05 across zones").
-  - `Derivation` with `op: "pct_change"` for week-over-week %
-    changes; `op: "difference"` for absolute gaps; `op: "ratio"` for
-    indices; `op: "aggregate"` for sums/means of declared operand cells.
+- `merge.gap_op` is `"difference"` for absolute gaps, `"ratio"` for
+  index-style comparisons.
+- `chart_intent.kind`: prefer `time_series_vs_peers` for weekly
+  trajectories; `cross_merchant_comparison` for snapshots;
+  `waterfall` for driver decomposition.
+- `claims` source shapes:
+  - `{"type": "CellLookup", "row_filter": {...}, "column": "...",
+     "agg": "sum"|"mean"}` — a cell or aggregated.
+  - `{"type": "Derivation", "op": "pct_change", "operands": [<CellLookup>,
+     <CellLookup>]}` — week-over-week % change.
+  - `{"type": "Derivation", "op": "difference", "operands": [...]}` —
+    absolute gap.
 - Structural integers ("12 weeks", "Zone 3", "2026") don't need claims.
 
-If you can't substantiate a number, leave it out.
+If you can't substantiate a number, leave it out of the prose.

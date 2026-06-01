@@ -24,7 +24,7 @@ from src.agents.response import AgentResponse
 from src.agents.trade import TradeAreaSpecialist
 from tests.agents._fake_llm import (
     patch_llm,
-    scripted_text,
+    scripted_emit_response,
     scripted_tool_use,
 )
 
@@ -46,41 +46,32 @@ def test_trade_cohort_only_answer(viewer_krg, monkeypatch) -> None:
 
     # The model emits an empty merge so the specialist uses the lake
     # frame directly as the result.
-    final_text = """In the all-three cohort, the median combined spend is $2125.
-
-```render
-{
-  "merge": {},
-  "chart_intent": {
-    "kind": "table_drilldown",
-    "title": "Cross-merchant cohort overlap",
-    "columns": ["derived_zone", "cohort_combination", "cohort_size",
-                "median_combined_spend", "frequency_band"]
-  },
-  "claims": [
-    {
-      "text_span": "$2125",
-      "value": 2125,
-      "source": {
-        "type": "CellLookup",
-        "row_filter": {"cohort_combination": "all_three"},
-        "column": "median_combined_spend",
-        "agg": "mean"
-      }
-    }
-  ]
-}
-```
-
-```caveats
-["Cohorts published as median + IQR only (D24.2)."]
-```
-"""
+    emit = scripted_emit_response(
+        prose="In the all-three cohort, the median combined spend is $2125.",
+        merge={},
+        chart_intent={
+            "kind": "table_drilldown",
+            "title": "Cross-merchant cohort overlap",
+            "columns": ["derived_zone", "cohort_combination", "cohort_size",
+                        "median_combined_spend", "frequency_band"],
+        },
+        claims=[{
+            "text_span": "$2125",
+            "value": 2125,
+            "source": {
+                "type": "CellLookup",
+                "row_filter": {"cohort_combination": "all_three"},
+                "column": "median_combined_spend",
+                "agg": "mean",
+            },
+        }],
+        caveats=["Cohorts published as median + IQR only (D24.2)."],
+    )
     script = [
         scripted_tool_use("read_lake_table", {
             "table": "lake_cross_merchant_cohorts",
         }),
-        scripted_text(final_text),
+        emit,
     ]
     specialist = TradeAreaSpecialist(viewer_krg)
     with patch_llm(monkeypatch, script):
