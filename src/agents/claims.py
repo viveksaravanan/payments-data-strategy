@@ -418,19 +418,26 @@ def validate_claims(
     cleaned = prose
     report = ValidationReport(prose=cleaned, original_prose=prose)
     passing_spans: list[tuple[int, int]] = []
+    declared_spans: list[tuple[int, int]] = []  # covers passed + stripped
 
     # --- Pass A: declared claims ----------------------------------
     spans_to_strip: list[tuple[tuple[int, int], str]] = []
     span_normalizations: list[tuple[tuple[int, int], str, str]] = []
     for claim in claims:
+        # Track every declared claim's span — passing OR failing — so
+        # Pass B doesn't double-log a failed declared number as
+        # "undeclared" (it IS declared, just wrong; Pass A already
+        # accounts for the strip).
+        declared_span = _find_span_in_prose(cleaned, claim.text_span)
+        if declared_span is not None:
+            declared_spans.append(declared_span)
         try:
             true_value = claim.source.resolve(result)
         except (LookupError, ValueError, ZeroDivisionError) as exc:
             # Source can't resolve — strip the claim's clause.
-            span = _find_span_in_prose(cleaned, claim.text_span)
-            if span is not None:
+            if declared_span is not None:
                 spans_to_strip.append(
-                    (span, f"source did not resolve: {exc}"))
+                    (declared_span, f"source did not resolve: {exc}"))
             report.claim_dispositions.append(ClaimDisposition(
                 claim=claim, status="stripped", reason=str(exc),
             ))
@@ -477,6 +484,8 @@ def validate_claims(
             continue                # structural integers exempt
         if any(_spans_overlap(tok.span, s) for s in passing_spans):
             continue                # covered by a passing claim
+        if any(_spans_overlap(tok.span, s) for s in declared_spans):
+            continue                # declared but failed — Pass A handled
         # Uncovered metric numeric — strip its clause.
         spans_to_strip.append((tok.span, "undeclared metric numeric in prose"))
         report.undeclared_strips.append({
