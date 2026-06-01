@@ -812,6 +812,125 @@ Wave 2 ships: tokenization (generation), generalization, **structural k≥50**, 
 
 ---
 
+## D25 — Wave 3: The unified agent response contract *(ratified)*
+
+The keystone of Wave 3. Implements D8 concretely: **one query result is the single source of truth; prose and chart are both derived from it; prose is validated against it.** Refactors v3's `SpecialistResponse` (baseline §6.4/§10.1) to eliminate the chart-vs-prose and agent-vs-pattern-chart drift paths.
+
+### D25.1 — The response object
+Every agent (4 specialists + Conversational Advisor) returns one structured object:
+```
+AgentResponse {
+  result:        query result (DataFrame) — the single source of truth (the MERGED comparison, see D25.5)
+  chart_intent:  { kind, x, series, y_format, ... } — authored by model, names columns, NEVER values
+  chart:         rendered figure — built deterministically from (intent + result)
+  prose:         narrative — validated against result before return
+  claims:        [{ text_span, value, source }] — number→data bindings the validator checks
+  caveats:       [str]
+  sql:           [{ surface, query, row_count }]
+  grain_notes:   what the answering table did NOT carry (from the Wave 2 manifest)
+  telemetry:     { tokens, cost, turns, converged }
+}
+```
+Change from v3: `chart` is no longer built from model-written `series.values`; `claims` is new and makes prose validation mechanical.
+
+### D25.2 — The flow (drift becomes structurally impossible)
+1. Agent queries tenant and/or lake (Wave 2 surfaces) → results.
+2. Model authors **chart intent** — `kind` + which result *columns* map to x/series/y_format. Names columns, never values.
+3. Deterministic code builds the chart by pulling named columns from the result. The chart cannot contain a number absent from the result.
+4. Model writes prose AND a parallel **`claims`** list: each material number tagged `{value, source}` pointing to a result cell or a declared arithmetic over cells.
+5. **Deterministic validation:** each claim's value must match the result (cell lookup or declared derivation, D25.4) within tolerance. A claim that doesn't trace → response flagged/corrected/stripped. This makes "numbers never hallucinated" a guarantee, not a hope.
+
+### D25.3 — Chart intent vocabulary = the nine pattern families
+`kind` ∈ the existing nine families (baseline §7.5): `time_series_vs_peers`, `cross_merchant_comparison`, `heatmap`, `scatter_quadrant`, `waterfall`, `geo_map`, `kpi_callout`, `small_multiples`, `table_drilldown`. Model picks `kind` + column mapping; deterministic builder routes to that family's renderer, fed by the result. **`chart_patterns.py` survives as the renderer palette**; the model just selects and maps.
+
+### D25.4 — Prose validation = strict guarantee, graceful handling (RESOLVED)
+Every material number in prose must trace to **either** a result cell **or** a declared arithmetic over result cells. The *guarantee* is strict (an untraceable number never reaches the user as a stated fact); the *handling* is graceful (legitimate rounding/approximation and a single bad number don't hard-reject the whole response). Three tiers:
+1. **Traces cleanly** (cell, or declared derivation recomputes within tolerance) → passes, shown normally. The vast majority.
+2. **Close — within tolerance band** (model says "≈6%", cell is 6.2%) → passes; validator normalizes to the true value or accepts the rounding. **This is the anti-brittleness valve** — "roughly/about" phrasing and display-precision differences don't fail.
+3. **Doesn't trace at all** → the number is **stripped or sent for one correction pass — the whole response is NOT hard-rejected.** Only if correction also fails does the agent fall back to "I can't substantiate that figure." Surgical removal of the one bad number, not whole-answer rejection.
+
+**Tolerance:** a number is "traced" if it matches a cell/derivation within ~1% relative (configurable). Too tight → false rejects; too loose → real errors slip as "close enough." ~1% starting point.
+
+**Derivation grammar — small and CLOSED:** only the operations agents actually use — difference (a−b), ratio/share (a/total), percent-change ((a−b)/b), simple aggregation (sum/mean over cells). Each declared as `{op, operands→cells}` so the validator recomputes. Closed grammar = no arbitrary model math sneaks through.
+
+Rejected alternatives: strict-cell-only (too brittle — kills legit derived figures), tolerant-flag-and-show (leaves a hallucination hole — a flagged-but-shown fabrication still reaches the user, breaking the guarantee). The D25 validator already runs on every response, so acting strictly on its result (strip/correct) over flag-and-show is near-zero marginal cost.
+
+### D25.8 — Model configuration
+- **Orchestrator/router: always Haiku** (`claude-haiku-4-5`) — routing is a cheap classification, no reasoning depth needed.
+- **Specialists + Advisor: Haiku by default, Sonnet-switchable via config.** This is the "answer quality matters" wave; a config knob (`SPECIALIST_MODEL`) lets you trade cost for reasoning quality on the agents that do the chart-intent + claims + validation-aware prose work, without touching the router. Default Haiku keeps demo cost low; flip to Sonnet when answer quality needs it.
+
+### D25.5 — Source of truth = the MERGED comparison (own + peer)
+The dual path means a typical answer reads own-tenant (own dairy SKUs) AND lake (peer dairy index) — two results. The single source of truth is the **merged comparison frame** (own value, peer benchmark, computed gap) at a matching grain — NOT one result or the other. The contract defines an explicit merge step; chart and claims validate against the merged frame. This is the D22.5 dual-path shape, named explicitly so "which result is source of truth" is unambiguous when there are two.
+
+### D25.6 — What this retires (v3 drift paths, baseline §10.1)
+- `make_chart` writing `series.values` → replaced by intent + deterministic fill (kills chart-vs-prose drift).
+- Per-qid `data.py` pattern-chart fetchers feeding agent responses → retired (kills agent-vs-pattern-chart divergence).
+- `chart_takeaways.py` directional captions → retired (existed only to mask the divergence; one source of truth lets captions cite real numbers).
+- **Kept:** standalone dashboard panels (KPI strip, geography, catalog) keep their own `data.py` sourcing — they're not agent responses making claims that must match prose (Wave 4).
+
+### D25.7 — Applies to all agents uniformly
+Specialists AND the Conversational Advisor produce this same contract — one rendering path, one validation mechanism, no special-casing. The Advisor differs only in not being domain-locked in which tables it reaches (D26).
+
+---
+
+## D26 — Wave 3: Specialists + Conversational Advisor on the Wave 2 surfaces *(ratified)*
+
+Refactors v3's Orchestrator + 4 specialists (baseline §6) onto Wave 2's tenant+lake surfaces and the D25 contract; adds the Conversational Advisor as a general-purpose fallback.
+
+### D26.1 — Roster (keep v3's exact four + Advisor)
+**Orchestrator + Pricing + Demand + Trade-Area + Anomaly + Conversational Advisor.** No new specialists (Payment Optimization / Segmentation rejected as standalone agents — their capability rides through the Advisor). Anomaly keeps its name; scope handled by prompt, not rename.
+
+### D26.2 — Specialist → surface mapping
+
+| Specialist | Own surface (tenant, full grain) | Lake table | Grain limit it must respect |
+|---|---|---|---|
+| Pricing | own SKU prices | `lake_category_metrics` (price_index) | peer at category/subcat, NEVER peer-SKU |
+| Demand | own category/SKU time series | `lake_category_metrics` (revenue/units/wow_delta) | peers weekly, not daily |
+| Trade-Area | own store performance | `lake_trade_area` + `lake_cross_merchant_cohorts` | zone-level |
+| Anomaly | own time series | `lake_category_metrics` (as cross-merchant baseline) | **business anomalies ONLY — no fraud/tampering (D20.3); must not claim fraud detection** |
+
+### D26.3 — Conversational Advisor (general-purpose fallback)
+- **Routes here when NO specialist fits** — fixes v3's force-routing (baseline §6.3: orchestrator always picked a specialist, defaulting by segment even on ill-fitting questions). Now: orchestrator routes specialist-when-it-fits, Advisor otherwise.
+- **Not domain-locked** — can reach any lake table, including the two no specialist consumes: `lake_payment_mix` ("is my contactless behind peers") and `lake_segment_mix` ("what shoppers do I draw vs peers"). This keeps all five Wave 2 tables live; payment-mix and segment questions are answered here.
+- **Owns decline-gracefully (D23.7)** — uses `grain_notes` from the manifest to bound itself ("I can compare dairy at category level; peer SKU detail isn't available"), and frames affinities/comparisons with **base rates** ("sauce attaches to 43% of pasta baskets, ~3× store average"), not naked multipliers.
+- **Same D25 contract** — produces the unified response (result + chart-intent + validated prose + claims) like the specialists; one rendering/validation path.
+
+### D26.4 — Orchestrator routing (refactor v3's)
+Keep the Haiku router + keyword fallback (baseline §6.3), but the "no match" target becomes the **Advisor**, not a segment-default specialist. Routing set: pricing / demand / trade / anomaly / advisor. The segment-conditional force-default is retired.
+
+### D26.5 — Two Wave 2 tables have no dedicated specialist (intentional)
+`lake_payment_mix` and `lake_segment_mix` are consumed by the Advisor, not a specialist. Not stranded — reachable via the general-purpose agent. Promoting either to its own specialist is a clean future addition (its table already exists), deferred for v4 roster tightness.
+
+---
+
+## D27 — Wave 3: Agent golden tests (lightweight regression net) *(ratified)*
+
+What "correct" means for an agent (the D10 commitment), scoped honestly around what D25 already guarantees.
+
+### D27.1 — D25's runtime validator is the real numbers guarantee (not the golden tests)
+The D25 claims-validator runs on **every** agent response in production — each number validated against the data (cell or declared derivation) before return. "Did a number hallucinate" is therefore already caught live, on every response, golden tests or not. **D25 is the load-bearing wall; golden tests are not the numbers-correctness net.**
+
+### D27.2 — Golden tests cover only what D25 doesn't: routing + grain/decline
+The two things the runtime validator doesn't check:
+- **Routing** — orchestrator sends the question to the expected agent (pricing → Pricing; ill-fitting → Advisor; not force-routed). D25 doesn't care which agent answered.
+- **Grain discipline / decline behavior** — an agent that *should decline* an out-of-grain request (e.g. peer-SKU) must decline gracefully, not answer at the wrong grain. D25 validates numbers that *are* present; it can't catch a should-have-declined.
+
+### D27.3 — Scope: ~5–7 tests, not a heavyweight suite
+One canonical question per agent (routing check) + 1–2 Advisor decline cases (out-of-grain → graceful refusal). Small enough that hand-certification is a quick eyeball ("did it route right and respect grain"), not a numbers re-litigation (D25 owns numbers).
+
+### D27.4 — Mechanism: reuse v3 cassette infra (it already exists)
+- **Cassette = deterministic replay input** (record the LLM's tool calls / intent / prose once), so CI runs without live API calls. The cassette is NOT the assertion — it's "what the LLM did," replayed.
+- **Assertions = the test:** (a) routing-correct, (b) grain-respected / declines-when-it-should, (c) the D25 validator still passes against live data (free — reuses the runtime check).
+- The assertions check *behavior and grounding*, never exact prose wording or chart styling (those vary).
+
+### D27.5 — Re-record discipline (so goldens don't rot)
+A golden failing means **either** a real regression (fix the code) **or** an intended behavior change (re-certify deliberately, update cassette + assertions). **Never** re-record reflexively to silence a failure — that rots the golden into "whatever the code does now." Numbers-correctness is not re-litigated per golden; D25's live validator carries it.
+
+### D27.6 — Necessity (honest framing)
+Golden tests are **cheap insurance, not strictly necessary.** Wave 3 could ship on D25's runtime validation alone with defensible numbers. The golden set adds a regression net for routing + decline behavior — the failure mode where a later change (e.g. Wave 4) silently breaks routing and you'd otherwise find out by noticing, not by a test. ~5–7 tests is worth it for a demo under exec scrutiny that will keep being iterated; it is not a load-bearing wall.
+
+---
+
 ## Open items (decide before / during `SPEC.md`)
 
 1. **Phase sequencing — NOT YET DECIDED.** Options: (a) data realism first, then agents; (b) agent unification first; (c) both in parallel. Note D9 must follow D8 regardless.
@@ -826,7 +945,8 @@ Wave 2 ships: tokenization (generation), generalization, **structural k≥50**, 
 10. **Agent & dashboard detailed design — pending.** D8 (unification), D9 (ask-AI), strategy-doc agents at principle level. Anomaly agent business-only (D20.3). Slated for Waves 3–4.
 11. **Wave 1 (data generation) — COMPLETE at full scale.** Committed on `v4` (18 commits, 210 tests green at 100k). 35/35 acceptance invariants pass; full-scale DQ report in `docs/DQ_REPORT.md`. T11 affinities vivid + scale-invariant, T14 pricing flips real, AOV on $55 anchor, **T17 (Wave 2 gate) cleared — 483–1,126 all-three cards/zone, ~10× over k≥50**. `data/raw/` (1.66M txns) frozen as final, gitignored (local-only). Closing corrections: T15 band 25%→22% (data on-anchor), QSR shares 10/40/50, off-price hi-bounds widened, D5 store total 24→29. Deferred to Wave 1.5 (optional): basket-builder vectorization, A2 anomaly crispness — both dropped from critical path (no regeneration planned).
 12. **Wave 2 anonymization & lake — DESIGN COMPLETE, READY TO HAND OFF (D21–D24).** Option A structural k≥50 (D21), dual path + relationship relabel + isolation guards (D22), five lake tables + enrichment + observable-data-only invariant + behavioral zones (D23), honest-limits (D24: small-N pseudonymity, cohort-mean→median, §8 deferral stated). **SPEC finalized:** `SPEC_wave2_anonymization_lake.md` — gate met (T17 resolved), reads frozen `data/raw/`, commits to `v4` (no PR). l-diversity + DP deferred; aggregate columns are the future DP injection point (D24.3). **Unblocked — hand off when ready.**
-13. **Agent design (Wave 3) — forward requirements recorded:** Anomaly agent business-only (D20.3); Conversational Advisor needs query decomposition + graceful out-of-scope/decline behavior (D23.7); agents reason over enriched comparatives + grain metadata. Next planning drill.
+13. **Agent design (Wave 3) — DESIGN + SPEC COMPLETE (D25–D27).** Refactor v3 Orchestrator + 4 specialists onto Wave 2 surfaces + unified contract; add Conversational Advisor as fallback; transform chart system (intent not values; nine pattern families = renderer palette; per-qid independent-SQL + chart_takeaways retire; standalone dashboard panels stay). **Ratified:** D25 (unified contract — single source of truth, chart-intent, claims validation = strict guarantee + graceful handling + ~1% tolerance + closed derivation grammar; model config: Haiku orchestrator always, specialists Haiku-default/Sonnet-switchable), D26 (roster + surface mapping + Advisor-as-fallback), D27 (lightweight golden tests). **SPEC written:** `SPEC_wave3_agents.md`, against the real Wave 2 manifest (`docs/LAKE_REPORT.md`). **Gate met** (Wave 2 lake + manifest exist) — ready to hand off. Commits to `v4`, no PR.
+14. **Wave 4 (dashboard + ask-AI) — principle level only (D9).** Last design drill. Dashboard rebuild to consume the Wave 3 agents + Parquet/DuckDB; ask-AI-about-chart (charts carry context object into an agent call). D25 contract built as the seam Wave 4 plugs into.
 
 ---
 
