@@ -280,8 +280,8 @@ def read_lake_table(
             f"Lake table {table!r} is not materialized at {path}. "
             f"Run `make lake` to build it from data/raw/."
         )
-    df = pd.read_parquet(path)
-    df = _apply_filters(df, filters)
+    df_all = pd.read_parquet(path)
+    df = _apply_filters(df_all, filters)
 
     # Scope-and-strip. Cohort table has no banner_code so this is a
     # no-op there (preserves the table's natural shape).
@@ -305,6 +305,36 @@ def read_lake_table(
         "k_floor":      manifest["k_floor"],
         "ladder":       manifest["ladder"],
     }
+    # When filters match 0 rows, the model has been observed to
+    # conclude "the dataset isn't populated" — false (the data exists,
+    # the filter was wrong). Surface diagnostic guidance: available
+    # values per filter dimension so the model can retry with a
+    # corrected filter, or report honestly that grain X has no data
+    # and use the available alternative.
+    if len(df) == 0:
+        diagnostics: dict[str, list[Any]] = {}
+        for k, v in filters.items():
+            try:
+                available = sorted(
+                    {str(x) for x in df_all[k].dropna().unique().tolist()}
+                )
+            except KeyError:
+                continue
+            # Cap to avoid bloating the payload.
+            if len(available) > 30:
+                available = available[:30] + [f"… ({len(available)} total)"]
+            diagnostics[k] = available
+        payload["zero_rows_diagnostic"] = {
+            "message": (
+                "Lake read returned 0 rows. The data exists — your "
+                "filter values did not match. Either retry with a "
+                "filter value listed below, or report 'no peer data "
+                "at this grain' and use the available alternative. "
+                "Do NOT conclude 'the dataset isn't populated' — "
+                "that is false."
+            ),
+            "available_values_per_filter": diagnostics,
+        }
     return payload
 
 

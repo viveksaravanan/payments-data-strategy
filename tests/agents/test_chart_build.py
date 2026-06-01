@@ -272,6 +272,71 @@ def test_geo_map_pulls_lat_lon_from_result() -> None:
 # All nine kinds registered
 # ---------------------------------------------------------------------
 
+def test_table_drilldown_caps_runaway_row_count() -> None:
+    """Regression — Checkpoint 2 batch 7 produced a 21,530px-tall
+    table chart because the model dumped a 700-row result into
+    table_drilldown. The chart builder caps rendered rows so the
+    output stays browser-friendly; the title surfaces the truncation."""
+    from src.agents.chart_build import (
+        _TABLE_DRILLDOWN_MAX_HEIGHT_PX,
+        _TABLE_DRILLDOWN_MAX_ROWS,
+    )
+    big = pd.DataFrame({
+        "category": [f"C{i:04d}" for i in range(700)],
+        "own_value": list(range(700)),
+        "peer_benchmark": [v * 1.1 for v in range(700)],
+    })
+    fig = build_chart(
+        {"kind": "table_drilldown", "title": "Top categories",
+         "columns": ["category", "own_value", "peer_benchmark"]},
+        big,
+    )
+    # Cells contain only the first N rows.
+    table = fig.data[0]
+    assert len(table.cells.values[0]) == _TABLE_DRILLDOWN_MAX_ROWS
+    # Height capped.
+    assert fig.layout.height <= _TABLE_DRILLDOWN_MAX_HEIGHT_PX
+    # Title reflects the truncation so reviewers can tell.
+    assert "top" in fig.layout.title.text.lower()
+    assert "700" in fig.layout.title.text
+
+
+def test_table_drilldown_small_result_unchanged() -> None:
+    """The cap only applies when result exceeds it — small results
+    render with all rows and no title decoration."""
+    small = pd.DataFrame({"x": ["a", "b", "c"], "y": [1, 2, 3]})
+    fig = build_chart(
+        {"kind": "table_drilldown", "title": "Three rows",
+         "columns": ["x", "y"]},
+        small,
+    )
+    assert len(fig.data[0].cells.values[0]) == 3
+    assert "top" not in fig.layout.title.text.lower()
+
+
+def test_lake_zero_rows_diagnostic_present() -> None:
+    """Regression — when read_lake_table returns 0 rows, the payload
+    must include a zero_rows_diagnostic so the model retries with a
+    corrected filter instead of concluding "dataset not populated"."""
+    from src.agents.lake_tools import read_lake_table
+    payload = read_lake_table(
+        "KRG", "lake_category_metrics",
+        # Bogus grain value — manifest dimensions allow `grain` but
+        # only subcat_week / cat_week / cat_month are present in data.
+        filters={"grain": "cat_month"},
+    )
+    assert payload["row_count"] == 0
+    assert "zero_rows_diagnostic" in payload
+    diag = payload["zero_rows_diagnostic"]
+    assert "available_values_per_filter" in diag
+    assert "grain" in diag["available_values_per_filter"]
+    # The available values include subcat_week / cat_week (the real
+    # populated grains the model should have used).
+    available = diag["available_values_per_filter"]["grain"]
+    assert any("subcat_week" in v for v in available)
+    assert any("cat_week" in v for v in available)
+
+
 def test_all_nine_kinds_routable() -> None:
     """The D25.3 vocabulary is exactly nine kinds; the builder
     dispatch table must cover all of them so the model can't pick an

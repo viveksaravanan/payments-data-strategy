@@ -434,23 +434,37 @@ def _build_small_multiples(intent: dict, result: pd.DataFrame) -> go.Figure:
     return fig
 
 
+_TABLE_DRILLDOWN_MAX_ROWS = 20
+_TABLE_DRILLDOWN_MAX_HEIGHT_PX = 720
+
+
 def _build_table_drilldown(intent: dict, result: pd.DataFrame) -> go.Figure:
     _require_keys(intent, "table_drilldown", ["columns"])
     _require_columns(result, intent, ["columns"])
     cols = intent["columns"]
+    truncated = len(result) > _TABLE_DRILLDOWN_MAX_ROWS
+    df_for_chart = result.head(_TABLE_DRILLDOWN_MAX_ROWS) if truncated else result
+    title = intent.get("title", "")
+    if truncated:
+        title = (
+            f"{title}  (top {_TABLE_DRILLDOWN_MAX_ROWS} of {len(result)} rows)"
+            if title
+            else f"Top {_TABLE_DRILLDOWN_MAX_ROWS} of {len(result)} rows"
+        )
     fig = go.Figure(go.Table(
         header=dict(values=cols, fill_color=ACCENT_SOFT,
                     font=dict(color=TEXT, size=12), align="left"),
         cells=dict(
-            values=[result[c].tolist() for c in cols],
+            values=[df_for_chart[c].tolist() for c in cols],
             fill_color="white",
             font=dict(color=TEXT, size=11),
             align="left",
         ),
     ))
+    height = 80 + 30 * max(1, len(df_for_chart))
     fig.update_layout(
-        title=intent.get("title", ""),
-        height=80 + 30 * max(1, len(result)),
+        title=title,
+        height=min(height, _TABLE_DRILLDOWN_MAX_HEIGHT_PX),
         margin=dict(l=20, r=20, t=40, b=20),
     )
     return fig
