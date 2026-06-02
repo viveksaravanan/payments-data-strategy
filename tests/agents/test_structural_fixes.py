@@ -1394,6 +1394,140 @@ def test_apply_row_filter_scalar_vs_list_consistent() -> None:
     assert scalar["price_index"].tolist() == one_list["price_index"].tolist()
 
 
+# ---------------------------------------------------------------------
+# Wave 3 Stage 6.5 Fix 12 — per-agent semantic peer_value_col defaults
+# ---------------------------------------------------------------------
+
+
+def test_pricing_auto_invoke_picks_price_index_not_first_metric(viewer_krg) -> None:
+    """Fix 12: PricingSpecialist.PREFERRED_PEER_METRIC='price_index'
+    overrides the first-available-metric heuristic. The Fix 10a
+    default would have picked `txn_count` (first manifest metric);
+    Fix 12 makes the auto-invoke pick the semantically-right column
+    so the merged frame's `peer_benchmark` is meaningful for the
+    specialist's question."""
+    specialist = PricingSpecialist(viewer_krg)
+    specialist._reset_state()
+    specialist._tenant_frame = pd.DataFrame({
+        "category": ["DAIRY"], "own_avg_price": [3.50],
+    })
+    specialist._lake_frame = pd.DataFrame({
+        "category": ["DAIRY"],
+        "price_index": [1.06],
+        "txn_count": [842],
+        "units_index": [0.95],
+        "peer_relationship": ["segment_peer"],
+    })
+    specialist._lake_manifest = _LAKE_CAT_MANIFEST
+    specialist._auto_invoke_build_merge()
+    assert specialist._merged_frame is not None
+    # Locate the merge log entry; peer=... must be 'price_index'.
+    merge_log = next(
+        s for s in specialist._sql_log if s["surface"] == "merge"
+    )
+    assert "peer='price_index'" in merge_log["query"], merge_log["query"]
+
+
+def test_demand_auto_invoke_picks_units_index() -> None:
+    """Fix 12: DemandForecastingSpecialist prefers `units_index`."""
+    from src.agents.context import MerchantContext
+    from src.agents.demand import DemandForecastingSpecialist
+    spec = DemandForecastingSpecialist(MerchantContext.for_merchant("KRG"))
+    spec._reset_state()
+    spec._tenant_frame = pd.DataFrame({
+        "category": ["DAIRY"], "own_units": [10000.0],
+    })
+    spec._lake_frame = pd.DataFrame({
+        "category": ["DAIRY"],
+        "txn_count": [842],
+        "units_index": [0.95],
+        "price_index": [1.06],
+        "peer_relationship": ["segment_peer"],
+    })
+    spec._lake_manifest = _LAKE_CAT_MANIFEST
+    spec._auto_invoke_build_merge()
+    merge_log = next(
+        s for s in spec._sql_log if s["surface"] == "merge"
+    )
+    assert "peer='units_index'" in merge_log["query"]
+
+
+def test_anomaly_auto_invoke_picks_wow_delta() -> None:
+    """Fix 12: AnomalyDetectionSpecialist prefers `wow_delta`."""
+    from src.agents.context import MerchantContext
+    from src.agents.anomaly import AnomalyDetectionSpecialist
+    spec = AnomalyDetectionSpecialist(MerchantContext.for_merchant("KRG"))
+    spec._reset_state()
+    spec._tenant_frame = pd.DataFrame({
+        "category": ["DAIRY"], "own_wow_change": [-0.04],
+    })
+    spec._lake_frame = pd.DataFrame({
+        "category": ["DAIRY"],
+        "txn_count": [842],
+        "wow_delta": [0.01],
+        "units_index": [0.95],
+        "peer_relationship": ["segment_peer"],
+    })
+    spec._lake_manifest = _LAKE_CAT_MANIFEST
+    spec._auto_invoke_build_merge()
+    merge_log = next(
+        s for s in spec._sql_log if s["surface"] == "merge"
+    )
+    assert "peer='wow_delta'" in merge_log["query"]
+
+
+def test_trade_auto_invoke_picks_share_of_zone() -> None:
+    """Fix 12: TradeAreaSpecialist prefers `share_of_zone`."""
+    from src.agents.context import MerchantContext
+    from src.agents.trade import TradeAreaSpecialist
+    spec = TradeAreaSpecialist(MerchantContext.for_merchant("KRG"))
+    spec._reset_state()
+    spec._tenant_frame = pd.DataFrame({
+        "derived_zone": ["Z01"], "own_share": [0.30],
+    })
+    spec._lake_frame = pd.DataFrame({
+        "derived_zone": ["Z01"],
+        "txn_count": [842],
+        "share_of_zone": [0.42],
+        "store_count": [2],
+        "peer_relationship": ["segment_peer"],
+    })
+    spec._lake_manifest = _LAKE_TRADE_MANIFEST
+    spec._auto_invoke_build_merge()
+    merge_log = next(
+        s for s in spec._sql_log if s["surface"] == "merge"
+    )
+    assert "peer='share_of_zone'" in merge_log["query"]
+
+
+def test_preferred_peer_metric_falls_back_when_absent(viewer_krg) -> None:
+    """Fix 12: when the preferred metric is not in the lake frame
+    (e.g. Advisor on lake_payment_mix doesn't have price_index),
+    auto-invoke falls back to the first-available manifest metric.
+    No crash, no skip — degrades gracefully."""
+    specialist = PricingSpecialist(viewer_krg)
+    specialist._reset_state()
+    specialist._tenant_frame = pd.DataFrame({
+        "category": ["DAIRY"], "own_avg_price": [3.50],
+    })
+    # Lake DOES NOT have price_index this time — only txn_count and
+    # units_index. Auto-invoke should fall back to first available.
+    specialist._lake_frame = pd.DataFrame({
+        "category": ["DAIRY"],
+        "txn_count": [842],
+        "units_index": [0.95],
+        "peer_relationship": ["segment_peer"],
+    })
+    specialist._lake_manifest = _LAKE_CAT_MANIFEST
+    specialist._auto_invoke_build_merge()
+    assert specialist._merged_frame is not None
+    merge_log = next(
+        s for s in specialist._sql_log if s["surface"] == "merge"
+    )
+    # txn_count is first in the manifest's metrics list and present.
+    assert "peer='txn_count'" in merge_log["query"]
+
+
 def test_emit_accepted_for_advisor_with_lake_only(viewer_krg) -> None:
     """Fix 1 respects MERGE_REQUIRED=False for the Advisor — a
     single lake-frame answer with no tenant fetch doesn't trigger

@@ -124,6 +124,18 @@ class Specialist:
     # ran, e.g. Advisor on payment_mix).
     MERGE_REQUIRED: bool = True
 
+    # Wave 3 Stage 6.5 Fix 12 — semantic peer_value_col preference
+    # for auto-invoke build_merge. The original Fix 10a picked the
+    # FIRST metric in the manifest's metrics list (txn_count for
+    # lake_category_metrics), making the merged frame's
+    # ``peer_benchmark`` column structurally meaningless for the
+    # specialist's question (a pricing chart axis labeled
+    # "peer_benchmark" plotting txn counts). Subclasses set this
+    # to the semantically-right peer column for their domain;
+    # falls back to the first-available-metric heuristic when
+    # the preferred column is not in the lake frame.
+    PREFERRED_PEER_METRIC: str | None = None
+
     def __init__(self, context: MerchantContext) -> None:
         if not self.AGENT_LABEL or self.PROMPT_PATH is None:
             raise NotImplementedError(
@@ -597,13 +609,26 @@ class Specialist:
             except Exception:                                # noqa: BLE001
                 continue
 
-        # Pick peer_value_col: first manifest metric present in the
-        # lake frame.
+        # Pick peer_value_col. Wave 3 Stage 6.5 Fix 12: prefer the
+        # subclass's PREFERRED_PEER_METRIC (pricing → price_index,
+        # demand → units_index, etc.) so the merged frame's
+        # peer_benchmark column is semantically meaningful for the
+        # specialist's question. Fall back to first-available
+        # manifest metric only when the preferred column isn't in
+        # the lake frame (e.g. lake_payment_mix doesn't have
+        # price_index — Advisor on payment_mix falls back).
         peer_value_col: str | None = None
-        for metric in manifest_metrics:
-            if metric in lake_cols:
-                peer_value_col = metric
-                break
+        if (
+            self.PREFERRED_PEER_METRIC
+            and self.PREFERRED_PEER_METRIC in lake_cols
+            and self.PREFERRED_PEER_METRIC in manifest_metrics
+        ):
+            peer_value_col = self.PREFERRED_PEER_METRIC
+        else:
+            for metric in manifest_metrics:
+                if metric in lake_cols:
+                    peer_value_col = metric
+                    break
 
         if own_value_col is None or peer_value_col is None:
             # Can't derive a defensible spec → dual-frame.

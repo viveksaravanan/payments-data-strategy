@@ -19,3 +19,6 @@ class TradeAreaSpecialist(Specialist):
     # Phase 5.1.9: bumped to 10 to accommodate the analytical
     # reconciliation step chart-takeaway injection adds.
     MAX_TURNS = 6
+    # Wave 3 Stage 6.5 Fix 12 — trade-area peers compare on share-
+    # of-zone (units-comparable across own + peer).
+    PREFERRED_PEER_METRIC = "share_of_zone"
