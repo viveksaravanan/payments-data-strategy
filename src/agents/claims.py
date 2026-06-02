@@ -46,6 +46,72 @@ CLAIM_TOLERANCE = 0.01   # ~1% relative; configurable per-call
 
 
 # ---------------------------------------------------------------------
+# Wave 3 Stage 6.5 Fix 11 — shared aggregation + row-filter helpers.
+#
+# The validator's mean/sum calculation MUST be byte-identical to
+# whatever surfaces aggregates to the model (see
+# ``lake_tools.read_lake_table`` — Fix 11a). If a precomputed mean
+# and the validator's recomputed mean diverge even by ULP, the model
+# copies the surfaced value and the claim normalizes-not-passes —
+# which the user has flagged as a failure signal. These helpers are
+# the single source of truth for both code paths.
+# ---------------------------------------------------------------------
+
+def aggregate_column(
+    df: "pd.DataFrame", column: str, agg: "AggregateFunc",
+) -> float:
+    """Aggregate a single column over a (filtered) DataFrame.
+
+    The same computation the validator uses to recompute a multi-row
+    CellLookup result. ``lake_tools.read_lake_table`` calls this to
+    pre-compute the aggregates block shown to the model. Keep this
+    function the canonical aggregation — do NOT duplicate the
+    summing/averaging logic elsewhere."""
+    values = df[column].astype(float).tolist()
+    if agg == "sum":
+        return float(sum(values))
+    if agg == "mean":
+        if not values:
+            raise ValueError(
+                f"aggregate_column: 0 values to aggregate for "
+                f"column={column!r}."
+            )
+        return float(sum(values) / len(values))
+    raise ValueError(
+        f"aggregate_column: unknown agg={agg!r}; expected 'sum' or 'mean'."
+    )
+
+
+def _apply_row_filter(
+    df: "pd.DataFrame", row_filter: "dict[str, Any]",
+) -> "pd.DataFrame":
+    """Apply a CellLookup ``row_filter`` to ``df``. Scalar values
+    use ``==`` (single match). List/tuple values use ``.isin(v)``
+    (Fix 11b: OR-clause support — e.g.
+    ``{"derived_zone": ["Z02", "Z03"]}`` means "Z02 OR Z03").
+
+    Both the validator's ``CellLookup._resolve_in`` and the Fix-9c
+    multi-row gate in ``Specialist._count_filter_matches`` call this
+    helper. Keeping them in lockstep is load-bearing — the trace
+    caught them diverging once (gate silently passed, resolver
+    crashed); this helper closes that hole."""
+    sub = df
+    for k, v in row_filter.items():
+        if k not in sub.columns:
+            # Same surface as the existing _resolve_in pre-check; the
+            # caller pre-validates column presence in any case.
+            raise LookupError(
+                f"row_filter key {k!r} not in frame columns "
+                f"{list(sub.columns)}."
+            )
+        if isinstance(v, (list, tuple, set)):
+            sub = sub[sub[k].isin(list(v))]
+        else:
+            sub = sub[sub[k] == v]
+    return sub
+
+
+# ---------------------------------------------------------------------
 # Claim sources — closed union
 # ---------------------------------------------------------------------
 
@@ -140,9 +206,7 @@ class CellLookup:
                 f"CellLookup column {self.column!r} not in frame columns "
                 f"{list(df.columns)}."
             )
-        sub = df
-        for k, v in self.row_filter.items():
-            sub = sub[sub[k] == v]
+        sub = _apply_row_filter(df, self.row_filter)
         if len(sub) == 0:
             raise LookupError(
                 f"CellLookup row_filter={self.row_filter} matched 0 rows."
@@ -154,10 +218,7 @@ class CellLookup:
                     f"{len(sub)} rows; expected exactly 1, or set agg "
                     f"= 'sum'|'mean' to aggregate."
                 )
-            values = sub[self.column].astype(float).tolist()
-            if self.agg == "sum":
-                return float(sum(values))
-            return float(sum(values) / len(values))
+            return aggregate_column(sub, self.column, self.agg)
         return float(sub.iloc[0][self.column])
 
 

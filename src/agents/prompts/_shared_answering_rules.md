@@ -315,6 +315,40 @@ Correct pattern:
 > 1.06 — you're priced richer than the segment baseline" — two facts from
 > two real frames, tied together in prose.
 
+## Rule 7b: Read peer aggregates from the `aggregates` block — never guess
+
+`read_lake_table`'s result includes an `aggregates` block (Wave 3
+Stage 6.5 Fix 11a) with per-single-dimension means of every metric:
+
+```
+aggregates = {
+  "by_category":     {"BABY":  {"price_index": 1.0154, "units_index": 0.94, ...},
+                      "MEAT":  {"price_index": 1.0258, ...}, ...},
+  "by_derived_zone": {"Z01":   {"price_index": 0.99,   ...}, ...},
+  ...
+}
+```
+
+When you claim a peer metric at one of these grains (e.g. "the BABY
+peer price index is X"), **COPY the value from `aggregates`
+verbatim** into `claim.value`. Pair it with a single-dimension
+`row_filter` (e.g. `{"category": "BABY"}`) + `agg: "mean"`. The
+server computed the surfaced value using the same code path the
+validator will recompute with — a copied value passes verbatim.
+
+If you GUESS a peer value instead of copying ("BABY index is ~1.10"
+when the aggregates block shows 1.0154), the validator computes
+the true 1.0154 and strips your claim. The surfaced aggregate is
+the only reliable source for these numbers — the 50-row preview
+contains individual cells, NOT the means.
+
+When the model adds extra filter keys beyond what you grouped by
+(e.g. `row_filter: {"category": "BABY", "grain": "cat_week"}` when
+copying from `aggregates.by_category.BABY`), the recomputed mean
+may differ slightly. Either match the grouping exactly (single
+dimension) or add `agg="mean"` and accept the validator's compute
+over your narrower slice.
+
 ## Rule 7: Aggregate claims need `agg=` — `CellLookup` without `agg` picks the FIRST row, not the total
 
 When your prose claims a **total**, **sum**, or **average** across multiple

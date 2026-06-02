@@ -1213,6 +1213,187 @@ def test_untagged_claim_prefers_result_frame_when_present() -> None:
     assert report.claim_dispositions[0].status == "passed"
 
 
+# ---------------------------------------------------------------------
+# Wave 3 Stage 6.5 Fix 11 — surface lake aggregates + list-valued
+# (OR-clause) row filters in CellLookup
+# ---------------------------------------------------------------------
+
+
+def test_lake_aggregate_byte_identical_to_validator_recompute() -> None:
+    """Fix 11a load-bearing invariant: the aggregate the lake tool
+    surfaces and the value the validator recomputes must be
+    BYTE-IDENTICAL floats. Otherwise the model copies the surfaced
+    value, the validator computes a fractionally different number,
+    and the claim normalizes-not-passes — which the user has flagged
+    as a failure signal."""
+    from src.agents.claims import (
+        CellLookup,
+        aggregate_column,
+    )
+    # A multi-row frame that mirrors lake_category_metrics' shape:
+    # multiple (zone × week) rows per category.
+    df = pd.DataFrame({
+        "category": ["BABY"] * 4 + ["MEAT"] * 3,
+        "derived_zone": ["Z01", "Z02", "Z01", "Z02", "Z01", "Z02", "Z03"],
+        "price_index": [1.05, 1.03, 1.07, 1.01, 1.02, 1.04, 1.03],
+    })
+    # The aggregate the lake tool surfaces for BABY:
+    surfaced_baby = aggregate_column(
+        df[df["category"] == "BABY"], "price_index", "mean",
+    )
+    # The value the validator recomputes for a model claim:
+    claim = CellLookup(
+        row_filter={"category": "BABY"}, column="price_index", agg="mean",
+    )
+    validator_recomputed = claim.resolve(df)
+    assert surfaced_baby == validator_recomputed, (
+        f"surfaced={surfaced_baby!r} validator={validator_recomputed!r}"
+    )
+    # Cross-check raw IEEE-754 bits via repr.
+    assert repr(surfaced_baby) == repr(validator_recomputed)
+
+
+def test_claim_copying_surfaced_aggregate_passes_not_normalized() -> None:
+    """Fix 11a: when the model copies a surfaced aggregate value
+    verbatim into ``claim.value`` and uses a single-dimension
+    row_filter + agg='mean', the validator recomputes the identical
+    value and the claim status is ``passed`` (NOT ``normalized``).
+    A wall of ``normalized`` would mean the model is rounding and
+    the surfaced/recomputed values aren't byte-identical."""
+    from src.agents.claims import (
+        CellLookup,
+        Claim,
+        aggregate_column,
+        validate_claims,
+    )
+    df = pd.DataFrame({
+        "category": ["BABY"] * 4 + ["MEAT"] * 3,
+        "price_index": [1.05, 1.03, 1.07, 1.01, 1.02, 1.04, 1.03],
+    })
+    surfaced = aggregate_column(
+        df[df["category"] == "BABY"], "price_index", "mean",
+    )
+    # Model copies the EXACT surfaced value (with full precision).
+    claim = Claim(
+        text_span=f"BABY peer price index of {surfaced}",
+        value=surfaced,
+        source=CellLookup(
+            row_filter={"category": "BABY"},
+            column="price_index",
+            agg="mean",
+            frame="lake",
+        ),
+    )
+    report = validate_claims(
+        prose=f"BABY peer price index of {surfaced}.",
+        claims=[claim],
+        result=df,
+        frames={"lake": df},
+    )
+    assert report.claim_dispositions[0].status == "passed"
+
+
+def test_read_lake_table_payload_includes_aggregates_block() -> None:
+    """Fix 11a end-to-end: read_lake_table's tool payload includes an
+    ``aggregates`` block keyed by ``by_<dimension>`` for each
+    manifest dimension, with each entry mapping metric → mean."""
+    from src.agents import lake_tools as LT
+    payload = LT.read_lake_table(
+        "KRG", "lake_category_metrics",
+        filters={"grain": "cat_week", "category": "DAIRY"},
+    )
+    assert "aggregates" in payload
+    agg = payload["aggregates"]
+    assert isinstance(agg, dict)
+    # category was filtered to DAIRY, so by_category exists.
+    assert "by_category" in agg
+    # Each section is dim_value → {metric: mean}.
+    dairy_entry = agg["by_category"].get("DAIRY")
+    assert dairy_entry is not None
+    assert "price_index" in dairy_entry
+    assert isinstance(dairy_entry["price_index"], float)
+
+
+def test_list_valued_row_filter_resolves_via_isin() -> None:
+    """Fix 11b: a CellLookup with a list-valued row_filter entry
+    (the model's IN-clause shape — ``{"derived_zone": ["Z02","Z03"]}``
+    meaning "Z02 OR Z03") resolves via ``.isin(v)`` instead of
+    crashing with pandas' ``Lengths must match to compare``."""
+    from src.agents.claims import CellLookup, aggregate_column
+    df = pd.DataFrame({
+        "derived_zone": ["Z01", "Z02", "Z03", "Z04"],
+        "category": ["MEAT"] * 4,
+        "share_of_zone": [0.10, 0.42, 0.41, 0.20],
+    })
+    claim = CellLookup(
+        row_filter={"derived_zone": ["Z02", "Z03"], "category": "MEAT"},
+        column="share_of_zone",
+        agg="mean",
+    )
+    out = claim.resolve(df)
+    # Z02 + Z03 mean = (0.42 + 0.41) / 2 = 0.415
+    expected = aggregate_column(
+        df[df["derived_zone"].isin(["Z02", "Z03"])],
+        "share_of_zone",
+        "mean",
+    )
+    assert out == expected
+
+
+def test_fix9c_gate_counts_list_valued_multi_row_correctly(viewer_krg) -> None:
+    """Fix 11b: the 9c multi-row gate (in Specialist._count_filter_matches)
+    counts list-valued matches via .isin instead of silently returning
+    None when the resolver would crash. A list-valued filter matching
+    multiple rows without ``agg`` must be REJECTED at emit (not
+    silently passed and then crashed at validation)."""
+    specialist = PricingSpecialist(viewer_krg)
+    specialist._reset_state()
+    specialist._merged_frame = pd.DataFrame({
+        "derived_zone": ["Z01", "Z02", "Z03"],
+        "category": ["MEAT", "MEAT", "MEAT"],
+        "share_of_zone": [0.10, 0.42, 0.41],
+    })
+    specialist._tenant_frame = pd.DataFrame({"x": [1]})
+    specialist._lake_frame = pd.DataFrame({"x": [1]})
+    specialist._merge_attempted = True
+    # Multi-row list-valued filter without agg → must reject.
+    args = {
+        "prose": "x",
+        "chart_intent": {"kind": "kpi_callout", "value": "share_of_zone"},
+        "claims": [
+            {
+                "text_span": "Z02–Z03 share is 0.4",
+                "value": 0.4,
+                "source": {
+                    "type": "CellLookup",
+                    "row_filter": {"derived_zone": ["Z02", "Z03"]},
+                    "column": "share_of_zone",
+                    # No agg — must reject.
+                },
+            },
+        ],
+    }
+    with pytest.raises(LakeToolError) as exc:
+        specialist._dispatch_tool("emit_response", args)
+    assert "matches 2 rows" in str(exc.value)
+
+
+def test_apply_row_filter_scalar_vs_list_consistent() -> None:
+    """Helper sanity: ``_apply_row_filter`` produces the same subset
+    whether a single-element list ``[X]`` or a scalar ``X`` is used.
+    The gate and resolver use this helper identically; they cannot
+    diverge on shape."""
+    from src.agents.claims import _apply_row_filter
+    df = pd.DataFrame({
+        "category": ["BABY", "MEAT", "MEAT", "DAIRY"],
+        "price_index": [1.05, 1.02, 1.03, 1.06],
+    })
+    scalar = _apply_row_filter(df, {"category": "MEAT"})
+    one_list = _apply_row_filter(df, {"category": ["MEAT"]})
+    assert len(scalar) == len(one_list) == 2
+    assert scalar["price_index"].tolist() == one_list["price_index"].tolist()
+
+
 def test_emit_accepted_for_advisor_with_lake_only(viewer_krg) -> None:
     """Fix 1 respects MERGE_REQUIRED=False for the Advisor — a
     single lake-frame answer with no tenant fetch doesn't trigger

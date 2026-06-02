@@ -308,6 +308,14 @@ def read_lake_table(
         "k_floor":      manifest["k_floor"],
         "ladder":       manifest["ladder"],
     }
+    # Wave 3 Stage 6.5 Fix 11a — pre-computed per-dimension aggregates.
+    # The model claims at category/zone/etc. grain ("BABY price index
+    # is X"); the validator recomputes mean across all matching rows.
+    # Surfacing the exact mean lets the model COPY the value rather
+    # than guess it. The computation here uses the SAME function the
+    # validator uses (claims.aggregate_column) so a copied value
+    # passes verbatim, never normalizes.
+    payload["aggregates"] = _compute_lake_aggregates(df, manifest)
     # When filters match 0 rows, the model has been observed to
     # conclude "the dataset isn't populated" — false (the data exists,
     # the filter was wrong). Surface diagnostic guidance: available
@@ -339,6 +347,90 @@ def read_lake_table(
             "available_values_per_filter": diagnostics,
         }
     return payload
+
+
+def _compute_lake_aggregates(
+    df: pd.DataFrame, manifest: dict[str, Any],
+) -> dict[str, Any]:
+    """Wave 3 Stage 6.5 Fix 11a — per-single-dimension means of every
+    numeric manifest metric, computed over the post-scope frame.
+
+    Returns a nested dict::
+
+        {
+          "by_category": {
+            "BABY":  {"price_index": 1.0154, "units_index": 0.94, ...},
+            "MEAT":  {"price_index": 1.0258, ...},
+            ...
+          },
+          "by_derived_zone": {...},
+          ...
+        }
+
+    The model copies values verbatim into `claim.value`, pairs each
+    with a single-dimension row_filter (e.g. ``{category: "BABY"}``)
+    + ``agg="mean"``, and the validator recomputes via
+    ``aggregate_column`` against the same column over the same scoped
+    frame. Byte-identical by construction — the same code path
+    produces both numbers.
+
+    Bounded: single-dimension groupings only, no combinatorial
+    cross-products. For ``lake_category_metrics`` the largest section
+    is ``by_subcategory`` × 7 metrics ≈ 350 entries.
+    """
+    # Imported lazily to avoid a circular import at module load.
+    from src.agents.claims import aggregate_column
+
+    dimensions = list(manifest.get("dimensions", []))
+    metrics = list(manifest.get("metrics", []))
+
+    out: dict[str, Any] = {}
+    if df is None or len(df) == 0:
+        return out
+
+    # Restrict to metrics actually present + numeric.
+    present_metrics: list[str] = []
+    for m in metrics:
+        if m not in df.columns:
+            continue
+        if not pd.api.types.is_numeric_dtype(df[m]):
+            continue
+        present_metrics.append(m)
+
+    if not present_metrics:
+        return out
+
+    for dim in dimensions:
+        if dim not in df.columns:
+            continue
+        try:
+            unique_vals = df[dim].dropna().unique().tolist()
+        except Exception:                                  # noqa: BLE001
+            continue
+        # Bound the size — if a dim has too many distinct values
+        # (e.g. period_start across many weeks), skip it for the
+        # payload size budget; the model can still claim against it
+        # with single-row filters.
+        if len(unique_vals) > 60:
+            continue
+        section: dict[str, dict[str, float]] = {}
+        for val in unique_vals:
+            sub = df[df[dim] == val]
+            if len(sub) == 0:
+                continue
+            entry: dict[str, float] = {}
+            for metric in present_metrics:
+                try:
+                    entry[metric] = aggregate_column(sub, metric, "mean")
+                except (ValueError, TypeError):
+                    continue
+            if entry:
+                # JSON-safe keys — string-cast in case of non-string
+                # dimension values (e.g. dates, ints).
+                section[str(val)] = entry
+        if section:
+            out[f"by_{dim}"] = section
+    return out
 
 
 def _validate_filter_keys(

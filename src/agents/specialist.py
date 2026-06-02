@@ -47,6 +47,7 @@ from src.agents.claims import (
     CellLookup,
     Claim,
     Derivation,
+    _apply_row_filter,
     validate_claims,
 )
 from src.agents.context import MerchantContext
@@ -696,17 +697,23 @@ class Specialist:
         """Count rows in ``df`` matching ``row_filter``. Returns None
         if a filter column is missing (the validator will tier-3
         strip downstream, which is correct). Used by the multi-row
-        CellLookup precondition (Fix 9c)."""
+        CellLookup precondition (Fix 9c).
+
+        Wave 3 Stage 6.5 Fix 11b: list-valued row_filter values are
+        treated as ``.isin(v)`` (OR clause). The gate now counts
+        list-valued multi-row filters correctly instead of crashing
+        on ``Series == list`` and silently returning None. The
+        helper and the validator's ``CellLookup._resolve_in`` use
+        the same ``_apply_row_filter`` so they cannot diverge."""
         if df is None or len(df) == 0:
             return 0
         try:
-            sub = df
-            for k, v in row_filter.items():
-                if k not in sub.columns:
+            for k in row_filter:
+                if k not in df.columns:
                     return None
-                sub = sub[sub[k] == v]
+            sub = _apply_row_filter(df, row_filter)
             return len(sub)
-        except Exception:                                # noqa: BLE001
+        except (LookupError, ValueError, TypeError):
             return None
 
     def _resolve_target_frame(
