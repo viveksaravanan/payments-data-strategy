@@ -50,9 +50,11 @@ from src.agents.context import MerchantContext
 from src.agents.response import (
     AgentResponse,
     MergeGrainError,
+    MergeUnitMismatchError,
     SqlSurface,
     Telemetry,
     ViewerScopingError,
+    check_magnitude_compatibility,
     merge_own_and_peer,
 )
 
@@ -154,9 +156,19 @@ class Specialist:
         question: str,
         *,
         progress: Callable[[int, str], None] | None = None,
-        on_token: Callable[[str], None] | None = None,
+        on_token: Callable[[str], None] | None = None,  # noqa: ARG002 — see comment below
     ) -> AgentResponse:
-        """Run the bounded tool loop and produce an AgentResponse."""
+        """Run the bounded tool loop and produce an AgentResponse.
+
+        ``on_token`` is intentionally unwired pending Wave 4 — the
+        streaming surface (``L.call_with_tools_streaming``) exists
+        but the live path uses ``L.call_with_tools`` with
+        ``tool_choice="any"`` / pinned ``emit_response``, where the
+        delivered prose comes from a tool call's args (not a
+        streamed text block). When the Wave 4 dashboard adds a
+        streaming chat panel, wire ``on_token`` to the streaming
+        call site there.
+        """
         self._reset_state()
 
         messages: list[dict[str, Any]] = [
@@ -303,11 +315,139 @@ class Specialist:
             })
             return payload
         if name == "emit_response":
-            # Capture args; the loop checks ``_emit_args`` after the
-            # tool batch and exits if set.
+            # Three structural preconditions enforced before the
+            # emit is accepted (Wave 3 Stage 6.5 follow-up #5,
+            # Fixes 1+2+5). A failure here raises ``LakeToolError``
+            # which the loop's exception envelope converts to a
+            # tool_result with is_error=True — the model sees the
+            # diagnostic and can retry with corrected args. We do
+            # NOT set ``_emit_args`` on rejection, so the loop
+            # continues.
+            self._validate_emit_args(args)
             self._emit_args = args
             return {"ok": True}
         raise ValueError(f"Unknown tool: {name}")
+
+    # ---- emit_response preconditions ---------------------------------
+
+    def _validate_emit_args(self, args: dict[str, Any]) -> None:
+        """Enforce the three structural preconditions on emit_response:
+
+        Fix 5 — **no emit before data**. At least one of
+        ``query_tenant`` / ``read_lake_table`` must have returned a
+        non-empty frame this session.
+
+        Fix 1 — **merge spec must be runnable when both frames are
+        present** (for specialists with ``MERGE_REQUIRED=True``). An
+        empty merge spec when both frames are populated, or a merge
+        spec that fails to run, surfaces as a tool error rather than
+        silently falling back to the lake frame (the previous
+        behavior, which produced misleading "chart_intent malformed"
+        caveats downstream — the intent was fine, the merge didn't
+        run).
+
+        Fix 2 — **unit/magnitude guard**. After a successful merge,
+        if ``own_value`` and ``peer_benchmark`` differ in order of
+        magnitude beyond a threshold (raw $ vs unitless index, etc.),
+        surface a tool error with column-shape diagnostics. The
+        claim-level §1.4 validator catches misclaimed values; this
+        catches the structural pairing bug upstream.
+
+        Raises ``LakeToolError`` on any failed precondition (caught
+        by the loop in ``answer()``).
+        """
+        from src.agents.lake_tools import LakeToolError
+
+        tenant_ready = (
+            self._tenant_frame is not None
+            and len(self._tenant_frame) > 0
+        )
+        lake_ready = (
+            self._lake_frame is not None
+            and len(self._lake_frame) > 0
+        )
+
+        # --- Fix 5: no emit before data ---
+        if not tenant_ready and not lake_ready:
+            raise LakeToolError(
+                "emit_response rejected: you must fetch data via "
+                "query_tenant or read_lake_table (with a populated "
+                "result) before emitting a response. An empty-result "
+                "emit produces a degraded section with no data to "
+                "validate prose claims against. Call schema_info if "
+                "you need column names, then a data tool, then "
+                "emit_response."
+            )
+
+        # --- Fix 1: merge spec must be runnable when both frames present ---
+        merge_spec = args.get("merge") or {}
+        if self.MERGE_REQUIRED and tenant_ready and lake_ready:
+            if not merge_spec:
+                raise LakeToolError(
+                    "emit_response rejected: both tenant and lake "
+                    "frames are populated but `merge` is empty. The "
+                    "comparison frame can't be built without "
+                    "merge.on (join keys present in BOTH frames), "
+                    "merge.own_value_col (from the tenant result), "
+                    "and merge.peer_value_col (from the lake "
+                    "result). Tenant columns: "
+                    f"{list(self._tenant_frame.columns)}. Lake "
+                    f"columns: {list(self._lake_frame.columns)}."
+                )
+            try:
+                test_merged = merge_own_and_peer(
+                    own_df=self._tenant_frame,
+                    peer_df=self._lake_frame,
+                    on=list(merge_spec.get("on") or []),
+                    own_value_col=merge_spec.get("own_value_col") or "",
+                    peer_value_col=merge_spec.get("peer_value_col") or "",
+                    gap_op=merge_spec.get("gap_op", "difference"),
+                    viewer=self.context.viewing_merchant_id,
+                )
+            except (KeyError, MergeGrainError, ViewerScopingError) as exc:
+                raise LakeToolError(
+                    "emit_response rejected: merge spec failed to "
+                    f"run. Reason: {type(exc).__name__}: {exc}. "
+                    "Pick join keys present in BOTH frames; pick "
+                    "value columns that exist in their respective "
+                    "frames. Tenant columns: "
+                    f"{list(self._tenant_frame.columns)}. Lake "
+                    f"columns: {list(self._lake_frame.columns)}."
+                ) from exc
+
+            if len(test_merged) == 0:
+                raise LakeToolError(
+                    "emit_response rejected: the merge ran but "
+                    "produced 0 rows. Your join keys "
+                    f"({merge_spec.get('on')}) don't match between "
+                    "the two frames — typically a value-domain "
+                    "issue (e.g. lake period_start is Monday-of-week "
+                    "but your tenant SQL produced Saturday-of-week, "
+                    "or category casing differs). Check the actual "
+                    "values in each frame and retry."
+                )
+
+            # --- Fix 2: magnitude / unit compatibility ---
+            ok, diag = check_magnitude_compatibility(test_merged)
+            if not ok:
+                own_col = merge_spec.get("own_value_col")
+                peer_col = merge_spec.get("peer_value_col")
+                own_med = diag["own_median_abs"]
+                peer_med = diag["peer_median_abs"]
+                ratio = diag["ratio"]
+                raise LakeToolError(
+                    "emit_response rejected: merge produced a "
+                    "magnitude-mismatched comparison. "
+                    f"own_value_col={own_col!r} median ≈ {own_med:.4g}; "
+                    f"peer_value_col={peer_col!r} median ≈ {peer_med:.4g}; "
+                    f"ratio ≈ {ratio:.1f}× (threshold 100). The two "
+                    "columns are not subtractable in units — one "
+                    "looks like raw $/count and the other like an "
+                    "index/share. Pick columns with comparable units "
+                    "(e.g. own units SUM(qty) vs peer units_index "
+                    "— both are 'units' shape — NOT own SUM(line_total) "
+                    "vs peer revenue_index)."
+                )
 
     # ---- Finalize ----------------------------------------------------
 
@@ -332,7 +472,28 @@ class Specialist:
         prose = LT.strip_render_and_caveats_blocks(text)
 
         if render is None:
-            if self.MERGE_REQUIRED or not converged:
+            # Loop-exhaustion case (Wave 3 Stage 6.5 follow-up #5):
+            # the model never produced a valid emit_response within
+            # MAX_TURNS (typically because the structural
+            # preconditions kept rejecting its merge spec). Produce
+            # a minimal response with the synthetic text + an
+            # "unconverged" caveat rather than raising a hard error
+            # — the user still sees what the agent attempted, plus
+            # any data it did manage to fetch.
+            if not converged:
+                exhausted_caveats = list(caveats) + [
+                    "(Agent did not converge within the turn budget — "
+                    "the merge/emit preconditions kept rejecting "
+                    "the model's args. See SQL surfaces and grain "
+                    "notes for what was attempted.)"
+                ]
+                return self._minimal_response(
+                    prose=prose or "(no prose produced)",
+                    caveats=exhausted_caveats,
+                    converged=False,
+                    turns=turns,
+                )
+            if self.MERGE_REQUIRED:
                 raise RenderBlockMissingError(
                     "Model's final response did not include a parseable "
                     "`render` fenced block. Expected JSON with keys "
@@ -456,6 +617,11 @@ class Specialist:
 
         result = self._build_result(merge_spec)
         claims = self._parse_claims(claims_raw)
+
+        # Strip stray Anthropic tool-use XML markers the model
+        # sometimes double-encodes inside the `prose` string field
+        # (Wave 3 Stage 6.5 follow-up #5 — A3 batch-7 emission blob).
+        prose = LT.sanitize_prose(prose)
 
         # Build the chart gracefully — if chart_intent is malformed
         # (model omitted per-kind required fields, named a column

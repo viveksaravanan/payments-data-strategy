@@ -107,6 +107,80 @@ class MergeGrainError(ValueError):
     category column to roll up on)."""
 
 
+class MergeUnitMismatchError(ValueError):
+    """Raised when ``own_value`` and ``peer_benchmark`` are in
+    incompatible units / orders of magnitude after a merge — e.g.
+    raw dollar revenue subtracted from a unitless index. The contract
+    assumed the model would self-police column-unit comparability and
+    it doesn't reliably. Catching it here lets the specialist surface
+    a structured tool error back to the model on the next turn."""
+
+
+def _maybe_coerce_dates(
+    own_df: pd.DataFrame,
+    peer_df: pd.DataFrame,
+    on: list[str],
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Coerce date-typed join keys to a common ``datetime64[ns]``
+    dtype. Returns possibly-copied frames so the caller's inputs are
+    not mutated."""
+    own_out = own_df
+    peer_out = peer_df
+    for col in on:
+        if col not in own_df.columns or col not in peer_df.columns:
+            continue
+        if own_df[col].dtype == peer_df[col].dtype:
+            continue
+        try:
+            own_coerced = pd.to_datetime(own_df[col])
+            peer_coerced = pd.to_datetime(peer_df[col])
+        except (ValueError, TypeError, OverflowError):
+            # Not date-coercible — leave as-is; merge will fail
+            # naturally if dtypes are incompatible.
+            continue
+        if own_out is own_df:
+            own_out = own_df.copy()
+        if peer_out is peer_df:
+            peer_out = peer_df.copy()
+        own_out[col] = own_coerced
+        peer_out[col] = peer_coerced
+    return own_out, peer_out
+
+
+def check_magnitude_compatibility(
+    merged: pd.DataFrame,
+    *,
+    threshold: float = 100.0,
+) -> tuple[bool, dict[str, float]]:
+    """Compare ``own_value`` and ``peer_benchmark`` median magnitudes;
+    return ``(compatible, diagnostics)``. ``compatible == False`` when
+    the ratio between non-zero median |values| exceeds ``threshold``
+    — the signal of a unit/scale mismatch (e.g. raw $ vs index).
+
+    Used by ``Specialist._dispatch_tool('emit_response', ...)`` to
+    surface a structured tool error rather than computing a
+    nonsense ``gap`` (D4's batch-7 ``625779.0 − 1.002976 = 625778``).
+    """
+    diag: dict[str, float] = {
+        "own_median_abs": float("nan"),
+        "peer_median_abs": float("nan"),
+        "ratio": float("nan"),
+        "threshold": threshold,
+    }
+    if len(merged) == 0 or "own_value" not in merged.columns \
+       or "peer_benchmark" not in merged.columns:
+        return True, diag
+    own_med = float(merged["own_value"].abs().median())
+    peer_med = float(merged["peer_benchmark"].abs().median())
+    diag["own_median_abs"] = own_med
+    diag["peer_median_abs"] = peer_med
+    if not (own_med > 0 and peer_med > 0):
+        return True, diag
+    ratio = max(own_med, peer_med) / min(own_med, peer_med)
+    diag["ratio"] = ratio
+    return ratio <= threshold, diag
+
+
 class ViewerScopingError(ValueError):
     """Raised when ``merge_own_and_peer`` is asked to merge an own
     frame that contains rows for merchants other than the viewer,
@@ -204,6 +278,16 @@ def merge_own_and_peer(
             f"Peer frame missing value column {peer_value_col!r}. "
             f"Has columns: {list(peer_df.columns)}"
         )
+
+    # Coerce date-typed join keys to a common dtype. The lake's
+    # ``period_start`` round-trips from parquet ``date32[day]`` as
+    # pandas ``object`` dtype carrying ``datetime.date`` instances;
+    # the tenant's ``DATE_TRUNC('week', txn_ts)`` materializes as
+    # ``datetime64[us]`` via DuckDB. pandas merge is type-strict —
+    # ``datetime.date(2026,3,1) != Timestamp('2026-03-01')`` — so an
+    # un-coerced merge silently produces 0 rows. ``pd.to_datetime``
+    # promotes both sides to ``datetime64[ns]`` so equality matches.
+    own_df, peer_df = _maybe_coerce_dates(own_df, peer_df, on)
 
     # Viewer-scoping check on own frame.
     if viewer is not None and own_banner_col in own_df.columns:

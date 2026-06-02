@@ -35,8 +35,11 @@ def viewer_krg() -> MerchantContext:
 
 
 def test_anomaly_canonical_operational_question(viewer_krg, monkeypatch) -> None:
+    # AVG(qty) per line (~1.2) keeps the merge magnitude check
+    # honest against wow_delta (small ratio). The Fix-2 guard
+    # would reject SUM(qty) ~435k vs wow_delta ~0.14.
     own_sql = (
-        "SELECT i.category, SUM(i.qty) AS own_units "
+        "SELECT i.category, AVG(i.qty) AS own_avg_qty "
         "FROM transaction_items i JOIN transactions t USING (txn_id) "
         "WHERE t.banner_code = 'KRG' AND i.category = 'DAIRY' "
         "GROUP BY i.category"
@@ -46,7 +49,7 @@ def test_anomaly_canonical_operational_question(viewer_krg, monkeypatch) -> None
               "market-wide flat demand.",
         merge={
             "on": ["category"],
-            "own_value_col": "own_units",
+            "own_value_col": "own_avg_qty",
             "peer_value_col": "wow_delta",
             "gap_op": "difference",
         },

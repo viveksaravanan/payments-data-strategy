@@ -87,6 +87,15 @@ Correct pattern:
 Reserve clarification for questions with NO defensible default
 (e.g., "should I open a store?" — needs a real decision criterion).
 
+## Rule 2b: `prose` is a plain-text string field — no XML tags, no JSON blobs
+
+The `emit_response` tool's `prose` argument is a plain string. Anthropic's
+tool-use surface already separates the fields. Do NOT write
+`</prose>`, `<parameter name="chart_intent">`, or any chart-intent JSON
+inside the `prose` string. Put the chart spec in the `chart_intent`
+argument and the claims list in `claims`; `prose` carries narrative
+sentences only.
+
 ## Rule 3: Write prose only AFTER the result is in hand. Every metric numeric in prose must already be a declared claim
 
 Do not author analysis from recall, intuition, or estimated values.

@@ -37,18 +37,21 @@ def test_demand_canonical_question_units_index(viewer_krg, monkeypatch) -> None:
     """Demand question: KRG own units vs peer units_index for dairy
     over the window. Single-row tenant aggregate; many-row lake
     aggregated to mean via CellLookup.agg."""
+    # Use AVG(qty) per line (~1.2) so the merge magnitude check
+    # passes against peer units_index (~0.85). The Fix-2 guard
+    # rejects raw SUM(qty) ~435k vs an index ~1 as nonsensical.
     own_sql = (
-        "SELECT i.category, SUM(i.qty) AS own_units "
+        "SELECT i.category, AVG(i.qty) AS own_avg_qty "
         "FROM transaction_items i JOIN transactions t USING (txn_id) "
         "WHERE t.banner_code = 'KRG' AND i.category = 'DAIRY' "
         "GROUP BY i.category"
     )
     emit = scripted_emit_response(
-        prose="Your dairy own units total ground vs the peer "
-              "units_index average of 0.93.",
+        prose="Your dairy own per-line units run at 1.24, against "
+              "the peer units_index average of 0.93.",
         merge={
             "on": ["category"],
-            "own_value_col": "own_units",
+            "own_value_col": "own_avg_qty",
             "peer_value_col": "units_index",
             "gap_op": "difference",
         },
@@ -60,16 +63,28 @@ def test_demand_canonical_question_units_index(viewer_krg, monkeypatch) -> None:
             "title": "Dairy demand vs peer baseline",
             "takeaway": "Peer units index averages just below 1.0.",
         },
-        claims=[{
-            "text_span": "0.93",
-            "value": 0.93,
-            "source": {
-                "type": "CellLookup",
-                "row_filter": {"category": "DAIRY"},
-                "column": "peer_benchmark",
-                "agg": "mean",
+        claims=[
+            {
+                "text_span": "1.24",
+                "value": 1.24,
+                "source": {
+                    "type": "CellLookup",
+                    "row_filter": {"category": "DAIRY"},
+                    "column": "own_value",
+                    "agg": "mean",
+                },
             },
-        }],
+            {
+                "text_span": "0.93",
+                "value": 0.93,
+                "source": {
+                    "type": "CellLookup",
+                    "row_filter": {"category": "DAIRY"},
+                    "column": "peer_benchmark",
+                    "agg": "mean",
+                },
+            },
+        ],
         caveats=["Window: 2026-03-01 to 2026-05-29.",
                  "Peer set is 2 grocers (segment_peer)."],
     )

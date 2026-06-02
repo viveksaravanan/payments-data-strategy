@@ -192,6 +192,9 @@ def schema_info() -> dict[str, Any]:
         "Join transaction_items → products via sku for product detail; via canonical_id for cross-merchant.",
         "Lake reads are by table name + filters; no SQL. Filter keys must be in the table's dimensions list.",
         "Lake automatically excludes your own merchant. Real banner_code never reaches you — peer_relationship (segment_peer | cross_segment) is what you see.",
+        "WEEK BOUNDARY (load-bearing for merges on period_start): the lake's period_start is Monday of each week, dtype `date`. To produce a tenant-side period_start that joins cleanly, use this SQL pattern: `SELECT DATE_TRUNC('week', t.txn_ts)::DATE AS period_start, ... FROM transactions t WHERE t.banner_code = '<viewer>' GROUP BY DATE_TRUNC('week', t.txn_ts)`. The cast to `::DATE` matches the lake's dtype. The merge layer also auto-coerces date/datetime mismatches as a safety net, so a slightly different cast still works — but the canonical pattern avoids that fallback.",
+        "MONTH BOUNDARY: lake_payment_mix.month_start is the 1st of each month, dtype `date`. Tenant equivalent: `DATE_TRUNC('month', t.txn_ts)::DATE AS month_start`.",
+        "COMPARABLE UNITS (load-bearing for merges): pick own_value_col and peer_value_col that are in the SAME UNITS. Examples that work: own units (SUM(qty)) vs peer units_index (both are 'units' shape — comparison is meaningful); own avg unit_price (AVG(unit_price)) vs peer price_index. Examples that DON'T work: own revenue (SUM(line_total) in dollars) vs peer revenue_index (a unitless ratio centered ≈1.0) — the merge layer will reject this as a magnitude mismatch.",
     ]
 
     return {
@@ -663,6 +666,34 @@ def _lake_tables_list() -> list[str]:
 # ---------------------------------------------------------------------
 # Render block parsing — model's final response
 # ---------------------------------------------------------------------
+
+# Strays from Anthropic's XML-style tool-use surface that the model
+# sometimes double-encodes into the `prose` string field of
+# emit_response. Anthropic already enforces prose is a string; this
+# strips any literal `</prose>`, `<parameter ...>`, `<invoke ...>`,
+# or `<antml ...>` markers (plus everything after — typically a
+# trailing chart_intent JSON blob) so they don't end up in the
+# delivered prose. See Wave 3 Stage 6.5 follow-up #5 inspection
+# notes for A3's batch-7 emission blob that prompted this.
+_PROSE_TOOL_BLOB_RE = re.compile(
+    r"\s*(?:</?prose>|</?parameter\b[^>]*>|</?invoke\b[^>]*>|<antml[^>]*>).*",
+    re.DOTALL | re.IGNORECASE,
+)
+
+
+def sanitize_prose(prose: str) -> str:
+    """Strip stray Anthropic XML-style tool-use markup (and any
+    trailing chart-intent / parameter blob) from the model's prose
+    string. Anthropic's tool input_schema already enforces ``prose``
+    is a string, but the model occasionally writes literal
+    ``</prose>`` and ``<parameter name="chart_intent">`` inside the
+    string field. This sanitizer cleans them before the §1.4
+    validator runs (the validator treats XML tags as opaque text
+    and would leave them in the delivered prose)."""
+    if not prose:
+        return prose
+    return _PROSE_TOOL_BLOB_RE.sub("", prose).strip()
+
 
 _RENDER_RE = re.compile(
     r"```render\s*\n(.*?)\n```",
