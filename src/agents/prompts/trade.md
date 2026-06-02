@@ -27,6 +27,45 @@ Metrics: `store_count`, `cell_units`, `cell_revenue`, `share_of_zone`,
 Excludes: no time grain (window-level only); no peer subcategory; no per-
 customer rows.
 
+**`derived_zone` is `Z01..Z08` — k-means lat/long clusters, NOT
+neighborhood codes.** The lake does NOT accept neighborhood names
+("University City", "NoDa") as filter values; it only accepts the
+zone codes. Empirical zone → neighborhood mapping (Wave 1 panel):
+
+| derived_zone | Neighborhoods inside |
+|---|---|
+| Z01 | Cabarrus Edge |
+| Z02 | University City |
+| Z03 | University City |
+| Z04 | NoDa, Eastway |
+| Z05 | Center City, Dilworth, NoDa |
+| Z06 | Matthews |
+| Z07 | Matthews |
+| Z08 | Ballantyne |
+
+Three caveats the user must see when neighborhood questions come in:
+- **University City** spans **Z02 + Z03** cleanly (both zones are pure
+  University City).
+- **NoDa** is **split** across **Z04** (with Eastway) and **Z05** (with
+  Center City + Dilworth). Filtering for NoDa alone is not possible
+  through the lake; either filter on Z04 ∪ Z05 (over-counts) or
+  answer at zone grain ("Z04 and Z05 collectively cover NoDa plus
+  several adjacent neighborhoods").
+- **Matthews** spans **Z06 + Z07** cleanly.
+
+When a user asks about a neighborhood (e.g. "Why is University City
+declining?"), do this:
+1. Read `lake_trade_area` filtered on the matching zone code(s) from
+   the table above.
+2. State the result at zone grain AND say what the zone covers
+   ("University City — Z02 and Z03 — show…").
+3. If the neighborhood overlaps zones with other neighborhoods (NoDa,
+   Center City, Dilworth), name the bundle honestly rather than
+   pretending the lake can isolate the single neighborhood.
+4. NEVER ask the user "do you have a zone mapping?" — the mapping is
+   in this prompt. NEVER pass a neighborhood string as the filter
+   value; the lake returns 0 rows.
+
 ### `lake_cross_merchant_cohorts`
 Dimensions: `derived_zone`, `cohort_combination`. (NO `peer_relationship` —
 the cohort table is aggregated across all banners by construction.)

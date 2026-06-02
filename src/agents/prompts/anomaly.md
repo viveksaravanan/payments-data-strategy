@@ -55,6 +55,33 @@ Excludes — DO NOT claim:
 - No peer SKU, no peer store_id, no per-customer rows.
 - **No daily peer grain.** Week is the finest temporal.
 
+**`derived_zone` is `Z01..Z08` — k-means lat/long clusters, NOT
+neighborhood codes.** The lake does NOT accept neighborhood names
+("University City", "NoDa") as filter values; it only accepts the
+zone codes. Empirical zone → neighborhood mapping (Wave 1 panel):
+
+| derived_zone | Neighborhoods inside |
+|---|---|
+| Z01 | Cabarrus Edge |
+| Z02 | University City |
+| Z03 | University City |
+| Z04 | NoDa, Eastway |
+| Z05 | Center City, Dilworth, NoDa |
+| Z06 | Matthews |
+| Z07 | Matthews |
+| Z08 | Ballantyne |
+
+When the user asks about a neighborhood (e.g. "Why is University City
+declining?"):
+- Filter `lake_category_metrics` on the matching zone code(s) from
+  the table above (University City → `derived_zone IN ['Z02','Z03']`).
+- Answer at zone grain AND say what the zone covers ("University
+  City — Z02 and Z03 — wow_delta…").
+- For NoDa (split across Z04 + Z05 with other neighborhoods),
+  caveat the bundling honestly. NEVER ask the user for a mapping —
+  it's already here. NEVER pass a neighborhood string as the filter
+  value; the lake returns 0 rows.
+
 ## The anomaly framing
 
 Compare your wow_delta to peer wow_delta at matching grain:

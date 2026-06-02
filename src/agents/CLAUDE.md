@@ -13,19 +13,18 @@ remaining two stay on the v4 roadmap.
   and prepends the routing decision ("Routed to the Pricing & Benchmarking
   Agent…") to the specialist's response.
 - **`pricing.py`** — **Pricing & Benchmarking Agent.** Per-SKU pricing,
-  category share, peer-relative price gaps. **`MAX_TURNS = 10`**
-  (standardized across all specialists in Phase 5.1.5 to 8, then
-  bumped to 10 in Phase 5.1.9 to accommodate the analytical
-  re-query workflow introduced by chart-takeaway injection).
+  category share, peer-relative price gaps. **`MAX_TURNS = 6`** (Wave 3
+  Stage 6.5 follow-up #6 — lowered from 10; converging pills finish in
+  3-5 turns and 10 only ever extended doomed pills).
 - **`anomaly.py`** — **Anomaly Detection Agent.** Operational anomalies
   only (no fraud). Knows the three planted signals (University City
   decline, Plaza Midwood avocado spike, pasta-promo divergence) and
-  the privacy rule on naming. `MAX_TURNS = 10`.
+  the privacy rule on naming. `MAX_TURNS = 6`.
 - **`demand.py`** — **Demand Forecasting & Campaign Adjudication
   Agent.** Slow-mover analysis, campaign attribution, projected promo
-  uplift. `MAX_TURNS = 10`.
+  uplift. `MAX_TURNS = 6`.
 - **`trade.py`** — **Trade Area Intelligence Agent.** Catchment density,
-  underserved neighborhoods, new-store siting. `MAX_TURNS = 10`.
+  underserved neighborhoods, new-store siting. `MAX_TURNS = 6`.
 
 All four specialists subclass **`specialist.py::Specialist`** — the
 shared bounded tool loop, the streaming-tokens callback, the caveats
@@ -87,12 +86,17 @@ renamed so pytest skips them.
   single SELECT statement before executing — regex check, before any
   DB connection. Never trust the model to self-restrict.
 
-- **`MAX_TURNS = 10`.** Hard cap, standardized across all four
-  specialists in Phase 5.1.5 to 8, then bumped to 10 in Phase
-  5.1.9 to accommodate the analytical re-query workflow introduced
-  by chart-takeaway injection. If the loop hasn't terminated,
-  return what the agent has and surface "didn't converge" in the
-  dashboard. Don't raise without adding a regression test.
+- **`MAX_TURNS = 6`.** Hard cap, lowered from 10 in Wave 3 Stage 6.5
+  follow-up #6 — converging pills finish in 3-5 turns and the extra
+  4 turns only ever extended doomed pills, burning cost without
+  changing the outcome. Wave 3 also adds two earlier exits inside
+  the loop: `MAX_PRECONDITION_REJECTIONS = 3` (force-accept the emit
+  on the 3rd `_validate_emit_args` rejection — downstream graceful
+  path takes over, plus a force-accept caveat for the user) and
+  `WALL_CLOCK_CEILING_SEC = 90.0` (per-question wall-clock cap; exit
+  with `_minimal_response` + ceiling caveat). If the loop hasn't
+  terminated by any of these, return what the agent has and surface
+  "didn't converge". Don't raise without adding a regression test.
 
 - **Final answers must include the SQL.** The dashboard renders it in
   an expander. The agent's answer is not trustworthy without it.

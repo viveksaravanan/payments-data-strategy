@@ -89,26 +89,32 @@ def test_missing_required_key_raises(time_series_result) -> None:
 
 def test_named_column_not_in_result_raises(time_series_result) -> None:
     """The structural guarantee — every column-name in intent must
-    exist in result. If the model names a fake column, MissingColumnError."""
-    with pytest.raises(MissingColumnError) as exc:
+    exist in result. A series of *only* fake columns is empty
+    post-reconciler (Wave 3 Stage 6.5 follow-up #7) and triggers the
+    missing-required-key check from _require_keys."""
+    with pytest.raises((MissingColumnError, UnsupportedIntentError)):
         build_chart(
             {"kind": "time_series_vs_peers", "title": "Trend",
              "x": "period_start", "series": ["fake_column"]},
             time_series_result,
         )
-    assert "fake_column" in str(exc.value)
 
 
-def test_list_intent_value_validated_per_element(time_series_result) -> None:
-    """``series`` is a list of column names — the builder checks each
-    element, not just the list as a whole."""
-    with pytest.raises(MissingColumnError):
-        build_chart(
-            {"kind": "time_series_vs_peers", "title": "X",
-             "x": "period_start",
-             "series": ["own_value", "ghost_column"]},
-            time_series_result,
-        )
+def test_list_intent_partial_match_drops_invalid_keeps_valid(
+    time_series_result,
+) -> None:
+    """``series`` with one valid + one invalid column drops the
+    invalid via the reconciler (Wave 3 Stage 6.5 follow-up #7); a
+    1-series chart beats no chart. The figure is built from the
+    valid entry only."""
+    fig = build_chart(
+        {"kind": "time_series_vs_peers", "title": "X",
+         "x": "period_start",
+         "series": ["own_value", "ghost_column"]},
+        time_series_result,
+    )
+    assert fig is not None
+    assert len(fig.data) == 1
 
 
 # ---------------------------------------------------------------------

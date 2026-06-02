@@ -376,6 +376,167 @@ def test_wall_clock_ceiling_constant_present() -> None:
     assert WALL_CLOCK_CEILING_SEC == 90.0
 
 
+# ---------------------------------------------------------------------
+# Wave 3 Stage 6.5 follow-up #7 — column reconciler in chart_build
+# ---------------------------------------------------------------------
+
+def test_reconciler_remaps_known_synonym() -> None:
+    """own_store_count → store_count via the synonym table."""
+    from src.agents.chart_build import _reconcile_intent
+    result = pd.DataFrame({
+        "derived_zone": ["Z05", "Z08"],
+        "store_count": [3, 1],
+    })
+    intent = {
+        "kind": "cross_merchant_comparison",
+        "x": "derived_zone",
+        "series": ["own_store_count"],
+    }
+    reconciled, notes = _reconcile_intent(intent, result)
+    assert reconciled["series"] == ["store_count"]
+    assert any("own_store_count" in n for n in notes)
+
+
+def test_reconciler_strips_own_prefix() -> None:
+    """own_value (no synonym entry) → value via prefix stripping when
+    `value` exists in result."""
+    from src.agents.chart_build import _reconcile_intent
+    result = pd.DataFrame({"category": ["DAIRY"], "value": [1.2]})
+    intent = {"kind": "kpi_callout", "value": "own_value"}
+    # own_value is a known synonym → maps via synonym table to itself
+    # (no remap), so test on a truly synthetic prefix case:
+    intent2 = {"kind": "kpi_callout", "value": "own_revenue_per_txn"}
+    result2 = pd.DataFrame({"revenue_per_txn": [12.5]})
+    reconciled, notes = _reconcile_intent(intent2, result2)
+    assert reconciled["value"] == "revenue_per_txn"
+
+
+def test_reconciler_partial_series_drops_invalid() -> None:
+    """A series list with one valid + one invalid column drops the
+    invalid one — a 1-series chart beats no chart."""
+    from src.agents.chart_build import _reconcile_intent
+    result = pd.DataFrame({
+        "period_start": ["2026-04-01", "2026-04-08"],
+        "own_value": [1.0, 1.1],
+        "peer_benchmark": [0.95, 1.05],
+    })
+    intent = {
+        "kind": "time_series_vs_peers",
+        "x": "period_start",
+        "series": ["own_value", "fictional_metric"],
+    }
+    reconciled, notes = _reconcile_intent(intent, result)
+    assert "own_value" in reconciled["series"]
+    assert "fictional_metric" not in reconciled["series"]
+    assert any("fictional_metric" in n for n in notes)
+
+
+def test_reconciler_case_insensitive() -> None:
+    from src.agents.chart_build import _reconcile_intent
+    result = pd.DataFrame({
+        "Price_Index": [1.05, 0.95],
+        "Volume": [100, 200],
+        "Category": ["DAIRY", "BREAD"],
+    })
+    intent = {
+        "kind": "scatter_quadrant",
+        "x": "price_index",      # lowercase, result has "Price_Index"
+        "y": "volume",            # lowercase, result has "Volume"
+        "label": "category",      # lowercase, result has "Category"
+    }
+    reconciled, _ = _reconcile_intent(intent, result)
+    assert reconciled["x"] == "Price_Index"
+    assert reconciled["y"] == "Volume"
+    assert reconciled["label"] == "Category"
+
+
+def test_reconciler_passthrough_when_columns_already_match() -> None:
+    """No remap, no notes when intent columns are already in result."""
+    from src.agents.chart_build import _reconcile_intent
+    result = pd.DataFrame({
+        "period_start": ["2026-04-01"],
+        "own_value": [1.0],
+        "peer_benchmark": [0.95],
+    })
+    intent = {
+        "kind": "time_series_vs_peers",
+        "x": "period_start",
+        "series": ["own_value", "peer_benchmark"],
+    }
+    reconciled, notes = _reconcile_intent(intent, result)
+    assert reconciled["series"] == ["own_value", "peer_benchmark"]
+    assert notes == []
+
+
+def test_build_chart_uses_reconciler() -> None:
+    """End-to-end: build_chart() reconciles synonyms before assertion."""
+    from src.agents.chart_build import build_chart
+    result = pd.DataFrame({
+        "derived_zone": ["Z02", "Z05", "Z08"],
+        "store_count": [2, 4, 1],
+    })
+    intent = {
+        "kind": "cross_merchant_comparison",
+        "x": "derived_zone",
+        "series": ["own_store_count"],   # synonym for store_count
+        "title": "Stores by zone",
+        "y_format": "count",
+    }
+    fig = build_chart(intent, result)
+    assert fig is not None  # builder succeeded — reconciler worked
+
+
+# ---------------------------------------------------------------------
+# Wave 3 Stage 6.5 follow-up #7 — merge_incomplete carries own columns
+# ---------------------------------------------------------------------
+
+def test_build_result_empty_merge_carries_own_columns(viewer_krg) -> None:
+    """When both frames are present and the merge spec is empty, the
+    fallback frame carries the own side's columns alongside the
+    peer frame so the chart reconciler has something to remap
+    against. The `merge_incomplete` flag fires the side-by-side
+    caveat downstream."""
+    specialist = PricingSpecialist(viewer_krg)
+    specialist._reset_state()
+    specialist._tenant_frame = pd.DataFrame({
+        "category": ["DAIRY"],
+        "own_asp": [3.99],
+    })
+    specialist._lake_frame = pd.DataFrame({
+        "category": ["DAIRY", "BREAKFAST"],
+        "price_index": [1.06, 0.98],
+        "peer_relationship": ["segment_peer", "segment_peer"],
+    })
+    out = specialist._build_result({})  # empty merge spec
+    assert out.attrs.get("merge_incomplete") is True
+    assert "own_asp" in out.columns
+    assert "price_index" in out.columns
+
+
+def test_build_result_failed_merge_carries_own_columns(viewer_krg) -> None:
+    """If the merge raises (bad keys), fallback carries own columns
+    instead of silently dropping them to peer.copy()."""
+    specialist = PricingSpecialist(viewer_krg)
+    specialist._reset_state()
+    specialist._tenant_frame = pd.DataFrame({
+        "category": ["DAIRY"],
+        "own_asp": [3.99],
+    })
+    specialist._lake_frame = pd.DataFrame({
+        "category": ["DAIRY"],
+        "price_index": [1.06],
+        "peer_relationship": ["segment_peer"],
+    })
+    # Bad merge spec — references a column that doesn't exist anywhere.
+    out = specialist._build_result({
+        "on": ["nonexistent_key"],
+        "own_value_col": "own_asp",
+        "peer_value_col": "price_index",
+    })
+    assert out.attrs.get("merge_incomplete") is True
+    assert "own_asp" in out.columns
+
+
 def test_emit_accepted_for_advisor_with_lake_only(viewer_krg) -> None:
     """Fix 1 respects MERGE_REQUIRED=False for the Advisor — a
     single lake-frame answer with no tenant fetch doesn't trigger

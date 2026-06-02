@@ -593,11 +593,22 @@ class Specialist:
         if own is None and peer is not None:
             return peer.copy()
         # Both present — merge if the spec is non-empty, otherwise
-        # fall back to the lake frame (the more common case when a
-        # specialist queried both but the model didn't author a
-        # merge).
+        # fall back to a frame that CARRIES BOTH SIDES' columns so
+        # the chart reconciler has something to remap own-side
+        # references against (Wave 3 Stage 6.5 follow-up #7 — Fix 2).
+        # The previous fallback (peer.copy()) silently dropped the
+        # own side; chart_intent then named columns from a frame the
+        # chart builder couldn't see, and every chart got skipped
+        # with MissingColumnError. Carry both sides + flag the frame
+        # so _finalize_from_emit can add a "merge spec missing /
+        # failed" caveat.
         if not merge_spec:
-            return peer.copy()
+            fallback = self._fallback_carry_both_sides(own, peer)
+            fallback.attrs["merge_incomplete"] = True
+            fallback.attrs["merge_incomplete_reason"] = (
+                "empty merge spec"
+            )
+            return fallback
         try:
             return merge_own_and_peer(
                 own_df=own,
@@ -609,9 +620,73 @@ class Specialist:
                 viewer=self.context.viewing_merchant_id,
             )
         except (KeyError, MergeGrainError, ViewerScopingError) as exc:
-            # Same graceful-degradation rationale: surface what we
-            # have rather than hard-failing the response.
-            return peer.copy()
+            # Best-effort: try a partial merge keyed on whatever
+            # join columns exist in BOTH frames, with the model's
+            # named own/peer value cols if present. If that still
+            # fails, carry both sides side-by-side.
+            try:
+                best_effort_keys = [
+                    k for k in (merge_spec.get("on") or [])
+                    if k in own.columns and k in peer.columns
+                ]
+                if (
+                    best_effort_keys
+                    and merge_spec.get("own_value_col") in own.columns
+                    and merge_spec.get("peer_value_col") in peer.columns
+                ):
+                    return merge_own_and_peer(
+                        own_df=own,
+                        peer_df=peer,
+                        on=best_effort_keys,
+                        own_value_col=merge_spec["own_value_col"],
+                        peer_value_col=merge_spec["peer_value_col"],
+                        gap_op=merge_spec.get("gap_op", "difference"),
+                        viewer=self.context.viewing_merchant_id,
+                    )
+            except Exception:                            # noqa: BLE001
+                pass
+            fallback = self._fallback_carry_both_sides(own, peer)
+            fallback.attrs["merge_incomplete"] = True
+            fallback.attrs["merge_incomplete_reason"] = (
+                f"{type(exc).__name__}: {exc}"
+            )
+            return fallback
+
+    @staticmethod
+    def _fallback_carry_both_sides(
+        own: pd.DataFrame, peer: pd.DataFrame,
+    ) -> pd.DataFrame:
+        """When the merge can't run but both frames have content,
+        return a frame that CARRIES own-side columns alongside the
+        peer frame. This gives the chart reconciler something to
+        remap own_X / total_X / avg_X references against — better
+        than the old peer.copy() that silently dropped the own side
+        and caused every chart to skip with MissingColumnError.
+
+        Strategy:
+        - Start from peer.copy() (keeps its row grain and dimensions).
+        - For each column in own that is NOT in peer, append it as a
+          new column carrying the full own-side series broadcast
+          across peer's rows. For a single-row own frame, that's the
+          scalar value; for a multi-row own frame, we attach the
+          first row's value (best-effort — the chart reconciler will
+          surface a side-by-side caveat downstream).
+        - Don't try to align on a join key — that's what the merge
+          spec is for, and the model already failed to provide one.
+        """
+        out = peer.copy()
+        if len(own) == 0:
+            return out
+        own_only_cols = [c for c in own.columns if c not in out.columns]
+        for col in own_only_cols:
+            # Broadcast the own scalar (first row's value) across
+            # peer rows. Not perfect; gives the reconciler something
+            # to point at. The caveat downstream tells the user.
+            try:
+                out[col] = own[col].iloc[0]
+            except Exception:                            # noqa: BLE001
+                continue
+        return out
 
     @staticmethod
     def _parse_claims(claims_json: list[Any]) -> list[Claim]:
@@ -707,6 +782,14 @@ class Specialist:
                 "reached. The result reflects the model's best "
                 "attempt within the bound; merge spec may have been "
                 "incomplete."
+            )
+        if result.attrs.get("merge_incomplete"):
+            reason = result.attrs.get("merge_incomplete_reason", "")
+            effective_caveats.append(
+                f"Merge spec was incomplete ({reason}); own-side "
+                "columns were carried alongside the peer frame as a "
+                "best-effort side-by-side. Use the comparison "
+                "directionally rather than as a precise own−peer gap."
             )
 
         return AgentResponse(

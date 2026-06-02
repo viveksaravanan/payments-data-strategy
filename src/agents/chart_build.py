@@ -151,7 +151,12 @@ class UnsupportedIntentError(ValueError):
 # ---------------------------------------------------------------------
 
 def _require_keys(intent: dict, kind: str, required: list[str]) -> None:
-    missing = [k for k in required if k not in intent or intent[k] in (None, "")]
+    missing = [
+        k for k in required
+        if k not in intent
+        or intent[k] in (None, "")
+        or (isinstance(intent[k], list) and len(intent[k]) == 0)
+    ]
     if missing:
         raise UnsupportedIntentError(
             f"ChartIntent kind={kind!r} missing required keys: {missing}. "
@@ -650,6 +655,167 @@ _BUILDERS = {
 
 
 # ---------------------------------------------------------------------
+# Column reconciler — Wave 3 Stage 6.5 follow-up #7.
+#
+# The model occasionally authors a chart_intent that names a column
+# the merge layer renamed or didn't carry through (e.g. asks for
+# `own_store_count` when the merged result has `store_count`, asks
+# for `total_revenue` when the result has `cell_revenue`). The
+# structural guarantee "every plotted number traces to a result
+# cell" depends on every named column existing — but when the
+# requested name is just a near-miss for a real column, the right
+# fix is to rewrite the name, not skip the whole chart.
+#
+# The reconciler runs BEFORE the per-kind builders. It rewrites
+# each column-referencing field in the intent to point at a real
+# column in the result, using:
+#   1. An explicit synonym table (most common rewrites).
+#   2. Prefix/suffix stripping (own_, peer_).
+#   3. Case-insensitive direct match.
+# If a `series` list has partial matches, the invalid entries are
+# dropped (a 2-series chart minus one bad series beats no chart).
+# Only if NOTHING reconciles is the original name kept — _require_columns
+# then raises and the caller (specialist) falls back to chart=None
+# with an honest caveat.
+#
+# The reconciler ONLY rewrites NAMES — never invents data. The
+# structural guarantee still holds: every plotted value still comes
+# from a cell in result.
+# ---------------------------------------------------------------------
+
+# Common synonyms the model authors when its mental model of the
+# result columns drifts from what the merge layer actually produces.
+# Each entry maps an "intent name" → "result column name".
+COLUMN_SYNONYMS: dict[str, str] = {
+    # own_/peer_ prefix variants
+    "own_store_count": "store_count",
+    "peer_store_count": "store_count",
+    "own_revenue": "cell_revenue",
+    "peer_revenue": "cell_revenue",
+    "total_revenue": "cell_revenue",
+    "own_units": "cell_units",
+    "peer_units": "cell_units",
+    "total_units": "cell_units",
+    # asp / avg unit price aliases
+    "avg_unit_price": "own_value",
+    "own_asp": "own_value",
+    "asp": "own_value",
+    "unit_price": "own_value",
+    # basket aliases
+    "avg_basket": "own_value",
+    "avg_basket_size": "own_value",
+    # category aliases (the model sometimes types category_type)
+    "category_type": "category",
+    "cat": "category",
+    # zone aliases
+    "zone": "derived_zone",
+    "zone_id": "derived_zone",
+    # peer-relationship aliases
+    "peer_type": "peer_relationship",
+    "relationship": "peer_relationship",
+}
+
+
+def _reconcile_column(name: str, result_columns: list[str]) -> str | None:
+    """Try to map ``name`` to a real column in ``result_columns``.
+    Returns the matched column name or None if no match found."""
+    if name in result_columns:
+        return name
+
+    # 1. Synonym table — explicit known rewrites.
+    if name in COLUMN_SYNONYMS:
+        target = COLUMN_SYNONYMS[name]
+        if target in result_columns:
+            return target
+
+    # 2. Case-insensitive direct match.
+    lower_map = {c.lower(): c for c in result_columns}
+    if name.lower() in lower_map:
+        return lower_map[name.lower()]
+
+    # 3. Prefix stripping — own_X, peer_X → X.
+    for prefix in ("own_", "peer_"):
+        if name.startswith(prefix):
+            stem = name[len(prefix):]
+            if stem in result_columns:
+                return stem
+            if stem.lower() in lower_map:
+                return lower_map[stem.lower()]
+
+    # 4. Suffix stripping — X_count, X_share variants (rare).
+    for suffix in ("_count", "_share"):
+        if name.endswith(suffix):
+            stem = name[: -len(suffix)]
+            if stem in result_columns:
+                return stem
+
+    return None
+
+
+# Per-kind list of intent fields that reference column names. Used
+# by the reconciler to know which fields to rewrite.
+_COLUMN_FIELDS_BY_KIND: dict[str, list[str]] = {
+    "time_series_vs_peers":      ["x", "series"],
+    "cross_merchant_comparison": ["x", "series"],
+    "heatmap":                   ["row", "col", "value"],
+    "scatter_quadrant":          ["x", "y", "label", "size"],
+    "waterfall":                 ["x", "y"],
+    "geo_map":                   ["lat", "lon", "value", "label"],
+    "kpi_callout":               ["value", "delta"],
+    "small_multiples":           ["facet", "x", "series"],
+    "table_drilldown":           ["columns"],
+}
+
+
+def _reconcile_intent(
+    intent: dict, result: pd.DataFrame,
+) -> tuple[dict, list[str]]:
+    """Walk every column-referencing field in ``intent`` and try to
+    remap each to a real column in ``result``. Returns the reconciled
+    intent (a new dict) and a list of rewrite notes for telemetry.
+
+    For list-valued fields (series, columns), invalid entries are
+    dropped — a partial-series chart beats no chart.
+    """
+    kind = intent.get("kind")
+    fields = _COLUMN_FIELDS_BY_KIND.get(kind, [])
+    if not fields:
+        return intent, []
+
+    result_cols = list(result.columns)
+    out = dict(intent)
+    notes: list[str] = []
+
+    for field in fields:
+        if field not in out:
+            continue
+        val = out[field]
+        if isinstance(val, str):
+            mapped = _reconcile_column(val, result_cols)
+            if mapped is not None and mapped != val:
+                out[field] = mapped
+                notes.append(f"{field}: {val!r}→{mapped!r}")
+        elif isinstance(val, list):
+            new_list: list[str] = []
+            for v in val:
+                if not isinstance(v, str):
+                    continue
+                mapped = _reconcile_column(v, result_cols)
+                if mapped is not None:
+                    if mapped != v:
+                        notes.append(f"{field}[{v!r}]→{mapped!r}")
+                    new_list.append(mapped)
+                else:
+                    notes.append(f"{field}: dropped invalid {v!r}")
+            # Deduplicate while preserving order.
+            seen: set[str] = set()
+            deduped = [c for c in new_list if not (c in seen or seen.add(c))]
+            out[field] = deduped
+
+    return out, notes
+
+
+# ---------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------
 
@@ -692,4 +858,10 @@ def build_chart(intent: dict, result: pd.DataFrame) -> go.Figure:
             f"Unknown ChartIntent.kind={kind!r}. Valid kinds: "
             f"{sorted(_BUILDERS.keys())}"
         )
-    return _BUILDERS[kind](intent, result)
+    # Reconcile column names BEFORE the per-kind builder runs. The
+    # reconciler rewrites near-miss names to real result columns and
+    # drops invalid entries from series lists (Wave 3 Stage 6.5
+    # follow-up #7). _require_columns inside each builder is the
+    # post-reconcile assertion — the structural guarantee still holds.
+    reconciled, _rewrite_notes = _reconcile_intent(intent, result)
+    return _BUILDERS[kind](reconciled, result)
