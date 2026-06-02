@@ -39,6 +39,7 @@ from src.agents.lake_tools import LakeToolError
 from src.agents import llm as L
 from src.agents.chart_build import (
     MissingColumnError,
+    NonNumericChartColumnError,
     UnsupportedIntentError,
     build_chart,
 )
@@ -143,6 +144,14 @@ class Specialist:
         self._precondition_rejections: int = 0
         self._answer_started_at: float = 0.0
         self._force_accept_emit: bool = False
+        # Wave 3 Stage 6.5 Fix 9 — merge becomes its own tool turn.
+        # ``_merged_frame`` is the result-of-record after a clean
+        # build_merge. ``_merge_fail_payload`` carries both real
+        # frames when the merge fails — claims author against named
+        # frames in that path.
+        self._merged_frame: pd.DataFrame | None = None
+        self._merge_fail_payload: tuple[pd.DataFrame, pd.DataFrame] | None = None
+        self._merge_attempted: bool = False
 
     # ---- Prompt rendering -------------------------------------------
 
@@ -200,14 +209,10 @@ class Specialist:
             elapsed = time.monotonic() - self._answer_started_at
             if elapsed > WALL_CLOCK_CEILING_SEC:
                 return self._minimal_response(
-                    prose=(
-                        f"(Wall-clock ceiling of "
-                        f"{WALL_CLOCK_CEILING_SEC:.0f}s reached after "
-                        f"{turn} turn(s); returning what was gathered.)"
-                    ),
+                    prose=LT.business_fallback(),
                     caveats=[
                         f"Per-question wall-clock ceiling reached ("
-                        f"{WALL_CLOCK_CEILING_SEC:.0f}s). The agent "
+                        f"{WALL_CLOCK_CEILING_SEC:.0f}s); the agent "
                         f"returned the fetched data without converging."
                     ],
                     converged=False, turns=turn,
@@ -311,8 +316,7 @@ class Specialist:
 
         # Loop exhausted without final text.
         return self._finalize(
-            "(I couldn't converge on an answer in "
-            f"{self.MAX_TURNS} turns.)",
+            LT.business_fallback(),
             converged=False, turns=self.MAX_TURNS,
         )
 
@@ -349,6 +353,8 @@ class Specialist:
                 "row_count": payload["row_count"],
             })
             return payload
+        if name == "build_merge":
+            return self._dispatch_build_merge(args)
         if name == "emit_response":
             # Structural preconditions (Wave 3 Stage 6.5 follow-ups
             # #5 / #6). The remaining preconditions catch genuinely
@@ -376,30 +382,226 @@ class Specialist:
             return {"ok": True}
         raise ValueError(f"Unknown tool: {name}")
 
+    # ---- build_merge -------------------------------------------------
+
+    def _dispatch_build_merge(
+        self, args: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Run ``merge_own_and_peer`` server-side against the captured
+        tenant + lake frames and return the REAL merged frame's
+        columns/dtypes/preview to the model (Wave 3 Stage 6.5 Fix 9a).
+
+        On success: stores the merged frame as ``self._merged_frame``
+        (the result-of-record); subsequent ``emit_response`` authors
+        against these real names.
+
+        On failure (mismatched/missing join keys, grain
+        incompatibility): returns ``merge_failed=True`` with BOTH
+        real frames unmerged (Fix 9b) — does NOT broadcast a scalar
+        across rows (that was the cause of the all-stripped
+        cascade). The model then authors side-by-side prose + claims
+        with ``frame: 'tenant' | 'lake'``.
+        """
+        tenant_ready = (
+            self._tenant_frame is not None
+            and len(self._tenant_frame) > 0
+        )
+        lake_ready = (
+            self._lake_frame is not None
+            and len(self._lake_frame) > 0
+        )
+        if not (tenant_ready and lake_ready):
+            raise LakeToolError(
+                "build_merge rejected: requires non-empty results "
+                "from BOTH query_tenant AND read_lake_table. "
+                f"tenant_rows={len(self._tenant_frame) if self._tenant_frame is not None else 0}; "
+                f"lake_rows={len(self._lake_frame) if self._lake_frame is not None else 0}. "
+                "Call the missing tool(s) first."
+            )
+
+        self._merge_attempted = True
+        on = list(args.get("on") or [])
+        own_value_col = args.get("own_value_col") or ""
+        peer_value_col = args.get("peer_value_col") or ""
+        gap_op = args.get("gap_op", "difference")
+
+        try:
+            merged = merge_own_and_peer(
+                own_df=self._tenant_frame,
+                peer_df=self._lake_frame,
+                on=on,
+                own_value_col=own_value_col,
+                peer_value_col=peer_value_col,
+                gap_op=gap_op,
+                viewer=self.context.viewing_merchant_id,
+            )
+        except (KeyError, MergeGrainError, ViewerScopingError) as exc:
+            # Merge-fail dual-frame path (Fix 9b). Return BOTH real
+            # frames so the model authors per-frame claims, with
+            # business-language guidance.
+            self._merge_fail_payload = (
+                self._tenant_frame, self._lake_frame,
+            )
+            self._sql_log.append({
+                "surface":   "merge",
+                "query":     f"build_merge(on={on!r}, own={own_value_col!r}, peer={peer_value_col!r}, gap_op={gap_op!r}) → FAILED",
+                "row_count": 0,
+            })
+            return {
+                "merge_failed": True,
+                "reason": f"{type(exc).__name__}: {exc}",
+                "tenant": self._df_summary(self._tenant_frame),
+                "lake":   self._df_summary(self._lake_frame),
+                "guidance": (
+                    "The merge could not run. Compose your answer "
+                    "side-by-side: state one fact from the tenant "
+                    "frame (your own data, e.g. $/unit) AND one fact "
+                    "from the lake frame (peer benchmark, often a "
+                    "unitless index). Tie them together in prose; do "
+                    "not invent a synthetic gap column. EACH claim "
+                    "must set source.frame = 'tenant' or 'lake' so it "
+                    "resolves against the right source. For the "
+                    "chart, set chart_intent.source = 'tenant' or "
+                    "'lake' to plot from one real frame."
+                ),
+            }
+
+        if len(merged) == 0:
+            # Empty merge — not a fatal error structurally, but the
+            # downstream chart + claims would all return empty. Treat
+            # as a merge-fail so the model authors per-frame.
+            self._merge_fail_payload = (
+                self._tenant_frame, self._lake_frame,
+            )
+            self._sql_log.append({
+                "surface":   "merge",
+                "query":     f"build_merge(on={on!r}, own={own_value_col!r}, peer={peer_value_col!r}, gap_op={gap_op!r}) → 0 rows",
+                "row_count": 0,
+            })
+            return {
+                "merge_failed": True,
+                "reason": (
+                    f"Inner merge on {on} produced 0 rows. Typical "
+                    "cause: a value-domain mismatch on a join key "
+                    "(period_start dtype/casing, category casing, "
+                    "etc.). Check the actual values in each frame."
+                ),
+                "tenant": self._df_summary(self._tenant_frame),
+                "lake":   self._df_summary(self._lake_frame),
+                "guidance": (
+                    "Inspect the join-key values in both frames. If "
+                    "they genuinely don't align, answer side-by-side "
+                    "(set source.frame on each claim and "
+                    "chart_intent.source on the chart)."
+                ),
+            }
+
+        self._merged_frame = merged
+        self._sql_log.append({
+            "surface":   "merge",
+            "query":     f"build_merge(on={on!r}, own={own_value_col!r}, peer={peer_value_col!r}, gap_op={gap_op!r})",
+            "row_count": len(merged),
+        })
+        return {
+            "merge_failed": False,
+            "row_count": len(merged),
+            **self._df_summary(merged),
+            "gap_is_directional": bool(merged.attrs.get("gap_is_directional", False)),
+            "magnitude_diagnostic": merged.attrs.get("magnitude_diagnostic", {}),
+            "guidance": (
+                "Author your chart_intent and claims against these "
+                "EXACT column names. The merged frame is the "
+                "result-of-record; chart_intent.source defaults to "
+                "'merged' and claim sources default to the merged "
+                "frame — you don't need to set 'frame' explicitly "
+                "after a clean merge."
+            ),
+        }
+
+    @staticmethod
+    def _df_summary(df: pd.DataFrame) -> dict[str, Any]:
+        """Return a model-readable summary of a frame: columns +
+        dtypes + a 50-row preview. Same shape as query_tenant /
+        read_lake_table payloads, so the model can read it the same
+        way."""
+        if df is None or len(df) == 0:
+            return {
+                "rows":      [],
+                "columns":   list(df.columns) if df is not None else [],
+                "dtypes":    {},
+                "row_count": 0,
+                "truncated": False,
+            }
+        head = df.head(50)
+        return {
+            "rows":      head.values.tolist(),
+            "columns":   list(df.columns),
+            "dtypes":    {c: str(df[c].dtype) for c in df.columns},
+            "row_count": len(df),
+            "truncated": len(df) > 50,
+        }
+
+    @staticmethod
+    def _count_filter_matches(
+        df: pd.DataFrame, row_filter: dict[str, Any],
+    ) -> int | None:
+        """Count rows in ``df`` matching ``row_filter``. Returns None
+        if a filter column is missing (the validator will tier-3
+        strip downstream, which is correct). Used by the multi-row
+        CellLookup precondition (Fix 9c)."""
+        if df is None or len(df) == 0:
+            return 0
+        try:
+            sub = df
+            for k, v in row_filter.items():
+                if k not in sub.columns:
+                    return None
+                sub = sub[sub[k] == v]
+            return len(sub)
+        except Exception:                                # noqa: BLE001
+            return None
+
+    def _resolve_target_frame(
+        self, frame_name: str | None,
+    ) -> pd.DataFrame | None:
+        """Pick the captured frame for a given ``frame`` field value.
+        Used by the multi-row CellLookup precondition (Fix 9c) and by
+        ``_finalize_from_emit`` to assemble the dual-frame validator
+        kwargs."""
+        if frame_name == "tenant":
+            return self._tenant_frame
+        if frame_name == "lake":
+            return self._lake_frame
+        if frame_name == "merged":
+            return self._merged_frame
+        # Default: merged frame if present, else tenant, else lake.
+        if self._merged_frame is not None:
+            return self._merged_frame
+        if self._tenant_frame is not None and len(self._tenant_frame) > 0:
+            return self._tenant_frame
+        return self._lake_frame
+
     # ---- emit_response preconditions ---------------------------------
 
     def _validate_emit_args(self, args: dict[str, Any]) -> None:
-        """Enforce the three structural preconditions on emit_response:
+        """Enforce the structural preconditions on emit_response.
 
-        Fix 5 — **no emit before data**. At least one of
-        ``query_tenant`` / ``read_lake_table`` must have returned a
-        non-empty frame this session.
+        Wave 3 Stage 6.5 Fix 9 reshape — the merge spec is no longer
+        carried by ``emit_response``; it lives in the prior
+        ``build_merge`` tool call. The remaining preconditions:
 
-        Fix 1 — **merge spec must be runnable when both frames are
-        present** (for specialists with ``MERGE_REQUIRED=True``). An
-        empty merge spec when both frames are populated, or a merge
-        spec that fails to run, surfaces as a tool error rather than
-        silently falling back to the lake frame (the previous
-        behavior, which produced misleading "chart_intent malformed"
-        caveats downstream — the intent was fine, the merge didn't
-        run).
-
-        Fix 2 — **unit/magnitude guard**. After a successful merge,
-        if ``own_value`` and ``peer_benchmark`` differ in order of
-        magnitude beyond a threshold (raw $ vs unitless index, etc.),
-        surface a tool error with column-shape diagnostics. The
-        claim-level §1.4 validator catches misclaimed values; this
-        catches the structural pairing bug upstream.
+        * **No emit before data** (Fix 5). At least one of
+          ``query_tenant`` / ``read_lake_table`` produced a
+          non-empty frame.
+        * **Merge must have been attempted when both frames are
+          populated** (Fix 9a). The model must have called
+          ``build_merge`` before ``emit_response`` so chart_intent
+          and claims author against the REAL merged columns.
+        * **Multi-row CellLookup requires `agg`** (Fix 9c). A claim
+          whose ``row_filter`` matches multiple rows but omits
+          ``agg`` is the most common cause of all-stripped
+          cascades; surface a legible error so the model adds
+          ``agg="sum"`` / ``agg="mean"``.
 
         Raises ``LakeToolError`` on any failed precondition (caught
         by the loop in ``answer()``).
@@ -427,59 +629,53 @@ class Specialist:
                 "emit_response."
             )
 
-        # --- Fix 1: merge spec must be runnable when both frames present ---
-        merge_spec = args.get("merge") or {}
-        if self.MERGE_REQUIRED and tenant_ready and lake_ready:
-            if not merge_spec:
-                raise LakeToolError(
-                    "emit_response rejected: both tenant and lake "
-                    "frames are populated but `merge` is empty. The "
-                    "comparison frame can't be built without "
-                    "merge.on (join keys present in BOTH frames), "
-                    "merge.own_value_col (from the tenant result), "
-                    "and merge.peer_value_col (from the lake "
-                    "result). Tenant columns: "
-                    f"{list(self._tenant_frame.columns)}. Lake "
-                    f"columns: {list(self._lake_frame.columns)}."
-                )
-            try:
-                test_merged = merge_own_and_peer(
-                    own_df=self._tenant_frame,
-                    peer_df=self._lake_frame,
-                    on=list(merge_spec.get("on") or []),
-                    own_value_col=merge_spec.get("own_value_col") or "",
-                    peer_value_col=merge_spec.get("peer_value_col") or "",
-                    gap_op=merge_spec.get("gap_op", "difference"),
-                    viewer=self.context.viewing_merchant_id,
-                )
-            except (KeyError, MergeGrainError, ViewerScopingError) as exc:
-                raise LakeToolError(
-                    "emit_response rejected: merge spec failed to "
-                    f"run. Reason: {type(exc).__name__}: {exc}. "
-                    "Pick join keys present in BOTH frames; pick "
-                    "value columns that exist in their respective "
-                    "frames. Tenant columns: "
-                    f"{list(self._tenant_frame.columns)}. Lake "
-                    f"columns: {list(self._lake_frame.columns)}."
-                ) from exc
+        # --- Fix 9a: when both frames are populated, build_merge
+        #     must have run (clean merge or merge-fail) before emit. ---
+        if (
+            self.MERGE_REQUIRED
+            and tenant_ready and lake_ready
+            and not self._merge_attempted
+        ):
+            raise LakeToolError(
+                "emit_response rejected: both tenant and lake frames "
+                "are populated; call build_merge(on=..., "
+                "own_value_col=..., peer_value_col=..., gap_op=...) "
+                "FIRST. The server returns the real merged frame's "
+                "columns + dtypes so you can author chart_intent and "
+                "claims against actual names, not guesses. Tenant "
+                f"columns: {list(self._tenant_frame.columns)}. Lake "
+                f"columns: {list(self._lake_frame.columns)}."
+            )
 
-            if len(test_merged) == 0:
-                raise LakeToolError(
-                    "emit_response rejected: the merge ran but "
-                    "produced 0 rows. Your join keys "
-                    f"({merge_spec.get('on')}) don't match between "
-                    "the two frames — typically a value-domain "
-                    "issue (e.g. lake period_start is Monday-of-week "
-                    "but your tenant SQL produced Saturday-of-week, "
-                    "or category casing differs). Check the actual "
-                    "values in each frame and retry."
-                )
-
-            # Magnitude mismatch is NO LONGER a rejection (Wave 3
-            # Stage 6.5 follow-up #6). The merge layer nullifies
-            # the gap column and ``_finalize_from_emit`` adds a
-            # "side-by-side comparison" caveat. Different units
-            # is a valid, complete result — just not subtractable.
+        # --- Fix 9c: multi-row CellLookup without agg ---
+        for claim in (args.get("claims") or []):
+            if not isinstance(claim, dict):
+                continue
+            src = claim.get("source") or {}
+            if src.get("type") != "CellLookup":
+                continue
+            if src.get("agg"):
+                continue
+            target_frame = self._resolve_target_frame(src.get("frame"))
+            if target_frame is None or len(target_frame) == 0:
+                continue
+            matched = self._count_filter_matches(
+                target_frame, src.get("row_filter") or {},
+            )
+            if matched is None or matched <= 1:
+                continue
+            text_span = str(claim.get("text_span", ""))[:80]
+            raise LakeToolError(
+                f"Claim '{text_span}': CellLookup "
+                f"row_filter={src.get('row_filter')} on column "
+                f"{src.get('column')!r} matches {matched} rows; you "
+                f"MUST specify agg='sum' or agg='mean' to aggregate. "
+                f"A naked CellLookup without agg resolves to the "
+                f"first matching row only — your stated total/average "
+                f"will not match and the validator will strip the "
+                f"clause. Add \"agg\": \"sum\" (or \"mean\") to this "
+                f"claim's source object and retry."
+            )
 
     # ---- Finalize ----------------------------------------------------
 
@@ -514,13 +710,12 @@ class Specialist:
             # any data it did manage to fetch.
             if not converged:
                 exhausted_caveats = list(caveats) + [
-                    "(Agent did not converge within the turn budget — "
-                    "the merge/emit preconditions kept rejecting "
-                    "the model's args. See SQL surfaces and grain "
-                    "notes for what was attempted.)"
+                    "Agent didn't converge within the turn budget; "
+                    "see SQL surfaces and grain notes for what was "
+                    "fetched.",
                 ]
                 return self._minimal_response(
-                    prose=prose or "(no prose produced)",
+                    prose=prose or LT.business_fallback(),
                     caveats=exhausted_caveats,
                     converged=False,
                     turns=turns,
@@ -711,44 +906,135 @@ class Specialist:
         self, *, converged: bool, turns: int,
     ) -> AgentResponse:
         """Build the AgentResponse from the args the model passed to
-        the ``emit_response`` tool. This is the Wave 3 normal exit
-        path; the legacy fenced-block parser in ``_finalize`` is the
-        fallback for soft cases (Advisor) that don't require
-        emit_response."""
+        the ``emit_response`` tool.
+
+        Wave 3 Stage 6.5 Fix 9 reshape: the merge spec is no longer
+        in emit_args (it ran in ``build_merge``). The result-of-record
+        is:
+
+        * ``self._merged_frame`` — clean merge path. Claims resolve
+          against this single frame.
+        * Dual frames (``self._merge_fail_payload``) — merge-fail
+          path. Claims set ``source.frame`` to ``"tenant"`` or
+          ``"lake"``; the validator receives a ``frames`` dict and
+          each claim resolves against the named real frame.
+        * Single-source paths (advisor on lake-only, tenant-only
+          questions) — fall through to whichever frame was fetched.
+        """
         args = self._emit_args or {}
-        merge_spec = args.get("merge") or {}
         chart_intent = args.get("chart_intent") or {}
         claims_raw = args.get("claims") or []
         prose = (args.get("prose") or "").strip()
         caveats = list(args.get("caveats") or [])
 
-        result = self._build_result(merge_spec)
+        # Pick the result-of-record + the frames dict for the
+        # validator. Three paths:
+        #   1. Clean merge → ``_merged_frame`` is the single result;
+        #      frames dict carries it under "merged" (plus tenant/lake
+        #      for any claims that explicitly named one).
+        #   2. Merge-fail dual-frame → no single result; result
+        #      defaults to whichever frame chart_intent.source names
+        #      (or tenant by default).
+        #   3. Single-source → result is the captured frame.
+        merge_failed = self._merge_fail_payload is not None
+        frames: dict[str, pd.DataFrame] = {}
+        if self._tenant_frame is not None and len(self._tenant_frame) > 0:
+            frames["tenant"] = self._tenant_frame
+        if self._lake_frame is not None and len(self._lake_frame) > 0:
+            frames["lake"] = self._lake_frame
+        if self._merged_frame is not None:
+            frames["merged"] = self._merged_frame
+
+        chart_source = chart_intent.get("source")
+        if self._merged_frame is not None and not merge_failed:
+            result = self._merged_frame
+            if chart_source is None:
+                chart_source = "merged"
+        elif merge_failed:
+            # Dual-frame path; pick the chart's source from
+            # chart_intent.source (default "tenant"). Claims resolve
+            # against their own ``source.frame`` via the frames dict.
+            if chart_source not in ("tenant", "lake"):
+                chart_source = "tenant"
+            result = frames.get(chart_source, self._tenant_frame
+                                if self._tenant_frame is not None
+                                else pd.DataFrame())
+        else:
+            # Single-source. Pick whatever was fetched.
+            if self._tenant_frame is not None and len(self._tenant_frame) > 0:
+                result = self._tenant_frame
+                if chart_source is None:
+                    chart_source = "tenant"
+            elif self._lake_frame is not None and len(self._lake_frame) > 0:
+                result = self._lake_frame
+                if chart_source is None:
+                    chart_source = "lake"
+            else:
+                result = pd.DataFrame()
+
         claims = self._parse_claims(claims_raw)
 
-        # Strip stray Anthropic tool-use XML markers the model
-        # sometimes double-encodes inside the `prose` string field
-        # (Wave 3 Stage 6.5 follow-up #5 — A3 batch-7 emission blob).
+        # Strip stray Anthropic tool-use XML markers; route narration
+        # leaks through the single business-fallback function
+        # (Fix 9e).
         prose = LT.sanitize_prose(prose)
 
         # Build the chart gracefully — if chart_intent is malformed
         # (model omitted per-kind required fields, named a column
         # that isn't in the result, etc.), set chart=None and surface
-        # the reason in caveats. The prose + claims + result still
-        # get the §1.4 treatment and reach the user. This trades a
-        # missing chart for a delivered prose answer; the alternative
-        # was raising and emitting nothing.
+        # the reason in caveats.
         chart = None
         chart_error: str | None = None
         try:
             chart = build_chart(chart_intent, result)
-        except (MissingColumnError, UnsupportedIntentError, KeyError) as exc:
+        except (MissingColumnError, UnsupportedIntentError,
+                NonNumericChartColumnError, KeyError) as exc:
             chart_error = f"{type(exc).__name__}: {exc}"
         except Exception as exc:                          # noqa: BLE001
             # Unexpected error from a per-kind builder (NaN values in
             # a Plotly indicator, etc.); same fallback path.
             chart_error = f"chart build raised: {type(exc).__name__}: {exc}"
 
-        report = validate_claims(prose, claims, result)
+        # Validator runs against ``result`` (the chart's substrate)
+        # for Pass B; Pass A's per-claim resolve honors each claim's
+        # ``frame`` field via the ``frames`` dict.
+        report = validate_claims(prose, claims, result, frames=frames)
+
+        # Wave 3 Stage 6.5 follow-up #8 round-4 — prose-from-claims
+        # backfill. When the validated prose is empty/very short but
+        # the model authored substantive claims (typical force-accept
+        # path: the model spent its turn-budget on the merge spec and
+        # never wrote the user-facing paragraph), synthesize a prose
+        # paragraph from the passing claims' text_spans. The text_spans
+        # were authored by the model and describe real result cells
+        # (failed claims are flagged with status="stripped"; we use
+        # only passing/normalized ones). The synthesis is safe by
+        # construction — each clause is already a passing claim.
+        passing_text_spans = [
+            d.claim.text_span
+            for d in report.claim_dispositions
+            if d.status in ("passed", "normalized")
+            and d.claim.text_span.strip()
+        ]
+        if len(report.prose.strip()) < 40 and passing_text_spans:
+            # Build sentences by joining text_spans with periods; the
+            # model's text_spans are typically complete clauses, so
+            # this reads as a coherent paragraph.
+            synth = ". ".join(
+                ts.rstrip(".") for ts in passing_text_spans
+            ) + "."
+            report.prose = synth
+        elif (
+            len(report.prose.strip()) < 40
+            and (report.claim_dispositions or len(result) > 0)
+        ):
+            # Wave 3 Stage 6.5 Fix 9e — single business-language
+            # fallback. All paths that need a "couldn't substantiate"
+            # fallback route through ``business_fallback()`` so a
+            # future regression can't reintroduce mechanics-talk.
+            # Shape information (row count + columns) lives in
+            # ``effective_caveats`` below, not in prose.
+            report.prose = LT.business_fallback()
 
         effective_caveats = list(caveats)
         if chart_error:
@@ -778,10 +1064,8 @@ class Specialist:
             )
         if self._force_accept_emit:
             effective_caveats.append(
-                "Agent exited after the precondition-retry cap was "
-                "reached. The result reflects the model's best "
-                "attempt within the bound; merge spec may have been "
-                "incomplete."
+                "Result reflects the agent's best attempt within "
+                "the turn budget; the comparison may be partial."
             )
         if result.attrs.get("merge_incomplete"):
             reason = result.attrs.get("merge_incomplete_reason", "")
@@ -816,6 +1100,16 @@ class Specialist:
                 turns=turns,
                 converged=converged,
             ),
+            claim_dispositions=[
+                {
+                    "text_span": d.claim.text_span,
+                    "value": d.claim.value,
+                    "status": d.status,
+                    "true_value": d.true_value,
+                    "reason": d.reason,
+                }
+                for d in report.claim_dispositions
+            ],
         )
 
     def _minimal_response(
@@ -869,6 +1163,9 @@ class Specialist:
         self._precondition_rejections = 0
         self._answer_started_at = time.monotonic()
         self._force_accept_emit = False
+        self._merged_frame = None
+        self._merge_fail_payload = None
+        self._merge_attempted = False
 
     @staticmethod
     def _extract_text(content_blocks: list[Any]) -> str:
@@ -893,6 +1190,7 @@ def _parse_claim_source(src: dict[str, Any]) -> CellLookup | Derivation:
             row_filter=dict(src.get("row_filter") or {}),
             column=str(src["column"]),
             agg=src.get("agg"),
+            frame=src.get("frame"),
         )
     if kind == "Derivation":
         operands = [
@@ -900,6 +1198,7 @@ def _parse_claim_source(src: dict[str, Any]) -> CellLookup | Derivation:
                 row_filter=dict(o.get("row_filter") or {}),
                 column=str(o["column"]),
                 agg=o.get("agg"),
+                frame=o.get("frame"),
             )
             for o in (src.get("operands") or [])
             if isinstance(o, dict)

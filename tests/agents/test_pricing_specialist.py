@@ -30,6 +30,7 @@ from src.agents.pricing import PricingSpecialist
 from src.agents.response import AgentResponse
 from tests.agents._fake_llm import (
     patch_llm,
+    scripted_build_merge,
     scripted_emit_response,
     scripted_text,
     scripted_tool_use,
@@ -71,12 +72,6 @@ def test_pricing_canonical_question_produces_agentresponse(
     emit = scripted_emit_response(
         prose="Your dairy own price averages 3.50 in your zones, "
               "indicating elevated category cost.",
-        merge={
-            "on": ["category"],
-            "own_value_col": "own_avg_price",
-            "peer_value_col": "price_index",
-            "gap_op": "difference",
-        },
         chart_intent={
             "kind": "cross_merchant_comparison",
             "x": "category",
@@ -105,6 +100,11 @@ def test_pricing_canonical_question_produces_agentresponse(
             "table": "lake_category_metrics",
             "filters": {"category": "DAIRY", "grain": "cat_week"},
         }),
+        scripted_build_merge(
+            on=["category"],
+            own_value_col="own_avg_price",
+            peer_value_col="price_index",
+        ),
         emit,
     ]
 
@@ -125,12 +125,13 @@ def test_pricing_canonical_question_produces_agentresponse(
     assert resp.caveats and any("Peer set" in c for c in resp.caveats)
     # Grain notes came from the manifest.
     assert any("peer SKU" in g for g in resp.grain_notes)
-    # SQL surfaces: both tenant + lake reads.
+    # SQL surfaces: tenant + lake reads + the build_merge step.
     surfaces = {s.surface for s in resp.sql}
-    assert surfaces == {"tenant", "lake"}
+    assert surfaces == {"tenant", "lake", "merge"}
     # Telemetry populated.
     assert resp.telemetry is not None
-    assert resp.telemetry.turns == 3
+    # Fix 9 adds the build_merge turn → 4 total (tenant + lake + merge + emit).
+    assert resp.telemetry.turns == 4
 
 
 # ---------------------------------------------------------------------

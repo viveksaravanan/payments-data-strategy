@@ -118,13 +118,31 @@ def _render_result_table(df: pd.DataFrame, *, max_rows: int = 12) -> str:
 def _render_claims(resp: AgentResponse) -> str:
     if not resp.claims:
         return "<em>(no claims)</em>"
+    # Build a lookup of dispositions by text_span (first-match wins,
+    # same logic the validator uses). Falls back to no-status if the
+    # dispositions list wasn't populated.
+    dispo_by_span = {}
+    for d in getattr(resp, "claim_dispositions", []) or []:
+        dispo_by_span.setdefault(d["text_span"], d)
     rows = []
     for c in resp.claims:
+        dispo = dispo_by_span.get(c.text_span)
+        if dispo is None:
+            status = "?"
+            status_color = "#9CA3AF"
+        else:
+            status = dispo["status"]
+            status_color = {
+                "passed":      "#0F4C81",
+                "normalized":  "#4B5563",
+                "stripped":    "#C44536",
+            }.get(status, "#9CA3AF")
         rows.append(
             f"<li><code>{html_escape.escape(c.text_span)}</code> "
             f"= <strong>{c.value}</strong> "
             f"<span class=\"hint\">via "
-            f"{type(c.source).__name__}</span></li>"
+            f"{type(c.source).__name__}</span> "
+            f"<span style=\"color:{status_color};font-weight:bold;\">[{status}]</span></li>"
         )
     return "<ul>" + "".join(rows) + "</ul>"
 

@@ -59,13 +59,27 @@ class CellLookup:
     ``agg=None`` (the default) a multi-row match raises — that's the
     closed-grammar safety net against accidentally aggregating when
     the model meant a single cell.
+
+    ``frame`` (Wave 3 Stage 6.5 Fix 9b) optionally names which captured
+    frame the lookup resolves against — one of ``"tenant"`` / ``"lake"``
+    / ``"merged"``. ``None`` means the single ``result`` frame the
+    validator was handed. ``"tenant"`` / ``"lake"`` are used in the
+    merge-fail dual-frame path so each claim can target its real
+    source. The grounding guarantee is preserved — each claim still
+    resolves against a REAL frame, never an invented dict.
     """
     row_filter: dict[str, Any]
     column: str
     agg: AggregateFunc | None = None     # noqa: F821 — forward ref
+    frame: Literal["tenant", "lake", "merged"] | None = None
 
-    def resolve(self, result: pd.DataFrame) -> float:
-        df = result
+    def resolve(
+        self,
+        result: pd.DataFrame,
+        *,
+        frames: dict[str, pd.DataFrame] | None = None,
+    ) -> float:
+        df = self._pick_frame(result, frames)
         for k, v in self.row_filter.items():
             df = df[df[k] == v]
         if len(df) == 0:
@@ -85,6 +99,24 @@ class CellLookup:
             return float(sum(values) / len(values))
         return float(df.iloc[0][self.column])
 
+    def _pick_frame(
+        self,
+        result: pd.DataFrame,
+        frames: dict[str, pd.DataFrame] | None,
+    ) -> pd.DataFrame:
+        """Select which frame this lookup resolves against. ``frame``
+        is optional; when set + ``frames`` is supplied, indexes into
+        the dual-frame dict. Falls back to ``result`` for backward
+        compat with the clean-merge / single-source paths."""
+        if self.frame is None or frames is None:
+            return result
+        if self.frame in frames:
+            return frames[self.frame]
+        # The model named a frame the caller didn't provide — fall
+        # back to the single result and let the column/filter
+        # lookup decide whether it traces.
+        return result
+
 
 DerivationOp = Literal["difference", "ratio", "pct_change", "aggregate"]
 AggregateFunc = Literal["sum", "mean"]
@@ -94,25 +126,35 @@ AggregateFunc = Literal["sum", "mean"]
 class Derivation:
     """A small arithmetic over cells of the result. ``op`` is one of
     the four closed-grammar operations; ``operands`` are CellLookups
-    that resolve to the operation's inputs."""
+    that resolve to the operation's inputs.
+
+    Operand CellLookups inherit the ``frames`` kwarg passed to
+    ``resolve`` — each operand independently honors its own ``frame``
+    field, so a Derivation can mix tenant and lake operands (e.g. a
+    pct_change of own value vs peer baseline)."""
     op: DerivationOp
     operands: list[CellLookup]
     agg: AggregateFunc | None = None
 
-    def resolve(self, result: pd.DataFrame) -> float:
+    def resolve(
+        self,
+        result: pd.DataFrame,
+        *,
+        frames: dict[str, pd.DataFrame] | None = None,
+    ) -> float:
         if self.op == "difference":
             if len(self.operands) != 2:
                 raise ValueError(
                     f"difference needs exactly 2 operands; got {len(self.operands)}"
                 )
-            a, b = (op.resolve(result) for op in self.operands)
+            a, b = (op.resolve(result, frames=frames) for op in self.operands)
             return a - b
         if self.op == "ratio":
             if len(self.operands) != 2:
                 raise ValueError(
                     f"ratio needs exactly 2 operands; got {len(self.operands)}"
                 )
-            a, b = (op.resolve(result) for op in self.operands)
+            a, b = (op.resolve(result, frames=frames) for op in self.operands)
             if b == 0:
                 raise ZeroDivisionError("ratio: denominator is 0")
             return a / b
@@ -121,7 +163,7 @@ class Derivation:
                 raise ValueError(
                     f"pct_change needs exactly 2 operands; got {len(self.operands)}"
                 )
-            a, b = (op.resolve(result) for op in self.operands)
+            a, b = (op.resolve(result, frames=frames) for op in self.operands)
             if b == 0:
                 raise ZeroDivisionError("pct_change: prior value is 0")
             return (a - b) / b
@@ -130,7 +172,7 @@ class Derivation:
                 raise ValueError(
                     f"aggregate needs agg ∈ {{'sum', 'mean'}}; got {self.agg!r}"
                 )
-            values = [op.resolve(result) for op in self.operands]
+            values = [op.resolve(result, frames=frames) for op in self.operands]
             if self.agg == "sum":
                 return float(sum(values))
             return float(sum(values) / len(values))
@@ -449,6 +491,7 @@ def validate_claims(
     result: pd.DataFrame,
     *,
     tolerance: float = CLAIM_TOLERANCE,
+    frames: dict[str, pd.DataFrame] | None = None,
 ) -> ValidationReport:
     """Validate every metric numeric in ``prose`` against ``result``
     via the declared ``claims`` list + an undeclared-number scan
@@ -491,7 +534,7 @@ def validate_claims(
         if declared_span is not None:
             declared_spans.append(declared_span)
         try:
-            true_value = claim.source.resolve(result)
+            true_value = claim.source.resolve(result, frames=frames)
         except (LookupError, ValueError, ZeroDivisionError) as exc:
             # Source can't resolve — strip the claim's clause.
             if declared_span is not None:

@@ -490,7 +490,14 @@ EMIT_RESPONSE_TOOL = {
         "what the user sees. You MUST call emit_response exactly "
         "once at the end of every answer; do not emit a free-text "
         "final turn. The validator and chart builder run on the "
-        "structured args you pass."
+        "structured args you pass.\n"
+        "\n"
+        "PRECONDITION (Wave 3 Stage 6.5 Fix 9): when BOTH "
+        "query_tenant AND read_lake_table have returned rows, you "
+        "MUST call build_merge first. emit_response will reject "
+        "until the merge has run (or failed and returned both real "
+        "frames). Author chart_intent and claims against the "
+        "merged frame's REAL columns, never guesses."
     ),
     "input_schema": {
         "type": "object",
@@ -503,29 +510,6 @@ EMIT_RESPONSE_TOOL = {
                     "the `claims` list, OR fall outside the metric/structural "
                     "scanner (years, entity counts like \"5 stores\" are exempt)."
                 ),
-            },
-            "merge": {
-                "type": "object",
-                "description": (
-                    "Join spec for own + peer frames. Leave empty {} when "
-                    "answering from a single source (advisor on a lake "
-                    "table, or own-only analysis). Required when BOTH "
-                    "query_tenant and read_lake_table were called and a "
-                    "comparison is needed."
-                ),
-                "properties": {
-                    "on": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "Join keys present in both frames.",
-                    },
-                    "own_value_col": {"type": "string"},
-                    "peer_value_col": {"type": "string"},
-                    "gap_op": {
-                        "type": "string",
-                        "enum": ["difference", "ratio"],
-                    },
-                },
             },
             "chart_intent": {
                 "type": "object",
@@ -592,6 +576,16 @@ EMIT_RESPONSE_TOOL = {
                         "type": "string",
                         "enum": ["diverging", "sequential"],
                     },
+                    "source": {
+                        "type": "string",
+                        "enum": ["tenant", "lake", "merged"],
+                        "description": (
+                            "Which captured frame the chart builds "
+                            "from. Default 'merged' after a successful "
+                            "build_merge; use 'tenant' or 'lake' in "
+                            "the merge-fail dual-frame path."
+                        ),
+                    },
                 },
                 "required": ["kind"],
             },
@@ -631,6 +625,18 @@ EMIT_RESPONSE_TOOL = {
                                     "type": "array",
                                     "items": {"type": "object"},
                                 },
+                                "frame": {
+                                    "type": "string",
+                                    "enum": ["tenant", "lake", "merged"],
+                                    "description": (
+                                        "Which frame the claim resolves "
+                                        "against. Use 'merged' (default) "
+                                        "after a successful build_merge; "
+                                        "use 'tenant' or 'lake' in the "
+                                        "merge-fail path when both real "
+                                        "frames are returned unmerged."
+                                    ),
+                                },
                             },
                         },
                     },
@@ -648,10 +654,74 @@ EMIT_RESPONSE_TOOL = {
 }
 
 
+BUILD_MERGE_TOOL = {
+    "name": "build_merge",
+    "description": (
+        "Combine your tenant query result with the lake read into a "
+        "single comparison frame at matching grain. Call this AFTER "
+        "both query_tenant and read_lake_table have returned non-empty "
+        "rows. The server runs the merge against the captured frames "
+        "and returns the merged frame's REAL columns + dtypes + a "
+        "50-row preview — author your chart_intent and claims against "
+        "those names, NOT guesses based on the prompt's spec.\n"
+        "\n"
+        "Required precondition for emit_response: when both tenant and "
+        "lake frames are populated, you MUST call build_merge before "
+        "emit_response. Single-source questions (tenant-only, e.g. "
+        "the cohort table where peer comparison is window-level) skip "
+        "this call.\n"
+        "\n"
+        "If the merge cannot run (mismatched join keys, grain "
+        "incompatibility, etc.), build_merge returns "
+        "`merge_failed: true` with BOTH real frames unmerged. In that "
+        "case author claims with `frame: 'tenant'` or `frame: 'lake'` "
+        "so each claim resolves against the right source — see Rule 8 "
+        "in the shared answering rules."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "on": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Join keys present in BOTH frames.",
+            },
+            "own_value_col": {
+                "type": "string",
+                "description": (
+                    "Tenant column whose values become `own_value` "
+                    "in the merged frame."
+                ),
+            },
+            "peer_value_col": {
+                "type": "string",
+                "description": (
+                    "Lake column whose values become `peer_benchmark` "
+                    "in the merged frame."
+                ),
+            },
+            "gap_op": {
+                "type": "string",
+                "enum": ["difference", "ratio"],
+                "description": (
+                    "How to compute the `gap` column. Defaults to "
+                    "`difference`. When the pair is in mismatched "
+                    "units (own $/unit vs peer index), the server "
+                    "NaNs `gap` automatically and emits a "
+                    "side-by-side caveat."
+                ),
+            },
+        },
+        "required": ["on", "own_value_col", "peer_value_col"],
+    },
+}
+
+
 TOOLS_SPECIALIST = [
     SCHEMA_INFO_TOOL,
     QUERY_TENANT_TOOL,
     READ_LAKE_TOOL,
+    BUILD_MERGE_TOOL,
     EMIT_RESPONSE_TOOL,
 ]
 
@@ -675,24 +745,113 @@ def _lake_tables_list() -> list[str]:
 # trailing chart_intent JSON blob) so they don't end up in the
 # delivered prose. See Wave 3 Stage 6.5 follow-up #5 inspection
 # notes for A3's batch-7 emission blob that prompted this.
+# Bare opening <prose> tag — Haiku occasionally wraps its prose in
+# <prose>...</prose>. Strip just the opening tag (not the content)
+# before the trailing-junk pass below; otherwise the trailing-junk
+# regex eats from the opening <prose> to end-of-string and the
+# user sees an empty answer (Wave 3 Stage 6.5 follow-up #8 — root
+# cause of 6/12 empty-prose blocks in round-3 batch).
+_PROSE_OPENING_TAG_RE = re.compile(
+    r"^\s*<prose>\s*", re.IGNORECASE,
+)
+
+# Trailing-junk regex: matches a closing tool-use marker (or a stray
+# OPENING tool-use marker like <parameter>, <invoke>, <antml>) and
+# eats everything after. We deliberately do NOT include opening
+# <prose> here — see above.
 _PROSE_TOOL_BLOB_RE = re.compile(
-    r"\s*(?:</?prose>|</?parameter\b[^>]*>|</?invoke\b[^>]*>|<antml[^>]*>).*",
+    r"\s*(?:</prose>|</?parameter\b[^>]*>|</?invoke\b[^>]*>|<antml[^>]*>).*",
     re.DOTALL | re.IGNORECASE,
 )
+
+
+# Wave 3 Stage 6.5 follow-up #8 — internal-error / planning narration
+# detector. Catches semantic leaks like "system issue filtering by …",
+# "I'll retry with corrected parameters", "let me pull peer data".
+# These are Haiku's plumbing voice and the prompt's Rule 2c forbids
+# them; this is the backstop when the prompt isn't enough.
+_INTERNAL_NARRATION_PATTERNS = [
+    r"system issue",
+    r"system error",
+    r"tool error",
+    r"query failed",
+    r"retry with corrected parameters?",
+    r"corrected parameters?",
+    r"peer benchmark fetch",
+    r"\blet me (?:pull|fetch|query|grab|retrieve|try)\b",
+    r"\bi(?:'ll| will) need to\b",
+    r"\bi need to (?:pull|fetch|query|grab|retrieve|compare|check)\b",
+    r"to (?:provide|give you) a full[^.]*?\bi(?:'ll| will)\b",
+    r"to answer this (?:question )?properly,? i (?:need|have) to",
+    r"i(?:'ve| have) fetched but",
+    r"unable to retrieve complete peer data",
+]
+_INTERNAL_NARRATION_RE = re.compile(
+    "|".join(_INTERNAL_NARRATION_PATTERNS),
+    re.IGNORECASE,
+)
+
+# Wave 3 Stage 6.5 Fix 9e — single source for any user-facing
+# "answer couldn't be substantiated" prose. Every fallback path
+# (narration sanitizer, all-stripped synthesizer, force-accept
+# floor, wall-clock ceiling) routes through ``business_fallback()``
+# so a future regression can't reintroduce mechanics-talk
+# ("validator", "draft", "merge spec", "retry with corrected
+# parameters", etc.).
+_BUSINESS_FALLBACK = (
+    "A grounded peer comparison wasn't available for this view; "
+    "your own figures and the peer benchmark are shown below."
+)
+
+# Mechanics terms that must NEVER reach user-facing prose. A
+# regression test scans every assembled AgentResponse.prose for
+# these and expects zero hits.
+_FORBIDDEN_MECHANICS_TERMS = frozenset({
+    "validator", "draft", "merge spec",
+    "retry with corrected parameters", "corrected parameters",
+    "tool error", "system issue", "precondition", "force-accept",
+    "claim disposition", "peer benchmark fetch",
+})
+
+
+def business_fallback() -> str:
+    """Single canonical failure-fallback prose. All paths that need
+    a 'we couldn't substantiate' fallback route through this — the
+    narration sanitizer, the all-stripped synthesizer, the
+    force-accept floor, the wall-clock ceiling."""
+    return _BUSINESS_FALLBACK
+
+
+# Backwards-compat alias for the prior fallback name. Removing the
+# duplicate symbol later is fine; the canonical name is
+# ``business_fallback()``.
+_NARRATION_FALLBACK = _BUSINESS_FALLBACK
 
 
 def sanitize_prose(prose: str) -> str:
     """Strip stray Anthropic XML-style tool-use markup (and any
     trailing chart-intent / parameter blob) from the model's prose
-    string. Anthropic's tool input_schema already enforces ``prose``
-    is a string, but the model occasionally writes literal
-    ``</prose>`` and ``<parameter name="chart_intent">`` inside the
-    string field. This sanitizer cleans them before the §1.4
-    validator runs (the validator treats XML tags as opaque text
-    and would leave them in the delivered prose)."""
+    string, then detect and neutralize internal-error / planning
+    narration that leaks Haiku's plumbing voice into the user-facing
+    answer (Wave 3 Stage 6.5 follow-up #8).
+
+    The XML pass runs first (handles ``</prose>``, ``<parameter
+    name="chart_intent">``, etc.). The narration pass runs second:
+    if any of the forbidden phrases from Rule 2c appears in the
+    sanitized prose, the entire prose is replaced with the neutral
+    business-framed fallback. We replace (not partial-strip) because
+    these narrations tend to dominate the paragraph; a partial
+    excise leaves dangling clauses worse than the original.
+    """
     if not prose:
         return prose
-    return _PROSE_TOOL_BLOB_RE.sub("", prose).strip()
+    # Strip a bare opening <prose> tag first so the trailing-junk
+    # regex doesn't eat the legitimate content after it.
+    cleaned = _PROSE_OPENING_TAG_RE.sub("", prose)
+    cleaned = _PROSE_TOOL_BLOB_RE.sub("", cleaned).strip()
+    if cleaned and _INTERNAL_NARRATION_RE.search(cleaned):
+        return business_fallback()
+    return cleaned
 
 
 _RENDER_RE = re.compile(

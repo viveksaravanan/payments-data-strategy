@@ -66,6 +66,202 @@ def test_sanitize_prose_handles_empty_input() -> None:
     assert sanitize_prose("   ") == ""
 
 
+# ---------------------------------------------------------------------
+# Wave 3 Stage 6.5 follow-up #8 — sanitizer narration backstop
+# ---------------------------------------------------------------------
+
+from src.agents.lake_tools import business_fallback as _business_fallback
+
+_FALLBACK = _business_fallback()
+
+
+def test_sanitize_prose_replaces_system_issue_leak() -> None:
+    """The exact P1 leak from round-2 batch."""
+    prose = (
+        "Unable to retrieve complete peer data due to a system issue "
+        "filtering by peer relationship. Based on your KRG pricing, "
+        "your average ASP is $5.99. To provide a full peer comparison, "
+        "I'll need to retry the peer benchmark fetch with corrected "
+        "parameters."
+    )
+    assert sanitize_prose(prose) == _FALLBACK
+
+
+def test_sanitize_prose_replaces_let_me_pull_narration() -> None:
+    prose = (
+        "Your dairy index is 1.05. Let me pull peer comparisons to "
+        "see how that stacks up."
+    )
+    assert sanitize_prose(prose) == _FALLBACK
+
+
+def test_sanitize_prose_replaces_i_need_to_planning() -> None:
+    prose = (
+        "To assess category performance, I need to compare own velocity "
+        "against the peer baseline."
+    )
+    assert sanitize_prose(prose) == _FALLBACK
+
+
+def test_sanitize_prose_replaces_corrected_parameters() -> None:
+    prose = "I'll retry with corrected parameters."
+    assert sanitize_prose(prose) == _FALLBACK
+
+
+def test_sanitize_prose_preserves_clean_finding_prose() -> None:
+    """Clean prose without narration MUST pass through unchanged."""
+    prose = (
+        "Your dairy price index of 1.06 is 6% above the segment peer "
+        "baseline of 1.00, the largest gap in your portfolio."
+    )
+    assert sanitize_prose(prose) == prose
+
+
+def test_sanitize_prose_preserves_legitimate_business_phrasing() -> None:
+    """Business language like 'need to lift list prices' must survive —
+    only INTERNAL mechanics get caught, not merchant action language."""
+    prose = (
+        "Lift pantry list prices 3-5% before next quarter and recheck "
+        "velocity."
+    )
+    assert sanitize_prose(prose) == prose
+
+
+def test_sanitize_prose_xml_strip_runs_before_narration_check() -> None:
+    """The XML strip pass runs first; if the residue is clean, narration
+    detector should not fire."""
+    prose = (
+        "Your dairy index is 1.05.\n</prose>\n<parameter>...</parameter>"
+    )
+    assert sanitize_prose(prose) == "Your dairy index is 1.05."
+
+
+def test_sanitize_prose_handles_opening_prose_tag_wrap() -> None:
+    """Wave 3 Stage 6.5 follow-up #8 round-3 batch: Haiku wrapped its
+    answer in <prose>...</prose>, the trailing-junk regex matched
+    the OPENING <prose> at position 0 and ate the entire string with
+    .*, producing empty prose. The fix strips bare opening <prose>
+    before the trailing-junk pass."""
+    prose = (
+        "<prose>Your baby category runs at $13.63 above the peer "
+        "price index of 1.09.</prose>"
+    )
+    out = sanitize_prose(prose)
+    assert "Your baby category runs at $13.63" in out
+    assert "<prose>" not in out
+    assert "</prose>" not in out
+
+
+def test_sanitize_prose_handles_wrap_with_trailing_tool_blob() -> None:
+    """<prose>answer</prose><parameter>...</parameter> — strip both
+    tags + the trailing parameter blob, keep the answer."""
+    prose = (
+        "<prose>Your dairy index is 1.05.</prose>"
+        "<parameter name='chart_intent'>{\"kind\":\"kpi_callout\"}</parameter>"
+    )
+    out = sanitize_prose(prose)
+    assert out == "Your dairy index is 1.05."
+
+
+# ---------------------------------------------------------------------
+# Wave 3 Stage 6.5 follow-up #8 — chart-authoring regression protections
+# ---------------------------------------------------------------------
+
+def test_kpi_callout_without_value_field_still_fails() -> None:
+    """Fix 8a tightened demand.md but the chart builder's per-kind
+    required-field check is what actually rejects {"kind":
+    "kpi_callout"} with no value. Regression-protect that."""
+    import pandas as pd
+    from src.agents.chart_build import (
+        UnsupportedIntentError, build_chart,
+    )
+    result = pd.DataFrame({"own_value": [1.05]})
+    with pytest.raises(UnsupportedIntentError):
+        build_chart({"kind": "kpi_callout", "title": "x"}, result)
+
+
+def test_prose_business_fallback_when_all_claims_stripped(viewer_krg) -> None:
+    """Wave 3 Stage 6.5 Fix 9e: when prose is empty AND all claims
+    are stripped (e.g. naked CellLookups that don't match), prose
+    falls back to ``business_fallback()`` — a single canonical
+    business-language string. No mechanics terms reach the user."""
+    specialist = PricingSpecialist(viewer_krg)
+    specialist._reset_state()
+    specialist._merged_frame = pd.DataFrame({
+        "category": ["MEAT"], "own_value": [1000.0],
+        "peer_benchmark": [1.06], "gap": [998.94],
+    })
+    specialist._emit_args = {
+        "prose": "",
+        "chart_intent": {"kind": "kpi_callout", "value": "own_value"},
+        "claims": [
+            {
+                "text_span": "Meat revenue is $3.94M",
+                "value": 3940000.0,  # wrong (real is 1000.0)
+                "source": {
+                    "type": "CellLookup",
+                    "row_filter": {"category": "MEAT"},
+                    "column": "own_value",
+                },
+            },
+        ],
+        "caveats": [],
+    }
+    response = specialist._finalize_from_emit(converged=True, turns=4)
+    assert response.prose == _business_fallback()
+
+
+def test_prose_synthesized_from_claims_when_empty(viewer_krg) -> None:
+    """Wave 3 Stage 6.5 follow-up #8 round-4: when the model emits
+    empty prose but rich PASSING claims, the specialist synthesizes a
+    prose paragraph from the claims' text_spans so the user sees a
+    real answer."""
+    specialist = PricingSpecialist(viewer_krg)
+    specialist._reset_state()
+    # Clean-merge path — the merged frame is the result-of-record.
+    specialist._merged_frame = pd.DataFrame({
+        "category": ["DAIRY"], "own_value": [3.99],
+        "peer_benchmark": [1.06], "gap": [2.93],
+        "price_index": [1.06],
+    })
+    specialist._emit_args = {
+        "prose": "",   # ← model forgot to write the paragraph
+        "chart_intent": {"kind": "kpi_callout", "value": "price_index"},
+        "claims": [
+            {
+                "text_span": "Your dairy price index is 1.06",
+                "value": 1.06,
+                "source": {
+                    "type": "CellLookup",
+                    "row_filter": {"category": "DAIRY"},
+                    "column": "price_index",
+                },
+            },
+        ],
+        "caveats": [],
+    }
+    response = specialist._finalize_from_emit(converged=True, turns=4)
+    assert response.prose, "prose should be synthesized from claim text_span"
+    assert "dairy price index is 1.06" in response.prose.lower()
+
+
+def test_chart_intent_with_sentence_in_value_field_still_fails() -> None:
+    """Fix 8a forbids `value="Need peer data"` in the prompt. The
+    reconciler does NOT silently invent a column when the named
+    value is a sentence/placeholder with no real-column match."""
+    import pandas as pd
+    from src.agents.chart_build import (
+        MissingColumnError, UnsupportedIntentError, build_chart,
+    )
+    result = pd.DataFrame({"period_start": ["2026-04-01"], "revenue": [100]})
+    with pytest.raises((MissingColumnError, UnsupportedIntentError)):
+        build_chart(
+            {"kind": "kpi_callout", "value": "Need peer data",
+             "title": "x"},
+            result,
+        )
+
+
 def test_sanitize_prose_keeps_curly_braces_unrelated_to_xml() -> None:
     """JSON-shaped text without an XML tool-use marker should
     survive — only the XML markers (and trailing content) get
@@ -202,11 +398,13 @@ def test_emit_rejected_with_no_data_fetched(viewer_krg) -> None:
     assert "fetch data" in str(exc.value).lower()
 
 
-def test_emit_rejected_with_both_frames_but_empty_merge_spec(viewer_krg) -> None:
-    """Fix 1: when both tenant and lake frames are populated and
+def test_emit_rejected_when_build_merge_not_called(viewer_krg) -> None:
+    """Fix 9a: when both tenant and lake frames are populated and
     the specialist requires a merge (Pricing's default
-    MERGE_REQUIRED=True), an empty merge spec must surface a tool
-    error rather than silently falling back to the lake frame."""
+    MERGE_REQUIRED=True), emit_response without a prior
+    ``build_merge`` call must reject. The model must call
+    build_merge FIRST so chart_intent + claims author against the
+    real merged column names."""
     specialist = PricingSpecialist(viewer_krg)
     specialist._reset_state()
     specialist._tenant_frame = pd.DataFrame({
@@ -220,89 +418,17 @@ def test_emit_rejected_with_both_frames_but_empty_merge_spec(viewer_krg) -> None
     with pytest.raises(LakeToolError) as exc:
         specialist._dispatch_tool("emit_response", {
             "prose": "vague",
-            "merge": {},
             "chart_intent": {"kind": "kpi_callout"},
             "claims": [],
         })
-    assert "merge" in str(exc.value).lower()
+    assert "build_merge" in str(exc.value)
 
 
-def test_emit_rejected_when_merge_fails_to_run(viewer_krg) -> None:
-    """Fix 1: merge spec references a join key not present in the
-    own frame → MergeGrainError surfaces as LakeToolError to the
-    model with the available columns listed."""
-    specialist = PricingSpecialist(viewer_krg)
-    specialist._reset_state()
-    specialist._tenant_frame = pd.DataFrame({
-        "category": ["DAIRY"], "own_avg_qty": [1.2],
-    })
-    specialist._lake_frame = pd.DataFrame({
-        "category": ["DAIRY"], "derived_zone": ["Z05"],
-        "units_index": [0.95], "peer_relationship": ["segment_peer"],
-    })
-
-    with pytest.raises(LakeToolError) as exc:
-        specialist._dispatch_tool("emit_response", {
-            "prose": "v",
-            "merge": {
-                "on": ["category", "derived_zone"],  # not in tenant
-                "own_value_col": "own_avg_qty",
-                "peer_value_col": "units_index",
-                "gap_op": "difference",
-            },
-            "chart_intent": {"kind": "kpi_callout"},
-            "claims": [],
-        })
-    msg = str(exc.value).lower()
-    assert "derived_zone" in msg or "join key" in msg
-
-
-def test_magnitude_mismatch_accepts_as_side_by_side(viewer_krg) -> None:
-    """Wave 3 Stage 6.5 follow-up #6 softening (Fix A): when own and
-    peer columns are in different units, the merge layer nullifies
-    the ``gap`` column and the specialist accepts the emit with a
-    side-by-side caveat. NO rejection (was rejection in v3-of-this-
-    file; the rejection caused retry-thrash on P2/D3/D4/T4)."""
-    specialist = PricingSpecialist(viewer_krg)
-    specialist._reset_state()
-    specialist._tenant_frame = pd.DataFrame({
-        "category": ["DAIRY"], "own_revenue": [625779.0],
-    })
-    specialist._lake_frame = pd.DataFrame({
-        "category": ["DAIRY"], "revenue_index": [1.002],
-        "peer_relationship": ["segment_peer"],
-    })
-    # No raise — emit is accepted.
-    out = specialist._dispatch_tool("emit_response", {
-        "prose": "Your $625k revenue against a peer revenue_index of 1.002 indicates ~baseline performance.",
-        "merge": {
-            "on": ["category"],
-            "own_value_col": "own_revenue",
-            "peer_value_col": "revenue_index",
-            "gap_op": "difference",
-        },
-        "chart_intent": {"kind": "kpi_callout", "value": "own_value"},
-        "claims": [],
-    })
-    assert out == {"ok": True}
-    assert specialist._emit_args is not None
-    # The merge produced a directional-only result; finalize_from_emit
-    # would surface the side-by-side caveat.
-    from src.agents.response import merge_own_and_peer
-    merged = merge_own_and_peer(
-        specialist._tenant_frame, specialist._lake_frame,
-        on=["category"], own_value_col="own_revenue",
-        peer_value_col="revenue_index",
-    )
-    assert merged.attrs["gap_is_directional"] is True
-    import math
-    assert math.isnan(merged["gap"].iloc[0])
-
-
-def test_emit_accepted_when_merge_clean_and_units_match(viewer_krg) -> None:
-    """Sanity check: when both frames are populated, merge spec is
-    valid, and own_value / peer_benchmark are comparable in scale,
-    emit_response is accepted (no raise; _emit_args captured)."""
+def test_build_merge_returns_real_columns_before_emit(viewer_krg) -> None:
+    """Fix 9a: build_merge runs the server-side merge and returns the
+    REAL merged frame's columns + dtypes + a 50-row preview, same
+    shape as query_tenant / read_lake_table payloads. The model
+    authors chart_intent and claims against these names."""
     specialist = PricingSpecialist(viewer_krg)
     specialist._reset_state()
     specialist._tenant_frame = pd.DataFrame({
@@ -312,14 +438,114 @@ def test_emit_accepted_when_merge_clean_and_units_match(viewer_krg) -> None:
         "category": ["DAIRY"], "units_index": [0.95],
         "peer_relationship": ["segment_peer"],
     })
+    payload = specialist._dispatch_tool("build_merge", {
+        "on": ["category"],
+        "own_value_col": "own_avg_qty",
+        "peer_value_col": "units_index",
+        "gap_op": "difference",
+    })
+    assert payload["merge_failed"] is False
+    assert payload["row_count"] == 1
+    # The merged frame's real columns must include the canonical
+    # own_value / peer_benchmark / gap triple.
+    assert "own_value" in payload["columns"]
+    assert "peer_benchmark" in payload["columns"]
+    assert "gap" in payload["columns"]
+    assert "category" in payload["columns"]
+    # dtypes are surfaced so the model knows what's numeric.
+    assert payload["dtypes"]["own_value"].startswith(("int", "float"))
+    # The merged frame is stored as the result-of-record.
+    assert specialist._merged_frame is not None
+    assert specialist._merge_attempted is True
+
+
+def test_build_merge_failure_returns_both_frames_unmerged(viewer_krg) -> None:
+    """Fix 9b: when build_merge fails (mismatched join keys,
+    incompatible grain), it returns ``merge_failed=True`` with BOTH
+    real frames unmerged — does NOT broadcast a scalar across rows.
+    The model then composes claims with frame: 'tenant' / 'lake'."""
+    specialist = PricingSpecialist(viewer_krg)
+    specialist._reset_state()
+    specialist._tenant_frame = pd.DataFrame({
+        "category": ["DAIRY"], "own_avg_qty": [1.2],
+    })
+    specialist._lake_frame = pd.DataFrame({
+        "category": ["DAIRY"], "derived_zone": ["Z05"],
+        "units_index": [0.95], "peer_relationship": ["segment_peer"],
+    })
+    payload = specialist._dispatch_tool("build_merge", {
+        "on": ["category", "derived_zone"],  # not in tenant
+        "own_value_col": "own_avg_qty",
+        "peer_value_col": "units_index",
+        "gap_op": "difference",
+    })
+    assert payload["merge_failed"] is True
+    # Both real frames are returned, NOT broadcast.
+    assert payload["tenant"]["row_count"] == 1
+    assert payload["lake"]["row_count"] == 1
+    assert "own_avg_qty" in payload["tenant"]["columns"]
+    assert "units_index" in payload["lake"]["columns"]
+    # Merged frame is NOT set (so the validator path uses the dual-
+    # frame branch).
+    assert specialist._merged_frame is None
+    assert specialist._merge_fail_payload is not None
+    assert specialist._merge_attempted is True
+
+
+def test_magnitude_mismatch_accepts_as_side_by_side(viewer_krg) -> None:
+    """Wave 3 Stage 6.5 follow-up #6 softening (Fix A) — preserved
+    through Fix 9. When own and peer columns are in different units,
+    the merge layer nullifies the ``gap`` column. build_merge still
+    succeeds; subsequent emit_response is accepted."""
+    specialist = PricingSpecialist(viewer_krg)
+    specialist._reset_state()
+    specialist._tenant_frame = pd.DataFrame({
+        "category": ["DAIRY"], "own_revenue": [625779.0],
+    })
+    specialist._lake_frame = pd.DataFrame({
+        "category": ["DAIRY"], "revenue_index": [1.002],
+        "peer_relationship": ["segment_peer"],
+    })
+    payload = specialist._dispatch_tool("build_merge", {
+        "on": ["category"],
+        "own_value_col": "own_revenue",
+        "peer_value_col": "revenue_index",
+        "gap_op": "difference",
+    })
+    assert payload["merge_failed"] is False
+    assert payload["gap_is_directional"] is True
+    # Now emit accepts.
+    out = specialist._dispatch_tool("emit_response", {
+        "prose": "Your $625k revenue against a peer revenue_index of 1.002 indicates ~baseline performance.",
+        "chart_intent": {"kind": "kpi_callout", "value": "own_value"},
+        "claims": [],
+    })
+    assert out == {"ok": True}
+    assert specialist._emit_args is not None
+    import math
+    assert math.isnan(specialist._merged_frame["gap"].iloc[0])
+
+
+def test_emit_accepted_when_merge_clean_and_units_match(viewer_krg) -> None:
+    """Sanity check: build_merge succeeds, then emit_response is
+    accepted."""
+    specialist = PricingSpecialist(viewer_krg)
+    specialist._reset_state()
+    specialist._tenant_frame = pd.DataFrame({
+        "category": ["DAIRY"], "own_avg_qty": [1.2],
+    })
+    specialist._lake_frame = pd.DataFrame({
+        "category": ["DAIRY"], "units_index": [0.95],
+        "peer_relationship": ["segment_peer"],
+    })
+    specialist._dispatch_tool("build_merge", {
+        "on": ["category"],
+        "own_value_col": "own_avg_qty",
+        "peer_value_col": "units_index",
+        "gap_op": "difference",
+    })
     out = specialist._dispatch_tool("emit_response", {
         "prose": "Concrete answer with 1.2 vs 0.95.",
-        "merge": {
-            "on": ["category"],
-            "own_value_col": "own_avg_qty",
-            "peer_value_col": "units_index",
-            "gap_op": "difference",
-        },
         "chart_intent": {"kind": "kpi_callout"},
         "claims": [],
     })
@@ -535,6 +761,213 @@ def test_build_result_failed_merge_carries_own_columns(viewer_krg) -> None:
     })
     assert out.attrs.get("merge_incomplete") is True
     assert "own_asp" in out.columns
+
+
+# ---------------------------------------------------------------------
+# Wave 3 Stage 6.5 Fix 9 — merge-as-its-own-tool-turn + companion fixes
+# ---------------------------------------------------------------------
+
+
+def test_claim_with_tenant_frame_resolves(viewer_krg) -> None:
+    """Fix 9b: in the merge-fail dual-frame path, a claim setting
+    ``source.frame = 'tenant'`` resolves against the real tenant
+    frame (not against the single ``result`` argument the validator
+    receives)."""
+    from src.agents.claims import (
+        CellLookup,
+        Claim,
+        validate_claims,
+    )
+    tenant = pd.DataFrame({"category": ["DAIRY"], "own_revenue": [625779.0]})
+    lake = pd.DataFrame({"category": ["DAIRY"], "price_index": [1.06]})
+    claim = Claim(
+        text_span="own revenue is 625779",
+        value=625779.0,
+        source=CellLookup(
+            row_filter={"category": "DAIRY"},
+            column="own_revenue",
+            frame="tenant",
+        ),
+    )
+    report = validate_claims(
+        "your own revenue is 625779 above the segment baseline",
+        [claim],
+        result=lake,                     # not where the claim lives
+        frames={"tenant": tenant, "lake": lake},
+    )
+    assert report.claim_dispositions[0].status == "passed"
+
+
+def test_claim_with_lake_frame_resolves(viewer_krg) -> None:
+    """Fix 9b mirror: claim setting ``source.frame = 'lake'`` resolves
+    against the lake frame, even when ``result`` is the tenant
+    frame."""
+    from src.agents.claims import (
+        CellLookup,
+        Claim,
+        validate_claims,
+    )
+    tenant = pd.DataFrame({"category": ["DAIRY"], "own_revenue": [625779.0]})
+    lake = pd.DataFrame({"category": ["DAIRY"], "price_index": [1.06]})
+    claim = Claim(
+        text_span="peer price_index of 1.06",
+        value=1.06,
+        source=CellLookup(
+            row_filter={"category": "DAIRY"},
+            column="price_index",
+            frame="lake",
+        ),
+    )
+    report = validate_claims(
+        "segment peers run at peer price_index of 1.06.",
+        [claim],
+        result=tenant,
+        frames={"tenant": tenant, "lake": lake},
+    )
+    assert report.claim_dispositions[0].status == "passed"
+
+
+def test_multi_row_cell_lookup_without_agg_rejected_at_emit(viewer_krg) -> None:
+    """Fix 9c: a CellLookup whose row_filter matches multiple rows
+    AND has no ``agg`` is rejected at emit time with a legible
+    Rule-7 error, BEFORE the validator silently strips it. The
+    model retries with ``agg="sum"`` or ``agg="mean"``."""
+    specialist = PricingSpecialist(viewer_krg)
+    specialist._reset_state()
+    # Multi-row merged frame: filter on category matches 3 rows.
+    specialist._merged_frame = pd.DataFrame({
+        "category": ["DAIRY", "DAIRY", "DAIRY"],
+        "period_start": ["2026-04-06", "2026-04-13", "2026-04-20"],
+        "own_value":   [1000.0, 1100.0, 1200.0],
+        "peer_benchmark": [1.0, 1.05, 1.06],
+        "gap":         [999.0, 1099.0, 1198.99],
+    })
+    specialist._tenant_frame = pd.DataFrame({"category": ["DAIRY"]})
+    specialist._lake_frame   = pd.DataFrame({"category": ["DAIRY"]})
+    specialist._merge_attempted = True
+    bad_args = {
+        "prose": "Meat revenue totals 3.94M.",
+        "chart_intent": {"kind": "kpi_callout", "value": "own_value"},
+        "claims": [
+            {
+                "text_span": "Meat revenue totals 3.94M",
+                "value": 3940000.0,
+                "source": {
+                    "type": "CellLookup",
+                    "row_filter": {"category": "DAIRY"},  # matches 3 rows
+                    "column": "own_value",
+                    # NO agg — this is the bug Fix 9c surfaces.
+                },
+            },
+        ],
+        "caveats": [],
+    }
+    with pytest.raises(LakeToolError) as exc:
+        specialist._dispatch_tool("emit_response", bad_args)
+    msg = str(exc.value)
+    assert "agg" in msg
+    assert "matches 3 rows" in msg or "matches" in msg
+
+
+def test_datetime_column_on_value_axis_returns_clean_caveat(viewer_krg) -> None:
+    """Fix 9d: a chart_intent that puts a datetime column on a
+    value/magnitude axis raises ``NonNumericChartColumnError``;
+    the specialist catches it like any other build error and the
+    AgentResponse carries ``chart=None`` + a caveat. No
+    ``TypeError`` crash reaches the user."""
+    specialist = PricingSpecialist(viewer_krg)
+    specialist._reset_state()
+    specialist._merged_frame = pd.DataFrame({
+        "period_start": pd.to_datetime(
+            ["2026-04-06", "2026-04-13", "2026-04-20"]
+        ),
+        "own_value": [1.0, 1.1, 1.2],
+        "peer_benchmark": [0.95, 0.98, 1.0],
+    })
+    specialist._tenant_frame = pd.DataFrame({"x": [1]})
+    specialist._lake_frame   = pd.DataFrame({"x": [1]})
+    specialist._merge_attempted = True
+    specialist._emit_args = {
+        "prose": "Dairy own price runs higher.",
+        "chart_intent": {
+            "kind": "kpi_callout",
+            "value": "period_start",   # ← datetime, not numeric
+            "title": "x",
+        },
+        "claims": [],
+        "caveats": [],
+    }
+    response = specialist._finalize_from_emit(converged=True, turns=4)
+    assert response.chart is None
+    assert any(
+        "non-numeric" in c.lower() or "NonNumeric" in c
+        for c in response.caveats
+    )
+
+
+def test_business_fallback_used_for_narration() -> None:
+    """Fix 9e: when sanitize_prose detects narration mechanics
+    ("system issue", "retry with corrected parameters"), the prose
+    is replaced with ``business_fallback()`` — single canonical
+    business-language string."""
+    from src.agents.lake_tools import business_fallback, sanitize_prose
+    narration = (
+        "Unable to retrieve complete peer data due to a system "
+        "issue filtering by peer relationship; I'll retry with "
+        "corrected parameters."
+    )
+    assert sanitize_prose(narration) == business_fallback()
+
+
+def test_no_mechanics_terms_in_business_fallback() -> None:
+    """Fix 9e: the business-language fallback string contains zero
+    forbidden mechanics terms ("validator", "draft", "merge spec",
+    "retry with corrected parameters", "tool error", "system
+    issue", "precondition", "force-accept", "claim disposition")."""
+    from src.agents.lake_tools import (
+        _FORBIDDEN_MECHANICS_TERMS,
+        business_fallback,
+    )
+    prose = business_fallback().lower()
+    for term in _FORBIDDEN_MECHANICS_TERMS:
+        assert term.lower() not in prose, (
+            f"Mechanics term {term!r} found in business fallback: {prose!r}"
+        )
+
+
+def test_no_mechanics_terms_in_assembled_response_prose(viewer_krg) -> None:
+    """Fix 9e end-to-end: assemble a synthetic AgentResponse via
+    the all-stripped path and confirm no mechanics term reaches
+    ``response.prose``."""
+    from src.agents.lake_tools import _FORBIDDEN_MECHANICS_TERMS
+    specialist = PricingSpecialist(viewer_krg)
+    specialist._reset_state()
+    specialist._merged_frame = pd.DataFrame({
+        "category": ["MEAT"], "own_value": [1000.0],
+        "peer_benchmark": [1.06], "gap": [998.94],
+    })
+    specialist._emit_args = {
+        "prose": "",
+        "chart_intent": {"kind": "kpi_callout", "value": "own_value"},
+        "claims": [
+            {
+                "text_span": "wrong total 3.94M",
+                "value": 3940000.0,
+                "source": {
+                    "type": "CellLookup",
+                    "row_filter": {"category": "MEAT"},
+                    "column": "own_value",
+                },
+            },
+        ],
+        "caveats": [],
+    }
+    response = specialist._finalize_from_emit(converged=True, turns=4)
+    prose_lower = response.prose.lower()
+    for term in _FORBIDDEN_MECHANICS_TERMS:
+        assert term.lower() not in prose_lower, (
+            f"Mechanics term {term!r} found in response.prose: {response.prose!r}"
+        )
 
 
 def test_emit_accepted_for_advisor_with_lake_only(viewer_krg) -> None:

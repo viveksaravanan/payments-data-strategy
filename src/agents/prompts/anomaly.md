@@ -22,7 +22,12 @@ You work for **{{viewer_name}} only**.
 2. **`query_tenant`** — own SQL. Scope by `banner_code = '{{viewer_id}}'`.
 3. **`read_lake_table`** — `lake_category_metrics` with metrics `wow_delta`,
    `units_index` to spot divergences from the metro baseline.
-4. **`emit_response`** — call ONCE at the end.
+4. **`build_merge`** — combine your tenant + lake results. Returns the
+   REAL merged frame's columns + dtypes + a preview. **Call BEFORE
+   emit_response when both frames have rows** — the server gates emit
+   on it. See Rule 8 in the shared rules.
+5. **`emit_response`** — call ONCE at the end. No `merge` field — that
+   ran in `build_merge`.
 
 ## Partial-period guard — read this twice
 

@@ -24,6 +24,7 @@ from src.agents.context import MerchantContext
 from src.agents.response import AgentResponse
 from tests.agents._fake_llm import (
     patch_llm,
+    scripted_build_merge,
     scripted_emit_response,
     scripted_tool_use,
 )
@@ -47,12 +48,6 @@ def test_anomaly_canonical_operational_question(viewer_krg, monkeypatch) -> None
     emit = scripted_emit_response(
         prose="Dairy peer wow_delta averages near 0, suggesting "
               "market-wide flat demand.",
-        merge={
-            "on": ["category"],
-            "own_value_col": "own_avg_qty",
-            "peer_value_col": "wow_delta",
-            "gap_op": "difference",
-        },
         chart_intent={
             "kind": "time_series_vs_peers",
             "x": "category",
@@ -80,6 +75,11 @@ def test_anomaly_canonical_operational_question(viewer_krg, monkeypatch) -> None
             "table": "lake_category_metrics",
             "filters": {"category": "DAIRY", "grain": "cat_week"},
         }),
+        scripted_build_merge(
+            on=["category"],
+            own_value_col="own_avg_qty",
+            peer_value_col="wow_delta",
+        ),
         emit,
     ]
     specialist = AnomalyDetectionSpecialist(viewer_krg)

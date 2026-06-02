@@ -23,6 +23,7 @@ from src.agents.demand import DemandForecastingSpecialist
 from src.agents.response import AgentResponse
 from tests.agents._fake_llm import (
     patch_llm,
+    scripted_build_merge,
     scripted_emit_response,
     scripted_tool_use,
 )
@@ -49,12 +50,6 @@ def test_demand_canonical_question_units_index(viewer_krg, monkeypatch) -> None:
     emit = scripted_emit_response(
         prose="Your dairy own per-line units run at 1.24, against "
               "the peer units_index average of 0.93.",
-        merge={
-            "on": ["category"],
-            "own_value_col": "own_avg_qty",
-            "peer_value_col": "units_index",
-            "gap_op": "difference",
-        },
         chart_intent={
             "kind": "cross_merchant_comparison",
             "x": "category",
@@ -94,6 +89,11 @@ def test_demand_canonical_question_units_index(viewer_krg, monkeypatch) -> None:
             "table": "lake_category_metrics",
             "filters": {"category": "DAIRY", "grain": "cat_week"},
         }),
+        scripted_build_merge(
+            on=["category"],
+            own_value_col="own_avg_qty",
+            peer_value_col="units_index",
+        ),
         emit,
     ]
     specialist = DemandForecastingSpecialist(viewer_krg)

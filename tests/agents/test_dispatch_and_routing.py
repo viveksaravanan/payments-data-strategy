@@ -33,6 +33,7 @@ from src.agents.orchestrator import (
 from src.agents.response import AgentResponse
 from tests.agents._fake_llm import (
     patch_llm,
+    scripted_build_merge,
     scripted_emit_response,
     scripted_text,
     scripted_tool_use,
@@ -153,12 +154,6 @@ def test_dispatch_pill_goes_direct_to_pricing(monkeypatch) -> None:
     )
     emit_pricing = scripted_emit_response(
         prose="Your dairy own price averages 3.50 across zones.",
-        merge={
-            "on": ["category"],
-            "own_value_col": "own_avg_price",
-            "peer_value_col": "price_index",
-            "gap_op": "difference",
-        },
         chart_intent={
             "kind": "cross_merchant_comparison",
             "x": "category",
@@ -183,6 +178,11 @@ def test_dispatch_pill_goes_direct_to_pricing(monkeypatch) -> None:
             "table": "lake_category_metrics",
             "filters": {"category": "DAIRY", "grain": "cat_week"},
         }),
+        scripted_build_merge(
+            on=["category"],
+            own_value_col="own_avg_price",
+            peer_value_col="price_index",
+        ),
         emit_pricing,
     ]
     with patch_llm(monkeypatch, script):
@@ -257,12 +257,6 @@ def test_dispatch_freeform_routes_via_keyword_fallback(monkeypatch) -> None:
     )
     emit_pricing = scripted_emit_response(
         prose="Your dairy own price averages 3.50.",
-        merge={
-            "on": ["category"],
-            "own_value_col": "own_avg_price",
-            "peer_value_col": "price_index",
-            "gap_op": "difference",
-        },
         chart_intent={
             "kind": "cross_merchant_comparison",
             "x": "category",
@@ -285,6 +279,11 @@ def test_dispatch_freeform_routes_via_keyword_fallback(monkeypatch) -> None:
             "table": "lake_category_metrics",
             "filters": {"category": "DAIRY", "grain": "cat_week"},
         }),
+        scripted_build_merge(
+            on=["category"],
+            own_value_col="own_avg_price",
+            peer_value_col="price_index",
+        ),
         emit_pricing,
     ]
     with patch_llm(monkeypatch, script):

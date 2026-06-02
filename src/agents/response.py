@@ -94,6 +94,13 @@ class AgentResponse:
     sql: list[SqlSurface] = field(default_factory=list)
     grain_notes: list[str] = field(default_factory=list)
     telemetry: Telemetry | None = None
+    # Wave 3 Stage 6.5 follow-up #8 — claim dispositions surfaced for
+    # the preview harness (passed / normalized / stripped per claim).
+    # The runtime validator already produces these; we attach them
+    # to the response so debug surfaces don't need to re-validate.
+    # Stored as a list of dicts to avoid a hard dependency from
+    # response.py on claims.py.
+    claim_dispositions: list[dict[str, Any]] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------

@@ -95,19 +95,45 @@ def scripted_emit_response(
     prose: str,
     chart_intent: dict[str, Any],
     claims: list[dict[str, Any]] | None = None,
-    merge: dict[str, Any] | None = None,
+    merge: dict[str, Any] | None = None,   # noqa: ARG001 — Fix 9 legacy
     caveats: list[str] | None = None,
 ) -> ScriptedResponse:
     """Helper for the Wave 3 normal exit path: model calls
     ``emit_response`` with the structured response args. The
     specialist's loop captures the args via ``_emit_args`` and
-    finalizes via ``_finalize_from_emit``."""
+    finalizes via ``_finalize_from_emit``.
+
+    Note (Wave 3 Stage 6.5 Fix 9): the ``merge`` parameter is no
+    longer part of ``emit_response``; use ``scripted_build_merge``
+    in the script BEFORE emit when both frames are populated. The
+    ``merge=`` kwarg is accepted for backward compat with old test
+    fixtures and is ignored.
+    """
     return scripted_tool_use("emit_response", {
         "prose": prose,
-        "merge": merge if merge is not None else {},
         "chart_intent": chart_intent,
         "claims": claims if claims is not None else [],
         "caveats": caveats if caveats is not None else [],
+    })
+
+
+def scripted_build_merge(
+    *,
+    on: list[str],
+    own_value_col: str,
+    peer_value_col: str,
+    gap_op: str = "difference",
+) -> ScriptedResponse:
+    """Helper for the build_merge tool turn (Wave 3 Stage 6.5
+    Fix 9a). Insert this in the script between the
+    query_tenant + read_lake_table turns and the emit_response
+    turn so the specialist's gate is satisfied and the merged
+    frame becomes the result-of-record."""
+    return scripted_tool_use("build_merge", {
+        "on": on,
+        "own_value_col": own_value_col,
+        "peer_value_col": peer_value_col,
+        "gap_op": gap_op,
     })
 
 

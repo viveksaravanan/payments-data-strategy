@@ -146,6 +146,17 @@ class UnsupportedIntentError(ValueError):
     per-kind required key is missing."""
 
 
+class NonNumericChartColumnError(ValueError):
+    """Raised when a ``chart_intent`` names a column for a numeric
+    (value/magnitude) axis but the column's dtype is datetime,
+    object, categorical, or otherwise non-numeric (Wave 3 Stage 6.5
+    Fix 9d). Plotly raises ``TypeError`` deep inside trace
+    construction when handed a Timestamp column for a y-axis; this
+    error converts that crash into a clean, model-actionable
+    message that the specialist catches like any other chart-build
+    failure (chart=None + caveat)."""
+
+
 # ---------------------------------------------------------------------
 # Helper utilities
 # ---------------------------------------------------------------------
@@ -186,6 +197,46 @@ def _require_columns(
         raise MissingColumnError(
             f"ChartIntent references columns not in result: {missing}. "
             f"Result columns: {list(result.columns)}"
+        )
+
+
+def _require_numeric_columns(
+    result: pd.DataFrame, intent: dict, keys: list[str],
+) -> None:
+    """For each ``key`` in ``intent`` that names a value-axis column,
+    assert the column's dtype is numeric.
+
+    Datetimes belong on time/x axes, not magnitude axes. Plotly will
+    otherwise crash with ``TypeError: float() argument must be a
+    string or a real number, not 'Timestamp'`` deep inside trace
+    construction. This converts that crash into a clean,
+    model-actionable error caught by the specialist as ``chart=None``
+    + a caveat (Wave 3 Stage 6.5 Fix 9d)."""
+    import pandas.api.types as pdt
+
+    offenders: list[str] = []
+    for k in keys:
+        if k not in intent:
+            continue
+        val = intent[k]
+        cols = val if isinstance(val, list) else [val]
+        for col in cols:
+            if not isinstance(col, str) or col not in result.columns:
+                continue
+            s = result[col]
+            if pdt.is_datetime64_any_dtype(s) or pdt.is_timedelta64_dtype(s):
+                offenders.append(f"{k}={col!r} (dtype={s.dtype})")
+            elif not pdt.is_numeric_dtype(s):
+                offenders.append(
+                    f"{k}={col!r} (dtype={s.dtype}, not numeric)"
+                )
+    if offenders:
+        raise NonNumericChartColumnError(
+            f"chart_intent names non-numeric column(s) on a value "
+            f"axis: {offenders}. Use these columns on the x/time "
+            f"axis instead, and pick a numeric column for the value "
+            f"axis (e.g. own_value, peer_benchmark, gap, txn_count, "
+            f"units_index, price_index)."
         )
 
 
@@ -268,6 +319,7 @@ def _decorate_title(title: str, *, truncated_note: str | None) -> str:
 def _build_time_series(intent: dict, result: pd.DataFrame) -> go.Figure:
     _require_keys(intent, "time_series_vs_peers", ["x", "series"])
     _require_columns(result, intent, ["x", "series"])
+    _require_numeric_columns(result, intent, ["series"])
 
     # Aggregate to one point per (x). Without this, a merge frame
     # with category × zone × week produces multiple values per
@@ -323,6 +375,7 @@ def _build_cross_merchant_comparison(
 ) -> go.Figure:
     _require_keys(intent, "cross_merchant_comparison", ["x", "series"])
     _require_columns(result, intent, ["x", "series"])
+    _require_numeric_columns(result, intent, ["series"])
 
     aggregated = _aggregate_by(
         result, by=[intent["x"]], value_cols=list(intent["series"]),
@@ -365,6 +418,7 @@ def _build_cross_merchant_comparison(
 def _build_heatmap(intent: dict, result: pd.DataFrame) -> go.Figure:
     _require_keys(intent, "heatmap", ["row", "col", "value"])
     _require_columns(result, intent, ["row", "col", "value"])
+    _require_numeric_columns(result, intent, ["value"])
 
     pivot = result.pivot_table(
         index=intent["row"], columns=intent["col"],
@@ -405,6 +459,9 @@ def _build_heatmap(intent: dict, result: pd.DataFrame) -> go.Figure:
 def _build_scatter_quadrant(intent: dict, result: pd.DataFrame) -> go.Figure:
     _require_keys(intent, "scatter_quadrant", ["x", "y"])
     _require_columns(result, intent, ["x", "y", "label", "size"])
+    # x AND y are numeric on a scatter; label may be any dtype; size
+    # must be numeric if provided.
+    _require_numeric_columns(result, intent, ["x", "y", "size"])
 
     # Cap points to keep the figure readable. If a label column is
     # present, prefer the head per label so we don't drop entire
@@ -447,6 +504,7 @@ def _build_scatter_quadrant(intent: dict, result: pd.DataFrame) -> go.Figure:
 def _build_waterfall(intent: dict, result: pd.DataFrame) -> go.Figure:
     _require_keys(intent, "waterfall", ["x", "y"])
     _require_columns(result, intent, ["x", "y"])
+    _require_numeric_columns(result, intent, ["y"])
     # Aggregate (sum) contributions by driver label; a waterfall is
     # only meaningful with one bar per driver.
     aggregated = _aggregate_by(
@@ -529,6 +587,7 @@ def _build_geo_map(intent: dict, result: pd.DataFrame) -> go.Figure:
 def _build_kpi_callout(intent: dict, result: pd.DataFrame) -> go.Figure:
     _require_keys(intent, "kpi_callout", ["value"])
     _require_columns(result, intent, ["value", "delta"])
+    _require_numeric_columns(result, intent, ["value", "delta"])
     if len(result) == 0:
         raise MissingColumnError(
             "kpi_callout: result frame is empty — no value to display."
@@ -562,6 +621,9 @@ def _build_small_multiples(intent: dict, result: pd.DataFrame) -> go.Figure:
     )
     _require_columns(result, {"facet": intent["facet"], "x": intent["x"],
                               "y": series_col}, ["facet", "x", "y"])
+    _require_numeric_columns(
+        result, {"series": series_col}, ["series"],
+    )
     # Aggregate (facet, x) → mean series so each facet's sub-line is
     # one point per x value.
     aggregated = _aggregate_by(

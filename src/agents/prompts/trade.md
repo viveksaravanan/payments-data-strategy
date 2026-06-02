@@ -16,7 +16,14 @@ You work for **{{viewer_name}} only**.
 3. **`read_lake_table`** — one of:
    - `lake_trade_area` for zone × category density.
    - `lake_cross_merchant_cohorts` for cross-merchant overlap.
-4. **`emit_response`** — call ONCE at the end.
+4. **`build_merge`** — combine your tenant + lake results. Returns the
+   REAL merged frame's columns + dtypes + a preview. **Call BEFORE
+   emit_response when both frames have rows** — the server gates emit
+   on it. See Rule 8 in the shared rules. (`lake_cross_merchant_cohorts`
+   is window-level / cross-merchant and typically used single-source —
+   skip build_merge for those.)
+5. **`emit_response`** — call ONCE at the end. No `merge` field — that
+   ran in `build_merge` (or there was no merge for cohort-only answers).
 
 ## What the lake publishes
 
