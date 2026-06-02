@@ -356,19 +356,33 @@ class Specialist:
         if name == "build_merge":
             return self._dispatch_build_merge(args)
         if name == "emit_response":
+            # Wave 3 Stage 6.5 Fix 10a — auto-invoke build_merge
+            # server-side when the model has fetched both frames but
+            # skipped the explicit build_merge tool call. The Fix 9a
+            # precondition still fires AS the gate, but auto-invoke
+            # ensures the merge has actually been ATTEMPTED before
+            # the gate runs (so it doesn't reject), AND that the
+            # merged frame OR the dual-frame payload is set so
+            # _finalize_from_emit reaches the peer data. Without
+            # this, Haiku skips build_merge, gets rejected 3×,
+            # force-accepts, and _finalize_from_emit silently picks
+            # tenant-only — dropping the lake side.
+            if (
+                self.MERGE_REQUIRED
+                and self._tenant_frame is not None
+                and len(self._tenant_frame) > 0
+                and self._lake_frame is not None
+                and len(self._lake_frame) > 0
+                and self._merged_frame is None
+                and self._merge_fail_payload is None
+                and not self._merge_attempted
+            ):
+                self._auto_invoke_build_merge()
             # Structural preconditions (Wave 3 Stage 6.5 follow-ups
-            # #5 / #6). The remaining preconditions catch genuinely
-            # broken specs (empty merge with both frames, missing
-            # join keys / value columns, emit-before-data). Unit
-            # mismatches DON'T reject here — the merge layer
-            # nullifies the gap and adds a side-by-side caveat
-            # downstream.
-            #
-            # If a precondition fails AND we've already rejected
-            # ``MAX_PRECONDITION_REJECTIONS`` times, ``_validate_emit_args``
-            # force-accepts to bound the retry loop. The downstream
-            # ``_build_result`` graceful fallbacks produce a
-            # degraded-but-coherent result + caveat.
+            # #5 / #6 / #9). After Fix 10a, the auto-invoke runs
+            # first; the precondition mainly catches genuinely
+            # broken authoring (multi-row CellLookup without agg —
+            # Fix 9c).
             try:
                 self._validate_emit_args(args)
             except LakeToolError:
@@ -517,6 +531,140 @@ class Specialist:
                 "after a clean merge."
             ),
         }
+
+    def _auto_invoke_build_merge(self) -> None:
+        """Wave 3 Stage 6.5 Fix 10a — server-side merge fallback when
+        the model skipped the explicit ``build_merge`` tool call.
+
+        Derives the merge spec from:
+        * ``on`` = (tenant columns) ∩ (lake columns) ∩ manifest
+          dimensions for the lake table the model read. **Dimension
+          keys only** — never join on a metric column, even if the
+          tenant SQL happens to compute a column whose name collides
+          with a lake metric (e.g. P3's tenant-computed
+          ``promo_active_share``).
+        * ``own_value_col`` = first non-dimension numeric column in
+          the tenant frame.
+        * ``peer_value_col`` = first manifest metric that exists in
+          the lake frame.
+
+        On empty dimension intersection (T1/T4: neighborhood vs
+        Z-code label spaces), routes to the dual-frame path without
+        forcing a join. On merge failure or 0-row merge result, same
+        — dual-frame path is the structural answer.
+
+        Sets ``self._merge_attempted = True`` either way so the Fix
+        9a precondition gate in ``_validate_emit_args`` doesn't fire.
+        """
+        manifest = self._lake_manifest or {}
+        manifest_dims: set[str] = set(manifest.get("dimensions", []))
+        manifest_metrics: list[str] = list(manifest.get("metrics", []))
+        tenant = self._tenant_frame
+        lake = self._lake_frame
+        assert tenant is not None and lake is not None  # caller guarantees
+
+        tenant_cols = set(tenant.columns)
+        lake_cols = set(lake.columns)
+        # Dimension-only intersection. Manifest is the source of
+        # truth: a column shared by both frames is only a join key
+        # if the manifest declares it a dimension.
+        shared_dims = sorted(tenant_cols & lake_cols & manifest_dims)
+
+        if not shared_dims:
+            # Empty intersection → dual-frame path. Don't force a
+            # meaningless join.
+            self._merge_fail_payload = (tenant, lake)
+            self._merge_attempted = True
+            self._sql_log.append({
+                "surface":   "merge",
+                "query":     "auto-build_merge(no shared dimension key → dual-frame)",
+                "row_count": 0,
+            })
+            return
+
+        # Pick own_value_col: first non-dimension numeric column in
+        # tenant. Skip columns the manifest also names as dimensions
+        # (those are join keys, not values).
+        own_value_col: str | None = None
+        for col in tenant.columns:
+            if col in manifest_dims:
+                continue
+            try:
+                if pd.api.types.is_numeric_dtype(tenant[col]):
+                    own_value_col = col
+                    break
+            except Exception:                                # noqa: BLE001
+                continue
+
+        # Pick peer_value_col: first manifest metric present in the
+        # lake frame.
+        peer_value_col: str | None = None
+        for metric in manifest_metrics:
+            if metric in lake_cols:
+                peer_value_col = metric
+                break
+
+        if own_value_col is None or peer_value_col is None:
+            # Can't derive a defensible spec → dual-frame.
+            self._merge_fail_payload = (tenant, lake)
+            self._merge_attempted = True
+            self._sql_log.append({
+                "surface":   "merge",
+                "query":     (
+                    f"auto-build_merge(no derivable value columns; "
+                    f"own={own_value_col!r} peer={peer_value_col!r} "
+                    f"→ dual-frame)"
+                ),
+                "row_count": 0,
+            })
+            return
+
+        try:
+            merged = merge_own_and_peer(
+                own_df=tenant,
+                peer_df=lake,
+                on=shared_dims,
+                own_value_col=own_value_col,
+                peer_value_col=peer_value_col,
+                gap_op="difference",
+                viewer=self.context.viewing_merchant_id,
+            )
+        except (KeyError, MergeGrainError, ViewerScopingError) as exc:
+            self._merge_fail_payload = (tenant, lake)
+            self._merge_attempted = True
+            self._sql_log.append({
+                "surface":   "merge",
+                "query":     (
+                    f"auto-build_merge(on={shared_dims}, own={own_value_col!r}, "
+                    f"peer={peer_value_col!r}) → {type(exc).__name__}; dual-frame"
+                ),
+                "row_count": 0,
+            })
+            return
+
+        if len(merged) == 0:
+            self._merge_fail_payload = (tenant, lake)
+            self._merge_attempted = True
+            self._sql_log.append({
+                "surface":   "merge",
+                "query":     (
+                    f"auto-build_merge(on={shared_dims}, own={own_value_col!r}, "
+                    f"peer={peer_value_col!r}) → 0 rows; dual-frame"
+                ),
+                "row_count": 0,
+            })
+            return
+
+        self._merged_frame = merged
+        self._merge_attempted = True
+        self._sql_log.append({
+            "surface":   "merge",
+            "query":     (
+                f"auto-build_merge(on={shared_dims}, own={own_value_col!r}, "
+                f"peer={peer_value_col!r})"
+            ),
+            "row_count": len(merged),
+        })
 
     @staticmethod
     def _df_summary(df: pd.DataFrame) -> dict[str, Any]:
@@ -960,8 +1108,32 @@ class Specialist:
                                 if self._tenant_frame is not None
                                 else pd.DataFrame())
         else:
-            # Single-source. Pick whatever was fetched.
-            if self._tenant_frame is not None and len(self._tenant_frame) > 0:
+            # Wave 3 Stage 6.5 Fix 10b — when both frames are
+            # populated but neither merged nor merge_fail_payload
+            # is set (rare with Fix 10a in place — would only
+            # happen if _auto_invoke_build_merge raised an
+            # unexpected exception, or if MERGE_REQUIRED=False
+            # and the model emitted directly), synthesize the
+            # dual-frame payload on the spot. Never silently drop
+            # the lake frame.
+            both_populated = (
+                self._tenant_frame is not None
+                and len(self._tenant_frame) > 0
+                and self._lake_frame is not None
+                and len(self._lake_frame) > 0
+            )
+            if both_populated:
+                self._merge_fail_payload = (
+                    self._tenant_frame, self._lake_frame,
+                )
+                merge_failed = True
+                if chart_source not in ("tenant", "lake"):
+                    chart_source = "tenant"
+                result = frames.get(
+                    chart_source,
+                    self._tenant_frame,
+                )
+            elif self._tenant_frame is not None and len(self._tenant_frame) > 0:
                 result = self._tenant_frame
                 if chart_source is None:
                     chart_source = "tenant"

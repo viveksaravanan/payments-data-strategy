@@ -79,43 +79,86 @@ class CellLookup:
         *,
         frames: dict[str, pd.DataFrame] | None = None,
     ) -> float:
-        df = self._pick_frame(result, frames)
+        """Resolve this lookup against the chosen frame.
+
+        Frame-walk semantics (Wave 3 Stage 6.5 Fix 10c):
+        * ``self.frame`` is set + ``frames`` supplied → resolve only
+          against ``frames[self.frame]`` (strict — the model said
+          where to look).
+        * ``self.frame`` is None + ``frames`` supplied → try ``result``
+          first, then walk ``frames`` candidates (``merged`` →
+          ``tenant`` → ``lake``). First frame whose column + filter
+          match wins. This makes untagged peer claims resolve against
+          the lake frame in the dual-frame path without requiring
+          the model to author ``frame: "lake"`` explicitly.
+        * ``frames`` is None → resolve only against ``result``
+          (backward compat for the single-frame path).
+
+        The grounding wall is intact: every resolution still happens
+        against a real frame's cells. The change is WHICH frame, not
+        whether a real cell.
+        """
+        if self.frame is not None and frames is not None and self.frame in frames:
+            return self._resolve_in(frames[self.frame])
+        candidates: list[pd.DataFrame] = [result]
+        if frames is not None and self.frame is None:
+            for k in ("merged", "tenant", "lake"):
+                cand = frames.get(k)
+                if cand is None:
+                    continue
+                if cand is result:
+                    continue
+                candidates.append(cand)
+        last_exc: Exception | None = None
+        for cand in candidates:
+            try:
+                return self._resolve_in(cand)
+            except LookupError as exc:
+                last_exc = exc
+                continue
+        if last_exc is None:
+            raise LookupError(
+                f"CellLookup row_filter={self.row_filter} could not "
+                f"resolve in any candidate frame."
+            )
+        raise last_exc
+
+    def _resolve_in(self, df: pd.DataFrame) -> float:
+        """Resolve against a single frame. Raises ``LookupError`` if
+        the column is absent, the filter matches 0 rows, or matches
+        multiple rows without ``agg`` set. The frame-walk caller
+        catches these and tries the next candidate; the no-frames
+        path lets them propagate."""
         for k, v in self.row_filter.items():
-            df = df[df[k] == v]
-        if len(df) == 0:
+            if k not in df.columns:
+                raise LookupError(
+                    f"CellLookup filter key {k!r} not in frame columns "
+                    f"{list(df.columns)}."
+                )
+        if self.column not in df.columns:
+            raise LookupError(
+                f"CellLookup column {self.column!r} not in frame columns "
+                f"{list(df.columns)}."
+            )
+        sub = df
+        for k, v in self.row_filter.items():
+            sub = sub[sub[k] == v]
+        if len(sub) == 0:
             raise LookupError(
                 f"CellLookup row_filter={self.row_filter} matched 0 rows."
             )
-        if len(df) > 1:
+        if len(sub) > 1:
             if self.agg is None:
                 raise LookupError(
                     f"CellLookup row_filter={self.row_filter} matched "
-                    f"{len(df)} rows; expected exactly 1, or set agg "
+                    f"{len(sub)} rows; expected exactly 1, or set agg "
                     f"= 'sum'|'mean' to aggregate."
                 )
-            values = df[self.column].astype(float).tolist()
+            values = sub[self.column].astype(float).tolist()
             if self.agg == "sum":
                 return float(sum(values))
             return float(sum(values) / len(values))
-        return float(df.iloc[0][self.column])
-
-    def _pick_frame(
-        self,
-        result: pd.DataFrame,
-        frames: dict[str, pd.DataFrame] | None,
-    ) -> pd.DataFrame:
-        """Select which frame this lookup resolves against. ``frame``
-        is optional; when set + ``frames`` is supplied, indexes into
-        the dual-frame dict. Falls back to ``result`` for backward
-        compat with the clean-merge / single-source paths."""
-        if self.frame is None or frames is None:
-            return result
-        if self.frame in frames:
-            return frames[self.frame]
-        # The model named a frame the caller didn't provide — fall
-        # back to the single result and let the column/filter
-        # lookup decide whether it traces.
-        return result
+        return float(sub.iloc[0][self.column])
 
 
 DerivationOp = Literal["difference", "ratio", "pct_change", "aggregate"]

@@ -259,9 +259,17 @@ nothing.)
 
 You have four data-fetching tools, in order: `schema_info` → `query_tenant`
 → `read_lake_table` → `build_merge` → `emit_response`. `build_merge` is the
-new step (Wave 3 Stage 6.5 Fix 9). When BOTH `query_tenant` AND
-`read_lake_table` have returned non-empty rows, you MUST call `build_merge`
-before `emit_response`. The server enforces this with a hard precondition.
+keystone step (Wave 3 Stage 6.5 Fix 9 + Fix 10). When BOTH `query_tenant`
+AND `read_lake_table` have returned non-empty rows, call `build_merge`
+before `emit_response`.
+
+**Belt-and-suspenders (Fix 10a)**: if you forget, the server auto-invokes
+`build_merge` for you using a dimension-only spec derived from the lake's
+manifest. The result is the same — the merged frame becomes the
+result-of-record and your chart_intent + claims author against its real
+columns. Calling `build_merge` explicitly is still preferred because you
+can pick the most diagnostic value-column pair; the auto-invoke uses a
+sane default (first metric in the manifest).
 
 **Why this exists.** Authoring `chart_intent` and `claims` against the
 post-merge column names — when you've never SEEN the post-merge frame —
