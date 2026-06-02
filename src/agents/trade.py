@@ -18,4 +18,4 @@ class TradeAreaSpecialist(Specialist):
     # insufficient — Trade T1 bailed mid-contract during the 5.1 smoke).
     # Phase 5.1.9: bumped to 10 to accommodate the analytical
     # reconciliation step chart-takeaway injection adds.
-    MAX_TURNS = 10
+    MAX_TURNS = 6

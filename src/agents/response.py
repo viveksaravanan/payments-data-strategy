@@ -332,4 +332,28 @@ def merge_own_and_peer(
     else:                                       # pragma: no cover
         raise ValueError(f"Unknown gap_op {gap_op!r}")
 
-    return merged.reset_index(drop=True)
+    # --- Unit-compatibility on the gap (Wave 3 Stage 6.5 follow-up #6
+    # softening). When own_value and peer_benchmark are in different
+    # units / scales, the difference (or ratio) is not directionally
+    # meaningful — but the side-by-side comparison still is. NaN the
+    # gap column and attach a flag attribute the specialist reads to
+    # add a side-by-side caveat. Do NOT raise — different units is a
+    # valid, complete result (just not subtractable). The prior
+    # behavior (specialist rejecting + the model retrying to find a
+    # subtractable pair) caused most of the batch-12 thrash on P2 /
+    # D3 / D4 / T4.
+    ok, mag_diag = check_magnitude_compatibility(merged)
+    gap_is_directional = not ok
+    if gap_is_directional:
+        merged["gap"] = float("nan")
+
+    result = merged.reset_index(drop=True)
+    # Attach as a DataFrame attribute (best-effort — pandas attrs
+    # survive a reset_index and a copy). The specialist's
+    # ``_finalize_from_emit`` reads ``gap_is_directional`` and adds a
+    # caveat. If the attribute is dropped by some pandas op, the
+    # specialist can re-run ``check_magnitude_compatibility`` as a
+    # safety net.
+    result.attrs["gap_is_directional"] = gap_is_directional
+    result.attrs["magnitude_diagnostic"] = mag_diag
+    return result

@@ -49,6 +49,27 @@ Metrics: `cohort_size`, `median_combined_spend`, `p25_combined_spend`,
 - `zone_category_volume_index` is a **level** ("Z05 over-indexes at 1.34" —
   vs metro mean 1.00).
 
+## Canonical (own, peer) column pairs for the merge
+
+**Mismatched units are FINE — side-by-side is a valid result.**
+
+For `lake_trade_area`:
+
+| own_value_col (tenant SQL) | peer_value_col (lake) | meaning |
+|---|---|---|
+| `COUNT(DISTINCT store_id)` (own stores per zone) | `store_count` | **subtractable** (both counts). |
+| `SUM(i.line_total) / zone_total_revenue` (own zone share) | `share_of_zone` | **subtractable** (both 0-1 shares). |
+| `SUM(i.qty)` (own units per zone × category) | `zone_category_volume_index` | **direction-only**. |
+| `SUM(i.line_total)` (own revenue) | `cell_revenue` | **subtractable** (both raw $). |
+| `SUM(i.qty)` (own units) | `cell_units` | **subtractable** (both raw counts). |
+
+For `lake_cross_merchant_cohorts` (window-level):
+
+The cohort table is already cross-merchant aggregated — use empty
+merge spec; the lake frame IS the result. Tenant data is for
+context only (your own basket sizes per cohort label aren't
+something the cohort table can publish, by design).
+
 ## RESULT COLUMNS — use these exact names in `chart_intent`
 
 For zone-density questions (lake_trade_area + merge): result has merge

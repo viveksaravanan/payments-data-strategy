@@ -73,6 +73,22 @@ Be explicit about which it is — that's the whole point of the peer benchmark.
   wow_delta to wow_delta. "You trail peers by 8 percentage points wow" is
   right; "by 8%" is wrong (8% of what?).
 
+## Canonical (own, peer) column pairs for the merge
+
+**Mismatched units are FINE — side-by-side is a valid result.**
+
+| own_value_col (tenant SQL) | peer_value_col (lake) | meaning |
+|---|---|---|
+| Per-week pct change in own units | `wow_delta` | **subtractable** (both pct change). |
+| `AVG(i.qty)` (own units per line) | `units_index` | **direction-only**. |
+| `COUNT(DISTINCT i.txn_id)` (own basket count) | `txn_count` | **subtractable**. |
+
+For anomaly framing: compute your own wow_delta first (this week
+vs last week, pct change), then compare to peer wow_delta. That's
+the subtractable pair that gives you "own_value − peer_benchmark"
+as percentage-point divergence (positive = idiosyncratic gain,
+negative = idiosyncratic decline).
+
 ## RESULT COLUMNS — use these exact names in `chart_intent`
 
 After the merge, the result DataFrame has **EXACTLY** these columns:

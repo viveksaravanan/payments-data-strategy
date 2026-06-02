@@ -60,6 +60,23 @@ The lake's `wow_delta` is already computed week-over-complete-week; trust it.
 - `gap` (own − peer) is a **differential**. Be specific: "you trail peers by
   3 percentage points wow", not "by 3%".
 
+## Canonical (own, peer) column pairs for the merge
+
+**Mismatched units are FINE — they produce a clean side-by-side
+result, not a rejection.** Pick from this table:
+
+| own_value_col (tenant SQL) | peer_value_col (lake) | meaning |
+|---|---|---|
+| `AVG(i.qty)` (own units per line) | `units_index` | **direction-only** (own ≈1-3, peer ≈1.0). Side-by-side; gap is null. |
+| Per-week pct change: `(this_wk_units - last_wk_units) / last_wk_units` | `wow_delta` | **subtractable** (both pct change). |
+| `SUM(i.line_total)` (own revenue in $) | `revenue_index` | **direction-only**. Side-by-side. |
+| `COUNT(DISTINCT i.txn_id)` (own basket count per category) | `txn_count` | **subtractable** (both raw counts). |
+
+When using a "direction-only" pair, your prose narrates the
+side-by-side ("your units run at AVG(qty)=1.24 per line while the
+peer units_index averages 0.93, indicating you outpace metro on
+volume in this category"). Don't invent a synthetic gap number.
+
 ## RESULT COLUMNS — use these exact names in `chart_intent`
 
 After the merge, the result DataFrame has **EXACTLY** these columns:

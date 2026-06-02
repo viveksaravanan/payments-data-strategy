@@ -17,4 +17,4 @@ class DemandForecastingSpecialist(Specialist):
     # Phase 5.1.5: standardized to 8 across all specialists.
     # Phase 5.1.9: bumped to 10 to accommodate the analytical
     # reconciliation step chart-takeaway injection adds.
-    MAX_TURNS = 10
+    MAX_TURNS = 6

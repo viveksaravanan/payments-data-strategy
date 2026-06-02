@@ -22,4 +22,4 @@ from src.agents.specialist import Specialist
 class PricingSpecialist(Specialist):
     AGENT_LABEL = "Pricing & Benchmarking Agent"
     PROMPT_PATH = Path(__file__).parent / "prompts" / "pricing.md"
-    MAX_TURNS = 10
+    MAX_TURNS = 6   # Wave 3 Stage 6.5 follow-up #6 — converging pills finish in 3-5

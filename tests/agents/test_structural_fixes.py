@@ -257,10 +257,12 @@ def test_emit_rejected_when_merge_fails_to_run(viewer_krg) -> None:
     assert "derived_zone" in msg or "join key" in msg
 
 
-def test_emit_rejected_on_magnitude_mismatch(viewer_krg) -> None:
-    """Fix 2: D4's batch-7 bug — own raw revenue vs peer
-    revenue_index. The magnitude check rejects the emit with a
-    diagnostic message naming both columns and the ratio."""
+def test_magnitude_mismatch_accepts_as_side_by_side(viewer_krg) -> None:
+    """Wave 3 Stage 6.5 follow-up #6 softening (Fix A): when own and
+    peer columns are in different units, the merge layer nullifies
+    the ``gap`` column and the specialist accepts the emit with a
+    side-by-side caveat. NO rejection (was rejection in v3-of-this-
+    file; the rejection caused retry-thrash on P2/D3/D4/T4)."""
     specialist = PricingSpecialist(viewer_krg)
     specialist._reset_state()
     specialist._tenant_frame = pd.DataFrame({
@@ -270,21 +272,31 @@ def test_emit_rejected_on_magnitude_mismatch(viewer_krg) -> None:
         "category": ["DAIRY"], "revenue_index": [1.002],
         "peer_relationship": ["segment_peer"],
     })
-
-    with pytest.raises(LakeToolError) as exc:
-        specialist._dispatch_tool("emit_response", {
-            "prose": "v",
-            "merge": {
-                "on": ["category"],
-                "own_value_col": "own_revenue",
-                "peer_value_col": "revenue_index",
-                "gap_op": "difference",
-            },
-            "chart_intent": {"kind": "kpi_callout"},
-            "claims": [],
-        })
-    msg = str(exc.value).lower()
-    assert "magnitude" in msg or "subtractable" in msg or "units" in msg
+    # No raise — emit is accepted.
+    out = specialist._dispatch_tool("emit_response", {
+        "prose": "Your $625k revenue against a peer revenue_index of 1.002 indicates ~baseline performance.",
+        "merge": {
+            "on": ["category"],
+            "own_value_col": "own_revenue",
+            "peer_value_col": "revenue_index",
+            "gap_op": "difference",
+        },
+        "chart_intent": {"kind": "kpi_callout", "value": "own_value"},
+        "claims": [],
+    })
+    assert out == {"ok": True}
+    assert specialist._emit_args is not None
+    # The merge produced a directional-only result; finalize_from_emit
+    # would surface the side-by-side caveat.
+    from src.agents.response import merge_own_and_peer
+    merged = merge_own_and_peer(
+        specialist._tenant_frame, specialist._lake_frame,
+        on=["category"], own_value_col="own_revenue",
+        peer_value_col="revenue_index",
+    )
+    assert merged.attrs["gap_is_directional"] is True
+    import math
+    assert math.isnan(merged["gap"].iloc[0])
 
 
 def test_emit_accepted_when_merge_clean_and_units_match(viewer_krg) -> None:
@@ -313,6 +325,55 @@ def test_emit_accepted_when_merge_clean_and_units_match(viewer_krg) -> None:
     })
     assert out == {"ok": True}
     assert specialist._emit_args is not None
+
+
+def test_precondition_retry_cap_force_accepts_after_n_rejections(viewer_krg) -> None:
+    """Wave 3 Stage 6.5 follow-up #6 (Fix B): after
+    MAX_PRECONDITION_REJECTIONS rejections of emit_response, the
+    next rejection becomes a force-accept (no raise) so the loop
+    doesn't burn turns/cost re-asking the model. The downstream
+    graceful path handles the bad spec; the user sees a caveat."""
+    from src.agents.specialist import MAX_PRECONDITION_REJECTIONS
+    specialist = PricingSpecialist(viewer_krg)
+    specialist._reset_state()
+    specialist._tenant_frame = pd.DataFrame({
+        "category": ["DAIRY"], "own_v": [1.2],
+    })
+    specialist._lake_frame = pd.DataFrame({
+        "category": ["DAIRY"], "peer_v": [1.0],
+        "peer_relationship": ["segment_peer"],
+    })
+    bad_args = {
+        "prose": "v",
+        "merge": {},   # empty — both frames present → reject
+        "chart_intent": {"kind": "kpi_callout"},
+        "claims": [],
+    }
+    # First N-1 rejections raise.
+    for _ in range(MAX_PRECONDITION_REJECTIONS - 1):
+        with pytest.raises(LakeToolError):
+            specialist._dispatch_tool("emit_response", bad_args)
+    # The Nth rejection force-accepts.
+    out = specialist._dispatch_tool("emit_response", bad_args)
+    assert out == {"ok": True}
+    assert specialist._force_accept_emit is True
+    assert specialist._emit_args is not None
+
+
+def test_max_turns_is_six(viewer_krg) -> None:
+    """Wave 3 Stage 6.5 follow-up #6 (Fix B): MAX_TURNS lowered
+    from 10 to 6 — converging pills finish in 3-5; 10 only ever
+    extended doomed pills."""
+    from src.agents.specialist import DEFAULT_MAX_TURNS
+    specialist = PricingSpecialist(viewer_krg)
+    assert DEFAULT_MAX_TURNS == 6
+    assert specialist.MAX_TURNS == 6
+
+
+def test_wall_clock_ceiling_constant_present() -> None:
+    """Wall-clock ceiling exists and is at the 90s default."""
+    from src.agents.specialist import WALL_CLOCK_CEILING_SEC
+    assert WALL_CLOCK_CEILING_SEC == 90.0
 
 
 def test_emit_accepted_for_advisor_with_lake_only(viewer_krg) -> None:

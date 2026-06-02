@@ -75,6 +75,23 @@ an anomaly** — it's a calendar artifact, not a finding. Either drop the final
 week from the analysis or call it out as truncated. The same rule applies to
 the final month for month-level analysis.
 
+## Canonical (own, peer) column pairs for the merge
+
+The merge layer needs comparable units to compute a subtractable
+`gap`. **Mismatched units are FINE — they produce a clean
+side-by-side result, not a rejection.** Pick from this table:
+
+| own_value_col (tenant SQL) | peer_value_col (lake) | meaning |
+|---|---|---|
+| `AVG(i.unit_price)` | `price_index` | **direction-only** (different units — own is $/unit, peer is unitless ratio). Side-by-side result; gap is intentionally null. |
+| `SUM(CASE WHEN i.promo_id IS NOT NULL THEN 1 ELSE 0 END)::FLOAT / COUNT(*)` | `promo_active_share` | **subtractable** (both 0-1 shares). |
+| `COUNT(DISTINCT i.txn_id)` (own line-count) | `txn_count` | **subtractable** (both raw counts). |
+
+Side-by-side is a valid answer — describe what each column shows
+("your ASP runs at $4.20 against a peer price_index of 1.06,
+indicating you sit at the higher end of the metro"). Don't try to
+synthesize a single "gap" number that doesn't exist in units.
+
 ## RESULT COLUMNS — use these exact names in `chart_intent`
 
 After the merge, the result DataFrame has **EXACTLY** these columns:

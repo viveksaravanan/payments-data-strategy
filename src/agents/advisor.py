@@ -31,5 +31,5 @@ from src.agents.specialist import Specialist
 class ConversationalAdvisor(Specialist):
     AGENT_LABEL = "Conversational Advisor"
     PROMPT_PATH = Path(__file__).parent / "prompts" / "advisor.md"
-    MAX_TURNS = 10
+    MAX_TURNS = 6
     MERGE_REQUIRED = False

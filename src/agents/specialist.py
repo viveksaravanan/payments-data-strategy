@@ -27,6 +27,7 @@ Everything else lives in this base.
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
@@ -34,6 +35,7 @@ from typing import Any, Callable
 import pandas as pd
 
 from src.agents import lake_tools as LT
+from src.agents.lake_tools import LakeToolError
 from src.agents import llm as L
 from src.agents.chart_build import (
     MissingColumnError,
@@ -59,8 +61,21 @@ from src.agents.response import (
 )
 
 
-DEFAULT_MAX_TURNS = 10
+DEFAULT_MAX_TURNS = 6
 MAX_TOKENS = 4096
+
+# Wave 3 Stage 6.5 follow-up #6 — runtime/convergence bounds.
+# The structural preconditions in _validate_emit_args used to retry
+# until MAX_TURNS, producing 8h+ batch run-times when a model
+# couldn't satisfy them. The two ceilings below cap that:
+#   * MAX_PRECONDITION_REJECTIONS — after N rejections, the loop
+#     stops re-asking. The next emit is accepted (the silent fallback
+#     paths in ``_build_result`` produce a degraded but coherent
+#     result + caveat).
+#   * WALL_CLOCK_CEILING_SEC — hard wall on per-question wall-clock.
+#     Hit it → exit immediately to graceful degradation.
+MAX_PRECONDITION_REJECTIONS = 3
+WALL_CLOCK_CEILING_SEC = 90.0
 
 
 PROGRESS_MESSAGES = [
@@ -124,6 +139,10 @@ class Specialist:
         self._in_tokens:    int = 0
         self._out_tokens:   int = 0
         self._cost_usd:     float = 0.0
+        # Wave 3 Stage 6.5 follow-up #6 — convergence + wall-clock bounds.
+        self._precondition_rejections: int = 0
+        self._answer_started_at: float = 0.0
+        self._force_accept_emit: bool = False
 
     # ---- Prompt rendering -------------------------------------------
 
@@ -177,6 +196,22 @@ class Specialist:
         final_text = ""
 
         for turn in range(self.MAX_TURNS):
+            # Wall-clock ceiling — hard exit to graceful degradation.
+            elapsed = time.monotonic() - self._answer_started_at
+            if elapsed > WALL_CLOCK_CEILING_SEC:
+                return self._minimal_response(
+                    prose=(
+                        f"(Wall-clock ceiling of "
+                        f"{WALL_CLOCK_CEILING_SEC:.0f}s reached after "
+                        f"{turn} turn(s); returning what was gathered.)"
+                    ),
+                    caveats=[
+                        f"Per-question wall-clock ceiling reached ("
+                        f"{WALL_CLOCK_CEILING_SEC:.0f}s). The agent "
+                        f"returned the fetched data without converging."
+                    ],
+                    converged=False, turns=turn,
+                )
             if progress is not None:
                 progress(
                     turn,
@@ -315,15 +350,28 @@ class Specialist:
             })
             return payload
         if name == "emit_response":
-            # Three structural preconditions enforced before the
-            # emit is accepted (Wave 3 Stage 6.5 follow-up #5,
-            # Fixes 1+2+5). A failure here raises ``LakeToolError``
-            # which the loop's exception envelope converts to a
-            # tool_result with is_error=True — the model sees the
-            # diagnostic and can retry with corrected args. We do
-            # NOT set ``_emit_args`` on rejection, so the loop
-            # continues.
-            self._validate_emit_args(args)
+            # Structural preconditions (Wave 3 Stage 6.5 follow-ups
+            # #5 / #6). The remaining preconditions catch genuinely
+            # broken specs (empty merge with both frames, missing
+            # join keys / value columns, emit-before-data). Unit
+            # mismatches DON'T reject here — the merge layer
+            # nullifies the gap and adds a side-by-side caveat
+            # downstream.
+            #
+            # If a precondition fails AND we've already rejected
+            # ``MAX_PRECONDITION_REJECTIONS`` times, ``_validate_emit_args``
+            # force-accepts to bound the retry loop. The downstream
+            # ``_build_result`` graceful fallbacks produce a
+            # degraded-but-coherent result + caveat.
+            try:
+                self._validate_emit_args(args)
+            except LakeToolError:
+                self._precondition_rejections += 1
+                if self._precondition_rejections >= MAX_PRECONDITION_REJECTIONS:
+                    self._force_accept_emit = True
+                    self._emit_args = args
+                    return {"ok": True}
+                raise
             self._emit_args = args
             return {"ok": True}
         raise ValueError(f"Unknown tool: {name}")
@@ -427,27 +475,11 @@ class Specialist:
                     "values in each frame and retry."
                 )
 
-            # --- Fix 2: magnitude / unit compatibility ---
-            ok, diag = check_magnitude_compatibility(test_merged)
-            if not ok:
-                own_col = merge_spec.get("own_value_col")
-                peer_col = merge_spec.get("peer_value_col")
-                own_med = diag["own_median_abs"]
-                peer_med = diag["peer_median_abs"]
-                ratio = diag["ratio"]
-                raise LakeToolError(
-                    "emit_response rejected: merge produced a "
-                    "magnitude-mismatched comparison. "
-                    f"own_value_col={own_col!r} median ≈ {own_med:.4g}; "
-                    f"peer_value_col={peer_col!r} median ≈ {peer_med:.4g}; "
-                    f"ratio ≈ {ratio:.1f}× (threshold 100). The two "
-                    "columns are not subtractable in units — one "
-                    "looks like raw $/count and the other like an "
-                    "index/share. Pick columns with comparable units "
-                    "(e.g. own units SUM(qty) vs peer units_index "
-                    "— both are 'units' shape — NOT own SUM(line_total) "
-                    "vs peer revenue_index)."
-                )
+            # Magnitude mismatch is NO LONGER a rejection (Wave 3
+            # Stage 6.5 follow-up #6). The merge layer nullifies
+            # the gap column and ``_finalize_from_emit`` adds a
+            # "side-by-side comparison" caveat. Different units
+            # is a valid, complete result — just not subtractable.
 
     # ---- Finalize ----------------------------------------------------
 
@@ -655,6 +687,27 @@ class Specialist:
                 "skipped query_tenant / read_lake_table. Result frame "
                 "is empty.)"
             )
+        # Side-by-side caveat when own_value and peer_benchmark are
+        # in different units (merge layer nullified the gap; this
+        # surfaces it honestly to the user).
+        if result.attrs.get("gap_is_directional"):
+            diag = result.attrs.get("magnitude_diagnostic", {})
+            own_med = diag.get("own_median_abs", float("nan"))
+            peer_med = diag.get("peer_median_abs", float("nan"))
+            effective_caveats.append(
+                "Side-by-side comparison only: own_value and "
+                f"peer_benchmark are in different units "
+                f"(medians ≈ {own_med:.3g} vs {peer_med:.3g}); "
+                "the gap column is intentionally null. Use the two "
+                "columns directionally rather than subtractively."
+            )
+        if self._force_accept_emit:
+            effective_caveats.append(
+                "Agent exited after the precondition-retry cap was "
+                "reached. The result reflects the model's best "
+                "attempt within the bound; merge spec may have been "
+                "incomplete."
+            )
 
         return AgentResponse(
             result=result,
@@ -730,6 +783,9 @@ class Specialist:
         self._in_tokens = 0
         self._out_tokens = 0
         self._cost_usd = 0.0
+        self._precondition_rejections = 0
+        self._answer_started_at = time.monotonic()
+        self._force_accept_emit = False
 
     @staticmethod
     def _extract_text(content_blocks: list[Any]) -> str:
