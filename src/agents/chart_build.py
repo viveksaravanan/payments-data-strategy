@@ -838,6 +838,18 @@ def _reconcile_intent(
 
     For list-valued fields (series, columns), invalid entries are
     dropped — a partial-series chart beats no chart.
+
+    Wave 3 Stage 6.5 Fix 14 — for cross-merchant chart kinds
+    (``cross_merchant_comparison``, ``time_series_vs_peers``,
+    ``small_multiples``), auto-add ``peer_benchmark`` to the series
+    list when the merged frame has it but the model omitted it. The
+    Fix 13 prose grounds peer values via ValueRef; the user was
+    seeing them in claims but not in the chart, because Haiku tends
+    to author ``series: ["own_value"]`` even on a clean merge.
+    Server-side enforcement is the same shape as auto-invoke
+    build_merge — the model can't reliably steer the comparison,
+    so the server completes it. Grounding wall intact: every plotted
+    value still reads from a real column in result.
     """
     kind = intent.get("kind")
     fields = _COLUMN_FIELDS_BY_KIND.get(kind, [])
@@ -873,6 +885,40 @@ def _reconcile_intent(
             seen: set[str] = set()
             deduped = [c for c in new_list if not (c in seen or seen.add(c))]
             out[field] = deduped
+
+    # Fix 14 — peer-series auto-add for cross-merchant kinds.
+    _peer_kinds = {
+        "cross_merchant_comparison",
+        "time_series_vs_peers",
+        "small_multiples",
+    }
+    if kind in _peer_kinds:
+        series = out.get("series")
+        # Normalize small_multiples' string series to list for the
+        # check below (it accepts either shape in the builder).
+        if isinstance(series, str):
+            series_list = [series]
+        elif isinstance(series, list):
+            series_list = list(series)
+        else:
+            series_list = []
+        has_own = any(s == "own_value" or s.startswith("own_") for s in series_list)
+        has_peer = any(
+            s == "peer_benchmark" or s.startswith("peer_")
+            for s in series_list
+        )
+        if (
+            has_own
+            and not has_peer
+            and "peer_benchmark" in result_cols
+        ):
+            series_list.append("peer_benchmark")
+            notes.append("series: auto-added 'peer_benchmark'")
+            out["series"] = (
+                series_list if isinstance(series, list) or series is None
+                else series_list[0] if len(series_list) == 1
+                else series_list
+            )
 
     return out, notes
 

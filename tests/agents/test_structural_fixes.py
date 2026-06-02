@@ -1709,6 +1709,126 @@ def test_pricing_literal_value_path_unregressed() -> None:
     assert report.claim_dispositions[0].status == "passed"
 
 
+# ---------------------------------------------------------------------
+# Wave 3 Stage 6.5 Fix 14 — auto-add peer_benchmark to series for
+# cross-merchant chart kinds
+# ---------------------------------------------------------------------
+
+
+def test_chart_reconciler_adds_peer_benchmark_to_cross_merchant_comparison() -> None:
+    """Fix 14: when the model authors a cross-merchant chart with
+    only ``own_value`` in the series, and the merged frame carries
+    ``peer_benchmark``, the reconciler auto-adds peer_benchmark so
+    the rendered chart shows BOTH series side-by-side. Server-side
+    enforcement of the comparison the chart kind is named after."""
+    from src.agents.chart_build import _reconcile_intent
+    result = pd.DataFrame({
+        "category": ["DAIRY", "MEAT"],
+        "own_value": [3.50, 6.36],
+        "peer_benchmark": [1.00, 1.03],
+    })
+    intent = {
+        "kind": "cross_merchant_comparison",
+        "x": "category",
+        "series": ["own_value"],   # ← model omitted peer
+        "y_format": "index",
+        "title": "x",
+    }
+    reconciled, notes = _reconcile_intent(intent, result)
+    assert reconciled["series"] == ["own_value", "peer_benchmark"]
+    assert any("peer_benchmark" in n for n in notes)
+
+
+def test_chart_reconciler_preserves_explicit_peer_series() -> None:
+    """Fix 14 doesn't double-add — if the model already named
+    ``peer_benchmark`` in series, leave the series alone."""
+    from src.agents.chart_build import _reconcile_intent
+    result = pd.DataFrame({
+        "category": ["DAIRY"],
+        "own_value": [3.50],
+        "peer_benchmark": [1.00],
+    })
+    intent = {
+        "kind": "cross_merchant_comparison",
+        "x": "category",
+        "series": ["own_value", "peer_benchmark"],
+        "y_format": "index",
+    }
+    reconciled, _ = _reconcile_intent(intent, result)
+    # Still exactly own_value + peer_benchmark, no duplication.
+    assert reconciled["series"] == ["own_value", "peer_benchmark"]
+
+
+def test_chart_reconciler_skips_peer_add_when_column_missing() -> None:
+    """Fix 14 only adds peer_benchmark when it's actually in the
+    merged frame. Single-source paths (Advisor on payment_mix, or
+    dual-frame branches without peer_benchmark in the chosen frame)
+    don't get a fake peer column added."""
+    from src.agents.chart_build import _reconcile_intent
+    # Tenant-only frame; no peer_benchmark.
+    result = pd.DataFrame({
+        "category": ["DAIRY"],
+        "own_value": [3.50],
+    })
+    intent = {
+        "kind": "cross_merchant_comparison",
+        "x": "category",
+        "series": ["own_value"],
+        "y_format": "currency",
+    }
+    reconciled, _ = _reconcile_intent(intent, result)
+    assert reconciled["series"] == ["own_value"]
+
+
+def test_chart_reconciler_skips_peer_add_on_non_comparison_kinds() -> None:
+    """Fix 14 only fires on cross-merchant kinds (cross_merchant_comparison,
+    time_series_vs_peers, small_multiples). Other kinds (kpi_callout,
+    table_drilldown, scatter_quadrant) don't get unprompted peer
+    series — they have their own semantics."""
+    from src.agents.chart_build import _reconcile_intent
+    result = pd.DataFrame({
+        "category": ["DAIRY"],
+        "own_value": [3.50],
+        "peer_benchmark": [1.00],
+    })
+    # kpi_callout — doesn't use 'series' field; reconciler shouldn't
+    # add anything peer-related.
+    intent = {
+        "kind": "kpi_callout",
+        "value": "own_value",
+        "title": "x",
+    }
+    reconciled, _ = _reconcile_intent(intent, result)
+    assert "series" not in reconciled
+    # scatter_quadrant uses x + y, not series; same expectation.
+    intent2 = {
+        "kind": "scatter_quadrant",
+        "x": "own_value",
+        "y": "peer_benchmark",
+    }
+    reconciled2, _ = _reconcile_intent(intent2, result)
+    assert "series" not in reconciled2
+
+
+def test_chart_reconciler_peer_add_fires_on_time_series_vs_peers() -> None:
+    """Fix 14: time_series_vs_peers is the canonical own-vs-peer
+    time chart. Same auto-add behavior as cross_merchant_comparison."""
+    from src.agents.chart_build import _reconcile_intent
+    result = pd.DataFrame({
+        "period_start": pd.to_datetime(["2026-04-06", "2026-04-13"]),
+        "own_value": [1.04, 1.05],
+        "peer_benchmark": [1.00, 1.00],
+    })
+    intent = {
+        "kind": "time_series_vs_peers",
+        "x": "period_start",
+        "series": ["own_value"],
+        "y_format": "index",
+    }
+    reconciled, notes = _reconcile_intent(intent, result)
+    assert "peer_benchmark" in reconciled["series"]
+
+
 def test_emit_accepted_for_advisor_with_lake_only(viewer_krg) -> None:
     """Fix 1 respects MERGE_REQUIRED=False for the Advisor — a
     single lake-frame answer with no tenant fetch doesn't trigger

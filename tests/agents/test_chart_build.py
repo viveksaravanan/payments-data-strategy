@@ -104,9 +104,11 @@ def test_list_intent_partial_match_drops_invalid_keeps_valid(
     time_series_result,
 ) -> None:
     """``series`` with one valid + one invalid column drops the
-    invalid via the reconciler (Wave 3 Stage 6.5 follow-up #7); a
-    1-series chart beats no chart. The figure is built from the
-    valid entry only."""
+    invalid via the reconciler (Stage 6.5 follow-up #7). Stage 6.5
+    Fix 14 then auto-adds ``peer_benchmark`` to series for
+    cross-merchant chart kinds when the frame has it — so the final
+    figure shows own_value (kept) + peer_benchmark (auto-added) =
+    2 traces. ghost_column dropped silently."""
     fig = build_chart(
         {"kind": "time_series_vs_peers", "title": "X",
          "x": "period_start",
@@ -114,7 +116,10 @@ def test_list_intent_partial_match_drops_invalid_keeps_valid(
         time_series_result,
     )
     assert fig is not None
-    assert len(fig.data) == 1
+    # 1 own + 1 auto-added peer; ghost_column dropped.
+    assert len(fig.data) == 2
+    series_names = {trace.name for trace in fig.data}
+    assert series_names == {"own_value", "peer_benchmark"}
 
 
 # ---------------------------------------------------------------------
