@@ -1,4 +1,4 @@
-# Payments Data Strategy Demo (v4 / Wave 1)
+# Payments Data Strategy Demo (v4 / Waves 1+2+3)
 
 Synthetic cross-merchant transaction demo. Models **Verifone** at the
 intersection of POS data and payment data — observing baskets, payment
@@ -33,8 +33,9 @@ runs at 5k cards (~83k txns, ~5 min build).
 
 Python 3.11, uv, **DuckDB + Parquet** (D3, supersedes the v3 SQLite),
 pyarrow (pinned for deterministic Parquet writes), pytest, pyyaml,
-numpy, pandas. Anthropic SDK + Streamlit + Folium will return in
-Wave 3 (agents) and Wave 4 (dashboard).
+numpy, pandas. **Anthropic SDK** (Wave 3 — `src/agents/`), plotly
+(headless figures from the deterministic chart builder). Streamlit +
+Folium return in Wave 4 (dashboard rebuild).
 
 ## Commands
 
@@ -45,6 +46,7 @@ Wave 3 (agents) and Wave 4 (dashboard).
 - `make dq-report`   — regenerate `docs/DQ_REPORT.md` from current Parquet
 - `make lake`        — build the Wave 2 anonymized lake to `data/lake/*.parquet`
 - `make lake-report` — regenerate `docs/LAKE_REPORT.md` from `data/lake/`
+- `make agent-preview` — run the Wave 3 preview harness against KRG (regenerates `docs/AGENT_PREVIEW.html`)
 - `make clean`       — wipe `data/raw/`, `data/eval/`
 
 The Wave 1 engine entry point is `python -m src.generate.engine.run_all`
@@ -113,13 +115,42 @@ Wave 2 Stage 7. The v3 demo remains at git tag `v3-final` if needed.
 - DP and l-diversity deferred — aggregate columns ARE the future
   injection point (D24.3); no `publish()` seam shipped.
 
-## Out of scope for Wave 1+2
+**Wave 3 agents (in progress — Stage 6.5):**
 
-Agent unification (D8) and "ask-AI about this chart" (D9) — Wave 3.
+- Five user-facing agents — four domain specialists + Conversational
+  Advisor — under `src/agents/`. All read the materialized lake via
+  `read_lake_table` (manifest-driven; off-grain filters rejected with
+  the relevant Excludes quoted) + tenant data via `query_tenant`
+  (CTE-wrapped, predicate-checked). See `src/agents/CLAUDE.md`.
+- The §1 unified response contract (D25) is the structural wall:
+  `response.AgentResponse` is the only output type; `merge_own_and_peer`
+  is the dual-path merge; `chart_build.build_chart` reads numerics from
+  the result frame (no path from model values to figure values); the
+  two-pass `claims` validator (Pass A declared + Pass B undeclared)
+  catches every metric numeric. Strict guarantee, graceful handling.
+- Five tools in `TOOLS_SPECIALIST`: `schema_info`, `query_tenant`,
+  `read_lake_table` (now surfaces a per-dimension `aggregates` block —
+  Fix 11a — so the model copies real means instead of guessing them),
+  `build_merge` (auto-invoked when both frames are populated — Fix 10a),
+  `emit_response`.
+- Stage 6.5 preview harness at `scripts/preview_agent.py` is the
+  human-review surface (D27.2 dropped golden tests in favor of the
+  runtime validator + harness review). Output: `docs/AGENT_PREVIEW.html`.
+- Live verification of Fix 11/12 still pending API credit top-up; the
+  structural invariants (byte-identical surfaced-vs-recomputed
+  aggregates; per-agent semantic peer_value_col) are asserted at
+  unit-test level.
+
+## Out of scope for Waves 1+2+3
+
 Dashboard refactor to consume Parquet+lake via DuckDB — Wave 4.
-Production / S3 / Lambda backends — deferred. Fraud / tampering
-anomalies (D20.3) — explicitly out for v4. l-diversity and
-differential privacy — deferred per D21.3 / D24.3.
+"Ask-AI about this chart" affordance (D9) — Wave 4. Payment
+Optimization + Segmentation as standalone specialists — D26.5 routes
+them through the Advisor in Wave 3 by design. Production / S3 /
+Lambda backends — deferred. Fraud / tampering anomalies (D20.3) —
+explicitly out for v4. l-diversity and differential privacy —
+deferred per D21.3 / D24.3. Golden-test regression infra — D27.2
+deferred to v5.
 
 ## File guide
 
@@ -135,8 +166,20 @@ differential privacy — deferred per D21.3 / D24.3.
 - `src/generate/engine/` — segment-agnostic 8-layer pipeline.
 - `src/storage/duckdb_io.py` — Parquet IO + DuckDB read.
 - `src/lake/` — Wave 2 anonymization + lake builders + scope/manifest.
+- `src/agents/` — Wave 3 agents: 4 specialists + Advisor, the 5 tools
+  (`schema_info`, `query_tenant`, `read_lake_table`, `build_merge`,
+  `emit_response`), the §1 keystone modules (`response.py`,
+  `chart_build.py`, `claims.py`, `lake_tools.py`). See
+  `src/agents/CLAUDE.md` for the full architecture.
+- `src/agents/prompts/` — Markdown system prompts per specialist +
+  `_shared_answering_rules.md` (Rules 1–8 + 7b) injected into every
+  specialist prompt at render time.
 - `tests/data_quality/` — §6 acceptance battery (T1-T18).
 - `tests/lake/` — Wave 2 L1-L12 acceptance battery.
+- `tests/agents/` — Wave 3 unit tests (no live LLM; mocked via
+  `_fake_llm.py`).
 - `scripts/build_dq_report.py` — regenerate the DQ report.
 - `scripts/build_lake.py` — build `data/lake/` from `data/raw/`.
 - `scripts/build_lake_report.py` — regenerate the lake report.
+- `scripts/preview_agent.py` — Wave 3 preview harness (D27.2). Output:
+  `docs/AGENT_PREVIEW.html`.

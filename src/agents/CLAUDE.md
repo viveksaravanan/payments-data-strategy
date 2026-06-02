@@ -1,214 +1,255 @@
-# Agents
+# Agents (Wave 3)
 
-Five user-facing agents currently ship — all merchant-scoped (every
-query inherits a viewing-merchant context). The Network Analyst from v2
-has been retired. The strategy doc §10.2 specifies seven personas; the
-remaining two stay on the v4 roadmap.
+Five user-facing agents — four domain specialists + one Conversational
+Advisor. All merchant-scoped (every query inherits a viewing-merchant
+context). Network Analyst from v2 has been retired. Strategy doc §10.2
+specifies seven personas; the remaining two (Payment Optimization,
+Segmentation) ride through the Advisor in Wave 3 by design (D26.5).
 
-- **`orchestrator.py`** — **Conversational Business Advisor.** Routes a
-  free-form question to a specialist via a Haiku-based router prompt
-  (`prompts/orchestrator.md`), with a keyword-based fallback if the
-  router fails. No tool loop here; the orchestrator just classifies and
-  dispatches. The dashboard's chat panel calls this for free-form input
-  and prepends the routing decision ("Routed to the Pricing & Benchmarking
-  Agent…") to the specialist's response.
-- **`pricing.py`** — **Pricing & Benchmarking Agent.** Per-SKU pricing,
-  category share, peer-relative price gaps. **`MAX_TURNS = 6`** (Wave 3
-  Stage 6.5 follow-up #6 — lowered from 10; converging pills finish in
-  3-5 turns and 10 only ever extended doomed pills).
-- **`anomaly.py`** — **Anomaly Detection Agent.** Operational anomalies
-  only (no fraud). Knows the three planted signals (University City
-  decline, Plaza Midwood avocado spike, pasta-promo divergence) and
-  the privacy rule on naming. `MAX_TURNS = 6`.
-- **`demand.py`** — **Demand Forecasting & Campaign Adjudication
-  Agent.** Slow-mover analysis, campaign attribution, projected promo
-  uplift. `MAX_TURNS = 6`.
-- **`trade.py`** — **Trade Area Intelligence Agent.** Catchment density,
-  underserved neighborhoods, new-store siting. `MAX_TURNS = 6`.
+- **`orchestrator.py`** — Free-form questions land here. Haiku-based
+  classifier (system prompt `prompts/orchestrator.md`) picks one of
+  `pricing | demand | trade | anomaly | advisor`; keyword-fallback
+  table at `orchestrator.py:64-91` runs when the API is unavailable or
+  the classifier output doesn't parse. No tool loop in the orchestrator;
+  it classifies and dispatches. The no-match target is the **Advisor**
+  (D26.4 — replaces v3's force-routing to a segment-default specialist).
+- **`pricing.py`** — Pricing & Benchmarking. `PREFERRED_PEER_METRIC =
+  "price_index"`. `MAX_TURNS = 6`.
+- **`demand.py`** — Demand Forecasting & Campaign Adjudication.
+  `PREFERRED_PEER_METRIC = "units_index"`. `MAX_TURNS = 6`.
+- **`anomaly.py`** — Anomaly Detection (operational only; **never**
+  fraud/tampering per D20.3). `PREFERRED_PEER_METRIC = "wow_delta"`.
+  `MAX_TURNS = 6`.
+- **`trade.py`** — Trade Area Intelligence. `PREFERRED_PEER_METRIC =
+  "share_of_zone"`. `MAX_TURNS = 6`.
+- **`advisor.py`** — Conversational Advisor. Owns
+  `lake_payment_mix` and `lake_segment_mix`; falls through here for
+  ambiguous / multi-topic / definitional questions. `MAX_TURNS = 6`,
+  `MERGE_REQUIRED = False` (single-source pills like payment-mix don't
+  need own/peer merge).
 
-All four specialists subclass **`specialist.py::Specialist`** — the
-shared bounded tool loop, the streaming-tokens callback, the caveats
-parser, the `SpecialistResponse` dataclass. Tools and SQL guards live
-in **`tools.py`** (shared across orchestrator-routed specialists).
-Prompts live in **`prompts/<name>.md`** loaded once at module import.
+All four specialists + the Advisor subclass `specialist.py::Specialist`
+— the shared bounded tool loop, the §1.4 claims validator integration,
+prose sanitization, prose-from-claims backfill, force-accept floor +
+wall-clock ceiling, claim dispositions surfacing. Prompts live in
+`prompts/<name>.md` and are loaded once at construction; the
+`_shared_answering_rules.md` file (Rules 1–8 + 7b) is appended to every
+specialist prompt at render time.
 
-Suggested-question dispatch from the chat panel routes through
-`src/dashboard/agents.py::dispatch` (which calls
-`_run_specialist`); free-form input routes through
-`src/dashboard/agents.py::dispatch_orchestrated` (which calls the
-orchestrator). The dispatch layer keeps the chat-history shape uniform
-across both paths.
+Suggested-question pills (dashboard chat panel) → `src/dashboard/agents.py::dispatch`
+→ `_run_specialist(agent_id, qid, merchant_id, …)`. Free-form input →
+`dispatch_orchestrated(merchant_id, question, …)` → `Orchestrator.ask`.
+Both paths produce the unified `AgentResponse` dataclass from
+`response.py`. The `qid` persists as a cache key only — there are no
+per-qid pattern charts (D25.6 retired them).
 
-The legacy v2 `advisor.py` (`MerchantAdvisor` class) was archived in
-Phase 1.5 to `docs/archive/legacy_agent/advisor.py` — the orchestrator
-is its v3 replacement. Tests for it moved alongside, file extension
-renamed so pytest skips them.
+The legacy v2 `MerchantAdvisor` was archived in Phase 1.5 to
+`docs/archive/legacy_agent/`. The current Advisor (`advisor.py`) is its
+Wave 3 replacement.
+
+## Wave 3 keystone modules
+
+The §1 unified response contract (D25) is the structural wall. Four
+modules implement it; each has a strict guarantee.
+
+- **`response.py`** — `AgentResponse` dataclass + `merge_own_and_peer`.
+  Owns the dual-path merge: tenant frame + lake frame → comparison
+  frame at matching grain with canonical `own_value` / `peer_benchmark`
+  / `gap` columns. Viewer-scoping check rejects own frames carrying
+  rows for other merchants; identity check rejects peer frames still
+  carrying `banner_code` / `merchant_id` / `merchant` / `name`. Date
+  dtype coercion handles the lake's `date32 → object` vs DuckDB's
+  `datetime64[us]`. Magnitude check NaNs the `gap` column when own and
+  peer are in incompatible units (e.g. raw $ vs unitless index) and
+  sets `result.attrs["gap_is_directional"]`.
+- **`chart_build.py`** — `ChartIntent` schema + `build_chart`. Nine
+  chart kinds (`time_series_vs_peers`, `cross_merchant_comparison`,
+  `heatmap`, `scatter_quadrant`, `waterfall`, `geo_map`, `kpi_callout`,
+  `small_multiples`, `table_drilldown`). The intent dict names result
+  columns; the builder reads values from the frame. **No path from a
+  model-supplied number to a figure value.** Column reconciler
+  (Stage 6.5 follow-up #7) remaps near-miss names (synonyms,
+  case-insensitive, `own_`/`peer_` prefix strip) before the per-kind
+  builder runs. Numeric-axis guard (Stage 6.5 follow-up #9d) raises
+  `NonNumericChartColumnError` if a value-axis column is datetime /
+  object / categorical instead of crashing with `TypeError`.
+- **`claims.py`** — Two-pass §1.4 validator (D25.4 / SPEC §1.4).
+  - Pass A: each declared `Claim` recomputes from `result` via its
+    `source` (`CellLookup | Derivation`). Within tolerance → pass; within
+    tolerance band → normalize to true cell; doesn't trace → strip at
+    clause level.
+  - Pass B: `scan_numerics` tokenizes prose and classifies each
+    numeric as metric (sigil, decimal, adjacent modifier) or
+    structural (entity counts, years, ordinals). Only metric tokens
+    require coverage by a passing Pass-A claim's `text_span`.
+    Uncovered metric numeric → strip its clause.
+  - Closed derivation grammar: `difference`, `ratio`, `pct_change`,
+    `aggregate(sum|mean)`. No arbitrary model arithmetic.
+  - `CellLookup.frame: "tenant" | "lake" | "merged" | None` (Fix 9b).
+    Untagged claims walk the `frames` dict (`result → merged → tenant →
+    lake`) to find the first frame where the column + filter resolve
+    (Fix 10c). List-valued row_filter entries → `.isin(v)` IN-clause
+    (Fix 11b).
+  - `aggregate_column(df, column, agg)` is the single source of truth
+    for multi-row mean/sum. Both the validator's resolve and
+    `lake_tools._compute_lake_aggregates` call it. Byte-identical
+    floats by construction — a model that copies a surfaced aggregate
+    value resolves to `passed`, not `normalized` (Fix 11a).
+- **`lake_tools.py`** — The tool surface. Five tools:
+  `schema_info`, `query_tenant`, `read_lake_table`, `build_merge`,
+  `emit_response`. Plus `sanitize_prose` (XML-strip + opening-tag
+  unwrap + internal-narration → `business_fallback()`).
+
+## Tool surface — `TOOLS_SPECIALIST`
+
+The model sees these five tools in this order:
+
+1. **`schema_info`** — Free, no args. Returns tenant column lists +
+   the five lake table manifests (dimensions, metrics, excludes,
+   k_floor, ladder) + a "tips" array carrying load-bearing reminders
+   (canonical week-boundary SQL, comparable-units guidance, etc.).
+   Always call first. Without it, the model guesses column names and
+   burns turns failing.
+2. **`query_tenant(sql)`** — Viewer-scoped SQL against `data/raw/`.
+   Two-layer enforcement: `check_tenant_predicate` requires
+   `WHERE banner_code = '<viewer>'` AND rejects any other 3-letter
+   merchant literal; `wrap_tenant_query` CTE-shadows the tenant tables
+   with viewer-filtered reads. SELECT-only — semicolons, DDL, DML all
+   rejected before any DB connection opens. Returns a payload with a
+   50-row preview + the full frame captured in specialist state.
+3. **`read_lake_table(table, filters)`** — Reads `data/lake/<table>.parquet`
+   for one of the five Wave 2 tables. Filter keys whitelisted against
+   `manifest["dimensions"]` — off-grain filters (e.g. `sku` on
+   `lake_category_metrics`) get rejected with the relevant Excludes
+   quoted. `scope_for_viewer` strips viewer rows + adds
+   `peer_relationship` + drops `banner_code` (D24.1).
+   `assert_no_identity_leak` safety check before returning. Payload
+   includes:
+   - `rows` + `columns` + `row_count` (50-row preview).
+   - `manifest` (dimensions / metrics / excludes / k_floor / ladder).
+   - `aggregates` (Fix 11a) — per-single-dimension means of every
+     numeric manifest metric: `aggregates.by_<dim>.<value>.<metric>`.
+     The model copies values verbatim into `claim.value` instead of
+     guessing.
+   - `zero_rows_diagnostic` when filters returned 0 rows — lists
+     `available_values_per_filter` so the model retries with a
+     corrected filter rather than concluding "the dataset isn't
+     populated".
+4. **`build_merge(on, own_value_col, peer_value_col, gap_op)`** —
+   Server-side merge that returns the **real** merged frame's columns
+   + dtypes + 50-row preview (Fix 9a). The model authors `chart_intent`
+   and `claims` against names it has actually seen. **Auto-invoked**
+   when both tenant + lake frames are populated and the model skips
+   the explicit call (Fix 10a) — auto-spec derives `on` as
+   `(tenant_cols) ∩ (lake_cols) ∩ manifest_dimensions` (dimension keys
+   only; never join on a metric), `own_value_col` as first non-dim
+   numeric in tenant, `peer_value_col` from each specialist's
+   `PREFERRED_PEER_METRIC` (Fix 12). Empty intersection → dual-frame
+   path (`_merge_fail_payload` set, both real frames preserved). On
+   `KeyError` / `MergeGrainError` / `ViewerScopingError` / 0-row merge
+   → same dual-frame path.
+5. **`emit_response(prose, chart_intent, claims, caveats)`** — Single
+   terminator. No `merge` field (the merge ran in build_merge). Each
+   `CellLookup` claim names `column`, `row_filter`, optional `agg`,
+   optional `frame`. Multi-row `row_filter` without `agg` is rejected
+   at emit precondition time (Fix 9c) so the model retries with
+   `agg="mean"` rather than silently stripping at validation. The
+   `prose` field is plain text — never XML tool-use markup, never
+   internal-error narration (Rule 2c + `sanitize_prose` backstop).
 
 ## Hard rules
 
-- **`query_tenant` enforces tenant isolation.** Every query must
-  include `WHERE merchant_id = '<current_merchant>'` (or join on
-  `merchants` with the same predicate). Queries lacking the predicate
-  are rejected before execution. The check lives in
-  `tools.query_tenant`. If you modify it, update
-  `tests/test_agents.py::test_tenant_isolation`.
+- **Tenant isolation.** `query_tenant` enforces it via `check_tenant_predicate`
+  (regex predicate check, rejects any other merchant literal) + 
+  `wrap_tenant_query` (CTE-shadows tenant tables with viewer-filtered
+  reads). Defense in depth. Both live in `src/lake/isolation.py`.
+- **Lake identity strip (D24.1).** `scope_for_viewer` in
+  `src/lake/scope.py` drops viewer rows, adds `peer_relationship`
+  (`segment_peer` | `cross_segment`), drops `banner_code`.
+  `assert_no_identity_leak` is the safety net.
+- **Manifest grain whitelist.** `_validate_filter_keys` in `lake_tools.py`
+  rejects any filter not in `manifest["dimensions"]`. The Excludes list
+  reaches the model on rejection so it can decline gracefully.
+- **All SQL is SELECT-only.** Regex check before any DB connection. Never
+  trust the model to self-restrict.
+- **`MAX_TURNS = 6`** (Stage 6.5 follow-up #6 — lowered from 10). Two
+  earlier exits inside the loop:
+  - `MAX_PRECONDITION_REJECTIONS = 3` — after 3 emit rejections, force-
+    accept so the loop doesn't burn turns re-asking. Downstream graceful
+    paths produce a coherent result + caveat.
+  - `WALL_CLOCK_CEILING_SEC = 90.0` — per-question wall-clock cap. Exit
+    to `_minimal_response` with `business_fallback()` if exceeded.
+  Both bound the loop without weakening the grounding wall.
+- **No untraceable number reaches the user as a stated fact.**
+  Pass A (declared) + Pass B (undeclared) cover the full surface. The
+  metric-vs-structural distinction is at the scanner level so "5 stores
+  in Zone 3 over 12 weeks" survives without claims.
+- **Anomaly is business-anomalies-only.** Never fraud / tampering /
+  skimming / chargeback (D20.3). No signal in the panel.
 
-- **`query_lake` runs against view-builders, not physical tables.**
-  The lake exposes exactly two logical tables: `lake_transactions`
-  (21 columns; one row per peer line item) and `lake_stores` (6
-  columns; peer store reference). Both are computed at query time
-  from the tenant tables via `src.lake.views.get_lake_*` — there are
-  no physical `lake_*` tables in v2.5 (Phase 5c removes the v2 ones
-  that still exist as a safety net).
+## Failure-fallback surface (Fix 9e)
 
-  The runner takes the agent's SELECT, validates it, and prepends two
-  CTEs (`WITH lake_transactions AS (...), lake_stores AS (...)`) that
-  shadow the physical tables and bake in the viewing merchant. The
-  agent writes ordinary SQL like `SELECT peer_id, AVG(unit_price) FROM
-  lake_transactions WHERE category = 'DAIRY' GROUP BY peer_id`; the
-  runner rewrites it transparently.
+`lake_tools.business_fallback()` is the **single canonical**
+business-language fallback. All paths route through it:
+- `sanitize_prose` narration detector.
+- Specialist all-stripped synthesizer.
+- Force-accept floor caveat.
+- Wall-clock ceiling exit.
+- Unconverged loop exit.
 
-  Lake-tool rejections (all enforced before any DB connection opens):
-  - Anything that isn't a single SELECT (no semicolons, no DDL/DML).
-  - References to any v2-era physical lake table that isn't part of
-    the v2.5 virtual model (the runner maintains the rejection list).
-  - References to `tenant_*` tables — those go through `query_tenant`.
-  - Queries that don't reference at least one of `lake_transactions`
-    or `lake_stores`.
-
-  The viewing merchant's own data is excluded automatically; peers
-  are pseudonymized as `peer_a`..`peer_d` per the locked Phase 2
-  mapping (`V2_5_DATA_DESIGN.md` lines 957–970). The agent never sees
-  underlying merchant_ids; `customer_id` is dropped from lake output
-  per "no consumer linkage".
-
-- **All SQL tools are SELECT-only.** Reject anything that is not a
-  single SELECT statement before executing — regex check, before any
-  DB connection. Never trust the model to self-restrict.
-
-- **`MAX_TURNS = 6`.** Hard cap, lowered from 10 in Wave 3 Stage 6.5
-  follow-up #6 — converging pills finish in 3-5 turns and the extra
-  4 turns only ever extended doomed pills, burning cost without
-  changing the outcome. Wave 3 also adds two earlier exits inside
-  the loop: `MAX_PRECONDITION_REJECTIONS = 3` (force-accept the emit
-  on the 3rd `_validate_emit_args` rejection — downstream graceful
-  path takes over, plus a force-accept caveat for the user) and
-  `WALL_CLOCK_CEILING_SEC = 90.0` (per-question wall-clock cap; exit
-  with `_minimal_response` + ceiling caveat). If the loop hasn't
-  terminated by any of these, return what the agent has and surface
-  "didn't converge". Don't raise without adding a regression test.
-
-- **Final answers must include the SQL.** The dashboard renders it in
-  an expander. The agent's answer is not trustworthy without it.
-
-## Style
-
-- **Prompts live in `prompts/*.md`**, never as Python strings. Edit
-  them directly. Each specialist's class declares `PROMPT_PATH = Path(__file__).parent / "prompts" / "<name>.md"`;
-  the base class reads it once at construction. Dynamic context
-  (`{{viewer_id}}`, `{{viewer_name}}`, `{{viewer_segment}}`) is rendered
-  via plain string replacement inside the base class, not via Python
-  f-strings.
-- **Tools are real-Python, not LLM-described.** A tool is a function
-  that the runner invokes when the model emits a `tool_use` block; the
-  runner appends the result as a `tool_result`. No wrapper frameworks.
-- **Keep the loop boring.** The hardest debugging in this code happens
-  when the loop does something clever. It shouldn't.
-
-## Lake schema reference (what the agent sees)
-
-```
-lake_transactions (21 columns)
-  lake_txn_id           opaque 16-char id
-  line_id               1, 2, 3, ...
-  peer_id               'peer_a'/'peer_b'/'peer_c'/'peer_d'
-  peer_segment          'grocery'/'qsr'/'off_price_retail'
-  lake_store_id         opaque 16-char id (FK to lake_stores)
-  txn_date              YYYY-MM-DD
-  txn_hour_bucket       early_morning / morning / mid_morning / lunch /
-                        afternoon / late_afternoon / evening / dinner /
-                        late_evening / late_night
-  payment_type          'credit' / 'debit'
-  card_network          'visa' / 'mc' / 'amex' / 'discover'
-  entry_mode            'contactless' / 'chip' / 'swipe' / 'manual'
-  wallet_type           nullable: 'apple' / 'google' / 'samsung'
-  connectivity_type     'wifi' / 'cellular_4g' / 'cellular_5g' / 'ethernet'
-  txn_total_bin         '$0-5' / '$5-10' / '$10-20' / '$20-35' /
-                        '$35-50' / '$50-75' / '$75-100' / '$100-150' /
-                        '$150-250' / '$250+'
-  canonical_name        product name (shared across grocers)
-  category              top-level category
-  subcategory           subcategory
-  unit_price, qty       carried precisely from tenant
-  discount, line_total  carried precisely
-  discount_pct_applied  nullable: discount / (unit_price * qty)
-
-lake_stores (6 columns)
-  lake_store_id         opaque 16-char id
-  peer_id               'peer_a'..'peer_d'
-  peer_segment          carried from peer's segment
-  store_zip3            ZIP3 only
-  neighborhood          carried unchanged
-  metro_region          'urban_core'/'inner_suburbs'/'outer_suburbs'
-```
+`_FORBIDDEN_MECHANICS_TERMS` is the negative-space test: no path may
+emit "validator", "draft", "merge spec", "retry with corrected
+parameters", "system issue", "precondition", "force-accept", etc. to
+the user-facing prose. Regression test
+`test_no_mechanics_terms_in_assembled_response_prose` asserts the
+invariant.
 
 ## Models
 
-Specialists + router both run on `claude-haiku-4-5-20251001`.
-Phase 5.1.8 attempted a bump to Sonnet 4.6 to fix
-chart-vs-prose contradictions; the smoke confirmed the root
-cause was architectural (different analytical windows in
-agent SQL vs chart helper), not model capability — addressed
-in Phase 5.1.9 via chart-takeaway pre-injection. Haiku
-retained for cost (5–10× lower) and latency (2–3× faster).
+Specialists + router run on `claude-haiku-4-5-20251001` by default
+(D25.8). `SPECIALIST_MODEL` env var (read in `llm.py:42`) overrides
+specialists + Advisor to Sonnet 4.6 for targeted quality tests; the
+router stays pinned Haiku. Round-7 pricing of the Haiku KRG batch:
+~12 pills × ~$0.07 = ~$0.80; Sonnet would be ~3× that for the same
+batch.
 
-For unit tests against the real API (rare), prefer
-`claude-haiku-4-5` to keep cost down. Most unit tests should mock
-the client — see `tests/test_agents.py` for the pattern.
+Most unit tests mock the client via `tests/agents/_fake_llm.py::patch_llm`
++ `scripted_tool_use` / `scripted_emit_response` / `scripted_build_merge`.
+Live calls are reserved for the preview harness and exceptional
+diagnostics.
 
-## Mock / fallback mode
+## Preview harness (Stage 6.5)
 
-The v3 specialists themselves don't have a `mock=True` constructor arg
-— that was a v2 affordance on the legacy `MerchantAdvisor` (now
-archived). The dashboard's offline safety net is at the **dispatch**
-layer in `src/dashboard/agents.py`:
+`scripts/preview_agent.py` is the demo-readiness review surface (D27.2
+dropped golden tests). Single-pill mode or `--batch` (iterates the
+qid pill registry). Output is one stacked-section `docs/AGENT_PREVIEW.html`
+per merchant carrying: prose (post-validator), interactive Plotly
+chart, merged result table, claims with disposition badges
+(`passed`/`normalized`/`stripped` color-coded), SQL surfaces (tenant +
+lake + merge), routing decision, telemetry. The harness is the human-
+review surface at Checkpoint 2 between Stage 6.5 and Stage 7.
 
-- `_run_specialist(agent_id, qid, merchant_id, …)` instantiates the
-  specialist and runs `spec.answer(...)`.
-- `dispatch(agent_id, qid, merchant_id, …)` consults the per-session
-  cache (`st.session_state["llm_cache"]`) and falls through to
-  `_run_specialist` on miss; on LLM failure it builds an error
-  response via `_error_response`.
-- `dispatch_orchestrated(merchant_id, question, …)` runs the
-  orchestrator without caching for free-form questions; on failure
-  builds an error response via `_orchestrator_error_response`.
+## Style
 
-A truly hardcoded "canned answer" fallback for offline demos is not
-present in v3 `agents.py`; the dispatch layer surfaces errors rather
-than substituting placeholder content.
+- **Prompts live in `prompts/*.md`**, never as Python strings.
+  Each specialist's class declares `PROMPT_PATH`; the base class reads
+  it once at construction. Dynamic context (`{{viewer_id}}`,
+  `{{viewer_name}}`, `{{viewer_segment}}`) is plain string replacement.
+  `_shared_answering_rules.md` is appended to every specialist prompt.
+- **Tools are real Python**, not LLM-described. A tool is a function
+  the runner invokes when the model emits a `tool_use` block; the
+  runner appends the result as a `tool_result`. No wrapper frameworks.
+- **Keep the loop boring.** The hardest debugging happens when the
+  loop does something clever. It shouldn't.
 
-# Development workflow notes
-
-## Prompt / class-attribute changes require process restart
+## Development workflow — prompt / class-attribute changes
 
 Streamlit's hot-reload does NOT reliably pick up changes to:
 
-- Specialist prompt files in `src/agents/prompts/*.md`
-- Class attributes like `MAX_TURNS` in `src/agents/{specialist}.py`
-- Model identifiers in `src/agents/llm.py`
+- Prompt files under `prompts/*.md`.
+- Class attributes (`MAX_TURNS`, `PREFERRED_PEER_METRIC`,
+  `MERGE_REQUIRED`).
+- Model identifiers in `llm.py`.
 
-Python bytecode caching in `__pycache__/` directories can hold
-the previous values even after a file save. The visible symptom
-is the dashboard behaving as if the change never landed
-(stale MAX_TURNS, stale model selection, stale prompt
-instructions).
-
-**After editing any of these files:**
-
-1. Stop Streamlit (Ctrl+C in the running terminal)
-2. Optionally clear bytecode: `find . -name "__pycache__" -type d -exec rm -rf {} +`
-3. Restart: `uv run streamlit run src/dashboard/app.py`
-
-This is especially important during Phase 5 prompt-iteration
-work, where small prompt changes need fast turnaround. Build the
-restart into your testing loop.
+After editing any of these, restart Streamlit. The Wave 4 dashboard
+rebuild will keep this constraint.
