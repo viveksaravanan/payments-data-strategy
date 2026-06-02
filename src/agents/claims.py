@@ -66,8 +66,20 @@ def aggregate_column(
     CellLookup result. ``lake_tools.read_lake_table`` calls this to
     pre-compute the aggregates block shown to the model. Keep this
     function the canonical aggregation — do NOT duplicate the
-    summing/averaging logic elsewhere."""
-    values = df[column].astype(float).tolist()
+    summing/averaging logic elsewhere.
+
+    Wave 3 Stage 6.5 Fix 13b: ``.astype(float)`` raises ``TypeError``
+    on datetime / Timestamp columns. Catch it and re-raise as
+    ``LookupError`` so the per-claim catch tuple in
+    ``validate_claims`` handles it like any other "couldn't resolve"
+    case — clean strip, no crash up the stack."""
+    try:
+        values = df[column].astype(float).tolist()
+    except (TypeError, ValueError) as exc:
+        raise LookupError(
+            f"aggregate_column: column={column!r} dtype is not "
+            f"numeric ({df[column].dtype}) — cannot aggregate."
+        ) from exc
     if agg == "sum":
         return float(sum(values))
     if agg == "mean":
@@ -219,7 +231,18 @@ class CellLookup:
                     f"= 'sum'|'mean' to aggregate."
                 )
             return aggregate_column(sub, self.column, self.agg)
-        return float(sub.iloc[0][self.column])
+        # Single-row case. ``float(Timestamp)`` raises TypeError;
+        # re-raise as LookupError so the per-claim catch tuple in
+        # ``validate_claims`` handles it cleanly (Fix 13b).
+        try:
+            return float(sub.iloc[0][self.column])
+        except (TypeError, ValueError) as exc:
+            raise LookupError(
+                f"_resolve_in: cannot cast cell "
+                f"({sub.iloc[0][self.column]!r}, dtype "
+                f"{sub[self.column].dtype}) to float — column is "
+                f"not numeric."
+            ) from exc
 
 
 DerivationOp = Literal["difference", "ratio", "pct_change", "aggregate"]
@@ -283,7 +306,74 @@ class Derivation:
         raise ValueError(f"Unknown Derivation.op={self.op!r}")
 
 
-Source = CellLookup | Derivation
+@dataclass
+class ValueRef:
+    """Wave 3 Stage 6.5 Fix 13a — peer values reach prose by ADDRESS,
+    not transcription. The model names a (dimension, value, metric)
+    triple instead of typing the number; the server resolves the
+    exact float from the same aggregation path that produced the
+    surfaced ``aggregates`` block.
+
+    ``by``     — the dimension to filter on (e.g. ``"category"``).
+    ``value``  — the dimension value (e.g. ``"MEAT"``).
+    ``metric`` — the metric column to aggregate (e.g. ``"units_index"``).
+    ``agg``    — defaults to ``"mean"`` (matching the aggregates block);
+                 ``"sum"`` is allowed for the rare summed-metric case.
+    ``frame``  — optional, like ``CellLookup.frame``. Defaults to
+                 ``"lake"`` if not set (the natural source for peer
+                 metric aggregates).
+
+    Why this exists. The Fix 11a aggregates block surfaces real
+    per-dimension means; the model's job is to copy them verbatim
+    into ``claim.value``. Haiku's prior is to round
+    ``0.9229 → 0.92``, which lands within the 1% tolerance band and
+    shows as ``[normalized]`` — the camouflaged-guessing failure
+    mode. ``ValueRef`` removes the failure class by making the model
+    write the *address* of the value; the server substitutes the
+    exact float. The grounding wall is preserved — the substituted
+    value still comes from a real aggregate cell over a real frame.
+    """
+    by: str
+    value: Any
+    metric: str
+    agg: AggregateFunc = "mean"
+    frame: Literal["tenant", "lake", "merged"] | None = "lake"
+
+    def resolve(
+        self,
+        result: "pd.DataFrame",
+        *,
+        frames: dict[str, "pd.DataFrame"] | None = None,
+    ) -> float:
+        """Resolve via the SAME aggregation path the validator uses
+        for multi-row ``CellLookup`` and that ``_compute_lake_aggregates``
+        used to produce the surfaced aggregates block. Byte-identical
+        by construction."""
+        # Pick the frame. Default "lake" — peer aggregates live there.
+        target: pd.DataFrame | None = None
+        if frames is not None and self.frame is not None:
+            target = frames.get(self.frame)
+        if target is None:
+            target = result
+        if target is None or self.by not in target.columns:
+            raise LookupError(
+                f"ValueRef: dimension {self.by!r} not in target frame "
+                f"(frame={self.frame!r})."
+            )
+        if self.metric not in target.columns:
+            raise LookupError(
+                f"ValueRef: metric {self.metric!r} not in target frame "
+                f"(frame={self.frame!r})."
+            )
+        sub = target[target[self.by] == self.value]
+        if len(sub) == 0:
+            raise LookupError(
+                f"ValueRef: {self.by}={self.value!r} matched 0 rows."
+            )
+        return aggregate_column(sub, self.metric, self.agg)
+
+
+Source = CellLookup | Derivation | ValueRef
 
 
 @dataclass
@@ -639,7 +729,7 @@ def validate_claims(
             declared_spans.append(declared_span)
         try:
             true_value = claim.source.resolve(result, frames=frames)
-        except (LookupError, ValueError, ZeroDivisionError) as exc:
+        except (LookupError, ValueError, ZeroDivisionError, TypeError) as exc:
             # Source can't resolve — strip the claim's clause.
             if declared_span is not None:
                 spans_to_strip.append(
@@ -648,6 +738,21 @@ def validate_claims(
                 claim=claim, status="stripped", reason=str(exc),
             ))
             continue
+
+        # Wave 3 Stage 6.5 Fix 13a — ValueRef claims are exact by
+        # construction. The model wrote an address, not a value; the
+        # server resolved the exact float. Override claim.value with
+        # the resolved value so the comparison is trivially equal —
+        # status becomes ``passed``, never ``normalized``. This is
+        # the core of the fix: removing the model-rounding failure
+        # class by removing the model's responsibility for the
+        # number entirely. The text_span in prose may still contain
+        # the model's rough number (e.g. "0.92"); that gets normalized
+        # into the displayed value via the existing tolerance path
+        # below if model wrote a different number, or left as-is if
+        # the model wrote the exact value.
+        if isinstance(claim.source, ValueRef):
+            claim.value = true_value
 
         if _approximately_equal(claim.value, true_value, tolerance):
             if math.isclose(claim.value, true_value, rel_tol=1e-9):

@@ -685,10 +685,23 @@ EMIT_RESPONSE_TOOL = {
                 "type": "array",
                 "description": (
                     "Each metric numeric in prose must be backed by a "
-                    "claim here. Source is CellLookup (one cell, "
-                    "optionally aggregated across matching rows) or "
-                    "Derivation (closed grammar: difference, ratio, "
-                    "pct_change, aggregate(sum|mean over operand cells))."
+                    "claim here. Three source shapes:\n"
+                    "  * CellLookup — one cell, optionally aggregated "
+                    "across matching rows.\n"
+                    "  * Derivation — closed grammar: difference, "
+                    "ratio, pct_change, aggregate(sum|mean over "
+                    "operand cells).\n"
+                    "  * ValueRef (PREFERRED for peer metric "
+                    "aggregates) — the address shape: `{type: "
+                    "\"ValueRef\", by: \"category\", value: \"MEAT\", "
+                    "metric: \"units_index\"}` resolves to the EXACT "
+                    "mean from the same aggregates block "
+                    "read_lake_table surfaced. Use this for any peer "
+                    "claim that names a value from the `aggregates` "
+                    "block — the server substitutes the exact float, "
+                    "so the claim is byte-identical to the validator's "
+                    "recompute and lands [passed] (never [normalized] "
+                    "due to rounding)."
                 ),
                 "items": {
                     "type": "object",
@@ -700,7 +713,11 @@ EMIT_RESPONSE_TOOL = {
                             "properties": {
                                 "type": {
                                     "type": "string",
-                                    "enum": ["CellLookup", "Derivation"],
+                                    "enum": [
+                                        "CellLookup",
+                                        "Derivation",
+                                        "ValueRef",
+                                    ],
                                 },
                                 "row_filter": {"type": "object"},
                                 "column": {"type": "string"},
@@ -727,6 +744,28 @@ EMIT_RESPONSE_TOOL = {
                                         "use 'tenant' or 'lake' in the "
                                         "merge-fail path when both real "
                                         "frames are returned unmerged."
+                                    ),
+                                },
+                                "by": {
+                                    "type": "string",
+                                    "description": (
+                                        "ValueRef only: the dimension to "
+                                        "filter on (e.g. 'category', "
+                                        "'derived_zone')."
+                                    ),
+                                },
+                                "value": {
+                                    "description": (
+                                        "ValueRef only: the dimension "
+                                        "value (e.g. 'MEAT', 'Z02')."
+                                    ),
+                                },
+                                "metric": {
+                                    "type": "string",
+                                    "description": (
+                                        "ValueRef only: the metric "
+                                        "column to aggregate (e.g. "
+                                        "'units_index', 'price_index')."
                                     ),
                                 },
                             },

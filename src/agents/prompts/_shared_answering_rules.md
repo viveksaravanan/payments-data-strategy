@@ -315,6 +315,43 @@ Correct pattern:
 > 1.06 — you're priced richer than the segment baseline" — two facts from
 > two real frames, tied together in prose.
 
+## Rule 7c: Cite peer aggregates by ADDRESS via `ValueRef`, never by transcription
+
+When you claim a peer metric at a dimension grain — peer price index for
+BABY, peer units index for MEAT, peer share_of_zone for Z02 — DO NOT
+write the number yourself. Use the `ValueRef` source shape:
+
+```
+"source": {
+  "type": "ValueRef",
+  "by": "category",
+  "value": "MEAT",
+  "metric": "units_index"
+}
+```
+
+The server resolves the exact float from the same aggregates block
+`read_lake_table` surfaced, using the same code path the validator
+recomputes against. By construction the claim lands `[passed]`, never
+`[normalized]`.
+
+**Why this matters.** Even when you READ the aggregates block correctly,
+your prior is to write `0.92` for a value the block lists as `0.9229`.
+Rounded values land within the validator's 1% tolerance band and show
+up as `[normalized]` — the camouflaged-guessing failure mode. `ValueRef`
+removes that class entirely: you write the address, the server writes
+the value.
+
+**Use `ValueRef` for**: any peer metric you'd otherwise transcribe from
+`aggregates.by_<dim>.<value>.<metric>`. Pricing's `price_index`,
+demand's `units_index` / `revenue_index`, anomaly's `wow_delta`,
+trade's `share_of_zone` / `zone_category_volume_index`.
+
+**Use literal `CellLookup` for**: own-side raw figures (revenue dollars,
+transaction counts) where the value comes from your tenant SQL output,
+not from the aggregates block. Pricing's P1 / P3 already do this
+correctly — keep doing it.
+
 ## Rule 7b: Read peer aggregates from the `aggregates` block — never guess
 
 `read_lake_table`'s result includes an `aggregates` block (Wave 3

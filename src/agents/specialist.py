@@ -47,6 +47,7 @@ from src.agents.claims import (
     CellLookup,
     Claim,
     Derivation,
+    ValueRef,
     _apply_row_filter,
     validate_claims,
 )
@@ -1379,14 +1380,23 @@ class Specialist:
         )
 
 
-def _parse_claim_source(src: dict[str, Any]) -> CellLookup | Derivation:
+def _parse_claim_source(
+    src: dict[str, Any],
+) -> CellLookup | Derivation | ValueRef:
     """Parse a claim source from JSON. Supported shapes:
 
     * ``{"type": "CellLookup", "row_filter": {...}, "column": "..."}``
     * ``{"type": "Derivation", "op": "...", "operands": [...]
          [, "agg": "..."]}``
+    * ``{"type": "ValueRef", "by": "<dim>", "value": "<dim_value>",
+         "metric": "<metric_col>" [, "agg": "...", "frame": "..."]}``
 
     ``Derivation.operands`` is a list of CellLookup-shaped dicts.
+    ``ValueRef`` (Wave 3 Stage 6.5 Fix 13a) is the address shape —
+    the model names a (dimension, value, metric) triple instead of
+    typing a number; the server substitutes the exact float from
+    the same aggregation path that produced the surfaced
+    ``aggregates`` block.
     """
     kind = src.get("type")
     if kind == "CellLookup":
@@ -1411,5 +1421,13 @@ def _parse_claim_source(src: dict[str, Any]) -> CellLookup | Derivation:
             op=src["op"],
             operands=operands,
             agg=src.get("agg"),
+        )
+    if kind == "ValueRef":
+        return ValueRef(
+            by=str(src["by"]),
+            value=src["value"],
+            metric=str(src["metric"]),
+            agg=src.get("agg") or "mean",
+            frame=src.get("frame") or "lake",
         )
     raise ValueError(f"Unknown claim source type {kind!r}")

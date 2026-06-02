@@ -1528,6 +1528,187 @@ def test_preferred_peer_metric_falls_back_when_absent(viewer_krg) -> None:
     assert "peer='txn_count'" in merge_log["query"]
 
 
+# ---------------------------------------------------------------------
+# Wave 3 Stage 6.5 Fix 13 — ValueRef source shape + claims-path
+# TypeError on datetime columns
+# ---------------------------------------------------------------------
+
+
+def test_value_ref_claim_passes_byte_identical(viewer_krg) -> None:
+    """Fix 13a: a ValueRef claim resolves to the EXACT aggregate from
+    the same code path the validator uses; ``claim.value`` is
+    overridden at validation time so the comparison is trivially
+    equal. Status is ``passed``, NOT ``normalized``."""
+    from src.agents.claims import (
+        Claim, ValueRef, aggregate_column, validate_claims,
+    )
+    # Multi-row frame mimicking lake_category_metrics shape.
+    lake = pd.DataFrame({
+        "category": ["MEAT"] * 4 + ["BABY"] * 3,
+        "derived_zone": ["Z01", "Z02", "Z03", "Z04", "Z01", "Z02", "Z03"],
+        "units_index": [0.9229, 0.9230, 0.9228, 0.9229, 0.9231, 0.9232, 0.9230],
+    })
+    # The model authors a claim with ValueRef (the address shape)
+    # and a placeholder ``value`` — server will override.
+    claim = Claim(
+        text_span="peer baseline of 0.92",   # model wrote rounded text
+        value=0.92,                          # placeholder — overridden
+        source=ValueRef(
+            by="category", value="MEAT", metric="units_index",
+            frame="lake",
+        ),
+    )
+    report = validate_claims(
+        prose="MEAT peer baseline of 0.92 indicates parity.",
+        claims=[claim],
+        result=lake,
+        frames={"lake": lake},
+    )
+    d = report.claim_dispositions[0]
+    assert d.status == "passed"
+    # ValueRef set claim.value to the resolved aggregate (not 0.92).
+    expected = aggregate_column(
+        lake[lake["category"] == "MEAT"], "units_index", "mean",
+    )
+    assert claim.value == expected
+
+
+def test_value_ref_byte_identical_to_surfaced_aggregate() -> None:
+    """Fix 13a invariant: the value ValueRef resolves to must be
+    byte-identical to what ``_compute_lake_aggregates`` surfaces in
+    the read_lake_table payload (same code path, same frame).
+    Otherwise the model copies the surfaced value through ValueRef,
+    the validator gets a fractionally different number, and the
+    claim normalizes-not-passes."""
+    from src.agents import lake_tools as LT
+    from src.agents.claims import ValueRef
+    payload = LT.read_lake_table(
+        "KRG", "lake_category_metrics",
+        filters={"grain": "cat_week"},
+    )
+    surfaced = payload["aggregates"]["by_category"]["MEAT"]["units_index"]
+    # ValueRef resolves against the same post-scope frame.
+    df = payload["frame"]
+    ref = ValueRef(by="category", value="MEAT", metric="units_index",
+                   frame="lake")
+    resolved = ref.resolve(df, frames={"lake": df})
+    assert repr(surfaced) == repr(resolved)
+
+
+def test_datetime_column_claim_strips_cleanly_no_typeerror() -> None:
+    """Fix 13b: a CellLookup on a datetime column raises ``TypeError``
+    inside ``_resolve_in`` / ``aggregate_column``. The validator's
+    per-claim catch tuple now includes ``TypeError``, AND the cast
+    sites re-raise as ``LookupError``. Either way: clean strip,
+    no crash propagates."""
+    from src.agents.claims import CellLookup, Claim, validate_claims
+    df = pd.DataFrame({
+        "category": ["MEAT", "BABY"],
+        "period_start": pd.to_datetime(["2026-04-13", "2026-04-20"]),
+    })
+    # Single-row match (won't hit aggregate_column).
+    claim = Claim(
+        text_span="MEAT decline started week of 2026-04-13",
+        value=20260413.0,    # not even meaningful
+        source=CellLookup(
+            row_filter={"category": "MEAT"},
+            column="period_start",
+        ),
+    )
+    # Must NOT raise TypeError.
+    report = validate_claims(
+        prose="MEAT decline started week of 2026-04-13.",
+        claims=[claim],
+        result=df,
+    )
+    # Claim strips cleanly.
+    assert report.claim_dispositions[0].status == "stripped"
+
+
+def test_datetime_column_claim_aggregate_strips_cleanly() -> None:
+    """Same shape but multi-row → exercises the aggregate_column
+    path's TypeError handling."""
+    from src.agents.claims import CellLookup, Claim, validate_claims
+    df = pd.DataFrame({
+        "category": ["MEAT", "MEAT", "BABY"],
+        "period_start": pd.to_datetime(
+            ["2026-04-13", "2026-04-20", "2026-04-13"],
+        ),
+    })
+    claim = Claim(
+        text_span="MEAT period_start mean is X",
+        value=0.0,
+        source=CellLookup(
+            row_filter={"category": "MEAT"},
+            column="period_start",
+            agg="mean",   # forces multi-row path
+        ),
+    )
+    report = validate_claims(
+        prose="x",
+        claims=[claim],
+        result=df,
+    )
+    assert report.claim_dispositions[0].status == "stripped"
+    # The reason should mention the datetime / non-numeric column.
+    reason = (report.claim_dispositions[0].reason or "").lower()
+    assert "numeric" in reason or "float" in reason or "dtype" in reason
+
+
+def test_value_ref_falls_through_to_strip_when_dim_missing() -> None:
+    """Fix 13a: ValueRef can't fabricate; if the (by, value, metric)
+    triple doesn't resolve in the named frame, it raises LookupError
+    just like CellLookup → claim strips. Grounding intact."""
+    from src.agents.claims import Claim, ValueRef, validate_claims
+    lake = pd.DataFrame({
+        "category": ["MEAT"],
+        "units_index": [0.9229],
+    })
+    claim = Claim(
+        text_span="DAIRY peer index is X",
+        value=0.92,
+        source=ValueRef(
+            by="category", value="DAIRY",   # not in frame
+            metric="units_index", frame="lake",
+        ),
+    )
+    report = validate_claims(
+        "DAIRY peer index.",
+        [claim],
+        result=lake,
+        frames={"lake": lake},
+    )
+    assert report.claim_dispositions[0].status == "stripped"
+
+
+def test_pricing_literal_value_path_unregressed() -> None:
+    """Fix 13a is additive — the literal CellLookup + ``value=<float>``
+    path that pricing uses (P1, P3 — exact-precision verbatim copy)
+    still resolves to ``passed`` when the model writes the exact
+    value."""
+    from src.agents.claims import CellLookup, Claim, aggregate_column, validate_claims
+    df = pd.DataFrame({
+        "category": ["MEAT"] * 4,
+        "price_index": [1.0258, 1.0258, 1.0258, 1.0258],
+    })
+    # Model wrote the exact full-precision value (pricing pattern).
+    true = aggregate_column(df, "price_index", "mean")
+    claim = Claim(
+        text_span=f"peer index of {true}",
+        value=true,
+        source=CellLookup(
+            row_filter={"category": "MEAT"},
+            column="price_index", agg="mean",
+        ),
+    )
+    report = validate_claims(
+        f"peer index of {true}.",
+        [claim],
+        result=df,
+    )
+    assert report.claim_dispositions[0].status == "passed"
+
+
 def test_emit_accepted_for_advisor_with_lake_only(viewer_krg) -> None:
     """Fix 1 respects MERGE_REQUIRED=False for the Advisor — a
     single lake-frame answer with no tenant fetch doesn't trigger
