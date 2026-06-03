@@ -44,10 +44,10 @@ Wave 2 published peer data as pre-computed aggregate tables at fixed dimensional
 | Column | Treatment | Notes |
 |--------|-----------|-------|
 | `lake_txn_id` | Tokenized (SHA-256 + salt) | non-reversible; enables GROUP/JOIN without exposing real IDs |
-| `line_id` | Tokenized | |
+| `lake_line_id` | Tokenized | `lake_txn_id` + within-txn sequence; non-reversible, unique |
 | `lake_store_id` | Tokenized | joins to `lake_stores` |
-| `txn_date` | Generalized | date only; time reduced to coarse hour bucket (see 3.3) |
-| `store_zip3` | Generalized | first 3 digits of ZIP only |
+| `txn_date` | Generalized | date only |
+| `hour_bucket` | Generalized | coarse time-of-day, 10 buckets/day (raw `txn_ts` dropped) |
 | `peer_relationship` | Identity label | `peer` (same segment as viewer) or `merchant` (different segment). NEVER a name or pseudonym |
 | `category` | **Raw** | primary analytical dimension |
 | `subcategory` | **Raw** | |
@@ -71,10 +71,9 @@ Wave 2 published peer data as pre-computed aggregate tables at fixed dimensional
 | `lake_store_id` | Tokenized (joins to transactions) |
 | `peer_relationship` | `peer` / `merchant` |
 | `peer_segment` | segment label (`grocery` / `qsr` / `off_price`) — for routing logic. Canonical config vocab (see §4) |
-| `store_zip3` | Generalized |
 | `neighborhood` | **Raw real name** (observable; no Z-code) |
 
-(No `zone` column — see decision §2.2. `metro_region` may be added later as an optional coarse grain but is not published by default.)
+(No `zone` column — see decision §2.2. No `store_zip3` either: the v4 raw schema carries **no ZIP** anywhere — `stores` has only lat/long + `neighborhood` + `metro_region` + planted `zone_id`. `neighborhood` is the sole published geography. lat/long are **not** carried — they'd localize a real store. `metro_region` may be added later as an optional coarse grain.)
 
 ### 3.2 Identity labeling rule
 
@@ -88,8 +87,7 @@ This is why it must be set at per-viewer build time (§5), not stored globally �
 
 - Tokenize `lake_txn_id`, `line_id`, `lake_store_id` (SHA-256 + salt; non-reversible). **The salt is derived from `cfg.global_['seed']` (fixed, default 42), not random** — the project guarantees byte-identical Parquet across runs (pyarrow pinned, single-threaded, T18). A random salt would break that determinism.
 - `txn_ts` → `txn_date` (date) + coarse hour bucket (e.g. 10 buckets/day). Raw timestamp dropped.
-- `store_zip5` → `store_zip3`. (Raw `stores` carries lat/long + `neighborhood`; ZIP3 is derived from the same source, not from a planted column.)
-- **Geography:** carry `neighborhood` through raw. Do **not** read `zone_id` (planted; forbidden by `observable_guard.py`) and do **not** run the k-means Z-code derivation (`src/lake/zones.py`) — both concepts are removed (§2.2).
+- **Geography:** carry `neighborhood` through raw — it is the sole published geography. There is **no ZIP** in the v4 raw schema, so there is no `store_zip3`. Do **not** carry lat/long (would localize a real store), do **not** read `zone_id` (planted; forbidden by `observable_guard.py`), and do **not** run the k-means Z-code derivation (`src/lake/zones.py`) — all removed (§2.2).
 - Drop `customer_id` and any per-shopper field.
 - Set `peer_relationship` per viewer (§3.2).
 - **Viewer exclusion baked in** — the viewing merchant's own rows are absent from their lake (structural, not a runtime filter).
@@ -289,7 +287,7 @@ This converts a doc/build discrepancy into a stated, defensible design choice.
 
 **Stage A — Build the line-item lake.**
 `src/lake/build_line_items.py`: read raw `transactions` + `transaction_items` + `stores` (via `observable_guard` if kept), apply generalization (§3.3), set `peer_relationship` per viewer, exclude viewer, write 5 per-viewer `lake_transactions` + `lake_stores` pairs. Emit per-viewer metadata (`segment`, `segment_peer_count`). Makefile target `make lake-items`.
-Tests: acceptance pair confirming no PII / no real merchant name / no `customer_id` / no raw ZIP5 / no raw timestamp in output; viewer-exclusion holds (viewer's own rows absent from their pair).
+Tests: acceptance pair confirming no PII / no real merchant name (no `banner_code`/`merchant_id`) / no `customer_id`/`customer_token` / no lat-long / no raw `txn_ts` timestamp / no `zone_id` in output; viewer-exclusion holds (viewer's own rows absent from their pair); `peer_relationship` correct relative to viewer.
 
 **Stage B — Wire `query_lake_sql`.**
 New tool in `TOOLS_SPECIALIST`. CTE-wrap to viewer's pair (reuse `wrap_tenant_query` pattern). Single-SELECT + aggregating-only enforcement. Robust count injection + k=5 suppression + "N suppressed" notice. `_df_to_payload` output shape.

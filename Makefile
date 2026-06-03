@@ -1,4 +1,4 @@
-.PHONY: seed seed-pilot demo test test-quick clean dq-report lake lake-report agent-preview
+.PHONY: seed seed-pilot demo test test-quick clean dq-report lake lake-items lake-report agent-preview
 
 # v4: generate the tenant census Parquet at full scale.
 seed:
@@ -28,6 +28,13 @@ lake:
 # Wave 2: regenerate the Markdown lake report from data/lake/.
 lake-report:
 	uv run python scripts/build_lake_report.py
+
+# Wave 3.5: build the per-viewer line-item peer lake (5 pairs +
+# routing metadata) from data/raw/ to data/lake/items/<VIEWER>/.
+# Superseding the Wave 2 aggregate tables — both coexist until the
+# §11 removal stage.
+lake-items:
+	uv run python scripts/build_line_items.py
 
 # Wave 3: generate docs/AGENT_PREVIEW.html — the human-review surface
 # for the L1-L12 agents over the suggested-question registry. Needs
