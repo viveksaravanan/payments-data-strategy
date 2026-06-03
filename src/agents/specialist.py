@@ -347,6 +347,21 @@ class Specialist:
                 "row_count": payload["row_count"],
             })
             return payload
+        if name == "query_lake_sql":
+            payload = LT.query_lake_sql(
+                self.context.viewing_merchant_id, args["sql"],
+            )
+            # Register as the "lake" frame so ValueRef (frame="lake"
+            # default) and CellLookup resolve against it unchanged
+            # (Wave 3.5 §10.1 / Finding 9).
+            self._lake_frame = payload["frame"]
+            self._sql_log.append({
+                "surface":   "lake_sql",
+                "query":     args["sql"],
+                "row_count": payload["row_count"],
+                "suppressed": payload.get("suppressed", 0),
+            })
+            return payload
         if name == "read_lake_table":
             payload = LT.read_lake_table(
                 self.context.viewing_merchant_id,

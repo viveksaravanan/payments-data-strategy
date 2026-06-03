@@ -38,15 +38,17 @@ def test_no_make_chart_in_lake_tools() -> None:
     construction goes through `chart_build.build_chart` deterministically
     from the merged result. The Wave 3 tools are schema_info
     (column-list introspection so the model doesn't guess) +
-    query_tenant (own data) + read_lake_table (peer data, scoped) +
-    build_merge (Fix 9: server-side merge that returns real columns
-    before chart/claims author against them) + emit_response
-    (structured terminator that feeds the §1 contract)."""
+    query_tenant (own data) + query_lake_sql (Wave 3.5: peer data via
+    aggregating SQL on the line-item lake) + read_lake_table (Wave 2
+    peer aggregates, scoped — retired in Wave 3.5 Stage E) + build_merge
+    (Fix 9: server-side merge that returns real columns before
+    chart/claims author against them) + emit_response (structured
+    terminator that feeds the §1 contract)."""
     from src.agents import lake_tools as LT
     tool_names = {t["name"] for t in LT.TOOLS_SPECIALIST}
     assert "make_chart" not in tool_names
     assert tool_names == {
-        "schema_info", "query_tenant", "read_lake_table",
+        "schema_info", "query_tenant", "query_lake_sql", "read_lake_table",
         "build_merge", "emit_response",
     }
 

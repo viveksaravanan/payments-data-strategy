@@ -34,6 +34,7 @@ from src.lake.isolation import (
     check_tenant_predicate,
     wrap_tenant_query,
 )
+from src.lake.lake_sql import LakeSqlError, run_lake_sql
 from src.lake.manifest import manifest_for
 from src.lake.scope import (
     IdentityLeakError,
@@ -233,6 +234,30 @@ def query_tenant(viewer: str, sql: str) -> dict[str, Any]:
         raise LakeToolError(f"DuckDB execution failed: {exc}") from exc
 
     return _df_to_payload(df, sql=sql)
+
+
+def query_lake_sql(viewer: str, sql: str) -> dict[str, Any]:
+    """Run an aggregating SQL query against the viewer's line-item peer
+    lake (Wave 3.5 §8).
+
+    Mirrors ``query_tenant`` so the grounding path handles its results
+    unchanged. ``lake_transactions`` / ``lake_stores`` resolve to the
+    viewer's materialized pair; the query must be a single aggregating
+    SELECT (raw-row selects rejected); a per-group count floor (k=5) is
+    applied and the dropped-group count is surfaced as ``suppressed``.
+
+    Returns the same ``_df_to_payload`` shape ``query_tenant`` returns
+    (so CellLookup / ValueRef / the §1.4 validator work unchanged), plus
+    a ``suppressed`` count.
+    """
+    try:
+        df, n_suppressed = run_lake_sql(viewer, sql)
+    except LakeSqlError as exc:
+        raise LakeToolError(f"Lake query rejected: {exc}") from exc
+    except duckdb.Error as exc:
+        raise LakeToolError(f"DuckDB execution failed: {exc}") from exc
+
+    return _df_to_payload(df, sql=sql, suppressed=n_suppressed)
 
 
 # ---------------------------------------------------------------------
@@ -525,6 +550,45 @@ QUERY_TENANT_TOOL = {
                     "A single SELECT statement scoped to the viewer "
                     "merchant. Tables: transactions, transaction_items, "
                     "stores, products, promotions, merchants."
+                ),
+            },
+        },
+        "required": ["sql"],
+    },
+}
+
+
+QUERY_LAKE_SQL_TOOL = {
+    "name": "query_lake_sql",
+    "description": (
+        "Run an aggregating SQL query against PEER merchants' data "
+        "(the anonymized line-item lake, real dollars). Same motion as "
+        "`query_tenant` but for peers: write `FROM lake_transactions` "
+        "(one row per peer purchase line) and/or `JOIN lake_stores "
+        "USING (lake_store_id)` — they resolve to your peer set "
+        "automatically; your own rows are absent by construction. "
+        "Identity is reduced to `peer_relationship` ('peer' = same "
+        "segment as you, 'merchant' = different segment) — never a name. "
+        "MUST be aggregating: GROUP BY a dimension and select aggregate "
+        "metrics (AVG(unit_price), SUM(line_total), COUNT(DISTINCT "
+        "lake_txn_id) for transaction counts). Raw-row selects "
+        "(`SELECT *`) are rejected. Groups backed by fewer than 5 lines "
+        "are dropped for privacy; the count is returned as `suppressed`. "
+        "Columns: lake_txn_id, lake_line_id, lake_store_id, txn_date, "
+        "hour_bucket, peer_relationship, category, subcategory, "
+        "unit_price, qty, discount, line_total, payment_type, "
+        "card_network, entry_mode, wallet_type; lake_stores adds "
+        "peer_segment, neighborhood."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "sql": {
+                "type": "string",
+                "description": (
+                    "A single aggregating SELECT over lake_transactions "
+                    "/ lake_stores. Must GROUP BY a dimension or be a "
+                    "whole-table aggregate."
                 ),
             },
         },
@@ -851,6 +915,7 @@ BUILD_MERGE_TOOL = {
 TOOLS_SPECIALIST = [
     SCHEMA_INFO_TOOL,
     QUERY_TENANT_TOOL,
+    QUERY_LAKE_SQL_TOOL,
     READ_LAKE_TOOL,
     BUILD_MERGE_TOOL,
     EMIT_RESPONSE_TOOL,
