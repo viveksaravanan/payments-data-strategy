@@ -156,6 +156,29 @@ def test_k_floor_suppresses_thin_groups_and_strips_k() -> None:
 
 
 @needs_lake
+def test_group_by_all_accepted_and_counts_correctly() -> None:
+    # GROUP BY ALL has empty group_expressions but
+    # aggregate_handling=FORCE_AGGREGATES — must be accepted, and the
+    # injected COUNT(*) must group at the same grain as an explicit
+    # GROUP BY category.
+    p_all = query_lake_sql(
+        "KRG",
+        "SELECT category, AVG(unit_price) AS asp FROM lake_transactions "
+        "WHERE peer_relationship='peer' GROUP BY ALL",
+    )
+    p_explicit = query_lake_sql(
+        "KRG",
+        "SELECT category, AVG(unit_price) AS asp FROM lake_transactions "
+        "WHERE peer_relationship='peer' GROUP BY category",
+    )
+    assert p_all["row_count"] == p_explicit["row_count"] > 0
+    assert "_k" not in p_all["columns"]
+    # same per-category means either way
+    assert {r[0]: round(r[1], 6) for r in p_all["rows"]} == \
+        {r[0]: round(r[1], 6) for r in p_explicit["rows"]}
+
+
+@needs_lake
 def test_whole_table_aggregate_ok() -> None:
     p = query_lake_sql(
         "KRG",

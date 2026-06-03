@@ -130,7 +130,9 @@ def _check_aggregating(node: dict[str, Any]) -> None:
             "(e.g. AVG(unit_price), COUNT(DISTINCT lake_txn_id))."
         )
     if node.get("group_expressions"):
-        return  # grouped aggregation — fine
+        return  # explicit GROUP BY (also GROUPING SETS / ROLLUP / CUBE)
+    if node.get("aggregate_handling") == "FORCE_AGGREGATES":
+        return  # GROUP BY ALL — DuckDB groups by the non-aggregate cols
     # No GROUP BY → only a whole-table aggregate is allowed.
     if select_list and all(_has_aggregate(item) for item in select_list):
         return
