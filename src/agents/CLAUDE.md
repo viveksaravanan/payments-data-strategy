@@ -67,10 +67,14 @@ modules implement it; each has a strict guarantee.
   `heatmap`, `scatter_quadrant`, `waterfall`, `geo_map`, `kpi_callout`,
   `small_multiples`, `table_drilldown`). The intent dict names result
   columns; the builder reads values from the frame. **No path from a
-  model-supplied number to a figure value.** Column reconciler
-  (Stage 6.5 follow-up #7) remaps near-miss names (synonyms,
-  case-insensitive, `own_`/`peer_` prefix strip) before the per-kind
-  builder runs. Numeric-axis guard (Stage 6.5 follow-up #9d) raises
+  model-supplied number to a figure value.** The chart-intent
+  reconciler (after the Stage 7 trim) only drops invalid entries from
+  list-valued fields (a partial chart beats no chart) and auto-adds
+  `peer_benchmark` to series for cross-merchant kinds (Fix 14); the
+  near-miss synonym/case-insensitive/prefix-strip remap layer was
+  retired once ValueRef (Fix 13) and build_merge auto-invoke (Fix 10a)
+  removed the source of the drift. Numeric-axis guard (Stage 6.5
+  follow-up #9d) raises
   `NonNumericChartColumnError` if a value-axis column is datetime /
   object / categorical instead of crashing with `TypeError`.
 - **`claims.py`** — Two-pass §1.4 validator (D25.4 / SPEC §1.4).
@@ -172,13 +176,14 @@ The model sees these five tools in this order:
   reaches the model on rejection so it can decline gracefully.
 - **All SQL is SELECT-only.** Regex check before any DB connection. Never
   trust the model to self-restrict.
-- **`MAX_TURNS = 6`** (Stage 6.5 follow-up #6 — lowered from 10). Two
-  earlier exits inside the loop:
-  - `MAX_PRECONDITION_REJECTIONS = 3` — after 3 emit rejections, force-
-    accept so the loop doesn't burn turns re-asking. Downstream graceful
-    paths produce a coherent result + caveat.
-  - `WALL_CLOCK_CEILING_SEC = 90.0` — per-question wall-clock cap. Exit
-    to `_minimal_response` with `business_fallback()` if exceeded.
+- **`MAX_TURNS = 6`** (Stage 6.5 follow-up #6 — lowered from 10).
+  After the Stage 7 trim, `WALL_CLOCK_CEILING_SEC = 90.0` is the only
+  in-loop runtime bound — per-question wall-clock cap; exit to
+  `_minimal_response` with `business_fallback()` if exceeded. The
+  earlier `MAX_PRECONDITION_REJECTIONS = 3` force-accept floor was
+  retired: build_merge auto-invoke (Fix 10a) absorbs the main
+  rejection case, so a precondition raise now just retries within
+  `MAX_TURNS` and the wall-clock ceiling catches any genuine runaway.
   Both bound the loop without weakening the grounding wall.
 - **No untraceable number reaches the user as a stated fact.**
   Pass A (declared) + Pass B (undeclared) cover the full surface. The

@@ -115,7 +115,7 @@ Wave 2 Stage 7. The v3 demo remains at git tag `v3-final` if needed.
 - DP and l-diversity deferred — aggregate columns ARE the future
   injection point (D24.3); no `publish()` seam shipped.
 
-**Wave 3 agents (in progress — Stage 6.5):**
+**Wave 3 agents (closed — Stage 6.5 live-verified + Stage 7 trim landed):**
 
 - Five user-facing agents — four domain specialists + Conversational
   Advisor — under `src/agents/`. All read the materialized lake via
@@ -136,10 +136,21 @@ Wave 2 Stage 7. The v3 demo remains at git tag `v3-final` if needed.
 - Stage 6.5 preview harness at `scripts/preview_agent.py` is the
   human-review surface (D27.2 dropped golden tests in favor of the
   runtime validator + harness review). Output: `docs/AGENT_PREVIEW.html`.
-- Live verification of Fix 11/12 still pending API credit top-up; the
-  structural invariants (byte-identical surfaced-vs-recomputed
-  aggregates; per-agent semantic peer_value_col) are asserted at
-  unit-test level.
+- Live verification met the exit gate (12 KRG pills on Haiku:
+  77 passed / 8 normalized / 18 stripped, `business_fallback` 1/12,
+  all under the 90s wall-clock ceiling). Fix 11a byte-identical
+  surfaced-vs-recomputed aggregates and the per-agent semantic
+  peer_value_col are also asserted at unit-test level.
+- Stage 7 trim retired the scaffolding the Fix 9–14 root-cause work
+  made redundant: the `MAX_PRECONDITION_REJECTIONS` retry-cap floor
+  and `_fallback_carry_both_sides` broadcast (`specialist.py`) and the
+  chart-intent synonym-remap layer (`chart_build.py`). Only the
+  wall-clock ceiling remains as a runtime bound; the legacy
+  `_build_result` merge-fail path returns `own.copy()` + a caveat.
+- Next: Wave 3.5 (`docs/SPEC_wave3-5_lakelineitem.md`) replaces the
+  aggregate lake + `read_lake_table` with a raw line-item lake queried
+  via a new `query_lake_sql` tool — removing the root cause the Stage
+  6.5 fixes compensated for. Drafted, not yet built.
 
 ## Out of scope for Waves 1+2+3
 
