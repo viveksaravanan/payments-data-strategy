@@ -35,11 +35,6 @@ from src.lake.isolation import (
     wrap_tenant_query,
 )
 from src.lake.lake_sql import LakeSqlError, run_lake_sql
-from src.lake.scope import (
-    IdentityLeakError,
-    assert_no_identity_leak,
-    scope_for_viewer,
-)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA_RAW = REPO_ROOT / "data" / "raw"
