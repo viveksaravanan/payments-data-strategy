@@ -47,119 +47,84 @@ The legacy v2 `MerchantAdvisor` was archived in Phase 1.5 to
 `docs/archive/legacy_agent/`. The current Advisor (`advisor.py`) is its
 Wave 3 replacement.
 
-## Wave 3 keystone modules
+## Keystone modules
 
-The §1 unified response contract (D25) is the structural wall. Four
-modules implement it; each has a strict guarantee.
+The §1 unified response contract (D25) is the structural wall. After the
+Wave 3.5 rebuild the agent runs a **two-query flow** (`query_tenant` +
+`query_lake_sql`) and emits a **structured response** (headline / evidence /
+so_what); there is no merge step and charts are deferred.
 
-- **`response.py`** — `AgentResponse` dataclass + `merge_own_and_peer`.
-  Owns the dual-path merge: tenant frame + lake frame → comparison
-  frame at matching grain with canonical `own_value` / `peer_benchmark`
-  / `gap` columns. Viewer-scoping check rejects own frames carrying
-  rows for other merchants; identity check rejects peer frames still
-  carrying `banner_code` / `merchant_id` / `merchant` / `name`. Date
-  dtype coercion handles the lake's `date32 → object` vs DuckDB's
-  `datetime64[us]`. Magnitude check NaNs the `gap` column when own and
-  peer are in incompatible units (e.g. raw $ vs unitless index) and
-  sets `result.attrs["gap_is_directional"]`.
-- **`chart_build.py`** — `ChartIntent` schema + `build_chart`. Nine
-  chart kinds (`time_series_vs_peers`, `cross_merchant_comparison`,
-  `heatmap`, `scatter_quadrant`, `waterfall`, `geo_map`, `kpi_callout`,
-  `small_multiples`, `table_drilldown`). The intent dict names result
-  columns; the builder reads values from the frame. **No path from a
-  model-supplied number to a figure value.** The chart-intent
-  reconciler (after the Stage 7 trim) only drops invalid entries from
-  list-valued fields (a partial chart beats no chart) and auto-adds
-  `peer_benchmark` to series for cross-merchant kinds (Fix 14); the
-  near-miss synonym/case-insensitive/prefix-strip remap layer was
-  retired once ValueRef (Fix 13) and build_merge auto-invoke (Fix 10a)
-  removed the source of the drift. Numeric-axis guard (Stage 6.5
-  follow-up #9d) raises
-  `NonNumericChartColumnError` if a value-axis column is datetime /
-  object / categorical instead of crashing with `TypeError`.
-- **`claims.py`** — Two-pass §1.4 validator (D25.4 / SPEC §1.4).
-  - Pass A: each declared `Claim` recomputes from `result` via its
-    `source` (`CellLookup | Derivation`). Within tolerance → pass; within
-    tolerance band → normalize to true cell; doesn't trace → strip at
-    clause level.
-  - Pass B: `scan_numerics` tokenizes prose and classifies each
-    numeric as metric (sigil, decimal, adjacent modifier) or
-    structural (entity counts, years, ordinals). Only metric tokens
-    require coverage by a passing Pass-A claim's `text_span`.
+- **`response.py`** — `AgentResponse` dataclass (`headline`, `evidence`,
+  `so_what`, `claims`, `caveats`, plus a derived read-only `.prose`
+  property that joins the text fields). Own (tenant) and peer (lake)
+  arrive as **two separate frames**; claims resolve per-frame via their
+  `frame` field. `merge_own_and_peer` is **kept dormant** (a plain join
+  emitting `own_value` / `peer_benchmark` / `gap` for the Wave 4 dual-
+  series chart builders) — it has no role in 3.5 grounding and was
+  decoupled from the removed `check_magnitude_compatibility`.
+- **`chart_build.py`** — `ChartIntent` schema + `build_chart`. **Dormant
+  in 3.5** (`CHARTS_ENABLED = False` in `lake_tools.py`; the emit schema
+  has no `chart_intent` field). Kept intact for the Wave 4 dashboard;
+  still unit-tested directly. No path from a model-supplied number to a
+  figure value (the D25.2 guarantee) when it returns.
+- **`claims.py`** — Two-pass §1.4 validator (D25.4 / SPEC §1.4), run
+  **per structured field** by `validate_structured_response` (it calls
+  the single-string `validate_claims` once per non-empty field; the
+  union of fields equals the old scan surface, so the guarantee holds
+  field by field).
+  - Pass A: each declared `Claim` recomputes from the frame via its
+    `source` (`CellLookup | Derivation | ValueRef`). Within tolerance →
+    pass; within band → normalize to the true cell; doesn't trace →
+    strip at clause level.
+  - Pass B: `scan_numerics` classifies each numeric as metric (sigil,
+    decimal, adjacent modifier) or structural (counts, years, ordinals).
     Uncovered metric numeric → strip its clause.
   - Closed derivation grammar: `difference`, `ratio`, `pct_change`,
     `aggregate(sum|mean)`. No arbitrary model arithmetic.
-  - `CellLookup.frame: "tenant" | "lake" | "merged" | None` (Fix 9b).
-    Untagged claims walk the `frames` dict (`result → merged → tenant →
-    lake`) to find the first frame where the column + filter resolve
-    (Fix 10c). List-valued row_filter entries → `.isin(v)` IN-clause
-    (Fix 11b).
+  - `CellLookup.frame: "tenant" | "lake" | None`. Untagged claims walk
+    `result → tenant → lake`. List-valued row_filter → `.isin(v)`.
   - `aggregate_column(df, column, agg)` is the single source of truth
-    for multi-row mean/sum. Both the validator's resolve and
-    `lake_tools._compute_lake_aggregates` call it. Byte-identical
-    floats by construction — a model that copies a surfaced aggregate
-    value resolves to `passed`, not `normalized` (Fix 11a).
-- **`lake_tools.py`** — The tool surface. Five tools:
-  `schema_info`, `query_tenant`, `read_lake_table`, `build_merge`,
-  `emit_response`. Plus `sanitize_prose` (XML-strip + opening-tag
-  unwrap + internal-narration → `business_fallback()`).
+    for multi-row mean/sum (the validator's resolve calls it).
+- **`lake_tools.py`** — The tool surface. Four tools (Wave 3.5 Stage E):
+  `schema_info`, `query_tenant`, `query_lake_sql`, `emit_response`. Plus
+  `sanitize_prose` (XML-strip + opening-tag unwrap + internal-narration /
+  question-ending → `business_fallback()`).
 
 ## Tool surface — `TOOLS_SPECIALIST`
 
-The model sees these five tools in this order:
+The model sees these four tools in this order (Wave 3.5: `read_lake_table`
+and `build_merge` were removed in Stage E — peer data is now raw line-item
+SQL, and there is no merge step):
 
-1. **`schema_info`** — Free, no args. Returns tenant column lists +
-   the five lake table manifests (dimensions, metrics, excludes,
-   k_floor, ladder) + a "tips" array carrying load-bearing reminders
-   (canonical week-boundary SQL, comparable-units guidance, etc.).
-   Always call first. Without it, the model guesses column names and
-   burns turns failing.
+1. **`schema_info`** — Free, no args. Returns tenant column lists + the
+   two line-item lake tables' schemas (`lake_transactions`, `lake_stores`,
+   introspected from a viewer's materialized pair) + a "tips" array of
+   load-bearing reminders (lake_stores-join-for-neighborhood, the k=5
+   floor, COUNT(DISTINCT lake_txn_id) for transaction-level shares).
+   Always call first.
 2. **`query_tenant(sql)`** — Viewer-scoped SQL against `data/raw/`.
    Two-layer enforcement: `check_tenant_predicate` requires
    `WHERE banner_code = '<viewer>'` AND rejects any other 3-letter
    merchant literal; `wrap_tenant_query` CTE-shadows the tenant tables
-   with viewer-filtered reads. SELECT-only — semicolons, DDL, DML all
-   rejected before any DB connection opens. Returns a payload with a
-   50-row preview + the full frame captured in specialist state.
-3. **`read_lake_table(table, filters)`** — Reads `data/lake/<table>.parquet`
-   for one of the five Wave 2 tables. Filter keys whitelisted against
-   `manifest["dimensions"]` — off-grain filters (e.g. `sku` on
-   `lake_category_metrics`) get rejected with the relevant Excludes
-   quoted. `scope_for_viewer` strips viewer rows + adds
-   `peer_relationship` + drops `banner_code` (D24.1).
-   `assert_no_identity_leak` safety check before returning. Payload
-   includes:
-   - `rows` + `columns` + `row_count` (50-row preview).
-   - `manifest` (dimensions / metrics / excludes / k_floor / ladder).
-   - `aggregates` (Fix 11a) — per-single-dimension means of every
-     numeric manifest metric: `aggregates.by_<dim>.<value>.<metric>`.
-     The model copies values verbatim into `claim.value` instead of
-     guessing.
-   - `zero_rows_diagnostic` when filters returned 0 rows — lists
-     `available_values_per_filter` so the model retries with a
-     corrected filter rather than concluding "the dataset isn't
-     populated".
-4. **`build_merge(on, own_value_col, peer_value_col, gap_op)`** —
-   Server-side merge that returns the **real** merged frame's columns
-   + dtypes + 50-row preview (Fix 9a). The model authors `chart_intent`
-   and `claims` against names it has actually seen. **Auto-invoked**
-   when both tenant + lake frames are populated and the model skips
-   the explicit call (Fix 10a) — auto-spec derives `on` as
-   `(tenant_cols) ∩ (lake_cols) ∩ manifest_dimensions` (dimension keys
-   only; never join on a metric), `own_value_col` as first non-dim
-   numeric in tenant, `peer_value_col` from each specialist's
-   `PREFERRED_PEER_METRIC` (Fix 12). Empty intersection → dual-frame
-   path (`_merge_fail_payload` set, both real frames preserved). On
-   `KeyError` / `MergeGrainError` / `ViewerScopingError` / 0-row merge
-   → same dual-frame path.
-5. **`emit_response(prose, chart_intent, claims, caveats)`** — Single
-   terminator. No `merge` field (the merge ran in build_merge). Each
-   `CellLookup` claim names `column`, `row_filter`, optional `agg`,
-   optional `frame`. Multi-row `row_filter` without `agg` is rejected
-   at emit precondition time (Fix 9c) so the model retries with
-   `agg="mean"` rather than silently stripping at validation. The
-   `prose` field is plain text — never XML tool-use markup, never
-   internal-error narration (Rule 2c + `sanitize_prose` backstop).
+   with viewer-filtered reads. SELECT-only. Returns a 50-row preview +
+   the full frame captured in specialist state.
+3. **`query_lake_sql(sql)`** — Aggregating SQL against the viewer's
+   line-item peer lake (`lake_transactions` / `lake_stores` resolve to
+   the viewer's materialized pair; own rows absent). Enforces single
+   aggregating SELECT (raw-row selects rejected via the DuckDB AST),
+   applies the k=5 line-count floor, and surfaces the dropped-group
+   `suppressed` count. Same `_df_to_payload` shape as `query_tenant`, so
+   CellLookup / the §1.4 validator resolve against it unchanged. The
+   result is captured as the **`lake`** frame.
+4. **`emit_response(headline, evidence, so_what, claims, caveats)`** —
+   Single terminator, the Wave 3.5 structured contract. `headline` is
+   required; `evidence` is a list of grounded sentences; `so_what` is
+   optional. Every metric numeric across the text fields needs a `claims`
+   entry (`CellLookup` names `column`, `row_filter`, optional `agg`,
+   `frame: "tenant" | "lake"`; multi-row without `agg` rejected at emit —
+   Fix 9c). No `chart_intent` field (charts deferred to Wave 4). The text
+   fields are plain text — never XML markup, never internal-error
+   narration, never a question-ending (Rule 2c + `sanitize_prose`).
 
 ## Hard rules
 
@@ -181,10 +146,9 @@ The model sees these five tools in this order:
   in-loop runtime bound — per-question wall-clock cap; exit to
   `_minimal_response` with `business_fallback()` if exceeded. The
   earlier `MAX_PRECONDITION_REJECTIONS = 3` force-accept floor was
-  retired: build_merge auto-invoke (Fix 10a) absorbs the main
-  rejection case, so a precondition raise now just retries within
-  `MAX_TURNS` and the wall-clock ceiling catches any genuine runaway.
-  Both bound the loop without weakening the grounding wall.
+  retired; a precondition raise now just retries within `MAX_TURNS` and
+  the wall-clock ceiling catches any genuine runaway. Both bound the
+  loop without weakening the grounding wall.
 - **No untraceable number reaches the user as a stated fact.**
   Pass A (declared) + Pass B (undeclared) cover the full surface. The
   metric-vs-structural distinction is at the scanner level so "5 stores
@@ -219,17 +183,16 @@ router stays pinned Haiku. Round-7 pricing of the Haiku KRG batch:
 batch.
 
 Most unit tests mock the client via `tests/agents/_fake_llm.py::patch_llm`
-+ `scripted_tool_use` / `scripted_emit_response` / `scripted_build_merge`.
-Live calls are reserved for the preview harness and exceptional
-diagnostics.
++ `scripted_tool_use` / `scripted_emit_response`. Live calls are reserved
+for the preview harness and exceptional diagnostics.
 
 ## Preview harness (Stage 6.5)
 
 `scripts/preview_agent.py` is the demo-readiness review surface (D27.2
 dropped golden tests). Single-pill mode or `--batch` (iterates the
 qid pill registry). Output is one stacked-section `docs/AGENT_PREVIEW.html`
-per merchant carrying: prose (post-validator), interactive Plotly
-chart, merged result table, claims with disposition badges
+per merchant carrying: the structured answer (headline / evidence /
+so-what, post-validator), result table, claims with disposition badges
 (`passed`/`normalized`/`stripped` color-coded), SQL surfaces (tenant +
 lake + merge), routing decision, telemetry. The harness is the human-
 review surface at Checkpoint 2 between Stage 6.5 and Stage 7.

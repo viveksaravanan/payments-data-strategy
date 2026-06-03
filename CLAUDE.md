@@ -41,12 +41,11 @@ Folium return in Wave 4 (dashboard rebuild).
 
 - `make seed`        — generate full-scale Parquet to `data/raw/` + `data/eval/`
 - `make seed-pilot`  — generate at 5k cards (~5 min)
-- `make test`        — pytest (engine tests + §6 acceptance battery + L-battery)
+- `make test`        — pytest (engine tests + §6 acceptance battery + lake/agent tests)
 - `make test-quick`  — engine unit tests only (skip data-quality fixture)
 - `make dq-report`   — regenerate `docs/DQ_REPORT.md` from current Parquet
-- `make lake`        — build the Wave 2 anonymized lake to `data/lake/*.parquet`
-- `make lake-report` — regenerate `docs/LAKE_REPORT.md` from `data/lake/`
-- `make agent-preview` — run the Wave 3 preview harness against KRG (regenerates `docs/AGENT_PREVIEW.html`)
+- `make lake-items`  — build the Wave 3.5 per-viewer line-item peer lake to `data/lake/items/<VIEWER>/`
+- `make agent-preview` — run the preview harness against KRG (regenerates `docs/AGENT_PREVIEW.html`)
 - `make clean`       — wipe `data/raw/`, `data/eval/`
 
 The Wave 1 engine entry point is `python -m src.generate.engine.run_all`
@@ -98,59 +97,43 @@ Wave 2 Stage 7. The v3 demo remains at git tag `v3-final` if needed.
 - Engine-layer unit tests under `tests/test_engine_*.py` cover the
   D11 sub-stage invariants (one file per layer).
 
-**Wave 2 lake (closed):**
+**Wave 2 lake (REMOVED in Wave 3.5 Stage E):**
 
-- The five anonymized aggregate tables under `data/lake/` are built
-  by `src/lake/build.py` and orchestrated via `make lake`. Reads only
-  observable columns from `data/raw/` via `src/lake/observable_guard.py`
-  — the §1 invariant guards against reading planted profiles
-  (`customers.loyalty_type`, `zones.affluence`, etc.).
-- k≥50 floor on every published cell (not k=5 — the strategy-doc §8
-  bar) with a coarsening ladder (subcat→cat, week→month) and
-  suppression. Wave 1's T17 cleared k=50 by ~10× at full scale.
-- Dual-path: tenant queries scoped by `src/lake/isolation.py`; peer
-  reads pass through `src/lake/scope.py::scope_for_viewer` which
-  drops the viewer's rows, relabels peers as `segment_peer` /
-  `cross_segment`, and strips real `banner_code` (D24.1).
-- DP and l-diversity deferred — aggregate columns ARE the future
-  injection point (D24.3); no `publish()` seam shipped.
+- The five anonymized aggregate tables + their builders (`src/lake/build.py`),
+  manifest, k-means Z-codes (`zones.py`), and query-time scope (`scope.py`)
+  were removed once the line-item lake replaced them (SPEC §11). What
+  survives from the Wave 2 layer: `observable_guard.py` (the §1 read
+  guard — still used by the line-item builder) and `isolation.py` (the
+  tenant predicate + CTE-wrap, used by `query_tenant`).
 
-**Wave 3 agents (closed — Stage 6.5 live-verified + Stage 7 trim landed):**
+**Wave 3.5 lake + agents (current):**
 
-- Five user-facing agents — four domain specialists + Conversational
-  Advisor — under `src/agents/`. All read the materialized lake via
-  `read_lake_table` (manifest-driven; off-grain filters rejected with
-  the relevant Excludes quoted) + tenant data via `query_tenant`
-  (CTE-wrapped, predicate-checked). See `src/agents/CLAUDE.md`.
+- The peer surface is a **raw line-item lake** — five per-viewer
+  `(lake_transactions, lake_stores)` pairs under `data/lake/items/<VIEWER>/`,
+  built by `src/lake/build_line_items.py` (`make lake-items`). Generalized
+  IDs, hour-bucketed time, real `neighborhood`, no consumer linkage,
+  viewer-excluded. Queried with aggregating SQL via `query_lake_sql`
+  (`src/lake/lake_sql.py`): single aggregating SELECT enforced on the
+  DuckDB AST, k=5 line-count floor with `suppressed` surfaced.
+- Five user-facing agents — four specialists + Advisor — under
+  `src/agents/`. The flow is **two queries, then compare**: `query_tenant`
+  (own) + `query_lake_sql` (peer), claims resolve per-frame. No merge
+  step.
 - The §1 unified response contract (D25) is the structural wall:
-  `response.AgentResponse` is the only output type; `merge_own_and_peer`
-  is the dual-path merge; `chart_build.build_chart` reads numerics from
-  the result frame (no path from model values to figure values); the
-  two-pass `claims` validator (Pass A declared + Pass B undeclared)
-  catches every metric numeric. Strict guarantee, graceful handling.
-- Five tools in `TOOLS_SPECIALIST`: `schema_info`, `query_tenant`,
-  `read_lake_table` (now surfaces a per-dimension `aggregates` block —
-  Fix 11a — so the model copies real means instead of guessing them),
-  `build_merge` (auto-invoked when both frames are populated — Fix 10a),
-  `emit_response`.
-- Stage 6.5 preview harness at `scripts/preview_agent.py` is the
-  human-review surface (D27.2 dropped golden tests in favor of the
-  runtime validator + harness review). Output: `docs/AGENT_PREVIEW.html`.
-- Live verification met the exit gate (12 KRG pills on Haiku:
-  77 passed / 8 normalized / 18 stripped, `business_fallback` 1/12,
-  all under the 90s wall-clock ceiling). Fix 11a byte-identical
-  surfaced-vs-recomputed aggregates and the per-agent semantic
-  peer_value_col are also asserted at unit-test level.
-- Stage 7 trim retired the scaffolding the Fix 9–14 root-cause work
-  made redundant: the `MAX_PRECONDITION_REJECTIONS` retry-cap floor
-  and `_fallback_carry_both_sides` broadcast (`specialist.py`) and the
-  chart-intent synonym-remap layer (`chart_build.py`). Only the
-  wall-clock ceiling remains as a runtime bound; the legacy
-  `_build_result` merge-fail path returns `own.copy()` + a caveat.
-- Next: Wave 3.5 (`docs/SPEC_wave3-5_lakelineitem.md`) replaces the
-  aggregate lake + `read_lake_table` with a raw line-item lake queried
-  via a new `query_lake_sql` tool — removing the root cause the Stage
-  6.5 fixes compensated for. Drafted, not yet built.
+  `response.AgentResponse` is the only output type, now a **structured
+  contract** (`headline` / `evidence` / `so_what`, with a derived
+  read-only `.prose`); the two-pass `claims` validator runs per field
+  (`validate_structured_response`) and catches every metric numeric;
+  `merge_own_and_peer` + `chart_build` are kept **dormant** for the Wave 4
+  dashboard. Charts are deferred (`CHARTS_ENABLED = False`).
+- Four tools in `TOOLS_SPECIALIST`: `schema_info`, `query_tenant`,
+  `query_lake_sql`, `emit_response`. (`read_lake_table` + `build_merge`
+  removed in Stage E.)
+- `scripts/preview_agent.py` is the human-review surface; output
+  `docs/AGENT_PREVIEW.html`. Stage D/D.5 live-verified on KRG + ACM
+  (structured answers, real-dollar peer comparison, §6 routing, no charts).
+- Known residuals (model-text, mitigated not eliminated): magnitude /
+  direction mislabels — see `docs/SPEC_wave3-5_lakelineitem.md §15`.
 
 ## Out of scope for Waves 1+2+3
 
@@ -176,17 +159,21 @@ deferred to v5.
 - `src/generate/config/` — the YAML knobs that drive the engine.
 - `src/generate/engine/` — segment-agnostic 8-layer pipeline.
 - `src/storage/duckdb_io.py` — Parquet IO + DuckDB read.
-- `src/lake/` — Wave 2 anonymization + lake builders + scope/manifest.
-- `src/agents/` — Wave 3 agents: 4 specialists + Advisor, the 5 tools
-  (`schema_info`, `query_tenant`, `read_lake_table`, `build_merge`,
-  `emit_response`), the §1 keystone modules (`response.py`,
-  `chart_build.py`, `claims.py`, `lake_tools.py`). See
-  `src/agents/CLAUDE.md` for the full architecture.
+- `src/lake/` — `observable_guard.py` (§1 read guard) + `isolation.py`
+  (tenant predicate/wrap) + `build_line_items.py` (line-item lake builder)
+  + `lake_sql.py` (`query_lake_sql` engine). The Wave 2 aggregate
+  builders/manifest/zones/scope were removed in Stage E.
+- `src/agents/` — agents: 4 specialists + Advisor, the 4 tools
+  (`schema_info`, `query_tenant`, `query_lake_sql`, `emit_response`),
+  the §1 keystone modules (`response.py`, `claims.py`, `lake_tools.py`;
+  `chart_build.py` dormant for Wave 4). See `src/agents/CLAUDE.md`.
 - `src/agents/prompts/` — Markdown system prompts per specialist +
   `_shared_answering_rules.md` (Rules 1–8 + 7b) injected into every
   specialist prompt at render time.
 - `tests/data_quality/` — §6 acceptance battery (T1-T18).
-- `tests/lake/` — Wave 2 L1-L12 acceptance battery.
+- `tests/lake/` — L01 observable-invariant + L02 tenant-isolation + the
+  line-item lake acceptance tests (the Wave 2 aggregate L-battery was
+  retired in Stage E).
 - `tests/agents/` — Wave 3 unit tests (no live LLM; mocked via
   `_fake_llm.py`).
 - `scripts/build_dq_report.py` — regenerate the DQ report.
