@@ -104,7 +104,7 @@ def test_demand_canonical_question_units_index(viewer_krg, monkeypatch) -> None:
     assert "own_value" in resp.result.columns
     assert "peer_benchmark" in resp.result.columns
     # Chart built; prose retains 1.00.
-    assert resp.chart is not None
+    assert resp.chart is None  # charts deferred to Wave 4
     # The validator may normalize 0.93 to 0.9258 (the true mean, at
     # faithful precision) — either survives.
     assert "0.93" in resp.prose or "0.9258" in resp.prose

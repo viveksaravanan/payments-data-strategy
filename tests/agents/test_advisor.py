@@ -85,8 +85,8 @@ def test_advisor_payment_mix_question(viewer_krg, monkeypatch) -> None:
     # "no weekly grain" or "month is finest" comes from the manifest.
     joined = " ".join(resp.grain_notes).lower()
     assert "month" in joined or "weekly" in joined
-    # Chart was built.
-    assert resp.chart is not None
+    # Charts are deferred to Wave 4 (§11.2) — gated off.
+    assert resp.chart is None
 
 
 # ---------------------------------------------------------------------

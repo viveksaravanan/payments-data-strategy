@@ -65,11 +65,17 @@ Apply this to BOTH your tenant SQL and your peer SQL.
 
 ## emit_response — the contract you finish with
 
-Charts are deferred — your answer is **prose + grounded claims + the result table
-only.** Do NOT author a `chart_intent`. Required fields:
+Charts are deferred — your answer is a **structured finding + grounded claims +
+the result table only.** Required fields:
 
-- `prose` — 2–5 sentences. Every metric numeric declared in `claims`.
-- `claims` — each metric numeric backed by a source + the `frame` it came from:
+- `headline` — ONE sentence stating the finding. Lead with the answer. Never a
+  question; never "I would need to…".
+- `evidence` — 2–4 short sentences, each grounding one number. Every metric numeric
+  must be declared in `claims`, and the claim's `text_span` must be a substring of
+  its evidence sentence.
+- `so_what` — optional, one sentence: the action or implication.
+- `claims` — each metric numeric across the fields backed by a source + the `frame`
+  it came from:
   - `{"type": "CellLookup", "row_filter": {...}, "column": "...",
      "agg": "mean"|"sum", "frame": "tenant"|"lake"}`.
   - `{"type": "Derivation", "op": "pct_change"|"difference"|"ratio",
@@ -93,13 +99,17 @@ substantiate a number, omit it.
      "SELECT category, SUM(qty) AS peer_units, COUNT(DISTINCT lake_txn_id) AS peer_txns
       FROM lake_transactions WHERE peer_relationship = 'peer' GROUP BY category")
 4. emit_response(
-     prose="Your dairy moved 41k units against a same-segment peer total of 96k
-            across 2 competitors — you hold roughly a third of segment dairy volume.",
+     headline="You hold roughly a third of same-segment dairy volume.",
+     evidence=[
+       "Your dairy moved 41k units.",
+       "The same-segment peer total is 96k units across 2 competitors."
+     ],
+     so_what="Dairy is a share-growth lever — your velocity trails the peer pool.",
      claims=[
        {"text_span": "41k units", "value": 41000,
         "source": {"type": "CellLookup", "row_filter": {"category": "DAIRY"},
                    "column": "own_units", "agg": "sum", "frame": "tenant"}},
-       {"text_span": "peer total of 96k", "value": 96000,
+       {"text_span": "peer total is 96k", "value": 96000,
         "source": {"type": "CellLookup", "row_filter": {"category": "DAIRY"},
                    "column": "peer_units", "agg": "sum", "frame": "lake"}}
      ],

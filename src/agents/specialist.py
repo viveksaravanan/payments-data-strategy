@@ -50,6 +50,7 @@ from src.agents.claims import (
     ValueRef,
     _apply_row_filter,
     validate_claims,
+    validate_structured_response,
 )
 from src.agents.context import MerchantContext
 from src.agents.response import (
@@ -246,10 +247,14 @@ class Specialist:
         return (
             f"**Peer availability — no same-segment peers.** You are the "
             f"only `{seg}` merchant, so a same-segment comparison isn't "
-            f"possible. You MAY compare against the broader merchant set "
-            f"(`peer_relationship = 'merchant'` from `query_lake_sql`), "
-            f"but you MUST label it clearly as *the broader merchant "
-            f"set, not same-segment peers.*"
+            f"possible. **Compare against the broader merchant set "
+            f"(`peer_relationship = 'merchant'` from `query_lake_sql`) by "
+            f"default** — run the peer query and report the comparison, and "
+            f"you MUST label it clearly as *the broader merchant set, not "
+            f"same-segment peers.* Fall back to your own data only if a "
+            f"cross-segment comparison is genuinely meaningless for this "
+            f"question — do NOT skip the peer query just because the peers "
+            f"are a different segment."
         )
 
     # ---- Public ------------------------------------------------------
@@ -884,6 +889,15 @@ class Specialist:
                 "emit_response."
             )
 
+        # --- Wave 3.5: a structured answer needs a lead. ---
+        if not (args.get("headline") or "").strip():
+            raise LakeToolError(
+                "emit_response rejected: `headline` is required — one "
+                "sentence stating the finding that answers the question. "
+                "Put supporting numbers in `evidence` and the action in "
+                "`so_what`. Do not emit an empty or question-only headline."
+            )
+
         # --- Fix 9a: when both frames are populated, build_merge
         #     must have run (clean merge or merge-fail) before emit. ---
         if (
@@ -992,20 +1006,28 @@ class Specialist:
         chart_intent = render.get("chart_intent") or {}
         claims = self._parse_claims(render.get("claims") or [])
 
-        try:
-            chart = build_chart(chart_intent, result)
-        except (MissingColumnError, UnsupportedIntentError) as exc:
-            raise RenderBlockInvalidError(
-                f"chart_intent failed to build: {exc}"
-            ) from exc
+        # Charts held for Wave 4 (§11.2) — gated off here too. The
+        # legacy fenced-render path is not exercised by the 3.5
+        # two-query flow, but keep it consistent.
+        chart = None
+        if LT.CHARTS_ENABLED:
+            try:
+                chart = build_chart(chart_intent, result)
+            except (MissingColumnError, UnsupportedIntentError) as exc:
+                raise RenderBlockInvalidError(
+                    f"chart_intent failed to build: {exc}"
+                ) from exc
 
         report = validate_claims(prose, claims, result)
 
+        # Legacy single-string path: the whole validated prose becomes
+        # the headline (evidence/so_what are structured-contract fields
+        # the fenced-render flow never authored).
         return AgentResponse(
             result=result,
             chart_intent=chart_intent,
             chart=chart,
-            prose=report.prose,
+            headline=report.prose,
             claims=claims,
             caveats=caveats,
             sql=[
@@ -1126,7 +1148,13 @@ class Specialist:
         args = self._emit_args or {}
         chart_intent = args.get("chart_intent") or {}
         claims_raw = args.get("claims") or []
-        prose = (args.get("prose") or "").strip()
+        headline = (args.get("headline") or "").strip()
+        evidence = [
+            str(e).strip()
+            for e in (args.get("evidence") or [])
+            if str(e).strip()
+        ]
+        so_what = (args.get("so_what") or "").strip() or None
         caveats = list(args.get("caveats") or [])
 
         # Pick the result-of-record + the frames dict for the
@@ -1201,22 +1229,28 @@ class Specialist:
         claims = self._parse_claims(claims_raw)
 
         # Strip stray Anthropic tool-use XML markers; route narration
-        # leaks through the single business-fallback function
-        # (Fix 9e).
-        prose = LT.sanitize_prose(prose)
+        # leaks (including a punt-with-a-question) through the single
+        # business-fallback function (Fix 9e). Per field — a rambling
+        # bullet collapses to the fallback for that bullet only.
+        headline = LT.sanitize_prose(headline)
+        evidence = [LT.sanitize_prose(e) for e in evidence]
+        so_what = LT.sanitize_prose(so_what) if so_what else None
+        # Drop evidence bullets that emptied out or collapsed to the
+        # canonical fallback (the fallback sentence belongs in the
+        # headline degenerate path, not as a bullet).
+        _fallback = LT.business_fallback()
+        evidence = [e for e in evidence if e and e != _fallback]
+        if so_what == _fallback:
+            so_what = None
 
-        # Build the chart gracefully — if chart_intent is malformed
-        # (model omitted per-kind required fields, named a column
-        # that isn't in the result, etc.), set chart=None and surface
-        # the reason in caveats.
+        # Wave 3.5 §2 decision 6 / §11.2 — charts are held for Wave 4.
+        # The build path is kept but gated behind ``CHARTS_ENABLED``
+        # (False in 3.5); the model can no longer author a chart_intent
+        # (removed from the emit schema), so this branch is dead now and
+        # retained only for the Wave 4 flip.
         chart = None
         chart_error: str | None = None
-        # Wave 3.5 §2.6 — charts are held for Wave 4. When the model
-        # omits chart_intent (the 3.5 prose-only contract), skip chart
-        # building entirely: no chart, and NO "chart skipped" caveat
-        # (it isn't malformed — it's intentionally absent). A populated
-        # chart_intent (legacy read_lake_table flow) still builds.
-        if chart_intent and chart_intent.get("kind"):
+        if LT.CHARTS_ENABLED and chart_intent and chart_intent.get("kind"):
             try:
                 chart = build_chart(chart_intent, result)
             except (MissingColumnError, UnsupportedIntentError,
@@ -1227,53 +1261,35 @@ class Specialist:
                 # a Plotly indicator, etc.); same fallback path.
                 chart_error = f"chart build raised: {type(exc).__name__}: {exc}"
 
-        # Validator runs against ``result`` (the chart's substrate)
-        # for Pass B; Pass A's per-claim resolve honors each claim's
-        # ``frame`` field via the ``frames`` dict.
-        report = validate_claims(prose, claims, result, frames=frames)
+        # Validator runs against ``result`` for Pass B; Pass A's
+        # per-claim resolve honors each claim's ``frame`` field via the
+        # ``frames`` dict. Runs over each structured field independently
+        # (§1.4 guarantee preserved field by field).
+        report = validate_structured_response(
+            headline=headline, evidence=evidence, so_what=so_what,
+            claims=claims, result=result, frames=frames,
+        )
 
-        # Wave 3 Stage 6.5 follow-up #8 round-4 — prose-from-claims
-        # backfill. When the validated prose is empty/very short but
-        # the model authored substantive claims (typical force-accept
-        # path: the model spent its turn-budget on the merge spec and
-        # never wrote the user-facing paragraph), synthesize a prose
-        # paragraph from the passing claims' text_spans. The text_spans
-        # were authored by the model and describe real result cells
-        # (failed claims are flagged with status="stripped"; we use
-        # only passing/normalized ones). The synthesis is safe by
-        # construction — each clause is already a passing claim.
-        passing_text_spans = [
-            d.claim.text_span
-            for d in report.claim_dispositions
-            if d.status in ("passed", "normalized")
-            and d.claim.text_span.strip()
-        ]
-        if len(report.prose.strip()) < 40 and passing_text_spans:
-            # Build sentences by joining text_spans with periods; the
-            # model's text_spans are typically complete clauses, so
-            # this reads as a coherent paragraph.
-            synth = ". ".join(
-                ts.rstrip(".") for ts in passing_text_spans
-            ) + "."
-            report.prose = synth
-        elif (
-            len(report.prose.strip()) < 40
-            and (report.claim_dispositions or len(result) > 0)
-        ):
-            # Wave 3 Stage 6.5 Fix 9e — single business-language
-            # fallback. All paths that need a "couldn't substantiate"
-            # fallback route through ``business_fallback()`` so a
-            # future regression can't reintroduce mechanics-talk.
-            # Shape information (row count + columns) lives in
-            # ``effective_caveats`` below, not in prose.
-            report.prose = LT.business_fallback()
+        # Wave 3.5 — structured degenerate handling. The old prose-from-
+        # claims fragment backfill (which joined claim text_spans into a
+        # disjointed run-on) is gone: with the structured contract there
+        # is no single string to collapse, and each evidence bullet
+        # stands alone. We only guarantee a non-empty lead.
+        headline = report.headline
+        evidence = report.evidence
+        so_what = report.so_what
+        if not headline.strip() and evidence:
+            # Promote the first surviving evidence point to the lead.
+            headline = evidence[0]
+            evidence = evidence[1:]
+        if not headline.strip():
+            # Nothing survived validation — single canonical fallback
+            # (Fix 9e); never fragment-join. Shape info lives in caveats.
+            headline = LT.business_fallback()
+            evidence = []
+            so_what = None
 
         effective_caveats = list(caveats)
-        if chart_error:
-            effective_caveats.append(
-                f"(Chart skipped — model's chart_intent was malformed. "
-                f"Reason: {chart_error})"
-            )
         if len(result) == 0:
             effective_caveats.append(
                 "(No data was fetched before emit_response — model "
@@ -1307,7 +1323,9 @@ class Specialist:
             result=result,
             chart_intent=chart_intent,
             chart=chart,
-            prose=report.prose,
+            headline=headline,
+            evidence=evidence,
+            so_what=so_what,
             claims=claims,
             caveats=effective_caveats,
             sql=[
@@ -1345,7 +1363,10 @@ class Specialist:
         """Build an AgentResponse for the soft case (no merge required,
         no render block). Result = whichever frame was captured;
         chart_intent + claims empty. Used by Advisor on simple
-        single-table answers, never by specialists with merge-required."""
+        single-table answers, never by specialists with merge-required.
+
+        The ``prose`` parameter (a single string) maps to the structured
+        contract's ``headline`` — minimal answers are headline-only."""
         result = (
             self._tenant_frame if self._tenant_frame is not None
             else (self._lake_frame
@@ -1356,7 +1377,7 @@ class Specialist:
             result=result,
             chart_intent={},
             chart=None,
-            prose=prose,
+            headline=prose,
             claims=[],
             caveats=caveats,
             sql=[

@@ -42,7 +42,7 @@ def test_agentresponse_minimal_construction() -> None:
                              "peer_benchmark": [1.0], "gap": [0.05]}),
         chart_intent={"kind": "cross_merchant_comparison"},
         chart=object(),
-        prose="Your dairy pricing is roughly in line with peers.",
+        headline="Your dairy pricing is roughly in line with peers.",
         claims=[],
     )
     assert resp.caveats == []
@@ -57,7 +57,7 @@ def test_agentresponse_full_construction() -> None:
         result=pd.DataFrame({"x": [1]}),
         chart_intent={"kind": "kpi_callout"},
         chart=object(),
-        prose="One KPI.",
+        headline="One KPI.",
         claims=[],
         caveats=["k-anonymity suppressed 3 cells"],
         sql=[

@@ -146,7 +146,7 @@ def run_stub() -> tuple[AgentResponse, ValidationReport]:
         result=result,
         chart_intent=chart_intent,
         chart=chart,
-        prose=report.prose,
+        headline=report.prose,
         claims=claims,
         caveats=["Demo fixture, not real Wave 1/2 data."],
         sql=[

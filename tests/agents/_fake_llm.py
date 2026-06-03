@@ -92,29 +92,36 @@ def scripted_multi_tool_use(
 
 def scripted_emit_response(
     *,
-    prose: str,
-    chart_intent: dict[str, Any],
+    headline: str | None = None,
+    evidence: list[str] | None = None,
+    so_what: str | None = None,
+    prose: str | None = None,                  # deprecated alias → headline
+    chart_intent: dict[str, Any] | None = None,  # noqa: ARG001 — charts deferred
     claims: list[dict[str, Any]] | None = None,
-    merge: dict[str, Any] | None = None,   # noqa: ARG001 — Fix 9 legacy
+    merge: dict[str, Any] | None = None,       # noqa: ARG001 — Fix 9 legacy
     caveats: list[str] | None = None,
 ) -> ScriptedResponse:
-    """Helper for the Wave 3 normal exit path: model calls
-    ``emit_response`` with the structured response args. The
-    specialist's loop captures the args via ``_emit_args`` and
-    finalizes via ``_finalize_from_emit``.
+    """Helper for the Wave 3.5 normal exit path: model calls
+    ``emit_response`` with the structured response args (``headline`` /
+    ``evidence`` / ``so_what`` / ``claims`` / ``caveats``). The
+    specialist's loop captures the args via ``_emit_args`` and finalizes
+    via ``_finalize_from_emit``.
 
-    Note (Wave 3 Stage 6.5 Fix 9): the ``merge`` parameter is no
-    longer part of ``emit_response``; use ``scripted_build_merge``
-    in the script BEFORE emit when both frames are populated. The
-    ``merge=`` kwarg is accepted for backward compat with old test
-    fixtures and is ignored.
+    Back-compat: the legacy ``prose=`` kwarg maps to ``headline`` (old
+    fixtures become headline-only answers; the derived ``.prose``
+    property reproduces the string so output assertions survive). The
+    ``chart_intent=`` and ``merge=`` kwargs are accepted and ignored
+    (charts are deferred to Wave 4; the two-query flow has no merge).
     """
-    return scripted_tool_use("emit_response", {
-        "prose": prose,
-        "chart_intent": chart_intent,
+    args: dict[str, Any] = {
+        "headline": headline if headline is not None else (prose or ""),
+        "evidence": evidence if evidence is not None else [],
         "claims": claims if claims is not None else [],
         "caveats": caveats if caveats is not None else [],
-    })
+    }
+    if so_what is not None:
+        args["so_what"] = so_what
+    return scripted_tool_use("emit_response", args)
 
 
 def scripted_build_merge(

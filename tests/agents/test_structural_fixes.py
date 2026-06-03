@@ -108,6 +108,27 @@ def test_sanitize_prose_replaces_corrected_parameters() -> None:
     assert sanitize_prose(prose) == _FALLBACK
 
 
+def test_sanitize_prose_replaces_question_ending(viewer_krg=None) -> None:
+    """Wave 3.5 — a field ending in a question (the punt-with-a-question
+    failure) is neutralized to the business fallback. Agents commit to an
+    answer; they never ask the user what to do next."""
+    prose = (
+        "Your data does not reveal a clear anomaly signal. Would you like "
+        "me to focus on a specific category or time window?"
+    )
+    assert sanitize_prose(prose) == _FALLBACK
+
+
+def test_sanitize_prose_replaces_i_would_need_to_narration() -> None:
+    """Wave 3.5 — 'I would need to compare …' intention-narration is a
+    non-answer; neutralized to the fallback."""
+    prose = (
+        "I would need to compare your week-over-week changes to peer "
+        "benchmarks to surface true anomalies."
+    )
+    assert sanitize_prose(prose) == _FALLBACK
+
+
 def test_sanitize_prose_preserves_clean_finding_prose() -> None:
     """Clean prose without narration MUST pass through unchanged."""
     prose = (
@@ -192,7 +213,7 @@ def test_prose_business_fallback_when_all_claims_stripped(viewer_krg) -> None:
         "peer_benchmark": [1.06], "gap": [998.94],
     })
     specialist._emit_args = {
-        "prose": "",
+        "headline": "",
         "chart_intent": {"kind": "kpi_callout", "value": "own_value"},
         "claims": [
             {
@@ -211,11 +232,12 @@ def test_prose_business_fallback_when_all_claims_stripped(viewer_krg) -> None:
     assert response.prose == _business_fallback()
 
 
-def test_prose_synthesized_from_claims_when_empty(viewer_krg) -> None:
-    """Wave 3 Stage 6.5 follow-up #8 round-4: when the model emits
-    empty prose but rich PASSING claims, the specialist synthesizes a
-    prose paragraph from the claims' text_spans so the user sees a
-    real answer."""
+def test_evidence_promoted_to_headline_when_headline_empty(viewer_krg) -> None:
+    """Wave 3.5 — the old fragment-from-claims backfill is gone. When the
+    model emits an empty headline but a non-empty (validated) evidence
+    list, the first surviving evidence point is PROMOTED to the headline
+    so the answer still leads with a real finding — never a fragment
+    run-on joined from claim text_spans."""
     specialist = PricingSpecialist(viewer_krg)
     specialist._reset_state()
     # Clean-merge path — the merged frame is the result-of-record.
@@ -225,11 +247,11 @@ def test_prose_synthesized_from_claims_when_empty(viewer_krg) -> None:
         "price_index": [1.06],
     })
     specialist._emit_args = {
-        "prose": "",   # ← model forgot to write the paragraph
-        "chart_intent": {"kind": "kpi_callout", "value": "price_index"},
+        "headline": "",   # ← model forgot to write the lead
+        "evidence": ["Your dairy price index is 1.06 against peers."],
         "claims": [
             {
-                "text_span": "Your dairy price index is 1.06",
+                "text_span": "dairy price index is 1.06",
                 "value": 1.06,
                 "source": {
                     "type": "CellLookup",
@@ -241,8 +263,41 @@ def test_prose_synthesized_from_claims_when_empty(viewer_krg) -> None:
         "caveats": [],
     }
     response = specialist._finalize_from_emit(converged=True, turns=4)
-    assert response.prose, "prose should be synthesized from claim text_span"
-    assert "dairy price index is 1.06" in response.prose.lower()
+    # Promoted: the lead is the (only) evidence point; evidence emptied.
+    assert "dairy price index is 1.06" in response.headline.lower()
+    assert response.evidence == []
+    # And NOT the canonical all-stripped fallback.
+    assert response.headline != _business_fallback()
+
+
+def test_empty_headline_and_no_evidence_falls_back(viewer_krg) -> None:
+    """Wave 3.5 — when neither headline nor evidence survive (and there
+    is nothing to promote), the lead is the single canonical
+    business-fallback string, never a claim-fragment synthesis."""
+    specialist = PricingSpecialist(viewer_krg)
+    specialist._reset_state()
+    specialist._merged_frame = pd.DataFrame({
+        "category": ["DAIRY"], "own_value": [3.99],
+        "peer_benchmark": [1.06], "gap": [2.93], "price_index": [1.06],
+    })
+    specialist._emit_args = {
+        "headline": "",
+        "evidence": [],
+        "claims": [
+            {
+                "text_span": "dairy price index is 1.06",
+                "value": 1.06,
+                "source": {
+                    "type": "CellLookup",
+                    "row_filter": {"category": "DAIRY"},
+                    "column": "price_index",
+                },
+            },
+        ],
+        "caveats": [],
+    }
+    response = specialist._finalize_from_emit(converged=True, turns=4)
+    assert response.prose == _business_fallback()
 
 
 def test_chart_intent_with_sentence_in_value_field_still_fails() -> None:
@@ -391,7 +446,7 @@ def test_emit_rejected_with_no_data_fetched(viewer_krg) -> None:
     # No frames set; emit_response with any args.
     with pytest.raises(LakeToolError) as exc:
         specialist._dispatch_tool("emit_response", {
-            "prose": "anything",
+            "headline": "anything",
             "chart_intent": {"kind": "kpi_callout"},
             "claims": [],
         })
@@ -427,7 +482,7 @@ def test_emit_auto_invokes_build_merge_when_model_skips(viewer_krg) -> None:
     }
 
     out = specialist._dispatch_tool("emit_response", {
-        "prose": "Concrete answer with 1.2 vs 0.95.",
+        "headline": "Concrete answer with 1.2 vs 0.95.",
         "chart_intent": {"kind": "kpi_callout", "value": "own_value"},
         "claims": [],
     })
@@ -533,7 +588,7 @@ def test_magnitude_mismatch_accepts_as_side_by_side(viewer_krg) -> None:
     assert payload["gap_is_directional"] is True
     # Now emit accepts.
     out = specialist._dispatch_tool("emit_response", {
-        "prose": "Your $625k revenue against a peer revenue_index of 1.002 indicates ~baseline performance.",
+        "headline": "Your $625k revenue against a peer revenue_index of 1.002 indicates ~baseline performance.",
         "chart_intent": {"kind": "kpi_callout", "value": "own_value"},
         "claims": [],
     })
@@ -562,7 +617,7 @@ def test_emit_accepted_when_merge_clean_and_units_match(viewer_krg) -> None:
         "gap_op": "difference",
     })
     out = specialist._dispatch_tool("emit_response", {
-        "prose": "Concrete answer with 1.2 vs 0.95.",
+        "headline": "Concrete answer with 1.2 vs 0.95.",
         "chart_intent": {"kind": "kpi_callout"},
         "claims": [],
     })
@@ -772,7 +827,7 @@ def test_multi_row_cell_lookup_without_agg_rejected_at_emit(viewer_krg) -> None:
     specialist._lake_frame   = pd.DataFrame({"category": ["DAIRY"]})
     specialist._merge_attempted = True
     bad_args = {
-        "prose": "Meat revenue totals 3.94M.",
+        "headline": "Meat revenue totals 3.94M.",
         "chart_intent": {"kind": "kpi_callout", "value": "own_value"},
         "claims": [
             {
@@ -795,12 +850,14 @@ def test_multi_row_cell_lookup_without_agg_rejected_at_emit(viewer_krg) -> None:
     assert "matches 3 rows" in msg or "matches" in msg
 
 
-def test_datetime_column_on_value_axis_returns_clean_caveat(viewer_krg) -> None:
-    """Fix 9d: a chart_intent that puts a datetime column on a
-    value/magnitude axis raises ``NonNumericChartColumnError``;
-    the specialist catches it like any other build error and the
-    AgentResponse carries ``chart=None`` + a caveat. No
-    ``TypeError`` crash reaches the user."""
+def test_chart_intent_is_ignored_when_charts_deferred(viewer_krg) -> None:
+    """Wave 3.5 §11.2 — charts are held for Wave 4. The model can no
+    longer author a chart_intent (removed from the emit schema), but if
+    a stray one leaks through it is SILENTLY ignored: ``chart=None`` and
+    NO chart-error caveat reaches the user (this is the very leak — an
+    ``UnsupportedIntentError`` in a caveat — that prompted the gate-off).
+    The chart-builder's own numeric-axis guard remains tested directly
+    in ``test_chart_build.py`` (chart_build.py is kept intact/dormant)."""
     specialist = PricingSpecialist(viewer_krg)
     specialist._reset_state()
     specialist._merged_frame = pd.DataFrame({
@@ -814,7 +871,9 @@ def test_datetime_column_on_value_axis_returns_clean_caveat(viewer_krg) -> None:
     specialist._lake_frame   = pd.DataFrame({"x": [1]})
     specialist._merge_attempted = True
     specialist._emit_args = {
-        "prose": "Dairy own price runs higher.",
+        "headline": "Dairy own price runs higher.",
+        # A malformed chart_intent that WOULD have errored under the
+        # old build path — must be ignored, not surfaced as a caveat.
         "chart_intent": {
             "kind": "kpi_callout",
             "value": "period_start",   # ← datetime, not numeric
@@ -825,8 +884,8 @@ def test_datetime_column_on_value_axis_returns_clean_caveat(viewer_krg) -> None:
     }
     response = specialist._finalize_from_emit(converged=True, turns=4)
     assert response.chart is None
-    assert any(
-        "non-numeric" in c.lower() or "NonNumeric" in c
+    assert not any(
+        "chart" in c.lower() or "non-numeric" in c.lower()
         for c in response.caveats
     )
 
@@ -873,7 +932,7 @@ def test_no_mechanics_terms_in_assembled_response_prose(viewer_krg) -> None:
         "peer_benchmark": [1.06], "gap": [998.94],
     })
     specialist._emit_args = {
-        "prose": "",
+        "headline": "",
         "chart_intent": {"kind": "kpi_callout", "value": "own_value"},
         "claims": [
             {
@@ -1031,7 +1090,7 @@ def test_force_accept_escape_synthesizes_dual_frame_payload(viewer_krg) -> None:
     specialist._merge_fail_payload = None
     specialist._merge_attempted = False
     specialist._emit_args = {
-        "prose": "Your dairy price is 3.50 vs peer index 1.06.",
+        "headline": "Your dairy price is 3.50 vs peer index 1.06.",
         "chart_intent": {"kind": "kpi_callout", "value": "own_value"},
         "claims": [],
         "caveats": [],
@@ -1247,7 +1306,7 @@ def test_fix9c_gate_counts_list_valued_multi_row_correctly(viewer_krg) -> None:
     specialist._merge_attempted = True
     # Multi-row list-valued filter without agg → must reject.
     args = {
-        "prose": "x",
+        "headline": "x",
         "chart_intent": {"kind": "kpi_callout", "value": "share_of_zone"},
         "claims": [
             {
@@ -1730,7 +1789,7 @@ def test_emit_accepted_for_advisor_with_lake_only(viewer_krg) -> None:
         "peer_relationship": ["segment_peer"],
     })
     out = advisor._dispatch_tool("emit_response", {
-        "prose": "Peer contactless share is 0.62.",
+        "headline": "Peer contactless share is 0.62.",
         "merge": {},
         "chart_intent": {"kind": "kpi_callout", "value": "contactless_share"},
         "claims": [],

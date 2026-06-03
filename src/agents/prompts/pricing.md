@@ -95,13 +95,17 @@ rule for the final month.
 ## emit_response — the contract you finish with
 
 Call `emit_response` ONCE at the end. Charts are deferred to a later release —
-your answer is **prose + grounded claims + the result table only.** Do NOT author
-a `chart_intent`. Required fields:
+your answer is a **structured finding + grounded claims + the result table only.**
+Required fields:
 
-- `prose` — 2–5 executive-readable sentences. Every metric number must be declared
-  in `claims`. Structural integers ("12 weeks", "2026") don't need claims.
-- `claims` — every metric numeric in `prose` backed by a source, with the `frame`
-  it came from:
+- `headline` — ONE sentence stating the finding that answers the question. Lead
+  with the answer, not a hedge. **Never** a question; never "I would need to…".
+- `evidence` — 2–4 short sentences, each grounding one specific number. Every metric
+  number must be declared in `claims`, and the claim's `text_span` must be a
+  substring of the evidence sentence it appears in.
+- `so_what` — optional, one sentence: the action or implication. Omit if there is none.
+- `claims` — every metric numeric across `headline` / `evidence` / `so_what` backed
+  by a source, with the `frame` it came from:
   - `{"type": "CellLookup", "row_filter": {...}, "column": "...",
      "agg": "mean"|"sum", "frame": "tenant"|"lake"}` — a cell or aggregated rows.
     `frame: "tenant"` resolves against your `query_tenant` result; `frame: "lake"`
@@ -111,8 +115,9 @@ a `chart_intent`. Required fields:
 - `caveats` — short notes ("Peer set is 2 grocers", "Final week excluded as
   partial", "N cells suppressed for thin coverage").
 
-If you can't substantiate a number, leave it out — the validator strips
-unsubstantiated clauses at delivery.
+Structural integers ("12 weeks", "2026", "5 stores") don't need claims. If you
+can't substantiate a number, leave it out — the validator strips unsubstantiated
+clauses at delivery.
 
 ### Worked sequence — pricing vs peers (real dollars)
 
@@ -129,13 +134,17 @@ unsubstantiated clauses at delivery.
       GROUP BY category")
    → peer dairy ASP = $3.42
 4. emit_response(
-     prose="Your dairy ASP is $3.50/unit against a same-segment peer average of
-            $3.42 — you price about 8 cents (2%) richer in dairy.",
+     headline="You price slightly above your same-segment peers in dairy.",
+     evidence=[
+       "Your dairy ASP is $3.50/unit.",
+       "The same-segment peer average is $3.42/unit."
+     ],
+     so_what="Hold the dairy premium — it is small and defensible.",
      claims=[
        {"text_span": "$3.50/unit", "value": 3.50,
         "source": {"type": "CellLookup", "row_filter": {"category": "DAIRY"},
                    "column": "own_asp", "agg": "mean", "frame": "tenant"}},
-       {"text_span": "peer average of $3.42", "value": 3.42,
+       {"text_span": "peer average is $3.42", "value": 3.42,
         "source": {"type": "CellLookup", "row_filter": {"category": "DAIRY"},
                    "column": "peer_asp", "agg": "mean", "frame": "lake"}}
      ],

@@ -84,8 +84,8 @@ def test_trade_cohort_only_answer(viewer_krg, monkeypatch) -> None:
     # No raw mean column in the manifest grain notes.
     joined = " ".join(resp.grain_notes).lower()
     assert "raw mean" in joined or "median" in joined
-    # Chart is a table_drilldown.
-    assert resp.chart_intent["kind"] == "table_drilldown"
+    # Charts are deferred to Wave 4 (§11.2) — gated off.
+    assert resp.chart is None
 
 
 # ---------------------------------------------------------------------

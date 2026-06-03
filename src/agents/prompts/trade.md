@@ -73,10 +73,14 @@ aggregate same-segment peer demand by neighborhood instead.
 
 ## emit_response — the contract you finish with
 
-Charts are deferred — your answer is **prose + grounded claims + the result table
-only.** Do NOT author a `chart_intent`. Required fields:
+Charts are deferred — your answer is a **structured finding + grounded claims +
+the result table only.** Required fields:
 
-- `prose` — 2–5 sentences. Every metric numeric declared in `claims`.
+- `headline` — ONE sentence stating the finding. Lead with the answer. Never a
+  question; never "I would need to…".
+- `evidence` — 2–4 short sentences, each grounding one number; each number declared
+  in `claims` with a `text_span` that is a substring of its evidence sentence.
+- `so_what` — optional, one sentence: the action or implication.
 - `claims` — each metric backed by a source + `frame`:
   - `{"type": "CellLookup", "row_filter": {...}, "column": "...",
      "agg": "mean"|"sum", "frame": "tenant"|"lake"}`.
@@ -101,15 +105,18 @@ only.** Do NOT author a `chart_intent`. Required fields:
       WHERE t.peer_relationship = 'peer' AND t.category = 'DAIRY'
       GROUP BY s.neighborhood")
 4. emit_response(
-     prose="In University City your dairy units (8.2k) trail the same-segment
-            peer total (19.1k), so you hold about 30% of segment dairy volume
-            there — your thinnest catchment.",
+     headline="University City is your thinnest dairy catchment versus peers.",
+     evidence=[
+       "Your University City dairy units total 8.2k.",
+       "The same-segment peer total there is 19.1k units."
+     ],
+     so_what="University City is a share-expansion target — peers outsell you ~2:1.",
      claims=[
-       {"text_span": "8.2k", "value": 8200,
+       {"text_span": "units total 8.2k", "value": 8200,
         "source": {"type": "CellLookup",
                    "row_filter": {"neighborhood": "University City"},
                    "column": "own_units", "agg": "sum", "frame": "tenant"}},
-       {"text_span": "peer total (19.1k)", "value": 19100,
+       {"text_span": "peer total there is 19.1k", "value": 19100,
         "source": {"type": "CellLookup",
                    "row_filter": {"neighborhood": "University City"},
                    "column": "peer_units", "agg": "sum", "frame": "lake"}}

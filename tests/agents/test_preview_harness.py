@@ -36,7 +36,7 @@ def _make_minimal_response() -> AgentResponse:
         result=result,
         chart_intent=intent,
         chart=chart,
-        prose="Your dairy price index is 1.062 above peers.",
+        headline="Your dairy price index is 1.062 above peers.",
         claims=[],
         caveats=["Demo fixture."],
         sql=[SqlSurface(surface="lake", query="<read>", row_count=1)],
@@ -106,8 +106,8 @@ def test_render_one_includes_all_sections() -> None:
     )
     # All structural pieces of the contract are surfaced.
     assert "P1 — Dairy pricing" in section
-    assert "Prose" in section
-    assert "Chart" in section
+    assert "Answer" in section            # structured answer section
+    assert "Chart" not in section         # charts deferred to Wave 4
     assert "Merged result" in section
     assert "Claims" in section
     assert "SQL surfaces" in section

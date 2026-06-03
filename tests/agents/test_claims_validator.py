@@ -444,3 +444,77 @@ def test_custom_tolerance_passed(merged_dairy) -> None:
     )
     rep = validate_claims(prose, [claim], merged_dairy, tolerance=0.10)
     assert rep.claim_dispositions[0].status == "normalized"
+
+
+# ---------------------------------------------------------------------
+# Wave 3.5 — validate_structured_response (per-field validation)
+# ---------------------------------------------------------------------
+
+def test_structured_per_field_strip_isolated(merged_dairy) -> None:
+    """A metric numeric in one evidence bullet with no backing claim is
+    stripped from THAT bullet only; the other bullets and the headline
+    survive intact. Per-field validation keeps the strip local."""
+    from src.agents.claims import validate_structured_response
+    report = validate_structured_response(
+        headline="Your dairy index is 1.062 above peers.",
+        evidence=[
+            "The peer benchmark sits at 1.0.",
+            "A fabricated 9.99 figure with no claim.",
+        ],
+        so_what=None,
+        claims=[
+            Claim(text_span="1.062",
+                  value=1.062,
+                  source=CellLookup({"category": "DAIRY", "derived_zone": "Z05"}, "own_value")),
+            Claim(text_span="1.0",
+                  value=1.00,
+                  source=CellLookup({"category": "DAIRY", "derived_zone": "Z05"}, "peer_benchmark")),
+        ],
+        result=merged_dairy,
+    )
+    # Headline + first bullet keep their grounded numbers.
+    assert "1.062" in report.headline
+    assert any("1.0" in e for e in report.evidence)
+    # The fabricated 9.99 was stripped — no bullet carries it.
+    assert not any("9.99" in e for e in report.evidence)
+
+
+def test_structured_headline_only_degenerate(merged_dairy) -> None:
+    """A headline-only answer (no evidence / so_what) validates cleanly:
+    the grounded headline survives, evidence stays empty, no fallback."""
+    from src.agents.claims import validate_structured_response
+    report = validate_structured_response(
+        headline="Your dairy index is 1.062 above peers.",
+        evidence=[],
+        so_what=None,
+        claims=[
+            Claim(text_span="1.062",
+                  value=1.062,
+                  source=CellLookup({"category": "DAIRY", "derived_zone": "Z05"}, "own_value")),
+        ],
+        result=merged_dairy,
+    )
+    assert "1.062" in report.headline
+    assert report.evidence == []
+    assert report.so_what is None
+    # The claim passed.
+    assert any(d.status == "passed" for d in report.claim_dispositions)
+
+
+def test_structured_so_what_validated(merged_dairy) -> None:
+    """An untraceable number in so_what is stripped just like any other
+    field (Pass B is span-local per field)."""
+    from src.agents.claims import validate_structured_response
+    report = validate_structured_response(
+        headline="Your dairy index is 1.062 above peers.",
+        evidence=[],
+        so_what="Lift price by a fabricated 42% next quarter.",
+        claims=[
+            Claim(text_span="1.062",
+                  value=1.062,
+                  source=CellLookup({"category": "DAIRY", "derived_zone": "Z05"}, "own_value")),
+        ],
+        result=merged_dairy,
+    )
+    # The 42% had no claim — its clause is stripped from so_what.
+    assert report.so_what is None or "42%" not in report.so_what

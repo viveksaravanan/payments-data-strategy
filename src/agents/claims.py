@@ -574,6 +574,19 @@ class ValidationReport:
     has_any_strip: bool = False
 
 
+@dataclass
+class StructuredValidationReport:
+    """Wave 3.5 — result of ``validate_structured_response``. The cleaned
+    structured fields plus the merged per-claim dispositions across all
+    fields."""
+    headline: str
+    evidence: list[str] = field(default_factory=list)
+    so_what: str | None = None
+    claim_dispositions: list[ClaimDisposition] = field(default_factory=list)
+    undeclared_strips: list[dict[str, Any]] = field(default_factory=list)
+    has_any_strip: bool = False
+
+
 def _approximately_equal(a: float, b: float, tolerance: float) -> bool:
     """``a`` and ``b`` agree within ``tolerance`` relative to
     ``max(|a|, |b|)``. Handles zero gracefully: if both are zero,
@@ -837,6 +850,59 @@ def _find_span_in_prose(prose: str, text_span: str) -> tuple[int, int] | None:
     if idx < 0:
         return None
     return (idx, idx + len(text_span))
+
+
+def validate_structured_response(
+    *,
+    headline: str,
+    evidence: list[str],
+    so_what: str | None,
+    claims: list[Claim],
+    result: pd.DataFrame,
+    tolerance: float = CLAIM_TOLERANCE,
+    frames: dict[str, pd.DataFrame] | None = None,
+) -> StructuredValidationReport:
+    """Wave 3.5 — validate the structured response (headline / evidence /
+    so_what) by running the single-string ``validate_claims`` over each
+    text field independently, then merging the per-claim dispositions.
+
+    Per-field (rather than a joined string) keeps ``_strip_clause`` offset
+    math local, isolates a strip to the bullet that owns the bad number,
+    and disambiguates a number that appears in more than one field. Pass B
+    (``scan_numerics``) runs per field, so the union of fields equals the
+    old single-string scan surface — no cross-field metric numeric escapes
+    coverage. The "no untraceable number" guarantee is preserved field by
+    field.
+
+    A claim's status is field-independent — it depends only on
+    ``claim.value`` versus the value resolved from ``result``/``frames``,
+    not on which field the span lives in. So a claim whose span appears in
+    two fields yields the same disposition both times; we dedupe by
+    ``(text_span, status)`` keeping the first. A claim whose span is in no
+    field still gets a disposition (Pass A appends one regardless), so the
+    preview harness shows every claim's badge.
+    """
+    out = StructuredValidationReport(headline="", evidence=[], so_what=None)
+    seen: dict[tuple[str, str], ClaimDisposition] = {}
+
+    def _run(text: str) -> str:
+        if not text or not text.strip():
+            return ""
+        rep = validate_claims(
+            text, claims, result, tolerance=tolerance, frames=frames,
+        )
+        for d in rep.claim_dispositions:
+            seen.setdefault((d.claim.text_span, d.status), d)
+        out.undeclared_strips.extend(rep.undeclared_strips)
+        if rep.has_any_strip:
+            out.has_any_strip = True
+        return rep.prose
+
+    out.headline = _run(headline)
+    out.evidence = [cleaned for e in evidence if (cleaned := _run(e))]
+    out.so_what = (_run(so_what) or None) if so_what else None
+    out.claim_dispositions = list(seen.values())
+    return out
 
 
 def _spans_overlap(

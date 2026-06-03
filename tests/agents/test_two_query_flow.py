@@ -68,7 +68,7 @@ def test_two_query_flow_clean_response() -> None:
     out = spec._dispatch_tool(
         "emit_response",
         {
-            "prose": f"Your dairy ASP is ${own_asp} vs a same-segment peer "
+            "headline": f"Your dairy ASP is ${own_asp} vs a same-segment peer "
                      f"average of ${peer_asp}.",
             "claims": [
                 {"text_span": f"${own_asp}", "value": own_asp,

@@ -117,8 +117,8 @@ def test_pricing_canonical_question_produces_agentresponse(
     assert "own_value" in resp.result.columns
     assert "peer_benchmark" in resp.result.columns
     assert "gap" in resp.result.columns
-    # Chart was built.
-    assert resp.chart is not None
+    # Charts are deferred to Wave 4 (§11.2) — gated off.
+    assert resp.chart is None
     # Prose retained the 3.5 claim (declared and matching cell).
     assert "3.5" in resp.prose
     # Caveats survived.

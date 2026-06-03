@@ -81,6 +81,27 @@ def _agent_for_qid(qid: str) -> str:
 # HTML rendering
 # ---------------------------------------------------------------------
 
+def _render_structured_answer(resp: AgentResponse) -> str:
+    """Wave 3.5 — render the structured answer (headline / evidence /
+    so_what) as fixed sections. Charts are deferred to Wave 4, so there
+    is no chart section."""
+    parts = [
+        f"<p class=\"headline\"><strong>"
+        f"{html_escape.escape(resp.headline)}</strong></p>"
+    ]
+    if resp.evidence:
+        items = "".join(
+            f"<li>{html_escape.escape(e)}</li>" for e in resp.evidence
+        )
+        parts.append(f"<ul class=\"evidence\">{items}</ul>")
+    if resp.so_what:
+        parts.append(
+            f"<p class=\"so-what\"><em>So what:</em> "
+            f"{html_escape.escape(resp.so_what)}</p>"
+        )
+    return f"<blockquote class=\"prose\">{''.join(parts)}</blockquote>"
+
+
 def _render_chart_html(resp: AgentResponse) -> str:
     if resp.chart is None:
         # Surface what the model intended even when build failed —
@@ -197,10 +218,8 @@ def _render_one(
   <p class="routing"><strong>Routed:</strong> {routing.primary}
      <span class="hint">— {html_escape.escape(routing.rationale)}</span>
   </p>
-  <h3>Prose (post-validator)</h3>
-  <blockquote class="prose">{html_escape.escape(resp.prose)}</blockquote>
-  <h3>Chart</h3>
-  <div class="chart">{_render_chart_html(resp)}</div>
+  <h3>Answer (post-validator)</h3>
+  {_render_structured_answer(resp)}
   <h3>Merged result</h3>
   {_render_result_table(resp.result)}
   <h3>Claims</h3>
@@ -228,7 +247,11 @@ section.qa { border: 1px solid #E5E7EB; padding: 16px 20px;
              margin: 20px 0; border-radius: 6px; background: #FAFBFC; }
 blockquote.prose { background: #FFFFFF; border-left: 4px solid #0F4C81;
                    padding: 12px 16px; margin: 8px 0;
-                   font-size: 15px; white-space: pre-wrap; }
+                   font-size: 15px; }
+blockquote.prose p.headline { margin: 0 0 8px 0; font-size: 16px; }
+blockquote.prose ul.evidence { margin: 4px 0 8px 0; padding-left: 20px; }
+blockquote.prose ul.evidence li { margin: 2px 0; }
+blockquote.prose p.so-what { margin: 8px 0 0 0; color: #0F4C81; }
 table.result-table { border-collapse: collapse; margin: 8px 0; font-size: 12px; }
 table.result-table th, table.result-table td {
     border: 1px solid #E5E7EB; padding: 4px 8px; text-align: left; }
@@ -250,15 +273,15 @@ def _wrap_page(body: str, *, merchant: str) -> str:
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Wave 3 Agent Preview — {merchant}</title>
+  <title>Wave 3.5 Agent Preview — {merchant}</title>
   <style>{_PAGE_STYLE}</style>
 </head>
 <body>
-  <h1>Wave 3 Agent Preview — {merchant}</h1>
+  <h1>Wave 3.5 Agent Preview — {merchant}</h1>
   <p class="hint">Generated {datetime.now().isoformat(timespec='seconds')}.
-     Charts are live Plotly figures; tables and claims are read off the
-     merged result; prose is the post-validator output (numbers stripped
-     or normalized per §1.4).</p>
+     Charts are deferred to Wave 4. The answer is the post-validator
+     structured output — headline / evidence / so-what (numbers stripped
+     or normalized per §1.4); tables and claims are read off the result.</p>
   {body}
 </body>
 </html>

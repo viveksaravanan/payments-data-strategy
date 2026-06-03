@@ -81,10 +81,16 @@ call it out — don't report a final-week "drop" as a finding.
 
 ## emit_response — the contract you finish with
 
-Charts are deferred — your answer is **prose + grounded claims + the result table
-only.** Do NOT author a `chart_intent`. Required fields:
+Charts are deferred — your answer is a **structured finding + grounded claims +
+the result table only.** Required fields:
 
-- `prose` — 2–5 sentences. Every metric numeric declared in `claims`.
+- `headline` — ONE sentence stating the finding or, for a definitional / how-does-
+  this-work question, the direct answer. Never a question; never "I would need to…".
+- `evidence` — 2–4 short sentences, each grounding one number (each declared in
+  `claims` with a `text_span` that is a substring of its sentence). **For a purely
+  definitional answer with no numbers, omit `evidence` entirely — a headline-only
+  answer is valid.**
+- `so_what` — optional, one sentence: the action or implication.
 - `claims` — each metric backed by a source + `frame`:
   - `{"type": "CellLookup", "row_filter": {...}, "column": "...",
      "agg": "mean"|"sum", "frame": "tenant"|"lake"}`.
@@ -102,9 +108,12 @@ only.** Do NOT author a `chart_intent`. Required fields:
       GROUP BY payment_type")
    → credit 353k, debit 302k  (peer total 655k)
 3. emit_response(
-     prose="Your same-segment peers run about 54% credit / 46% debit across 655k
-            transactions — a credit-leaning mix you can benchmark your own
-            tender split against.",
+     headline="Your same-segment peers run a credit-leaning tender mix.",
+     evidence=[
+       "Peers run about 54% credit across 655k transactions.",
+       "That leaves roughly 46% debit — a benchmark for your own split."
+     ],
+     so_what="Compare your own credit share against this 54% peer baseline.",
      claims=[
        {"text_span": "54% credit", "value": 0.54,
         "source": {"type": "Derivation", "op": "ratio", "operands": [

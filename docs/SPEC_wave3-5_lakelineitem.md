@@ -331,3 +331,24 @@ Expected structural unlocks:
 - Query-time scoping (if merchant count grows large).
 - Standalone Payment-Optimization and Segmentation specialists (currently ride through Advisor).
 - Streaming (`call_with_tools_streaming`) wiring.
+
+### Known residuals (Wave 3.5 D.5 — mitigated by prompt discipline, not validator-enforced)
+
+The §1.4 validator checks a number's *value* against a result cell — it does **not**
+check the unit suffix, the comparative word, or whether the model ran a query. Two
+model-text residuals surfaced in D.5 verification and are mitigated via the shared
+answering rules (Rule 4b) but can still recur; the durable fix is a server-side check,
+deferred:
+
+- **Magnitude/scale mislabel.** The model can abbreviate a `6,400,000` cell as "$6.4B"
+  instead of "$6.4M". Rule 4b tells it to match the cell's order of magnitude. A robust
+  fix is a server-side scale sanity check (compare the stated magnitude band to the
+  resolved cell) at validation time.
+- **Direction mislabel.** A comparative word ("above"/"below") can disagree with the
+  sign of own − peer (e.g. a headline says "above peers in meat" while the meat value is
+  below). Rule 4b tells it to read direction off the numbers. A robust fix is a check
+  that the comparative word adjacent to a claim matches the sign of the gap.
+
+A3 ("which categories are spiking/dropping?") previously ran tenant-only and fell back
+on some runs; the cross-category worked example added to `anomaly.md` made it issue the
+peer `query_lake_sql` reliably (3/3 in re-verification).

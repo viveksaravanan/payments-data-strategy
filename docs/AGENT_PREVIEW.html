@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Wave 3 Agent Preview — KRG</title>
+  <title>Wave 3.5 Agent Preview — KRG</title>
   <style>
 body { font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
        max-width: 1100px; margin: 24px auto; padding: 0 16px;
@@ -14,7 +14,11 @@ section.qa { border: 1px solid #E5E7EB; padding: 16px 20px;
              margin: 20px 0; border-radius: 6px; background: #FAFBFC; }
 blockquote.prose { background: #FFFFFF; border-left: 4px solid #0F4C81;
                    padding: 12px 16px; margin: 8px 0;
-                   font-size: 15px; white-space: pre-wrap; }
+                   font-size: 15px; }
+blockquote.prose p.headline { margin: 0 0 8px 0; font-size: 16px; }
+blockquote.prose ul.evidence { margin: 4px 0 8px 0; padding-left: 20px; }
+blockquote.prose ul.evidence li { margin: 2px 0; }
+blockquote.prose p.so-what { margin: 8px 0 0 0; color: #0F4C81; }
 table.result-table { border-collapse: collapse; margin: 8px 0; font-size: 12px; }
 table.result-table th, table.result-table td {
     border: 1px solid #E5E7EB; padding: 4px 8px; text-align: left; }
@@ -31,11 +35,11 @@ table.result-table th { background: #F3F4F6; }
 </style>
 </head>
 <body>
-  <h1>Wave 3 Agent Preview — KRG</h1>
-  <p class="hint">Generated 2026-06-02T17:11:28.
-     Charts are live Plotly figures; tables and claims are read off the
-     merged result; prose is the post-validator output (numbers stripped
-     or normalized per §1.4).</p>
+  <h1>Wave 3.5 Agent Preview — KRG</h1>
+  <p class="hint">Generated 2026-06-02T21:57:43.
+     Charts are deferred to Wave 4. The answer is the post-validator
+     structured output — headline / evidence / so-what (numbers stripped
+     or normalized per §1.4); tables and claims are read off the result.</p>
   
 <section class="qa">
   <h2>P1 — How do my prices compare to peer grocers across categories?</h2>
@@ -43,269 +47,138 @@ table.result-table th { background: #F3F4F6; }
   <p class="routing"><strong>Routed:</strong> pricing
      <span class="hint">— Direct dispatch from suggested-question pill &#x27;P1&#x27;</span>
   </p>
-  <h3>Prose (post-validator)</h3>
-  <blockquote class="prose">Your pricing strategy is mixed across categories, with a clear premium in Meat and Pantry but competitive positioning in Produce and Dairy. Pantry sits at a 1.026 index as well, where your $3.37 ASP translates to a similar premium; however, your promo intensity there is moderate at 0.245 (compared to the peer benchmark of 0.257), suggesting the gap is structural rather than promotional defense. In contrast, Produce sits at a 0.993 index—slightly below peers—at a $2.64 ASP, indicating opportunity to improve margins in your highest-transaction category. Dairy is competitively positioned at 0.999, near the peer baseline, at $3.50 per unit with moderate promo activity (0.238).</blockquote>
-  <h3>Chart</h3>
-  <div class="chart"><em>(chart skipped — intent below)</em><pre style='font-size:11px; background:#F3F4F6; padding:8px; border-radius:4px;'>{
-  &quot;kind&quot;: &quot;cross_merchant_comparison&quot;,
-  &quot;title&quot;: &quot;Your pricing vs segment peer baseline across categories&quot;,
-  &quot;takeaway&quot;: &quot;You command a premium in Meat and Pantry but sit below-index in Produce, your largest category by volume.&quot;,
-  &quot;x&quot;: &quot;category&quot;,
-  &quot;series&quot;: [
-    &quot;own_asp&quot;,
-    &quot;peer_price_index&quot;
-  ],
-  &quot;y_format&quot;: &quot;raw&quot;
-}</pre></div>
+  <h3>Answer (post-validator)</h3>
+  <blockquote class="prose"><p class="headline"><strong>You price above your same-segment peers in most categories, with the largest premiums in meat, frozen, and snacks, while running below peers only in personal care.</strong></p><ul class="evidence"><li>In meat, your average selling price is $6.36 per unit versus the peer average of $6.94, giving you a $0.58 gap below peers.</li><li>In dairy, you price at $3.50 versus peer average of $3.52, placing you slightly below peers by $0.02.</li><li>In produce, you maintain $2.64 per unit against a peer average of $2.59, running $0.05 above peers.</li><li>In personal care, you price $5.21 per unit versus peers at $5.50, leaving you $0.29 below peers in this category.</li></ul><p class="so-what"><em>So what:</em> Your pricing is broadly competitive across staples. Consider defending the produce premium and investigating whether the personal care gap reflects a deliberate positioning or an opportunity to firm up pricing in that non-staple category.</p></blockquote>
   <h3>Merged result</h3>
   <table class="dataframe result-table">
   <thead>
     <tr style="text-align: right;">
       <th>category</th>
-      <th>own_value</th>
-      <th>basket_penetration_share</th>
-      <th>derived_zone</th>
-      <th>grain</th>
-      <th>period_start</th>
-      <th>peer_benchmark</th>
-      <th>promo_active_share</th>
-      <th>revenue_index</th>
-      <th>subcategory</th>
       <th>txn_count</th>
-      <th>units_index</th>
-      <th>wow_delta</th>
-      <th>peer_relationship</th>
-      <th>gap</th>
+      <th>own_asp</th>
+      <th>units_sold</th>
+      <th>revenue</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>PANTRY</td>
-      <td>259660</td>
-      <td>0.660063</td>
-      <td>Z04</td>
-      <td>cat_week</td>
-      <td>2026-03-01</td>
-      <td>1.126254</td>
-      <td>0.255039</td>
-      <td>0.975565</td>
-      <td>NaN</td>
-      <td>4431</td>
-      <td>0.867723</td>
-      <td>NaN</td>
-      <td>segment_peer</td>
-      <td>NaN</td>
+      <td>MEAT</td>
+      <td>199511</td>
+      <td>6.359964</td>
+      <td>625779.0</td>
+      <td>3979551.39</td>
+    </tr>
+    <tr>
+      <td>BABY</td>
+      <td>85898</td>
+      <td>13.627350</td>
+      <td>159337.0</td>
+      <td>2170616.58</td>
+    </tr>
+    <tr>
+      <td>HOUSEHOLD</td>
+      <td>114675</td>
+      <td>8.174744</td>
+      <td>245215.0</td>
+      <td>2004670.51</td>
     </tr>
     <tr>
       <td>PANTRY</td>
       <td>259660</td>
-      <td>0.646308</td>
-      <td>Z04</td>
-      <td>cat_week</td>
-      <td>2026-03-08</td>
-      <td>1.127323</td>
-      <td>0.204825</td>
-      <td>0.987041</td>
-      <td>NaN</td>
-      <td>4000</td>
-      <td>0.875692</td>
-      <td>-0.324409</td>
-      <td>segment_peer</td>
-      <td>NaN</td>
+      <td>3.374062</td>
+      <td>585425.0</td>
+      <td>1976794.19</td>
     </tr>
     <tr>
-      <td>PANTRY</td>
-      <td>259660</td>
-      <td>0.635530</td>
-      <td>Z04</td>
-      <td>cat_week</td>
-      <td>2026-03-15</td>
-      <td>1.130507</td>
-      <td>0.270167</td>
-      <td>0.989219</td>
-      <td>NaN</td>
-      <td>3810</td>
-      <td>0.876218</td>
-      <td>-0.079254</td>
-      <td>segment_peer</td>
-      <td>NaN</td>
+      <td>BEVERAGES</td>
+      <td>185028</td>
+      <td>3.706713</td>
+      <td>463329.0</td>
+      <td>1717740.78</td>
     </tr>
     <tr>
-      <td>PANTRY</td>
-      <td>259660</td>
-      <td>0.622614</td>
-      <td>Z04</td>
-      <td>cat_week</td>
-      <td>2026-03-22</td>
-      <td>1.110625</td>
-      <td>0.274270</td>
-      <td>0.965566</td>
-      <td>NaN</td>
-      <td>3392</td>
-      <td>0.871722</td>
-      <td>-0.025316</td>
-      <td>segment_peer</td>
-      <td>NaN</td>
+      <td>PRODUCE</td>
+      <td>212135</td>
+      <td>2.642143</td>
+      <td>640053.0</td>
+      <td>1690792.62</td>
     </tr>
     <tr>
-      <td>PANTRY</td>
-      <td>259660</td>
-      <td>0.657532</td>
-      <td>Z04</td>
-      <td>cat_week</td>
-      <td>2026-03-29</td>
-      <td>1.104772</td>
-      <td>0.335525</td>
-      <td>1.000591</td>
-      <td>NaN</td>
-      <td>3959</td>
-      <td>0.907383</td>
-      <td>0.223377</td>
-      <td>segment_peer</td>
-      <td>NaN</td>
+      <td>SNACKS</td>
+      <td>156413</td>
+      <td>3.730089</td>
+      <td>438798.0</td>
+      <td>1637586.26</td>
     </tr>
     <tr>
-      <td>PANTRY</td>
-      <td>259660</td>
-      <td>0.664486</td>
-      <td>Z04</td>
-      <td>cat_week</td>
-      <td>2026-04-05</td>
-      <td>1.141594</td>
-      <td>0.210461</td>
-      <td>1.025048</td>
-      <td>NaN</td>
-      <td>4165</td>
-      <td>0.898481</td>
-      <td>-0.237792</td>
-      <td>segment_peer</td>
-      <td>NaN</td>
+      <td>PET</td>
+      <td>83766</td>
+      <td>11.527970</td>
+      <td>140124.0</td>
+      <td>1615114.15</td>
     </tr>
     <tr>
-      <td>PANTRY</td>
-      <td>259660</td>
-      <td>0.638607</td>
-      <td>Z04</td>
-      <td>cat_week</td>
-      <td>2026-04-12</td>
-      <td>1.148658</td>
-      <td>0.206361</td>
-      <td>1.012640</td>
-      <td>NaN</td>
-      <td>3649</td>
-      <td>0.881675</td>
-      <td>-0.164345</td>
-      <td>segment_peer</td>
-      <td>NaN</td>
+      <td>DAIRY</td>
+      <td>184046</td>
+      <td>3.500096</td>
+      <td>435111.0</td>
+      <td>1522683.97</td>
     </tr>
     <tr>
-      <td>PANTRY</td>
-      <td>259660</td>
-      <td>0.602128</td>
-      <td>Z04</td>
-      <td>cat_week</td>
-      <td>2026-04-19</td>
-      <td>1.097982</td>
-      <td>0.428306</td>
-      <td>1.034979</td>
-      <td>NaN</td>
-      <td>3396</td>
-      <td>0.946809</td>
-      <td>0.140000</td>
-      <td>segment_peer</td>
-      <td>NaN</td>
+      <td>BAKERY</td>
+      <td>171012</td>
+      <td>3.409544</td>
+      <td>350553.0</td>
+      <td>1195111.26</td>
     </tr>
     <tr>
-      <td>PANTRY</td>
-      <td>259660</td>
-      <td>0.641494</td>
-      <td>Z04</td>
-      <td>cat_week</td>
-      <td>2026-04-26</td>
-      <td>1.143761</td>
-      <td>0.145646</td>
-      <td>1.076151</td>
-      <td>NaN</td>
-      <td>3933</td>
-      <td>0.953579</td>
-      <td>0.134503</td>
-      <td>segment_peer</td>
-      <td>NaN</td>
+      <td>FROZEN</td>
+      <td>122873</td>
+      <td>4.554894</td>
+      <td>247894.0</td>
+      <td>1129650.49</td>
     </tr>
     <tr>
-      <td>PANTRY</td>
-      <td>259660</td>
-      <td>0.654339</td>
-      <td>Z04</td>
-      <td>cat_week</td>
-      <td>2026-05-03</td>
-      <td>1.109783</td>
-      <td>0.245764</td>
-      <td>1.006054</td>
-      <td>NaN</td>
-      <td>4547</td>
-      <td>0.916000</td>
-      <td>0.469072</td>
-      <td>segment_peer</td>
-      <td>NaN</td>
-    </tr>
-    <tr>
-      <td>PANTRY</td>
-      <td>259660</td>
-      <td>0.621729</td>
-      <td>Z04</td>
-      <td>cat_week</td>
-      <td>2026-05-10</td>
-      <td>1.142887</td>
-      <td>0.262194</td>
-      <td>1.068060</td>
-      <td>NaN</td>
-      <td>4395</td>
-      <td>0.943509</td>
-      <td>-0.207018</td>
-      <td>segment_peer</td>
-      <td>NaN</td>
-    </tr>
-    <tr>
-      <td>PANTRY</td>
-      <td>259660</td>
-      <td>0.625054</td>
-      <td>Z04</td>
-      <td>cat_week</td>
-      <td>2026-05-17</td>
-      <td>1.136197</td>
-      <td>0.161366</td>
-      <td>1.088174</td>
-      <td>NaN</td>
-      <td>4306</td>
-      <td>0.969067</td>
-      <td>-0.117257</td>
-      <td>segment_peer</td>
-      <td>NaN</td>
+      <td>PERSONAL</td>
+      <td>75173</td>
+      <td>5.214414</td>
+      <td>120918.0</td>
+      <td>630440.08</td>
     </tr>
   </tbody>
-</table><p class="hint"><em>… showing 12 of 1248 rows.</em></p>
+</table>
   <h3>Claims</h3>
-  <ul><li><code>Meat runs at a price index of 1.026</code> = <strong>1.0258048318443098</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>your ASP of $6.36</code> = <strong>6.359964130419462</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>Pantry sits at a 1.026 index</code> = <strong>1.0260669956883635</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>your $3.37 ASP</code> = <strong>3.3740618728952745</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>your promo intensity there is moderate at 0.245</code> = <strong>0.24463434517383575</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>peer benchmark of 0.257</code> = <strong>0.25688751417133177</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>Produce sits at a 0.993 index</code> = <strong>0.9925091473155317</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>$2.64 ASP</code> = <strong>2.642143061721327</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>Dairy is competitively positioned at 0.999</code> = <strong>0.9989627774922314</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>$3.50 per unit</code> = <strong>3.50009634564748</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>0.238</code> = <strong>0.23755000531673431</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li></ul>
+  <ul><li><code>$6.36 per unit versus the peer average of $6.94</code> = <strong>6.359964130419453</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>peer average of $6.94</code> = <strong>6.944477926202495</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>$0.58 gap below peers</code> = <strong>0.584513795783042</strong> <span class="hint">via Derivation</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>$3.50 versus peer average of $3.52</code> = <strong>3.5000963456474774</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>peer average of $3.52</code> = <strong>3.520523662232127</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>$0.02</code> = <strong>0.020427316584649725</strong> <span class="hint">via Derivation</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>$2.64 per unit against a peer average of $2.59</code> = <strong>2.6421430617213284</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>peer average of $2.59</code> = <strong>2.5870226450865377</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>$0.05 above peers</code> = <strong>0.0551204166347907</strong> <span class="hint">via Derivation</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>$5.21 per unit versus peers at $5.50</code> = <strong>5.214413723531369</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>peers at $5.50</code> = <strong>5.497725994743609</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>$0.29 below peers</code> = <strong>0.2833122712122397</strong> <span class="hint">via Derivation</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li></ul>
   <h3>SQL surfaces</h3>
   <div class="sql-block"><span class="surface">tenant</span> <span class="hint">(12 rows)</span><pre>
 SELECT 
   i.category,
-  COUNT(DISTINCT t.txn_id) as txn_count,
-  AVG(i.unit_price) as own_asp,
-  SUM(CASE WHEN i.promo_id IS NOT NULL THEN 1 ELSE 0 END)::FLOAT / COUNT(*) as promo_active_share
-FROM transactions t
-JOIN transaction_items i ON t.txn_id = i.txn_id
+  COUNT(DISTINCT t.txn_id) AS txn_count,
+  AVG(i.unit_price) AS own_asp,
+  SUM(i.qty) AS units_sold,
+  SUM(i.line_total) AS revenue
+FROM transaction_items i
+JOIN transactions t ON i.txn_id = t.txn_id
 WHERE t.banner_code = &#x27;KRG&#x27;
 GROUP BY i.category
-ORDER BY txn_count DESC
-</pre></div><div class="sql-block"><span class="surface">lake</span> <span class="hint">(2249 rows)</span><pre>read_lake_table(&#x27;lake_category_metrics&#x27;, filters={&#x27;grain&#x27;: &#x27;cat_week&#x27;})</pre></div><div class="sql-block"><span class="surface">merge</span> <span class="hint">(1248 rows)</span><pre>auto-build_merge(on=[&#x27;category&#x27;], own=&#x27;txn_count&#x27;, peer=&#x27;price_index&#x27;)</pre></div>
+ORDER BY revenue DESC
+</pre></div><div class="sql-block"><span class="surface">lake_sql</span> <span class="hint">(12 rows)</span><pre>
+SELECT 
+  category,
+  COUNT(DISTINCT lake_txn_id) AS peer_txn_count,
+  AVG(unit_price) AS peer_asp,
+  SUM(qty) AS peer_units_sold
+FROM lake_transactions
+WHERE peer_relationship = &#x27;peer&#x27;
+GROUP BY category
+ORDER BY category
+</pre></div>
   <h3>Grain notes (from manifest)</h3>
-  <ul><li>no peer SKU (own side reaches SKU via the tenant surface)</li><li>no peer store_id</li><li>no per-customer rows</li><li>no daily grain (week is finest temporal)</li></ul>
+  <em>(none)</em>
   <h3>Caveats</h3>
-  <ul><li>Peer set: segment peers (n=2 grocers)</li><li>Pricing comparison uses average selling price (ASP) on your side and peer price_index on the other — different units, side-by-side view.</li><li>Data window: most recent complete week ended 2026-05-18</li><li>(Chart skipped — model&#x27;s chart_intent was malformed. Reason: UnsupportedIntentError: ChartIntent kind=&#x27;cross_merchant_comparison&#x27; missing required keys: [&#x27;series&#x27;]. Got: [&#x27;kind&#x27;, &#x27;series&#x27;, &#x27;takeaway&#x27;, &#x27;title&#x27;, &#x27;x&#x27;, &#x27;y_format&#x27;])</li><li>Side-by-side comparison only: own_value and peer_benchmark are in different units (medians ≈ 1.64e+05 vs 0.993); the gap column is intentionally null. Use the two columns directionally rather than subtractively.</li></ul>
+  <ul><li>Peer set is your same-segment grocers (2 competitors).</li><li>Average selling price (ASP) is the realized per-unit price across all transactions in each category.</li><li>Comparison covers the full measurement window.</li></ul>
   <h3>Telemetry</h3>
-  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=4 · in=69458 · out=1495 · $0.0769</p>
+  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=4 · in=44286 · out=1865 · $0.0536</p>
 </section>
 
 
@@ -315,65 +188,155 @@ ORDER BY txn_count DESC
   <p class="routing"><strong>Routed:</strong> pricing
      <span class="hint">— Direct dispatch from suggested-question pill &#x27;P2&#x27;</span>
   </p>
-  <h3>Prose (post-validator)</h3>
-  <blockquote class="prose">staples average $3.95 per unit. non-food $9.65 per unit. staples running 38% cheaper per unit than non-food. 69% of total revenue. peer price index of 1.006. segment peers index at 1.015 for Baby. 1.017 for Pet. 1.015 for Personal Care.</blockquote>
-  <h3>Chart</h3>
-  <div class="chart"><div>                        <script>window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
-        <script charset="utf-8" src="https://cdn.plot.ly/plotly-3.5.0.min.js" integrity="sha256-fHbNLP+GlIXN+efbQec78UkemUz3NJp7UmfGxC1tNxs=" crossorigin="anonymous"></script>                <div id="9d8fe51b-6876-46dc-ac92-a94aeac1c18b" class="plotly-graph-div" style="height:220px; width:100%;"></div>            <script>                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("9d8fe51b-6876-46dc-ac92-a94aeac1c18b")) {                    Plotly.newPlot(                        "9d8fe51b-6876-46dc-ac92-a94aeac1c18b",                        [{"marker":{"color":"#0F4C81"},"name":"own_asp","orientation":"h","x":{"dtype":"f8","bdata":"+zLiXgpLI0B+wDM6e5YPQA=="},"y":["Non-Food","Staples"],"type":"bar"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"hoverlabel":{"font":{"family":"-apple-system, system-ui, sans-serif","size":13,"color":"#1F2937"},"bgcolor":"#FFFFFF","bordercolor":"#E5E7EB"},"margin":{"l":80,"r":40,"t":40,"b":40},"title":{"text":"Your ASP by Category Group"},"xaxis":{"title":{"text":"Amount ($)"},"showgrid":true,"gridcolor":"rgba(128, 128, 128, 0.10)"},"barmode":"group","plot_bgcolor":"white","paper_bgcolor":"white","height":220,"yaxis":{"showgrid":false}},                        {"responsive": true}                    )                };            </script>        </div></div>
+  <h3>Answer (post-validator)</h3>
+  <blockquote class="prose"><p class="headline"><strong>You price your staples competitively but hold a significant premium in non-food categories versus same-segment peers.</strong></p><p class="so-what"><em>So what:</em> Prioritize staples list-price lifts to narrow the gap with peers, particularly in your highest-revenue categories like meat and pantry, without compromising on the non-food premium.</p></blockquote>
   <h3>Merged result</h3>
   <table class="dataframe result-table">
   <thead>
     <tr style="text-align: right;">
       <th>category_group</th>
-      <th>own_asp</th>
-      <th>txn_count</th>
-      <th>promo_active_share</th>
-      <th>total_revenue</th>
+      <th>category</th>
+      <th>avg_selling_price</th>
+      <th>units_sold</th>
+      <th>revenue</th>
     </tr>
   </thead>
   <tbody>
     <tr>
+      <td>Staples</td>
+      <td>MEAT</td>
+      <td>6.359964</td>
+      <td>625779.0</td>
+      <td>3979551.39</td>
+    </tr>
+    <tr>
       <td>Non-Food</td>
-      <td>9.646563</td>
-      <td>190109</td>
-      <td>0.244956</td>
-      <td>6420841.32</td>
+      <td>BABY</td>
+      <td>13.627350</td>
+      <td>159337.0</td>
+      <td>2170616.58</td>
+    </tr>
+    <tr>
+      <td>Non-Food</td>
+      <td>HOUSEHOLD</td>
+      <td>8.174744</td>
+      <td>245215.0</td>
+      <td>2004670.51</td>
     </tr>
     <tr>
       <td>Staples</td>
-      <td>3.948477</td>
-      <td>390375</td>
-      <td>0.249641</td>
-      <td>14849910.96</td>
+      <td>PANTRY</td>
+      <td>3.374062</td>
+      <td>585425.0</td>
+      <td>1976794.19</td>
+    </tr>
+    <tr>
+      <td>Staples</td>
+      <td>BEVERAGES</td>
+      <td>3.706713</td>
+      <td>463329.0</td>
+      <td>1717740.78</td>
+    </tr>
+    <tr>
+      <td>Staples</td>
+      <td>PRODUCE</td>
+      <td>2.642143</td>
+      <td>640053.0</td>
+      <td>1690792.62</td>
+    </tr>
+    <tr>
+      <td>Staples</td>
+      <td>SNACKS</td>
+      <td>3.730089</td>
+      <td>438798.0</td>
+      <td>1637586.26</td>
+    </tr>
+    <tr>
+      <td>Non-Food</td>
+      <td>PET</td>
+      <td>11.527970</td>
+      <td>140124.0</td>
+      <td>1615114.15</td>
+    </tr>
+    <tr>
+      <td>Staples</td>
+      <td>DAIRY</td>
+      <td>3.500096</td>
+      <td>435111.0</td>
+      <td>1522683.97</td>
+    </tr>
+    <tr>
+      <td>Staples</td>
+      <td>BAKERY</td>
+      <td>3.409544</td>
+      <td>350553.0</td>
+      <td>1195111.26</td>
+    </tr>
+    <tr>
+      <td>Staples</td>
+      <td>FROZEN</td>
+      <td>4.554894</td>
+      <td>247894.0</td>
+      <td>1129650.49</td>
+    </tr>
+    <tr>
+      <td>Non-Food</td>
+      <td>PERSONAL</td>
+      <td>5.214414</td>
+      <td>120918.0</td>
+      <td>630440.08</td>
     </tr>
   </tbody>
 </table>
   <h3>Claims</h3>
-  <ul><li><code>staples average $3.95 per unit</code> = <strong>3.95</strong> <span class="hint">via CellLookup</span> <span style="color:#4B5563;font-weight:bold;">[normalized]</span></li><li><code>non-food $9.65 per unit</code> = <strong>9.65</strong> <span class="hint">via CellLookup</span> <span style="color:#4B5563;font-weight:bold;">[normalized]</span></li><li><code>staples running 38% cheaper per unit than non-food</code> = <strong>0.409</strong> <span class="hint">via Derivation</span> <span style="color:#4B5563;font-weight:bold;">[normalized]</span></li><li><code>69% of total revenue</code> = <strong>0.698</strong> <span class="hint">via Derivation</span> <span style="color:#4B5563;font-weight:bold;">[normalized]</span></li><li><code>peer price index of 1.006</code> = <strong>1.0096774256010836</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>segment peers index at 1.015 for Baby</code> = <strong>1.0154375561913487</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>1.017 for Pet</code> = <strong>1.0171491207184082</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>1.015 for Personal Care</code> = <strong>1.0153484574165705</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>Promo intensity is similar across both buckets (~25%)</code> = <strong>0.25</strong> <span class="hint">via CellLookup</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li></ul>
+  <ul><li><code>Your staples average selling price is $3.79/unit</code> = <strong>3.7861</strong> <span class="hint">via CellLookup</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>same-segment peer average of $4.14/unit</code> = <strong>4.138772488488611</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>$0.35 below peers</code> = <strong>-0.3527</strong> <span class="hint">via Derivation</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>In non-food categories you charge $9.90/unit</code> = <strong>9.9021</strong> <span class="hint">via CellLookup</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>peers at $10.06/unit</code> = <strong>10.056150563262264</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>$0.16 gap</code> = <strong>-0.1541</strong> <span class="hint">via Derivation</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>$15.7M of your revenue</code> = <strong>15.7449</strong> <span class="hint">via CellLookup</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>non-food at $4.8M</code> = <strong>4.8087</strong> <span class="hint">via CellLookup</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li></ul>
   <h3>SQL surfaces</h3>
-  <div class="sql-block"><span class="surface">tenant</span> <span class="hint">(2 rows)</span><pre>
-SELECT
+  <div class="sql-block"><span class="surface">tenant</span> <span class="hint">(12 rows)</span><pre>
+SELECT 
   CASE 
-    WHEN i.category IN (&#x27;PRODUCE&#x27;, &#x27;DAIRY&#x27;, &#x27;PANTRY&#x27;, &#x27;MEAT&#x27;, &#x27;BAKERY&#x27;, &#x27;BEVERAGES&#x27;, &#x27;SNACKS&#x27;, &#x27;FROZEN&#x27;)
-      THEN &#x27;Staples&#x27;
+    WHEN p.category IN (&#x27;PRODUCE&#x27;, &#x27;DAIRY&#x27;, &#x27;PANTRY&#x27;, &#x27;MEAT&#x27;, &#x27;BAKERY&#x27;, &#x27;BEVERAGES&#x27;, &#x27;SNACKS&#x27;, &#x27;FROZEN&#x27;) THEN &#x27;Staples&#x27;
     ELSE &#x27;Non-Food&#x27;
   END AS category_group,
-  AVG(i.unit_price) AS own_asp,
-  COUNT(DISTINCT t.txn_id) AS txn_count,
-  SUM(CASE WHEN i.promo_id IS NOT NULL THEN 1 ELSE 0 END)::FLOAT / COUNT(*) AS promo_active_share,
-  SUM(i.line_total) AS total_revenue
-FROM transactions t
-JOIN transaction_items i ON t.txn_id = i.txn_id
+  p.category,
+  AVG(i.unit_price) AS avg_selling_price,
+  SUM(i.qty) AS units_sold,
+  SUM(i.line_total) AS revenue
+FROM transaction_items i
+JOIN transactions t ON i.txn_id = t.txn_id
+JOIN products p ON i.sku = p.sku
 WHERE t.banner_code = &#x27;KRG&#x27;
-GROUP BY category_group
-ORDER BY category_group
-</pre></div><div class="sql-block"><span class="surface">lake</span> <span class="hint">(1248 rows)</span><pre>read_lake_table(&#x27;lake_category_metrics&#x27;, filters={&#x27;category&#x27;: [&#x27;PRODUCE&#x27;, &#x27;DAIRY&#x27;, &#x27;PANTRY&#x27;, &#x27;MEAT&#x27;, &#x27;BAKERY&#x27;, &#x27;BEVERAGES&#x27;, &#x27;SNACKS&#x27;, &#x27;FROZEN&#x27;, &#x27;BABY&#x27;, &#x27;PET&#x27;, &#x27;HOUSEHOLD&#x27;, &#x27;PERSONAL&#x27;], &#x27;grain&#x27;: &#x27;cat_week&#x27;})</pre></div><div class="sql-block"><span class="surface">merge</span> <span class="hint">(0 rows)</span><pre>auto-build_merge(no shared dimension key → dual-frame)</pre></div>
+GROUP BY 
+  CASE 
+    WHEN p.category IN (&#x27;PRODUCE&#x27;, &#x27;DAIRY&#x27;, &#x27;PANTRY&#x27;, &#x27;MEAT&#x27;, &#x27;BAKERY&#x27;, &#x27;BEVERAGES&#x27;, &#x27;SNACKS&#x27;, &#x27;FROZEN&#x27;) THEN &#x27;Staples&#x27;
+    ELSE &#x27;Non-Food&#x27;
+  END,
+  p.category
+ORDER BY revenue DESC
+</pre></div><div class="sql-block"><span class="surface">lake_sql</span> <span class="hint">(2 rows)</span><pre>
+SELECT 
+  CASE 
+    WHEN category IN (&#x27;PRODUCE&#x27;, &#x27;DAIRY&#x27;, &#x27;PANTRY&#x27;, &#x27;MEAT&#x27;, &#x27;BAKERY&#x27;, &#x27;BEVERAGES&#x27;, &#x27;SNACKS&#x27;, &#x27;FROZEN&#x27;) THEN &#x27;Staples&#x27;
+    ELSE &#x27;Non-Food&#x27;
+  END AS category_group,
+  peer_relationship,
+  AVG(unit_price) AS avg_selling_price,
+  SUM(qty) AS units_sold,
+  SUM(line_total) AS revenue
+FROM lake_transactions
+WHERE peer_relationship = &#x27;peer&#x27;
+GROUP BY 
+  CASE 
+    WHEN category IN (&#x27;PRODUCE&#x27;, &#x27;DAIRY&#x27;, &#x27;PANTRY&#x27;, &#x27;MEAT&#x27;, &#x27;BAKERY&#x27;, &#x27;BEVERAGES&#x27;, &#x27;SNACKS&#x27;, &#x27;FROZEN&#x27;) THEN &#x27;Staples&#x27;
+    ELSE &#x27;Non-Food&#x27;
+  END,
+  peer_relationship
+</pre></div>
   <h3>Grain notes (from manifest)</h3>
-  <ul><li>no peer SKU (own side reaches SKU via the tenant surface)</li><li>no peer store_id</li><li>no per-customer rows</li><li>no daily grain (week is finest temporal)</li></ul>
+  <em>(none)</em>
   <h3>Caveats</h3>
-  <ul><li>Staples = PRODUCE, DAIRY, PANTRY, MEAT, BAKERY, BEVERAGES, SNACKS, FROZEN; Non-Food = BABY, PET, HOUSEHOLD, PERSONAL.</li><li>Peer benchmarks are segment-peer data at category level (window-level aggregates, no time grain).</li><li>Own ASP is a realized average across all transactions in the window; promo share reflects line-item frequency.</li></ul>
+  <ul><li>Peer set is your same-segment competitors (grocers).</li><li>Staples include PRODUCE, DAIRY, PANTRY, MEAT, BAKERY, BEVERAGES, SNACKS, and FROZEN; non-food comprises BABY, PET, HOUSEHOLD, and PERSONAL.</li><li>Figures are aggregated across all transactions in the data window.</li></ul>
   <h3>Telemetry</h3>
-  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=4 · in=67884 · out=1904 · $0.0774</p>
+  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=4 · in=45056 · out=1987 · $0.0550</p>
 </section>
 
 
@@ -383,275 +346,151 @@ ORDER BY category_group
   <p class="routing"><strong>Routed:</strong> pricing
      <span class="hint">— Direct dispatch from suggested-question pill &#x27;P3&#x27;</span>
   </p>
-  <h3>Prose (post-validator)</h3>
-  <blockquote class="prose">Pantry and Meat show the strongest pricing-leverage opportunities on your portfolio. In contrast, Produce sits below market (peer index 0.993) at your $2.64 ASP.</blockquote>
-  <h3>Chart</h3>
-  <div class="chart"><em>(chart skipped — intent below)</em><pre style='font-size:11px; background:#F3F4F6; padding:8px; border-radius:4px;'>{
-  &quot;kind&quot;: &quot;cross_merchant_comparison&quot;,
-  &quot;x&quot;: &quot;category&quot;,
-  &quot;series&quot;: [
-    &quot;own_asp&quot;,
-    &quot;peer_index&quot;
-  ],
-  &quot;y_format&quot;: &quot;raw&quot;,
-  &quot;title&quot;: &quot;Your ASP vs. Peer Price Index by Category&quot;,
-  &quot;takeaway&quot;: &quot;Pantry and Meat sit at market parity with pricing power; Produce runs lean with heavy promotional dependence; Bakery over-indexes on promotions.&quot;
-}</pre></div>
+  <h3>Answer (post-validator)</h3>
+  <blockquote class="prose"><p class="headline"><strong>In produce, your ASP is $2.64 versus a peer average of $2.59.</strong></p><p class="so-what"><em>So what:</em> Prioritize pantry list-price increases first—the 33-cent gap to peers is defensible given your volume—and reassess produce positioning to capture more of the peer pricing level without sacrificing traffic.</p></blockquote>
   <h3>Merged result</h3>
   <table class="dataframe result-table">
   <thead>
     <tr style="text-align: right;">
       <th>category</th>
-      <th>own_value</th>
-      <th>basket_penetration_share</th>
-      <th>derived_zone</th>
-      <th>grain</th>
-      <th>period_start</th>
-      <th>peer_benchmark</th>
-      <th>promo_active_share</th>
-      <th>revenue_index</th>
-      <th>subcategory</th>
       <th>txn_count</th>
-      <th>units_index</th>
-      <th>wow_delta</th>
-      <th>peer_relationship</th>
-      <th>gap</th>
+      <th>revenue</th>
+      <th>own_asp</th>
+      <th>promo_lines</th>
+      <th>promo_revenue</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td>MEAT</td>
       <td>199511</td>
-      <td>0.526292</td>
-      <td>Z04</td>
-      <td>cat_week</td>
-      <td>2026-03-01</td>
-      <td>1.135554</td>
-      <td>0.204907</td>
-      <td>1.002976</td>
-      <td>NaN</td>
-      <td>3533</td>
-      <td>0.884080</td>
-      <td>NaN</td>
-      <td>segment_peer</td>
-      <td>NaN</td>
+      <td>3979551.39</td>
+      <td>6.359964</td>
+      <td>126437.0</td>
+      <td>836682.44</td>
     </tr>
     <tr>
-      <td>MEAT</td>
-      <td>199511</td>
-      <td>0.489740</td>
-      <td>Z04</td>
-      <td>cat_week</td>
-      <td>2026-03-08</td>
-      <td>1.113183</td>
-      <td>0.236271</td>
-      <td>0.968922</td>
-      <td>NaN</td>
-      <td>3031</td>
-      <td>0.869877</td>
-      <td>-0.184735</td>
-      <td>segment_peer</td>
-      <td>NaN</td>
+      <td>BABY</td>
+      <td>85898</td>
+      <td>2170616.58</td>
+      <td>13.627350</td>
+      <td>33810.0</td>
+      <td>472206.07</td>
     </tr>
     <tr>
-      <td>MEAT</td>
-      <td>199511</td>
-      <td>0.479733</td>
-      <td>Z04</td>
-      <td>cat_week</td>
-      <td>2026-03-15</td>
-      <td>1.095036</td>
-      <td>0.212984</td>
-      <td>0.955269</td>
-      <td>NaN</td>
-      <td>2876</td>
-      <td>0.874016</td>
-      <td>-0.013569</td>
-      <td>segment_peer</td>
-      <td>NaN</td>
+      <td>HOUSEHOLD</td>
+      <td>114675</td>
+      <td>2004670.51</td>
+      <td>8.174744</td>
+      <td>52861.0</td>
+      <td>429094.86</td>
     </tr>
     <tr>
-      <td>MEAT</td>
-      <td>199511</td>
-      <td>0.459985</td>
-      <td>Z04</td>
-      <td>cat_week</td>
-      <td>2026-03-22</td>
-      <td>1.105736</td>
-      <td>0.259136</td>
-      <td>0.926359</td>
-      <td>NaN</td>
-      <td>2506</td>
-      <td>0.838265</td>
-      <td>-0.030949</td>
-      <td>segment_peer</td>
-      <td>NaN</td>
+      <td>PANTRY</td>
+      <td>259660</td>
+      <td>1976794.19</td>
+      <td>3.374062</td>
+      <td>113617.0</td>
+      <td>413504.52</td>
     </tr>
     <tr>
-      <td>MEAT</td>
-      <td>199511</td>
-      <td>0.496263</td>
-      <td>Z04</td>
-      <td>cat_week</td>
-      <td>2026-03-29</td>
-      <td>1.087974</td>
-      <td>0.320582</td>
-      <td>0.947519</td>
-      <td>NaN</td>
-      <td>2988</td>
-      <td>0.872044</td>
-      <td>0.164656</td>
-      <td>segment_peer</td>
-      <td>NaN</td>
+      <td>BEVERAGES</td>
+      <td>185028</td>
+      <td>1717740.78</td>
+      <td>3.706713</td>
+      <td>88263.0</td>
+      <td>357961.71</td>
     </tr>
     <tr>
-      <td>MEAT</td>
-      <td>199511</td>
-      <td>0.519145</td>
-      <td>Z04</td>
-      <td>cat_week</td>
-      <td>2026-04-05</td>
-      <td>1.125510</td>
-      <td>0.268377</td>
-      <td>0.981055</td>
-      <td>NaN</td>
-      <td>3254</td>
-      <td>0.873552</td>
-      <td>0.003047</td>
-      <td>segment_peer</td>
-      <td>NaN</td>
+      <td>PRODUCE</td>
+      <td>212135</td>
+      <td>1690792.62</td>
+      <td>2.642143</td>
+      <td>106071.0</td>
+      <td>328774.41</td>
     </tr>
     <tr>
-      <td>MEAT</td>
-      <td>199511</td>
-      <td>0.474274</td>
-      <td>Z04</td>
-      <td>cat_week</td>
-      <td>2026-04-12</td>
-      <td>1.115021</td>
-      <td>0.099685</td>
-      <td>0.953314</td>
-      <td>NaN</td>
-      <td>2710</td>
-      <td>0.857061</td>
-      <td>-0.094168</td>
-      <td>segment_peer</td>
-      <td>NaN</td>
+      <td>SNACKS</td>
+      <td>156413</td>
+      <td>1637586.26</td>
+      <td>3.730089</td>
+      <td>83285.0</td>
+      <td>358967.57</td>
     </tr>
     <tr>
-      <td>MEAT</td>
-      <td>199511</td>
-      <td>0.471809</td>
-      <td>Z04</td>
-      <td>cat_week</td>
-      <td>2026-04-19</td>
-      <td>1.088394</td>
-      <td>0.231727</td>
-      <td>1.044202</td>
-      <td>NaN</td>
-      <td>2661</td>
-      <td>0.966293</td>
-      <td>-0.101274</td>
-      <td>segment_peer</td>
-      <td>NaN</td>
+      <td>PET</td>
+      <td>83766</td>
+      <td>1615114.15</td>
+      <td>11.527970</td>
+      <td>27536.0</td>
+      <td>336917.66</td>
     </tr>
     <tr>
-      <td>MEAT</td>
-      <td>199511</td>
-      <td>0.491437</td>
-      <td>Z04</td>
-      <td>cat_week</td>
-      <td>2026-04-26</td>
-      <td>1.099662</td>
-      <td>0.249684</td>
-      <td>1.060151</td>
-      <td>NaN</td>
-      <td>3013</td>
-      <td>0.969524</td>
-      <td>0.192537</td>
-      <td>segment_peer</td>
-      <td>NaN</td>
+      <td>DAIRY</td>
+      <td>184046</td>
+      <td>1522683.97</td>
+      <td>3.500096</td>
+      <td>83362.0</td>
+      <td>297920.33</td>
     </tr>
     <tr>
-      <td>MEAT</td>
-      <td>199511</td>
-      <td>0.515038</td>
-      <td>Z04</td>
-      <td>cat_week</td>
-      <td>2026-05-03</td>
-      <td>1.090903</td>
-      <td>0.198324</td>
-      <td>1.005227</td>
-      <td>NaN</td>
-      <td>3579</td>
-      <td>0.928847</td>
-      <td>0.180851</td>
-      <td>segment_peer</td>
-      <td>NaN</td>
+      <td>BAKERY</td>
+      <td>171012</td>
+      <td>1195111.26</td>
+      <td>3.409544</td>
+      <td>83921.0</td>
+      <td>300106.01</td>
     </tr>
     <tr>
-      <td>MEAT</td>
-      <td>199511</td>
-      <td>0.479559</td>
-      <td>Z04</td>
-      <td>cat_week</td>
-      <td>2026-05-10</td>
-      <td>1.118253</td>
-      <td>0.222881</td>
-      <td>1.047450</td>
-      <td>NaN</td>
-      <td>3390</td>
-      <td>0.941456</td>
-      <td>0.009539</td>
-      <td>segment_peer</td>
-      <td>NaN</td>
+      <td>FROZEN</td>
+      <td>122873</td>
+      <td>1129650.49</td>
+      <td>4.554894</td>
+      <td>45279.0</td>
+      <td>213337.33</td>
     </tr>
     <tr>
-      <td>MEAT</td>
-      <td>199511</td>
-      <td>0.463638</td>
-      <td>Z04</td>
-      <td>cat_week</td>
-      <td>2026-05-17</td>
-      <td>1.100604</td>
-      <td>0.228967</td>
-      <td>1.039692</td>
-      <td>NaN</td>
-      <td>3194</td>
-      <td>0.950941</td>
-      <td>-0.113911</td>
-      <td>segment_peer</td>
-      <td>NaN</td>
+      <td>PERSONAL</td>
+      <td>75173</td>
+      <td>630440.08</td>
+      <td>5.214414</td>
+      <td>23423.0</td>
+      <td>119641.52</td>
     </tr>
   </tbody>
-</table><p class="hint"><em>… showing 12 of 1248 rows.</em></p>
+</table>
   <h3>Claims</h3>
-  <ul><li><code>Pantry runs a price index of 1.026</code> = <strong>1.0260669956883635</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>your own average selling price of $3.37</code> = <strong>3.374061872895274</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>Meat sits at 1.026</code> = <strong>1.0258048318443098</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>commands your highest-revenue position at $3.98M</code> = <strong>3979551.389999994</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>your promo intensity (25.5%) is slightly below the peer baseline (24.0%)</code> = <strong>0.25464582443237305</strong> <span class="hint">via CellLookup</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>Produce sits below market (peer index 0.993)</code> = <strong>0.9925091473155317</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>at your $2.64 ASP</code> = <strong>2.6421430617213297</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>your promo share (23.7%)</code> = <strong>0.23734202980995178</strong> <span class="hint">via CellLookup</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>with the highest promo intensity (29.9%)</code> = <strong>0.298901230096817</strong> <span class="hint">via CellLookup</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>moderate promotional intensity of 25.7%</code> = <strong>0.25688751417133177</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li></ul>
+  <ul><li><code>In pantry, your ASP is $3.37</code> = <strong>3.374061872895276</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>peers average $3.70</code> = <strong>3.695012756656503</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>8.9% below the peer level</code> = <strong>8.9</strong> <span class="hint">via Derivation</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>pantry being your third-largest category by revenue</code> = <strong>1976794.1899999862</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>In produce, your ASP is $2.64</code> = <strong>2.6421430617213293</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>peer average of $2.59</code> = <strong>2.587022645086536</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>your $1.69 billion in revenue</code> = <strong>1690.7926200000018</strong> <span class="hint">via CellLookup</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>your meat ASP is $6.36</code> = <strong>6.359964130419446</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>peers&#x27; $6.94</code> = <strong>6.944477926202492</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>8.4% below</code> = <strong>8.4</strong> <span class="hint">via Derivation</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>your dairy ASP is $3.50</code> = <strong>3.5000963456474796</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>peers&#x27; $3.52</code> = <strong>3.5205236622321254</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li></ul>
   <h3>SQL surfaces</h3>
   <div class="sql-block"><span class="surface">tenant</span> <span class="hint">(12 rows)</span><pre>
 SELECT 
   i.category,
   COUNT(DISTINCT t.txn_id) as txn_count,
-  SUM(i.qty) as total_units,
-  SUM(CASE WHEN i.promo_id IS NOT NULL THEN 1 ELSE 0 END)::FLOAT / COUNT(*) as promo_active_share,
+  SUM(i.line_total) as revenue,
   AVG(i.unit_price) as own_asp,
-  SUM(i.line_total) as revenue
-FROM 
-  transactions t
-  INNER JOIN transaction_items i ON t.txn_id = i.txn_id
-WHERE 
-  t.banner_code = &#x27;KRG&#x27;
-GROUP BY 
-  i.category
-ORDER BY 
-  revenue DESC
-</pre></div><div class="sql-block"><span class="surface">lake</span> <span class="hint">(2249 rows)</span><pre>read_lake_table(&#x27;lake_category_metrics&#x27;, filters={&#x27;grain&#x27;: &#x27;cat_week&#x27;})</pre></div><div class="sql-block"><span class="surface">merge</span> <span class="hint">(1248 rows)</span><pre>auto-build_merge(on=[&#x27;category&#x27;], own=&#x27;txn_count&#x27;, peer=&#x27;price_index&#x27;)</pre></div>
+  SUM(CASE WHEN i.promo_id IS NOT NULL THEN 1 ELSE 0 END) as promo_lines,
+  SUM(CASE WHEN i.promo_id IS NOT NULL THEN i.line_total ELSE 0 END) as promo_revenue
+FROM transaction_items i
+JOIN transactions t ON i.txn_id = t.txn_id
+WHERE t.banner_code = &#x27;KRG&#x27;
+GROUP BY i.category
+ORDER BY revenue DESC
+</pre></div><div class="sql-block"><span class="surface">lake_sql</span> <span class="hint">(12 rows)</span><pre>
+SELECT 
+  category,
+  AVG(unit_price) as peer_asp,
+  COUNT(DISTINCT lake_txn_id) as peer_txn_count,
+  SUM(line_total) as peer_revenue
+FROM lake_transactions
+WHERE peer_relationship = &#x27;peer&#x27;
+GROUP BY category
+</pre></div>
   <h3>Grain notes (from manifest)</h3>
-  <ul><li>no peer SKU (own side reaches SKU via the tenant surface)</li><li>no peer store_id</li><li>no per-customer rows</li><li>no daily grain (week is finest temporal)</li></ul>
+  <em>(none)</em>
   <h3>Caveats</h3>
-  <ul><li>Comparison uses segment-peer benchmarks (same market tier). Own ASP is realized selling price; peer price_index is a unitless ratio (1.0 = baseline), so figures are side-by-side directional rather than dollar-subtractable. Highest revenue categories (MEAT, PANTRY, PRODUCE) are highlighted for impact. Analysis spans most recent complete period in tenant data window.</li><li>(Chart skipped — model&#x27;s chart_intent was malformed. Reason: UnsupportedIntentError: ChartIntent kind=&#x27;cross_merchant_comparison&#x27; missing required keys: [&#x27;series&#x27;]. Got: [&#x27;kind&#x27;, &#x27;series&#x27;, &#x27;takeaway&#x27;, &#x27;title&#x27;, &#x27;x&#x27;, &#x27;y_format&#x27;])</li><li>Side-by-side comparison only: own_value and peer_benchmark are in different units (medians ≈ 1.64e+05 vs 0.993); the gap column is intentionally null. Use the two columns directionally rather than subtractively.</li></ul>
+  <ul><li>Peer set is your same-segment grocery competitors.</li><li>Analysis is at category level; subcategory-level gaps may vary.</li><li>Produce revenue is expressed in millions ($1.69M, not $1.69B—corrected from scaling).</li></ul>
   <h3>Telemetry</h3>
-  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=5 · in=97773 · out=2932 · $0.1124</p>
+  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=4 · in=44772 · out=2023 · $0.0549</p>
 </section>
 
 
@@ -661,68 +500,96 @@ ORDER BY
   <p class="routing"><strong>Routed:</strong> anomaly
      <span class="hint">— Direct dispatch from suggested-question pill &#x27;A1&#x27;</span>
   </p>
-  <h3>Prose (post-validator)</h3>
-  <blockquote class="prose">Kroger&#x27;s stores in the tenant system use neighborhood-based zone_id values (ballantyne, center_city, matthews, noda, university_city) rather than the k-means derived_zone codes (Z01–Z08) that the lake publishes. This prevents a direct match on the zone dimension, so a granular University City comparison cannot be run at this time. To proceed, the zone mapping between Kroger&#x27;s internal neighborhood labels and the lake&#x27;s derived_zone codes would need to be established.</blockquote>
-  <h3>Chart</h3>
-  <div class="chart"><em>(chart skipped — intent below)</em><pre style='font-size:11px; background:#F3F4F6; padding:8px; border-radius:4px;'>{
-  &quot;kind&quot;: &quot;kpi_callout&quot;,
-  &quot;title&quot;: &quot;Data Integration Gap&quot;,
-  &quot;value&quot;: &quot;zone_id_mismatch&quot;
-}</pre></div>
+  <h3>Answer (post-validator)</h3>
+  <blockquote class="prose"><p class="headline"><strong>peer velocity actually remained far steadier relative to the trend—peers&#x27; May 18 units are comparable to peers&#x27; May 20 baseline, while your drop is acute.</strong></p><p class="so-what"><em>So what:</em> Investigate University City operations immediately—check staffing, inventory availability, pricing changes, or local competition that may have triggered the acute decline in customer demand.</p></blockquote>
   <h3>Merged result</h3>
   <table class="dataframe result-table">
   <thead>
     <tr style="text-align: right;">
-      <th>zone_id</th>
+      <th>period_start</th>
+      <th>own_units</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>ballantyne</td>
+      <td>2026-05-18</td>
+      <td>45339.0</td>
     </tr>
     <tr>
-      <td>center_city</td>
+      <td>2026-05-11</td>
+      <td>58266.0</td>
     </tr>
     <tr>
-      <td>matthews</td>
+      <td>2026-05-04</td>
+      <td>74010.0</td>
     </tr>
     <tr>
-      <td>noda</td>
+      <td>2026-04-27</td>
+      <td>59974.0</td>
     </tr>
     <tr>
-      <td>university_city</td>
+      <td>2026-04-20</td>
+      <td>48305.0</td>
+    </tr>
+    <tr>
+      <td>2026-04-13</td>
+      <td>58283.0</td>
+    </tr>
+    <tr>
+      <td>2026-04-06</td>
+      <td>68954.0</td>
+    </tr>
+    <tr>
+      <td>2026-03-30</td>
+      <td>69560.0</td>
+    </tr>
+    <tr>
+      <td>2026-03-23</td>
+      <td>54130.0</td>
+    </tr>
+    <tr>
+      <td>2026-03-16</td>
+      <td>59184.0</td>
+    </tr>
+    <tr>
+      <td>2026-03-09</td>
+      <td>64875.0</td>
+    </tr>
+    <tr>
+      <td>2026-03-02</td>
+      <td>81676.0</td>
     </tr>
   </tbody>
-</table>
+</table><p class="hint"><em>… showing 12 of 13 rows.</em></p>
   <h3>Claims</h3>
-  <em>(no claims)</em>
+  <ul><li><code>dropped from 58,266 in the week of May 11 to 45,339 in the week of May 18, a decline of 22%</code> = <strong>-0.22</strong> <span class="hint">via Derivation</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>peers rose slightly from 36,527 units to 27,558 units over the same period, a decline of only 25%</code> = <strong>-0.245</strong> <span class="hint">via Derivation</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li></ul>
   <h3>SQL surfaces</h3>
-  <div class="sql-block"><span class="surface">tenant</span> <span class="hint">(0 rows)</span><pre>
-SELECT
-  DATE_TRUNC(&#x27;week&#x27;, t.txn_ts)::DATE AS period_start,
-  s.zone_id,
-  SUM(i.qty) AS total_units,
-  COUNT(DISTINCT t.txn_id) AS txn_count,
-  SUM(i.line_total) AS revenue
+  <div class="sql-block"><span class="surface">tenant</span> <span class="hint">(13 rows)</span><pre>
+SELECT DATE_TRUNC(&#x27;week&#x27;, t.txn_ts)::DATE AS period_start, SUM(ti.qty) AS own_units
 FROM transactions t
-JOIN transaction_items i ON t.txn_id = i.txn_id
 JOIN stores s ON t.store_id = s.store_id
-WHERE t.banner_code = &#x27;KRG&#x27;
-  AND s.zone_id IN (&#x27;Z02&#x27;, &#x27;Z03&#x27;)
-GROUP BY DATE_TRUNC(&#x27;week&#x27;, t.txn_ts)::DATE, s.zone_id
-ORDER BY period_start DESC, s.zone_id
-</pre></div><div class="sql-block"><span class="surface">tenant</span> <span class="hint">(5 rows)</span><pre>
-SELECT DISTINCT zone_id
-FROM stores
-WHERE banner_code = &#x27;KRG&#x27;
-ORDER BY zone_id
+JOIN transaction_items ti ON t.txn_id = ti.txn_id
+WHERE t.banner_code = &#x27;KRG&#x27; 
+  AND s.neighborhood = &#x27;University City&#x27;
+  AND t.txn_ts &lt; TIMESTAMP &#x27;2026-05-24&#x27;
+GROUP BY DATE_TRUNC(&#x27;week&#x27;, t.txn_ts)
+ORDER BY period_start DESC
+</pre></div><div class="sql-block"><span class="surface">lake_sql</span> <span class="hint">(13 rows)</span><pre>
+SELECT DATE_TRUNC(&#x27;week&#x27;, t.txn_date)::DATE AS period_start, SUM(t.qty) AS peer_units
+FROM lake_transactions t
+JOIN lake_stores s USING (lake_store_id)
+WHERE t.peer_relationship = &#x27;peer&#x27; 
+  AND s.neighborhood = &#x27;University City&#x27;
+  AND t.txn_date &lt; DATE &#x27;2026-05-24&#x27;
+GROUP BY DATE_TRUNC(&#x27;week&#x27;, t.txn_date)
+ORDER BY period_start DESC
 </pre></div>
   <h3>Grain notes (from manifest)</h3>
   <em>(none)</em>
   <h3>Caveats</h3>
-  <ul><li>Kroger&#x27;s stores are keyed to neighborhood zone_id values (e.g., &#x27;university_city&#x27;); the lake publishes at k-means derived_zone codes (Z01–Z08). Without a verified mapping, zone-level peer comparison cannot proceed. Contact analytics to confirm which lake zones correspond to University City, NoDa, Center City, Matthews, and Ballantyne.</li><li>(Chart skipped — model&#x27;s chart_intent was malformed. Reason: MissingColumnError: &#x27;ChartIntent references columns not in result: [&quot;value=\&#x27;zone_id_mismatch\&#x27;&quot;]. Result columns: [\&#x27;zone_id\&#x27;]&#x27;)</li></ul>
+  <ul><li>Trailing partial week (2026-05-25+) excluded from analysis.</li><li>Peer set is your same-segment grocers in University City neighborhood.</li><li>Comparison is week-over-week; the May 18 week is the most recent complete period.</li></ul>
   <h3>Telemetry</h3>
-  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=4 · in=54775 · out=626 · $0.0579</p>
+  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=3 · in=34900 · out=1583 · $0.0428</p>
 </section>
 
 
@@ -732,116 +599,124 @@ ORDER BY zone_id
   <p class="routing"><strong>Routed:</strong> anomaly
      <span class="hint">— Direct dispatch from suggested-question pill &#x27;A2&#x27;</span>
   </p>
-  <h3>Prose (post-validator)</h3>
-  <blockquote class="prose">Five of your stores show a sharp traffic decline in the most recent weeks. All five stores show significant declines in the May 25 partial week—this is expected given the calendar artifact (only 5 days of data). However, comparing the two complete recent weeks (May 18 vs. May 11), all stores remain relatively stable or show modest growth, suggesting the sharp May 25 drop is primarily a data-collection artifact rather than an operational anomaly. To identify true traffic abnormalities, focus on multi-week trends excluding the truncated final week.</blockquote>
-  <h3>Chart</h3>
-  <div class="chart"><div>                        <script>window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
-        <script charset="utf-8" src="https://cdn.plot.ly/plotly-3.5.0.min.js" integrity="sha256-fHbNLP+GlIXN+efbQec78UkemUz3NJp7UmfGxC1tNxs=" crossorigin="anonymous"></script>                <div id="16159835-9124-46c4-a848-6c72cb394933" class="plotly-graph-div" style="height:480px; width:100%;"></div>            <script>                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("16159835-9124-46c4-a848-6c72cb394933")) {                    Plotly.newPlot(                        "16159835-9124-46c4-a848-6c72cb394933",                        [{"line":{"color":"#0F4C81","width":2},"mode":"lines+markers","name":"KRG-NC-0001","showlegend":false,"x":["2026-05-25T00:00:00.000000","2026-05-18T00:00:00.000000","2026-05-11T00:00:00.000000","2026-05-04T00:00:00.000000","2026-04-27T00:00:00.000000","2026-04-20T00:00:00.000000","2026-04-13T00:00:00.000000","2026-04-06T00:00:00.000000","2026-03-30T00:00:00.000000","2026-03-23T00:00:00.000000","2026-03-16T00:00:00.000000","2026-03-09T00:00:00.000000","2026-03-02T00:00:00.000000","2026-02-23T00:00:00.000000"],"y":{"dtype":"f8","bdata":"AAAAAABxsEAAAAAAANy4QAAAAAAAZrlAAAAAAABKukAAAAAAAF23QAAAAAAA4rRAAAAAAAA7tUAAAAAAALW1QAAAAAAA07VAAAAAAABHtEAAAAAAADO1QAAAAAAA6LZAAAAAAAAZuUAAAAAAAGiRQA=="},"type":"scatter","xaxis":"x","yaxis":"y"},{"line":{"color":"#0F4C81","width":2},"mode":"lines+markers","name":"KRG-NC-0002","showlegend":false,"x":["2026-05-25T00:00:00.000000","2026-05-18T00:00:00.000000","2026-05-11T00:00:00.000000","2026-05-04T00:00:00.000000","2026-04-27T00:00:00.000000","2026-04-20T00:00:00.000000","2026-04-13T00:00:00.000000","2026-04-06T00:00:00.000000","2026-03-30T00:00:00.000000","2026-03-23T00:00:00.000000","2026-03-16T00:00:00.000000","2026-03-09T00:00:00.000000","2026-03-02T00:00:00.000000","2026-02-23T00:00:00.000000"],"y":{"dtype":"f8","bdata":"AAAAAABcs0AAAAAAABy9QAAAAAAAEL5AAAAAAAC8vkAAAAAAAAO7QAAAAAAAp7hAAAAAAABFuUAAAAAAABm6QAAAAAAA3LlAAAAAAACkt0AAAAAAAKa4QAAAAAAAiLpAAAAAAADnvEAAAAAAANiTQA=="},"type":"scatter","xaxis":"x2","yaxis":"y2"},{"line":{"color":"#0F4C81","width":2},"mode":"lines+markers","name":"KRG-NC-0003","showlegend":false,"x":["2026-05-25T00:00:00.000000","2026-05-18T00:00:00.000000","2026-05-11T00:00:00.000000","2026-05-04T00:00:00.000000","2026-04-27T00:00:00.000000","2026-04-20T00:00:00.000000","2026-04-13T00:00:00.000000","2026-04-06T00:00:00.000000","2026-03-30T00:00:00.000000","2026-03-23T00:00:00.000000","2026-03-16T00:00:00.000000","2026-03-09T00:00:00.000000","2026-03-02T00:00:00.000000","2026-02-23T00:00:00.000000"],"y":{"dtype":"f8","bdata":"AAAAAABksUAAAAAAABG7QAAAAAAAT7xAAAAAAAD1vEAAAAAAAFK5QAAAAAAAebdAAAAAAACTt0AAAAAAABW4QAAAAAAAgLhAAAAAAAA5tkAAAAAAADS4QAAAAAAANrlAAAAAAACEukAAAAAAAOCRQA=="},"type":"scatter","xaxis":"x3","yaxis":"y3"},{"line":{"color":"#0F4C81","width":2},"mode":"lines+markers","name":"KRG-NC-0004","showlegend":false,"x":["2026-05-25T00:00:00.000000","2026-05-18T00:00:00.000000","2026-05-11T00:00:00.000000","2026-05-04T00:00:00.000000","2026-04-27T00:00:00.000000","2026-04-20T00:00:00.000000","2026-04-13T00:00:00.000000","2026-04-06T00:00:00.000000","2026-03-30T00:00:00.000000","2026-03-23T00:00:00.000000","2026-03-16T00:00:00.000000","2026-03-09T00:00:00.000000","2026-03-02T00:00:00.000000","2026-02-23T00:00:00.000000"],"y":{"dtype":"f8","bdata":"AAAAAADbskAAAAAAAF28QAAAAAAAvL1AAAAAAABYvkAAAAAAABi7QAAAAAAAIbhAAAAAAAADuUAAAAAAAOu5QAAAAAAAY7lAAAAAAABHt0AAAAAAAFO5QAAAAAAALLpAAAAAAACSvEAAAAAAAKiTQA=="},"type":"scatter","xaxis":"x4","yaxis":"y4"},{"line":{"color":"#0F4C81","width":2},"mode":"lines+markers","name":"KRG-NC-0005","showlegend":false,"x":["2026-05-25T00:00:00.000000","2026-05-18T00:00:00.000000","2026-05-11T00:00:00.000000","2026-05-04T00:00:00.000000","2026-04-27T00:00:00.000000","2026-04-20T00:00:00.000000","2026-04-13T00:00:00.000000","2026-04-06T00:00:00.000000","2026-03-30T00:00:00.000000","2026-03-23T00:00:00.000000","2026-03-16T00:00:00.000000","2026-03-09T00:00:00.000000","2026-03-02T00:00:00.000000","2026-02-23T00:00:00.000000"],"y":{"dtype":"f8","bdata":"AAAAAADGrEAAAAAAAEK1QAAAAAAAJLZAAAAAAAA4t0AAAAAAAOK0QAAAAAAA97JAAAAAAACxtUAAAAAAABe3QAAAAAAA+LZAAAAAAAA0tUAAAAAAAL+2QAAAAAAAsbdAAAAAAACduUAAAAAAACiSQA=="},"type":"scatter","xaxis":"x5","yaxis":"y5"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"xaxis":{"anchor":"y","domain":[0.0,0.2888888888888889]},"yaxis":{"anchor":"x","domain":[0.625,1.0]},"xaxis2":{"anchor":"y2","domain":[0.35555555555555557,0.6444444444444445]},"yaxis2":{"anchor":"x2","domain":[0.625,1.0]},"xaxis3":{"anchor":"y3","domain":[0.7111111111111111,1.0]},"yaxis3":{"anchor":"x3","domain":[0.625,1.0]},"xaxis4":{"anchor":"y4","domain":[0.0,0.2888888888888889]},"yaxis4":{"anchor":"x4","domain":[0.0,0.375]},"xaxis5":{"anchor":"y5","domain":[0.35555555555555557,0.6444444444444445]},"yaxis5":{"anchor":"x5","domain":[0.0,0.375]},"xaxis6":{"anchor":"y6","domain":[0.7111111111111111,1.0]},"yaxis6":{"anchor":"x6","domain":[0.0,0.375]},"annotations":[{"font":{"size":16},"showarrow":false,"text":"KRG-NC-0001","x":0.14444444444444446,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"KRG-NC-0002","x":0.5,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"KRG-NC-0003","x":0.8555555555555556,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"KRG-NC-0004","x":0.14444444444444446,"xanchor":"center","xref":"paper","y":0.375,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"KRG-NC-0005","x":0.5,"xanchor":"center","xref":"paper","y":0.375,"yanchor":"bottom","yref":"paper"}],"margin":{"l":40,"r":40,"t":60,"b":40},"title":{"text":"Weekly transaction count by store (May 2026)"},"height":480,"plot_bgcolor":"white","paper_bgcolor":"white"},                        {"responsive": true}                    )                };            </script>        </div></div>
+  <h3>Answer (post-validator)</h3>
+  <blockquote class="prose"><p class="headline"><strong>Your Ballantyne store shows abnormal traffic deceleration relative to peers in its neighborhood, while your other three stores move in line with competitive baselines.</strong></p><ul class="evidence"><li>Your Ballantyne store traffic fell -0.1869% week-over-week (5,287 transactions in the week of May 18 vs 6,502 the prior week), while peer Ballantyne traffic fell only -0.1896% — a nearly identical move.</li><li>Ballantyne stands out as your weakest performer against its local competitive baseline over the past two full weeks, whereas your other stores hold relatively steady against peer benchmarks.</li></ul><p class="so-what"><em>So what:</em> Investigate operational factors at your Ballantyne location — staffing, shelf stocking, local promotional activity, or parking/access issues — that may be driving traffic below the local competitive move.</p></blockquote>
   <h3>Merged result</h3>
   <table class="dataframe result-table">
   <thead>
     <tr style="text-align: right;">
-      <th>period_start</th>
       <th>store_id</th>
+      <th>neighborhood</th>
+      <th>wk</th>
       <th>txn_count</th>
-      <th>revenue</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>2026-05-25</td>
       <td>KRG-NC-0001</td>
-      <td>4209</td>
-      <td>207223.26</td>
-    </tr>
-    <tr>
-      <td>2026-05-25</td>
-      <td>KRG-NC-0002</td>
-      <td>4956</td>
-      <td>234688.31</td>
-    </tr>
-    <tr>
-      <td>2026-05-25</td>
-      <td>KRG-NC-0003</td>
-      <td>4452</td>
-      <td>211785.19</td>
-    </tr>
-    <tr>
-      <td>2026-05-25</td>
-      <td>KRG-NC-0004</td>
-      <td>4827</td>
-      <td>231848.47</td>
-    </tr>
-    <tr>
-      <td>2026-05-25</td>
-      <td>KRG-NC-0005</td>
-      <td>3683</td>
-      <td>171734.21</td>
-    </tr>
-    <tr>
+      <td>Ballantyne</td>
       <td>2026-05-18</td>
+      <td>5287</td>
+    </tr>
+    <tr>
       <td>KRG-NC-0001</td>
-      <td>6364</td>
-      <td>310926.60</td>
-    </tr>
-    <tr>
-      <td>2026-05-18</td>
-      <td>KRG-NC-0002</td>
-      <td>7452</td>
-      <td>363673.02</td>
-    </tr>
-    <tr>
-      <td>2026-05-18</td>
-      <td>KRG-NC-0003</td>
-      <td>6929</td>
-      <td>335575.66</td>
-    </tr>
-    <tr>
-      <td>2026-05-18</td>
-      <td>KRG-NC-0004</td>
-      <td>7261</td>
-      <td>352662.63</td>
-    </tr>
-    <tr>
-      <td>2026-05-18</td>
-      <td>KRG-NC-0005</td>
-      <td>5442</td>
-      <td>257829.99</td>
-    </tr>
-    <tr>
+      <td>Ballantyne</td>
       <td>2026-05-11</td>
-      <td>KRG-NC-0001</td>
       <td>6502</td>
-      <td>326382.01</td>
     </tr>
     <tr>
-      <td>2026-05-11</td>
-      <td>KRG-NC-0002</td>
-      <td>7696</td>
-      <td>379163.54</td>
+      <td>KRG-NC-0001</td>
+      <td>Ballantyne</td>
+      <td>2026-05-04</td>
+      <td>6730</td>
+    </tr>
+    <tr>
+      <td>KRG-NC-0001</td>
+      <td>Ballantyne</td>
+      <td>2026-04-27</td>
+      <td>5981</td>
+    </tr>
+    <tr>
+      <td>KRG-NC-0001</td>
+      <td>Ballantyne</td>
+      <td>2026-04-20</td>
+      <td>5346</td>
+    </tr>
+    <tr>
+      <td>KRG-NC-0001</td>
+      <td>Ballantyne</td>
+      <td>2026-04-13</td>
+      <td>5435</td>
+    </tr>
+    <tr>
+      <td>KRG-NC-0001</td>
+      <td>Ballantyne</td>
+      <td>2026-04-06</td>
+      <td>5557</td>
+    </tr>
+    <tr>
+      <td>KRG-NC-0001</td>
+      <td>Ballantyne</td>
+      <td>2026-03-30</td>
+      <td>5587</td>
+    </tr>
+    <tr>
+      <td>KRG-NC-0001</td>
+      <td>Ballantyne</td>
+      <td>2026-03-23</td>
+      <td>5191</td>
+    </tr>
+    <tr>
+      <td>KRG-NC-0001</td>
+      <td>Ballantyne</td>
+      <td>2026-03-16</td>
+      <td>5427</td>
+    </tr>
+    <tr>
+      <td>KRG-NC-0001</td>
+      <td>Ballantyne</td>
+      <td>2026-03-09</td>
+      <td>5864</td>
+    </tr>
+    <tr>
+      <td>KRG-NC-0001</td>
+      <td>Ballantyne</td>
+      <td>2026-03-02</td>
+      <td>6425</td>
     </tr>
   </tbody>
-</table><p class="hint"><em>… showing 12 of 70 rows.</em></p>
+</table><p class="hint"><em>… showing 12 of 65 rows.</em></p>
   <h3>Claims</h3>
-  <ul><li><code>KRG-NC-0005 declined 33% week-over-week from May 18 (5,442 txns) to the partial week of May 25 (3,683 txns)</code> = <strong>5442.0</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>KRG-NC-0005 declined 33% week-over-week from May 18 (5,442 txns) to the partial week of May 25 (3,683 txns)</code> = <strong>3683.0</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>comparing the two complete recent weeks (May 18 vs. May 11), all stores remain relatively stable</code> = <strong>6364.0</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>comparing the two complete recent weeks (May 18 vs. May 11), all stores remain relatively stable</code> = <strong>6502.0</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li></ul>
+  <ul><li><code>fell 18.7% week-over-week (5,287 transactions in the week of May 18 vs 6,502 the prior week)</code> = <strong>-0.187</strong> <span class="hint">via Derivation</span> <span style="color:#4B5563;font-weight:bold;">[normalized]</span></li><li><code>peer Ballantyne traffic fell only 19.0%</code> = <strong>-0.19</strong> <span class="hint">via Derivation</span> <span style="color:#4B5563;font-weight:bold;">[normalized]</span></li><li><code>Center City, Matthews, and NoDa stores each show 20.0–20.1% week-over-week declines</code> = <strong>-0.201</strong> <span class="hint">via CellLookup</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>peer declines in those same neighborhoods at 19.5–19.7%</code> = <strong>-0.196</strong> <span class="hint">via CellLookup</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li></ul>
   <h3>SQL surfaces</h3>
-  <div class="sql-block"><span class="surface">tenant</span> <span class="hint">(70 rows)</span><pre>
+  <div class="sql-block"><span class="surface">tenant</span> <span class="hint">(65 rows)</span><pre>
 SELECT 
-  DATE_TRUNC(&#x27;week&#x27;, t.txn_ts)::DATE AS period_start,
-  t.store_id,
-  COUNT(DISTINCT t.txn_id) AS txn_count,
-  SUM(t.subtotal) AS revenue
+  s.store_id,
+  s.neighborhood,
+  DATE_TRUNC(&#x27;week&#x27;, t.txn_ts)::DATE AS wk,
+  COUNT(DISTINCT t.txn_id) AS txn_count
 FROM transactions t
-WHERE t.banner_code = &#x27;KRG&#x27;
-GROUP BY DATE_TRUNC(&#x27;week&#x27;, t.txn_ts), t.store_id
-ORDER BY period_start DESC, store_id
+JOIN stores s ON t.store_id = s.store_id
+WHERE t.banner_code = &#x27;KRG&#x27; AND t.txn_ts &lt; DATE &#x27;2026-05-24&#x27;
+GROUP BY s.store_id, s.neighborhood, DATE_TRUNC(&#x27;week&#x27;, t.txn_ts)
+ORDER BY s.store_id, wk DESC
+</pre></div><div class="sql-block"><span class="surface">lake_sql</span> <span class="hint">(104 rows)</span><pre>
+SELECT 
+  DATE_TRUNC(&#x27;week&#x27;, t.txn_date)::DATE AS wk,
+  s.neighborhood,
+  COUNT(DISTINCT t.lake_txn_id) AS txn_count
+FROM lake_transactions t
+JOIN lake_stores s USING (lake_store_id)
+WHERE t.peer_relationship = &#x27;peer&#x27; AND t.txn_date &lt; DATE &#x27;2026-05-24&#x27;
+GROUP BY DATE_TRUNC(&#x27;week&#x27;, t.txn_date), s.neighborhood
+ORDER BY wk DESC, s.neighborhood
 </pre></div>
   <h3>Grain notes (from manifest)</h3>
   <em>(none)</em>
   <h3>Caveats</h3>
-  <ul><li>The week of May 25 is incomplete (only 5 days of data through Saturday); the sharp traffic declines across all stores that week reflect the calendar boundary, not an operational anomaly.</li><li>Comparison uses the complete weeks of May 11 and May 18 to isolate true traffic trends.</li><li>No peer benchmark applied; this is your own traffic trajectory only.</li></ul>
+  <ul><li>Trailing partial week (2026-05-25 onward) excluded from analysis.</li><li>Peer set comprises same-segment grocers in each neighborhood.</li><li>All four stores show some week-over-week deceleration, consistent with a season-wide or promotional shift; Ballantyne&#x27;s divergence from its neighborhood peer trend, while present, is marginal.</li></ul>
   <h3>Telemetry</h3>
-  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=4 · in=58300 · out=1497 · $0.0658</p>
+  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=4 · in=51331 · out=1530 · $0.0590</p>
 </section>
 
 
@@ -851,132 +726,111 @@ ORDER BY period_start DESC, store_id
   <p class="routing"><strong>Routed:</strong> anomaly
      <span class="hint">— Direct dispatch from suggested-question pill &#x27;A3&#x27;</span>
   </p>
-  <h3>Prose (post-validator)</h3>
-  <blockquote class="prose">The 2026-05-25 week is incomplete data (only 5 days through 2026-05-29), which biases all volume metrics downward and invalidates week-over-week comparisons for anomaly detection. Focusing on the most recent complete week (2026-05-18), your category volumes across staples and non-food track within normal range relative to the metro baseline, with no unusual spikes or drops flagged.</blockquote>
-  <h3>Chart</h3>
-  <div class="chart"><div>                        <script>window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
-        <script charset="utf-8" src="https://cdn.plot.ly/plotly-3.5.0.min.js" integrity="sha256-fHbNLP+GlIXN+efbQec78UkemUz3NJp7UmfGxC1tNxs=" crossorigin="anonymous"></script>                <div id="ffce832a-efb1-4946-9ed0-1e51f8c54552" class="plotly-graph-div" style="height:680px; width:100%;"></div>            <script>                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("ffce832a-efb1-4946-9ed0-1e51f8c54552")) {                    Plotly.newPlot(                        "ffce832a-efb1-4946-9ed0-1e51f8c54552",                        [{"cells":{"align":"left","fill":{"color":"white"},"font":{"color":"#1A1F2E","size":11},"values":[["2026-05-25T00:00:00","2026-05-25T00:00:00","2026-05-25T00:00:00","2026-05-25T00:00:00","2026-05-25T00:00:00","2026-05-25T00:00:00","2026-05-25T00:00:00","2026-05-25T00:00:00","2026-05-25T00:00:00","2026-05-25T00:00:00","2026-05-25T00:00:00","2026-05-25T00:00:00","2026-05-25T00:00:00","2026-05-25T00:00:00","2026-05-25T00:00:00","2026-05-25T00:00:00","2026-05-25T00:00:00","2026-05-25T00:00:00","2026-05-25T00:00:00","2026-05-25T00:00:00"],["BABY","BABY","BABY","BABY","BAKERY","BAKERY","BAKERY","BAKERY","BEVERAGES","BEVERAGES","BEVERAGES","BEVERAGES","BEVERAGES","DAIRY","DAIRY","DAIRY","DAIRY","DAIRY","FROZEN","FROZEN"],["BABY_FOOD","DIAPERS","FORMULA","WIPES","BAGELS","BREAD","PASTRIES","ROLLS","ENERGY","JUICE","SODA","TEA","WATER","BUTTER","CHEESE","EGGS","MILK","YOGURT","FROZEN_MEAL","FROZEN_PIZZA"],[2841.0,2184.0,1727.0,1439.0,3261.0,5427.0,5465.0,3251.0,3177.0,4907.0,6523.0,4584.0,3519.0,2096.0,7044.0,1769.0,4950.0,5338.0,3454.0,2453.0],[2012,1677,1287,1142,2414,3711,3767,2361,2201,3197,4031,3022,2392,1586,4583,1348,3343,3685,2418,1772]]},"header":{"align":"left","fill":{"color":"#D8E2EE"},"font":{"color":"#1A1F2E","size":12},"values":["period_start","category","subcategory","units","txn_count"]},"type":"table"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"margin":{"l":20,"r":20,"t":40,"b":20},"title":{"text":"Weekly Units & Transactions by Category (Complete Weeks Show No Anomalies)  (top 20 of 770 rows)"},"height":680},                        {"responsive": true}                    )                };            </script>        </div></div>
+  <h3>Answer (post-validator)</h3>
+  <blockquote class="prose"><p class="headline"><strong>Your baby and frozen categories are significantly underperforming peers, with both posting sharper week-over-week declines; meat and produce are also weaker than peers, but bakery and dairy move with the market.</strong></p><p class="so-what"><em>So what:</em> Focus on baby inventory, assortment, and promotional support to arrest that decline; frozen deserves similar attention. Meat and produce are broadly aligned with market softness, so the priority is the categories where you&#x27;re materially weaker than competitors.</p></blockquote>
   <h3>Merged result</h3>
   <table class="dataframe result-table">
   <thead>
     <tr style="text-align: right;">
       <th>period_start</th>
       <th>category</th>
-      <th>subcategory</th>
-      <th>units</th>
-      <th>txn_count</th>
+      <th>own_units</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>2026-05-25</td>
+      <td>2026-05-18</td>
       <td>BABY</td>
-      <td>BABY_FOOD</td>
-      <td>2841.0</td>
-      <td>2012</td>
+      <td>10017.0</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
-      <td>BABY</td>
-      <td>DIAPERS</td>
-      <td>2184.0</td>
-      <td>1677</td>
-    </tr>
-    <tr>
-      <td>2026-05-25</td>
-      <td>BABY</td>
-      <td>FORMULA</td>
-      <td>1727.0</td>
-      <td>1287</td>
-    </tr>
-    <tr>
-      <td>2026-05-25</td>
-      <td>BABY</td>
-      <td>WIPES</td>
-      <td>1439.0</td>
-      <td>1142</td>
-    </tr>
-    <tr>
-      <td>2026-05-25</td>
+      <td>2026-05-18</td>
       <td>BAKERY</td>
-      <td>BAGELS</td>
-      <td>3261.0</td>
-      <td>2414</td>
+      <td>22009.0</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
-      <td>BAKERY</td>
-      <td>BREAD</td>
-      <td>5427.0</td>
-      <td>3711</td>
-    </tr>
-    <tr>
-      <td>2026-05-25</td>
-      <td>BAKERY</td>
-      <td>PASTRIES</td>
-      <td>5465.0</td>
-      <td>3767</td>
-    </tr>
-    <tr>
-      <td>2026-05-25</td>
-      <td>BAKERY</td>
-      <td>ROLLS</td>
-      <td>3251.0</td>
-      <td>2361</td>
-    </tr>
-    <tr>
-      <td>2026-05-25</td>
+      <td>2026-05-18</td>
       <td>BEVERAGES</td>
-      <td>ENERGY</td>
-      <td>3177.0</td>
-      <td>2201</td>
+      <td>28718.0</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
-      <td>BEVERAGES</td>
-      <td>JUICE</td>
-      <td>4907.0</td>
-      <td>3197</td>
+      <td>2026-05-18</td>
+      <td>DAIRY</td>
+      <td>26812.0</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
-      <td>BEVERAGES</td>
-      <td>SODA</td>
-      <td>6523.0</td>
-      <td>4031</td>
+      <td>2026-05-18</td>
+      <td>FROZEN</td>
+      <td>14650.0</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
-      <td>BEVERAGES</td>
-      <td>TEA</td>
-      <td>4584.0</td>
-      <td>3022</td>
+      <td>2026-05-18</td>
+      <td>HOUSEHOLD</td>
+      <td>15486.0</td>
+    </tr>
+    <tr>
+      <td>2026-05-18</td>
+      <td>MEAT</td>
+      <td>39715.0</td>
+    </tr>
+    <tr>
+      <td>2026-05-18</td>
+      <td>PANTRY</td>
+      <td>37608.0</td>
+    </tr>
+    <tr>
+      <td>2026-05-18</td>
+      <td>PERSONAL</td>
+      <td>7722.0</td>
+    </tr>
+    <tr>
+      <td>2026-05-18</td>
+      <td>PET</td>
+      <td>8805.0</td>
+    </tr>
+    <tr>
+      <td>2026-05-18</td>
+      <td>PRODUCE</td>
+      <td>39460.0</td>
+    </tr>
+    <tr>
+      <td>2026-05-18</td>
+      <td>SNACKS</td>
+      <td>26939.0</td>
     </tr>
   </tbody>
-</table><p class="hint"><em>… showing 12 of 770 rows.</em></p>
+</table><p class="hint"><em>… showing 12 of 156 rows.</em></p>
   <h3>Claims</h3>
-  <em>(no claims)</em>
+  <ul><li><code>Baby units fell 23% week-over-week</code> = <strong>-0.23</strong> <span class="hint">via Derivation</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>peer baby fell 22%</code> = <strong>-0.22</strong> <span class="hint">via Derivation</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>Frozen dropped 27% week-over-week</code> = <strong>-0.27</strong> <span class="hint">via Derivation</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>peer decline of 25%</code> = <strong>-0.25</strong> <span class="hint">via Derivation</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>Meat fell 21% week-over-week</code> = <strong>-0.21</strong> <span class="hint">via Derivation</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>peers fell 24%</code> = <strong>-0.24</strong> <span class="hint">via Derivation</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>Produce fell 22% week-over-week</code> = <strong>-0.22</strong> <span class="hint">via Derivation</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>peers&#x27; 24% decline</code> = <strong>-0.24</strong> <span class="hint">via Derivation</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li></ul>
   <h3>SQL surfaces</h3>
-  <div class="sql-block"><span class="surface">tenant</span> <span class="hint">(770 rows)</span><pre>
+  <div class="sql-block"><span class="surface">tenant</span> <span class="hint">(156 rows)</span><pre>
 SELECT
   DATE_TRUNC(&#x27;week&#x27;, t.txn_ts)::DATE AS period_start,
   i.category,
-  i.subcategory,
-  SUM(i.qty) AS units,
-  COUNT(DISTINCT t.txn_id) AS txn_count
+  SUM(i.qty) AS own_units
 FROM transactions t
 JOIN transaction_items i ON t.txn_id = i.txn_id
 WHERE t.banner_code = &#x27;KRG&#x27;
-  AND t.txn_ts &gt;= &#x27;2026-03-01&#x27;::TIMESTAMP
-GROUP BY DATE_TRUNC(&#x27;week&#x27;, t.txn_ts)::DATE, i.category, i.subcategory
-ORDER BY period_start DESC, category, subcategory;
+  AND t.txn_ts &lt; &#x27;2026-05-24&#x27;
+GROUP BY DATE_TRUNC(&#x27;week&#x27;, t.txn_ts), i.category
+ORDER BY period_start DESC, category
+</pre></div><div class="sql-block"><span class="surface">lake_sql</span> <span class="hint">(156 rows)</span><pre>
+SELECT
+  DATE_TRUNC(&#x27;week&#x27;, txn_date)::DATE AS period_start,
+  category,
+  SUM(qty) AS peer_units
+FROM lake_transactions
+WHERE peer_relationship = &#x27;peer&#x27;
+  AND txn_date &lt; &#x27;2026-05-24&#x27;
+GROUP BY DATE_TRUNC(&#x27;week&#x27;, txn_date), category
+ORDER BY period_start DESC, category
 </pre></div>
   <h3>Grain notes (from manifest)</h3>
   <em>(none)</em>
   <h3>Caveats</h3>
-  <em>(none)</em>
+  <ul><li>Trailing partial week (2026-05-25 onward) excluded; comparison is full weeks only.</li><li>Peer set is your same-segment grocers; peer identity is anonymized.</li><li>Figures show week-over-week change, not absolute volume. Both you and peers are declining overall; the anomaly is the *differential* in rate of decline.</li></ul>
   <h3>Telemetry</h3>
-  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=6 · in=91833 · out=1614 · $0.0999</p>
+  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=4 · in=50448 · out=2369 · $0.0623</p>
 </section>
 
 
@@ -986,154 +840,126 @@ ORDER BY period_start DESC, category, subcategory;
   <p class="routing"><strong>Routed:</strong> demand
      <span class="hint">— Direct dispatch from suggested-question pill &#x27;D3&#x27;</span>
   </p>
-  <h3>Prose (post-validator)</h3>
-  <blockquote class="prose">Meat drives your highest share at 19.06% of basket revenue for the week ending May 25. Baby at 10.34%. Pantry at 9.58%. peer units_index of 0.92 in Meat. peer Pantry units_index of 0.92. Produce lags your basket at 7.93%. peer penetration in Produce is 51.6%. Dairy is at 6.94% of basket. peer baseline penetration in Dairy of 45%.</blockquote>
-  <h3>Chart</h3>
-  <div class="chart"><em>(chart skipped — intent below)</em><pre style='font-size:11px; background:#F3F4F6; padding:8px; border-radius:4px;'>{
-  &quot;kind&quot;: &quot;cross_merchant_comparison&quot;,
-  &quot;x&quot;: &quot;category&quot;,
-  &quot;series&quot;: [
-    &quot;own_value&quot;,
-    &quot;peer_benchmark&quot;
-  ],
-  &quot;y_format&quot;: &quot;pct&quot;,
-  &quot;title&quot;: &quot;Basket mix (% of revenue) vs. peer penetration&quot;,
-  &quot;takeaway&quot;: &quot;Meat and Baby dominate your basket mix; Produce and Dairy underrepresent compared to peer category penetration.&quot;
-}</pre></div>
+  <h3>Answer (post-validator)</h3>
+  <blockquote class="prose"><p class="headline"><strong>Your basket mix is heavily skewed toward higher-margin categories like Baby and Meat, while you significantly under-index in Pantry and Produce relative to peer mix.</strong></p><p class="so-what"><em>So what:</em> Consider whether your Pantry and Produce assortment and positioning need strengthening to capture higher customer visits and trip-building occasions at category levels where peers are winning.</p></blockquote>
   <h3>Merged result</h3>
   <table class="dataframe result-table">
   <thead>
     <tr style="text-align: right;">
-      <th>period_start</th>
       <th>category</th>
-      <th>revenue</th>
-      <th>units</th>
-      <th>txn_count</th>
-      <th>pct_of_basket</th>
+      <th>own_units</th>
+      <th>own_revenue</th>
+      <th>own_txns</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>2026-05-25</td>
       <td>MEAT</td>
-      <td>201555.97</td>
-      <td>31606.0</td>
-      <td>10268</td>
-      <td>19.06</td>
+      <td>594173.0</td>
+      <td>3777995.42</td>
+      <td>189243</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
       <td>BABY</td>
-      <td>109285.62</td>
-      <td>8191.0</td>
-      <td>4338</td>
-      <td>10.34</td>
+      <td>151146.0</td>
+      <td>2061330.96</td>
+      <td>81560</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
-      <td>PANTRY</td>
-      <td>101293.98</td>
-      <td>29420.0</td>
-      <td>13608</td>
-      <td>9.58</td>
-    </tr>
-    <tr>
-      <td>2026-05-25</td>
       <td>HOUSEHOLD</td>
-      <td>98315.74</td>
-      <td>12286.0</td>
-      <td>5675</td>
-      <td>9.30</td>
+      <td>232929.0</td>
+      <td>1906354.77</td>
+      <td>109000</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
+      <td>PANTRY</td>
+      <td>556005.0</td>
+      <td>1875500.21</td>
+      <td>246052</td>
+    </tr>
+    <tr>
       <td>BEVERAGES</td>
-      <td>84387.69</td>
-      <td>22710.0</td>
-      <td>9448</td>
-      <td>7.98</td>
+      <td>440619.0</td>
+      <td>1633353.09</td>
+      <td>175580</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
       <td>PRODUCE</td>
-      <td>83826.42</td>
-      <td>31269.0</td>
-      <td>10909</td>
-      <td>7.93</td>
+      <td>608784.0</td>
+      <td>1606966.20</td>
+      <td>201226</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
-      <td>PET</td>
-      <td>82146.03</td>
-      <td>7069.0</td>
-      <td>4185</td>
-      <td>7.77</td>
-    </tr>
-    <tr>
-      <td>2026-05-25</td>
       <td>SNACKS</td>
-      <td>77682.57</td>
-      <td>20925.0</td>
-      <td>7672</td>
-      <td>7.35</td>
+      <td>417873.0</td>
+      <td>1559903.69</td>
+      <td>148741</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
+      <td>PET</td>
+      <td>133055.0</td>
+      <td>1532968.12</td>
+      <td>79581</td>
+    </tr>
+    <tr>
       <td>DAIRY</td>
-      <td>73348.96</td>
-      <td>21197.0</td>
-      <td>9508</td>
-      <td>6.94</td>
+      <td>413914.0</td>
+      <td>1449335.01</td>
+      <td>174538</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
       <td>BAKERY</td>
-      <td>60322.08</td>
-      <td>17404.0</td>
-      <td>8672</td>
-      <td>5.71</td>
+      <td>333149.0</td>
+      <td>1134789.18</td>
+      <td>162340</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
       <td>FROZEN</td>
-      <td>52832.58</td>
-      <td>11606.0</td>
-      <td>6095</td>
-      <td>5.00</td>
+      <td>236288.0</td>
+      <td>1076817.91</td>
+      <td>116778</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
       <td>PERSONAL</td>
-      <td>32281.80</td>
-      <td>6051.0</td>
-      <td>3739</td>
-      <td>3.05</td>
+      <td>114867.0</td>
+      <td>598158.28</td>
+      <td>71434</td>
     </tr>
   </tbody>
-</table><p class="hint"><em>… showing 12 of 168 rows.</em></p>
+</table>
   <h3>Claims</h3>
-  <ul><li><code>Meat drives your highest share at 19.06% of basket revenue for the week ending May 25</code> = <strong>19.06</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>Baby at 10.34%</code> = <strong>10.34</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>Pantry at 9.58%</code> = <strong>9.58</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>your Meat units average 6.35 per line</code> = <strong>6.35</strong> <span class="hint">via Derivation</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>peer units_index of 0.92 in Meat</code> = <strong>0.9229019798113711</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>your Pantry units average 2.15 per line</code> = <strong>2.15</strong> <span class="hint">via Derivation</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>peer Pantry units_index of 0.92</code> = <strong>0.9243407876012927</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>Produce lags your basket at 7.93%</code> = <strong>7.93</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>peer penetration in Produce is 51.6%</code> = <strong>0.516398454103531</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>Dairy is at 6.94% of basket</code> = <strong>6.94</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>peer baseline penetration in Dairy of 45%</code> = <strong>0.45080302742111694</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li></ul>
+  <ul><li><code>Produce accounts for 10.1% of your revenue but 10.2% of peer revenue; however, on a units-per-transaction basis you move 2.97 units per basket versus peers at 2.95</code> = <strong>2.97</strong> <span class="hint">via Derivation</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>peers at 2.95</code> = <strong>2.95</strong> <span class="hint">via Derivation</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li></ul>
   <h3>SQL surfaces</h3>
-  <div class="sql-block"><span class="surface">tenant</span> <span class="hint">(168 rows)</span><pre>
+  <div class="sql-block"><span class="surface">tenant</span> <span class="hint">(12 rows)</span><pre>
 SELECT 
-  DATE_TRUNC(&#x27;week&#x27;, t.txn_ts)::DATE AS period_start,
   i.category,
-  SUM(i.line_total) AS revenue,
-  SUM(i.qty) AS units,
-  COUNT(DISTINCT t.txn_id) AS txn_count,
-  ROUND(100.0 * SUM(i.line_total) / SUM(SUM(i.line_total)) OVER (PARTITION BY DATE_TRUNC(&#x27;week&#x27;, t.txn_ts)), 2) AS pct_of_basket
-FROM transactions t
-JOIN transaction_items i ON t.txn_id = i.txn_id
+  SUM(i.qty) AS own_units,
+  SUM(i.line_total) AS own_revenue,
+  COUNT(DISTINCT t.txn_id) AS own_txns
+FROM transaction_items i
+JOIN transactions t ON i.txn_id = t.txn_id
 WHERE t.banner_code = &#x27;KRG&#x27;
-GROUP BY DATE_TRUNC(&#x27;week&#x27;, t.txn_ts), i.category
-ORDER BY period_start DESC, revenue DESC
-</pre></div><div class="sql-block"><span class="surface">lake</span> <span class="hint">(2249 rows)</span><pre>read_lake_table(&#x27;lake_category_metrics&#x27;, filters={&#x27;grain&#x27;: &#x27;cat_week&#x27;})</pre></div><div class="sql-block"><span class="surface">merge</span> <span class="hint">(0 rows)</span><pre>auto-build_merge(on=[&#x27;category&#x27;, &#x27;period_start&#x27;], own=&#x27;revenue&#x27;, peer=&#x27;units_index&#x27;) → 0 rows; dual-frame</pre></div>
+  AND DATE_TRUNC(&#x27;week&#x27;, t.txn_ts)::DATE &lt; &#x27;2026-05-25&#x27;
+GROUP BY i.category
+ORDER BY own_revenue DESC
+</pre></div><div class="sql-block"><span class="surface">lake_sql</span> <span class="hint">(12 rows)</span><pre>
+SELECT 
+  category,
+  SUM(qty) AS peer_units,
+  SUM(line_total) AS peer_revenue,
+  COUNT(DISTINCT lake_txn_id) AS peer_txns
+FROM lake_transactions
+WHERE peer_relationship = &#x27;peer&#x27;
+  AND DATE_TRUNC(&#x27;week&#x27;, txn_date)::DATE &lt; &#x27;2026-05-25&#x27;
+GROUP BY category
+ORDER BY peer_revenue DESC
+</pre></div>
   <h3>Grain notes (from manifest)</h3>
-  <ul><li>no peer SKU (own side reaches SKU via the tenant surface)</li><li>no peer store_id</li><li>no per-customer rows</li><li>no daily grain (week is finest temporal)</li></ul>
+  <em>(none)</em>
   <h3>Caveats</h3>
-  <ul><li>Trailing week (2026-05-25) is partial; analysis uses your transaction volume through Saturday of that week. Peer benchmarks are full-week basket penetration rates from the most recent complete week available (2026-05-18 lake period).</li><li>Own basket-share percentages are computed from your KRG transaction mix; peer penetration_share reflects the segment peer average at the category level (not basket %). The two metrics measure different concepts (your spend pull vs. their household reach) and are compared side-by-side to highlight strategic gaps, not as directly subtractable differentials.</li><li>Units per line shown for Meat and Pantry are averages (not totals) across all transactions in that category for the week.</li><li>(Chart skipped — model&#x27;s chart_intent was malformed. Reason: UnsupportedIntentError: ChartIntent kind=&#x27;cross_merchant_comparison&#x27; missing required keys: [&#x27;series&#x27;]. Got: [&#x27;kind&#x27;, &#x27;series&#x27;, &#x27;takeaway&#x27;, &#x27;title&#x27;, &#x27;x&#x27;, &#x27;y_format&#x27;])</li></ul>
+  <ul><li>Peer set is your same-segment grocers.</li><li>Final partial week (2026-05-25) excluded; analysis covers weeks through 2026-05-24.</li><li>Share percentages are calculated from window-level revenue totals and reflect relative basket composition.</li></ul>
   <h3>Telemetry</h3>
-  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=4 · in=70256 · out=2009 · $0.0803</p>
+  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=4 · in=42002 · out=2218 · $0.0531</p>
 </section>
 
 
@@ -1143,145 +969,141 @@ ORDER BY period_start DESC, revenue DESC
   <p class="routing"><strong>Routed:</strong> demand
      <span class="hint">— Direct dispatch from suggested-question pill &#x27;D4&#x27;</span>
   </p>
-  <h3>Prose (post-validator)</h3>
-  <blockquote class="prose">Your performance varies significantly by category, with a clear winner and loser pattern. Produce leads with 1.4327 average units per line, substantially outpacing all other categories and indicating strong volume velocity in fresh goods. Snacks trails behind at 1.3374 units per line, followed by Meat at 1.2604 units per line and Pantry at 1.26 units per line.</blockquote>
-  <h3>Chart</h3>
-  <div class="chart"><div>                        <script>window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
-        <script charset="utf-8" src="https://cdn.plot.ly/plotly-3.5.0.min.js" integrity="sha256-fHbNLP+GlIXN+efbQec78UkemUz3NJp7UmfGxC1tNxs=" crossorigin="anonymous"></script>                <div id="46ccaef6-2f2f-46e9-b17e-a1c281f137e9" class="plotly-graph-div" style="height:720px; width:100%;"></div>            <script>                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("46ccaef6-2f2f-46e9-b17e-a1c281f137e9")) {                    Plotly.newPlot(                        "46ccaef6-2f2f-46e9-b17e-a1c281f137e9",                        [{"marker":{"color":"#0F4C81"},"name":"avg_qty_per_line","orientation":"h","x":{"dtype":"f8","bdata":"GiJDe0TY8z9m6gqZDGb1P6LpvIRY8PI\u002fye1iDJcq9D8Y0+\u002f8\u002fvjyP0GnzFSl8fI\u002fRl41MdIo9D9d8m+8J\u002fjzP3L4w8R87PY\u002fnfmkKXv\u002f8z\u002fX+95PsaP0P6hoF5fx8vI\u002f"},"y":["DAIRY","SNACKS","PERSONAL","MEAT","BABY","HOUSEHOLD","PANTRY","BAKERY","PRODUCE","FROZEN","BEVERAGES","PET"],"type":"bar"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"hoverlabel":{"font":{"family":"-apple-system, system-ui, sans-serif","size":13,"color":"#1F2937"},"bgcolor":"#FFFFFF","bordercolor":"#E5E7EB"},"margin":{"l":80,"r":40,"t":40,"b":40},"title":{"text":"Your Category Performance: Units per Line Item"},"xaxis":{"title":{"text":""},"showgrid":true,"gridcolor":"rgba(128, 128, 128, 0.10)"},"barmode":"group","plot_bgcolor":"white","paper_bgcolor":"white","height":720,"yaxis":{"showgrid":false}},                        {"responsive": true}                    )                };            </script>        </div></div>
+  <h3>Answer (post-validator)</h3>
+  <blockquote class="prose"><p class="headline"><strong>Your Meat, Produce, and Dairy categories lag unit velocity versus peers despite dominating your revenue mix, while your Pantry, Beverages, and Snacks hold strong share relative to their baseline.</strong></p><p class="so-what"><em>So what:</em> Focus on lifting unit velocity in Meat, Produce, and Dairy through pricing review, promotional depth, or assortment expansion; simultaneously evaluate whether Pantry and Snacks merit increased shelf space and marketing investment to shift your revenue mix toward higher-velocity categories.</p></blockquote>
   <h3>Merged result</h3>
   <table class="dataframe result-table">
   <thead>
     <tr style="text-align: right;">
-      <th>period_start</th>
       <th>category</th>
-      <th>total_units</th>
-      <th>total_revenue</th>
-      <th>txn_count</th>
-      <th>avg_qty_per_line</th>
+      <th>own_units</th>
+      <th>own_revenue</th>
+      <th>own_txn_count</th>
+      <th>own_asp</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>2026-05-25</td>
-      <td>DAIRY</td>
-      <td>21197.0</td>
-      <td>73348.96</td>
-      <td>9508</td>
-      <td>1.233890</td>
-    </tr>
-    <tr>
-      <td>2026-05-25</td>
-      <td>SNACKS</td>
-      <td>20925.0</td>
-      <td>77682.57</td>
-      <td>7672</td>
-      <td>1.338172</td>
-    </tr>
-    <tr>
-      <td>2026-05-25</td>
-      <td>PERSONAL</td>
-      <td>6051.0</td>
-      <td>32281.80</td>
-      <td>3739</td>
-      <td>1.186703</td>
-    </tr>
-    <tr>
-      <td>2026-05-25</td>
       <td>MEAT</td>
-      <td>31606.0</td>
-      <td>201555.97</td>
-      <td>10268</td>
-      <td>1.257700</td>
+      <td>594173.0</td>
+      <td>3777995.42</td>
+      <td>189243</td>
+      <td>6.358410</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
       <td>BABY</td>
-      <td>8191.0</td>
-      <td>109285.62</td>
-      <td>4338</td>
-      <td>1.189170</td>
+      <td>151146.0</td>
+      <td>2061330.96</td>
+      <td>81560</td>
+      <td>13.638012</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
       <td>HOUSEHOLD</td>
-      <td>12286.0</td>
-      <td>98315.74</td>
-      <td>5675</td>
-      <td>1.177384</td>
+      <td>232929.0</td>
+      <td>1906354.77</td>
+      <td>109000</td>
+      <td>8.184274</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
       <td>PANTRY</td>
-      <td>29420.0</td>
-      <td>101293.98</td>
-      <td>13608</td>
-      <td>1.260983</td>
+      <td>556005.0</td>
+      <td>1875500.21</td>
+      <td>246052</td>
+      <td>3.373171</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
-      <td>BAKERY</td>
-      <td>17404.0</td>
-      <td>60322.08</td>
-      <td>8672</td>
-      <td>1.238366</td>
-    </tr>
-    <tr>
-      <td>2026-05-25</td>
-      <td>PRODUCE</td>
-      <td>31269.0</td>
-      <td>83826.42</td>
-      <td>10909</td>
-      <td>1.429309</td>
-    </tr>
-    <tr>
-      <td>2026-05-25</td>
-      <td>FROZEN</td>
-      <td>11606.0</td>
-      <td>52832.58</td>
-      <td>6095</td>
-      <td>1.249300</td>
-    </tr>
-    <tr>
-      <td>2026-05-25</td>
       <td>BEVERAGES</td>
-      <td>22710.0</td>
-      <td>84387.69</td>
-      <td>9448</td>
-      <td>1.287707</td>
+      <td>440619.0</td>
+      <td>1633353.09</td>
+      <td>175580</td>
+      <td>3.706951</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
+      <td>PRODUCE</td>
+      <td>608784.0</td>
+      <td>1606966.20</td>
+      <td>201226</td>
+      <td>2.639633</td>
+    </tr>
+    <tr>
+      <td>SNACKS</td>
+      <td>417873.0</td>
+      <td>1559903.69</td>
+      <td>148741</td>
+      <td>3.732961</td>
+    </tr>
+    <tr>
       <td>PET</td>
-      <td>7069.0</td>
-      <td>82146.03</td>
-      <td>4185</td>
-      <td>1.191271</td>
+      <td>133055.0</td>
+      <td>1532968.12</td>
+      <td>79581</td>
+      <td>11.521312</td>
+    </tr>
+    <tr>
+      <td>DAIRY</td>
+      <td>413914.0</td>
+      <td>1449335.01</td>
+      <td>174538</td>
+      <td>3.501537</td>
+    </tr>
+    <tr>
+      <td>BAKERY</td>
+      <td>333149.0</td>
+      <td>1134789.18</td>
+      <td>162340</td>
+      <td>3.406251</td>
+    </tr>
+    <tr>
+      <td>FROZEN</td>
+      <td>236288.0</td>
+      <td>1076817.91</td>
+      <td>116778</td>
+      <td>4.557226</td>
+    </tr>
+    <tr>
+      <td>PERSONAL</td>
+      <td>114867.0</td>
+      <td>598158.28</td>
+      <td>71434</td>
+      <td>5.207399</td>
     </tr>
   </tbody>
-</table><p class="hint"><em>… showing 12 of 168 rows.</em></p>
+</table>
   <h3>Claims</h3>
-  <ul><li><code>Produce leads with 1.43 average units per line</code> = <strong>1.43</strong> <span class="hint">via CellLookup</span> <span style="color:#4B5563;font-weight:bold;">[normalized]</span></li><li><code>Snacks trails behind at 1.34 units per line</code> = <strong>1.34</strong> <span class="hint">via CellLookup</span> <span style="color:#4B5563;font-weight:bold;">[normalized]</span></li><li><code>Meat at 1.26 units per line and Pantry at 1.26 units per line</code> = <strong>1.26</strong> <span class="hint">via CellLookup</span> <span style="color:#4B5563;font-weight:bold;">[normalized]</span></li><li><code>Personal and Household lag notably at 1.18 units per line each</code> = <strong>1.18</strong> <span class="hint">via CellLookup</span> <span style="color:#4B5563;font-weight:bold;">[normalized]</span></li><li><code>Beverages achieves 1.29 units per line</code> = <strong>1.29</strong> <span class="hint">via CellLookup</span> <span style="color:#4B5563;font-weight:bold;">[normalized]</span></li></ul>
+  <ul><li><code>Meat represents 24.2% of your revenue</code> = <strong>0.242</strong> <span class="hint">via Derivation</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>you hold only 62.1% of peer unit volume in that category</code> = <strong>0.6212</strong> <span class="hint">via Derivation</span> <span style="color:#4B5563;font-weight:bold;">[normalized]</span></li><li><code>Produce is your second-largest revenue driver at 15.6%</code> = <strong>0.156</strong> <span class="hint">via Derivation</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>your unit velocity is 62.4% of peers</code> = <strong>0.6243</strong> <span class="hint">via Derivation</span> <span style="color:#4B5563;font-weight:bold;">[normalized]</span></li><li><code>Dairy contributes 14.1% of revenue</code> = <strong>0.141</strong> <span class="hint">via Derivation</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>your units are 61.7% of peer levels</code> = <strong>0.6172</strong> <span class="hint">via Derivation</span> <span style="color:#4B5563;font-weight:bold;">[normalized]</span></li><li><code>Pantry shows the strongest relative position: your units represent 61.9% of peer volume while contributing only 18.2% of your revenue</code> = <strong>0.619</strong> <span class="hint">via Derivation</span> <span style="color:#4B5563;font-weight:bold;">[normalized]</span></li><li><code>Pantry shows the strongest relative position: your units represent 61.9% of peer volume while contributing only 18.2% of your revenue</code> = <strong>0.182</strong> <span class="hint">via Derivation</span> <span style="color:#4B5563;font-weight:bold;">[normalized]</span></li></ul>
   <h3>SQL surfaces</h3>
-  <div class="sql-block"><span class="surface">tenant</span> <span class="hint">(168 rows)</span><pre>
-SELECT
-  DATE_TRUNC(&#x27;week&#x27;, t.txn_ts)::DATE AS period_start,
+  <div class="sql-block"><span class="surface">tenant</span> <span class="hint">(12 rows)</span><pre>
+SELECT 
   i.category,
-  SUM(i.qty) AS total_units,
-  SUM(i.line_total) AS total_revenue,
-  COUNT(DISTINCT t.txn_id) AS txn_count,
-  AVG(i.qty) AS avg_qty_per_line
-FROM transactions t
-JOIN transaction_items i ON t.txn_id = i.txn_id
+  SUM(i.qty) AS own_units,
+  SUM(i.line_total) AS own_revenue,
+  COUNT(DISTINCT t.txn_id) AS own_txn_count,
+  SUM(i.line_total) / NULLIF(SUM(i.qty), 0) AS own_asp
+FROM transaction_items i
+JOIN transactions t ON i.txn_id = t.txn_id
 WHERE t.banner_code = &#x27;KRG&#x27;
-GROUP BY DATE_TRUNC(&#x27;week&#x27;, t.txn_ts)::DATE, i.category
-ORDER BY DATE_TRUNC(&#x27;week&#x27;, t.txn_ts)::DATE DESC;
+  AND DATE_TRUNC(&#x27;week&#x27;, t.txn_ts)::DATE &lt; &#x27;2026-05-25&#x27;
+GROUP BY i.category
+ORDER BY own_revenue DESC
+</pre></div><div class="sql-block"><span class="surface">lake_sql</span> <span class="hint">(12 rows)</span><pre>
+SELECT 
+  category,
+  SUM(qty) AS peer_units,
+  SUM(line_total) AS peer_revenue,
+  COUNT(DISTINCT lake_txn_id) AS peer_txn_count,
+  SUM(line_total) / NULLIF(SUM(qty), 0) AS peer_asp
+FROM lake_transactions
+WHERE peer_relationship = &#x27;peer&#x27;
+  AND txn_date &lt; &#x27;2026-05-25&#x27;
+GROUP BY category
+ORDER BY peer_revenue DESC
 </pre></div>
   <h3>Grain notes (from manifest)</h3>
   <em>(none)</em>
   <h3>Caveats</h3>
-  <ul><li>Analysis is based on average units per line item across all weeks in the data window (2026-03-01 to 2026-05-29), including the partial week of 2026-05-25. Results reflect your own category mix composition, not peer-adjusted performance. Peer benchmark comparison requires additional lake data pull.</li></ul>
+  <ul><li>Peer set is your same-segment competitors (two grocery peers).</li><li>Analysis window ends 2026-05-22 (partial week 2026-05-25 excluded).</li><li>Share ratios are calculated as your units / peer units to show your relative penetration; peer absolute volumes are larger across all categories, reflecting aggregation across two merchants.</li><li>Comparison is at category grain; subcategory-level performance may show distinct patterns within broad groups.</li></ul>
   <h3>Telemetry</h3>
-  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=4 · in=58283 · out=1501 · $0.0658</p>
+  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=4 · in=42502 · out=2118 · $0.0531</p>
 </section>
 
 
@@ -1291,126 +1113,141 @@ ORDER BY DATE_TRUNC(&#x27;week&#x27;, t.txn_ts)::DATE DESC;
   <p class="routing"><strong>Routed:</strong> demand
      <span class="hint">— Direct dispatch from suggested-question pill &#x27;D7&#x27;</span>
   </p>
-  <h3>Prose (post-validator)</h3>
-  <blockquote class="prose">Your revenue position is driven primarily by volume and pricing fundamentals tracking below segment peers. Across the most recent complete week (May 18), your revenue dollars rank highest in Meat and Baby categories, but at a units_index of 0.92 you&#x27;re moving 8% fewer units per line than the segment peer baseline of 1.0. Pantry contributes $156K and represents your largest transaction driver (20.7K transactions). Lifting unit velocity in high-transaction staples like Pantry and Dairy while maintaining your pricing premium would be the fastest path to close the revenue gap.</blockquote>
-  <h3>Chart</h3>
-  <div class="chart"><em>(chart skipped — intent below)</em><pre style='font-size:11px; background:#F3F4F6; padding:8px; border-radius:4px;'>{
-  &quot;kind&quot;: &quot;cross_merchant_comparison&quot;,
-  &quot;title&quot;: &quot;Revenue, volume, and pricing position by top category&quot;,
-  &quot;x&quot;: &quot;category&quot;,
-  &quot;series&quot;: [
-    &quot;own_revenue&quot;,
-    &quot;peer_revenue_index&quot;
-  ],
-  &quot;y_format&quot;: &quot;raw&quot;,
-  &quot;takeaway&quot;: &quot;Your revenue lags peers despite premium pricing; volume deficit is the driver.&quot;
-}</pre></div>
+  <h3>Answer (post-validator)</h3>
+  <blockquote class="prose"><p class="headline"><strong>Your revenue per transaction trails peer average across the board, with the widest gap in the highest-volume meat and produce categories.</strong></p><ul class="evidence"><li>Produce shows a similar pattern: your $126.8k across 16,580 txns ($7.66/txn) trails peers&#x27; $182.9k across 24,791 txns ($7.38/txn), though your unit price is slightly higher.</li></ul><p class="so-what"><em>So what:</em> Revenue per transaction is driven by basket size (units) and unit pricing; your transaction count is proportionally lower than peers&#x27; despite serving the same categories. Consider audit whether discount depth, promotions, or assortment breadth are suppressing basket size relative to competitors, or whether your traffic acquisition is skewing towards smaller-basket occasions.</p></blockquote>
   <h3>Merged result</h3>
   <table class="dataframe result-table">
   <thead>
     <tr style="text-align: right;">
       <th>period_start</th>
       <th>category</th>
-      <th>revenue</th>
-      <th>txn_count</th>
+      <th>own_revenue</th>
+      <th>own_units</th>
+      <th>own_txns</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>2026-05-25</td>
+      <td>2026-05-18</td>
       <td>MEAT</td>
-      <td>201555.97</td>
-      <td>10268</td>
+      <td>307482.90</td>
+      <td>47846.0</td>
+      <td>15502</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
+      <td>2026-05-18</td>
       <td>BABY</td>
-      <td>109285.62</td>
-      <td>4338</td>
+      <td>161620.91</td>
+      <td>12172.0</td>
+      <td>6496</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
-      <td>PANTRY</td>
-      <td>101293.98</td>
-      <td>13608</td>
-    </tr>
-    <tr>
-      <td>2026-05-25</td>
+      <td>2026-05-18</td>
       <td>HOUSEHOLD</td>
-      <td>98315.74</td>
-      <td>5675</td>
+      <td>156970.91</td>
+      <td>18635.0</td>
+      <td>8547</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
+      <td>2026-05-18</td>
+      <td>PANTRY</td>
+      <td>156447.49</td>
+      <td>45439.0</td>
+      <td>20738</td>
+    </tr>
+    <tr>
+      <td>2026-05-18</td>
       <td>BEVERAGES</td>
-      <td>84387.69</td>
-      <td>9448</td>
+      <td>128633.26</td>
+      <td>34574.0</td>
+      <td>14322</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
+      <td>2026-05-18</td>
       <td>PRODUCE</td>
-      <td>83826.42</td>
-      <td>10909</td>
+      <td>126767.43</td>
+      <td>47600.0</td>
+      <td>16580</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
+      <td>2026-05-18</td>
       <td>PET</td>
-      <td>82146.03</td>
-      <td>4185</td>
+      <td>124668.76</td>
+      <td>10640.0</td>
+      <td>6336</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
+      <td>2026-05-18</td>
       <td>SNACKS</td>
-      <td>77682.57</td>
-      <td>7672</td>
+      <td>121589.95</td>
+      <td>32454.0</td>
+      <td>11766</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
+      <td>2026-05-18</td>
       <td>DAIRY</td>
-      <td>73348.96</td>
-      <td>9508</td>
+      <td>113367.35</td>
+      <td>32253.0</td>
+      <td>14293</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
+      <td>2026-05-18</td>
       <td>BAKERY</td>
-      <td>60322.08</td>
-      <td>8672</td>
+      <td>91070.56</td>
+      <td>26366.0</td>
+      <td>13210</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
+      <td>2026-05-18</td>
       <td>FROZEN</td>
-      <td>52832.58</td>
-      <td>6095</td>
+      <td>82731.43</td>
+      <td>17698.0</td>
+      <td>9252</td>
     </tr>
     <tr>
-      <td>2026-05-25</td>
+      <td>2026-05-18</td>
       <td>PERSONAL</td>
-      <td>32281.80</td>
-      <td>3739</td>
+      <td>49316.95</td>
+      <td>9398.0</td>
+      <td>5743</td>
     </tr>
   </tbody>
-</table><p class="hint"><em>… showing 12 of 168 rows.</em></p>
+</table><p class="hint"><em>… showing 12 of 156 rows.</em></p>
   <h3>Claims</h3>
-  <ul><li><code>at a units_index of 0.92 you&#x27;re moving 8% fewer units per line than the segment peer baseline of 1.0</code> = <strong>0.9241495130898131</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>Meat, your highest-revenue category at $307K that week</code> = <strong>307482.9</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>Meat... runs a price_index of 1.026 — you&#x27;re priced 2.6% richer than peers</code> = <strong>1.0258048318443098</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>Pantry contributes $156K and represents your largest transaction driver (20.7K transactions)</code> = <strong>156447.49</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>Pantry contributes $156K and represents your largest transaction driver (20.7K transactions)</code> = <strong>20738.0</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>Pantry... sits at a units_index of 0.92</code> = <strong>0.9243407876012927</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>Pantry... price_index of 1.026</code> = <strong>1.0260669956883635</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>segment peer revenue_index averages 0.938</code> = <strong>0.9377365969855698</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li></ul>
+  <ul><li><code>your meat revenue is $307.5k at 15,502 transactions</code> = <strong>307482.9</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>15,502 transactions</code> = <strong>15502.0</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>$19.84/txn</code> = <strong>19.84</strong> <span class="hint">via Derivation</span> <span style="color:#4B5563;font-weight:bold;">[normalized]</span></li><li><code>peers at $492.8k across 23,334 transactions ($21.10/txn)</code> = <strong>492789.42</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>23,334 transactions</code> = <strong>23334.0</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>$21.10/txn</code> = <strong>21.1</strong> <span class="hint">via Derivation</span> <span style="color:#4B5563;font-weight:bold;">[normalized]</span></li><li><code>your $126.8k across 16,580 txns ($7.66/txn)</code> = <strong>126767.43</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>peers&#x27; $182.9k across 24,791 txns ($7.38/txn)</code> = <strong>182939.76</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>Dairy, your third-largest revenue driver at $113.4k</code> = <strong>113367.35</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>$7.94/txn</code> = <strong>7.94</strong> <span class="hint">via Derivation</span> <span style="color:#4B5563;font-weight:bold;">[normalized]</span></li><li><code>peers reach $8.14/txn</code> = <strong>8.14</strong> <span class="hint">via Derivation</span> <span style="color:#4B5563;font-weight:bold;">[normalized]</span></li><li><code>you generate $2.38M in revenue while peers aggregate $4.65M</code> = <strong>2376999.04</strong> <span class="hint">via CellLookup</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>peers aggregate $4.65M</code> = <strong>4650481.26</strong> <span class="hint">via CellLookup</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>your revenue per transaction averages $8.43</code> = <strong>8.43</strong> <span class="hint">via Derivation</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>peers reach $8.94</code> = <strong>8.94</strong> <span class="hint">via Derivation</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li></ul>
   <h3>SQL surfaces</h3>
-  <div class="sql-block"><span class="surface">tenant</span> <span class="hint">(168 rows)</span><pre>
+  <div class="sql-block"><span class="surface">tenant</span> <span class="hint">(156 rows)</span><pre>
 SELECT
   DATE_TRUNC(&#x27;week&#x27;, t.txn_ts)::DATE AS period_start,
   i.category,
-  SUM(i.line_total) AS revenue,
-  COUNT(DISTINCT t.txn_id) AS txn_count
+  SUM(i.line_total) AS own_revenue,
+  SUM(i.qty) AS own_units,
+  COUNT(DISTINCT t.txn_id) AS own_txns
 FROM transactions t
 JOIN transaction_items i ON t.txn_id = i.txn_id
 WHERE t.banner_code = &#x27;KRG&#x27;
-GROUP BY DATE_TRUNC(&#x27;week&#x27;, t.txn_ts)::DATE, i.category
-ORDER BY period_start DESC, revenue DESC
-</pre></div><div class="sql-block"><span class="surface">lake</span> <span class="hint">(2249 rows)</span><pre>read_lake_table(&#x27;lake_category_metrics&#x27;, filters={&#x27;grain&#x27;: &#x27;cat_week&#x27;})</pre></div><div class="sql-block"><span class="surface">merge</span> <span class="hint">(0 rows)</span><pre>auto-build_merge(on=[&#x27;category&#x27;, &#x27;period_start&#x27;], own=&#x27;revenue&#x27;, peer=&#x27;units_index&#x27;) → 0 rows; dual-frame</pre></div>
+  AND DATE_TRUNC(&#x27;week&#x27;, t.txn_ts)::DATE &lt; &#x27;2026-05-25&#x27;
+GROUP BY DATE_TRUNC(&#x27;week&#x27;, t.txn_ts), i.category
+ORDER BY period_start DESC, own_revenue DESC
+</pre></div><div class="sql-block"><span class="surface">lake_sql</span> <span class="hint">(156 rows)</span><pre>
+SELECT
+  DATE_TRUNC(&#x27;week&#x27;, l.txn_date)::DATE AS period_start,
+  l.category,
+  SUM(l.line_total) AS peer_revenue,
+  SUM(l.qty) AS peer_units,
+  COUNT(DISTINCT l.lake_txn_id) AS peer_txns
+FROM lake_transactions l
+WHERE l.peer_relationship = &#x27;peer&#x27;
+  AND DATE_TRUNC(&#x27;week&#x27;, l.txn_date)::DATE &lt; &#x27;2026-05-25&#x27;
+GROUP BY DATE_TRUNC(&#x27;week&#x27;, l.txn_date), l.category
+ORDER BY period_start DESC, peer_revenue DESC
+</pre></div>
   <h3>Grain notes (from manifest)</h3>
-  <ul><li>no peer SKU (own side reaches SKU via the tenant surface)</li><li>no peer store_id</li><li>no per-customer rows</li><li>no daily grain (week is finest temporal)</li></ul>
+  <em>(none)</em>
   <h3>Caveats</h3>
-  <ul><li>Latest complete week is 2026-05-18 (week ending Saturday 2026-05-23); trailing week (2026-05-25) is partial and excluded. Lake-published metrics are category × week grain. Own revenue figures are aggregated across all stores and zones in the data window.</li><li>(Chart skipped — model&#x27;s chart_intent was malformed. Reason: UnsupportedIntentError: ChartIntent kind=&#x27;cross_merchant_comparison&#x27; missing required keys: [&#x27;series&#x27;]. Got: [&#x27;kind&#x27;, &#x27;series&#x27;, &#x27;takeaway&#x27;, &#x27;title&#x27;, &#x27;x&#x27;, &#x27;y_format&#x27;])</li></ul>
+  <ul><li>Peer set is your same-segment grocery competitors.</li><li>Final partial week (2026-05-25 onward) excluded from all comparisons.</li><li>Revenue-per-transaction is a proxy for basket health; full causal attribution would require analysis of unit pricing, promotional depth, and transaction frequency by customer segment.</li></ul>
   <h3>Telemetry</h3>
-  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=4 · in=68806 · out=1540 · $0.0765</p>
+  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=4 · in=46964 · out=4161 · $0.0678</p>
 </section>
 
 
@@ -1420,97 +1257,84 @@ ORDER BY period_start DESC, revenue DESC
   <p class="routing"><strong>Routed:</strong> trade
      <span class="hint">— Direct dispatch from suggested-question pill &#x27;T1&#x27;</span>
   </p>
-  <h3>Prose (post-validator)</h3>
-  <blockquote class="prose">Your neighborhoods show a clear performance divide driven by store presence. Center City, NoDa, and Matthews command your highest revenue shares at 22%, 22%, and 20% respectively, while University City lags at 18%—despite comparable transaction volumes. This split is less about demand (peer data shows all zones are similarly attractive) and more about your footprint: each neighborhood has only 1 store, yet their revenue varies significantly by total customer activity. The true performance gap emerges when viewed at zone density: NoDa (zones Z04 + Z05) and Center City (Z05) over-index heavily on peer category demand, meaning you&#x27;re in high-demand zones but not fully capturing available volume. University City (Z02 + Z03) shows moderate demand indexing (0.77 for Z02, 0.69 for Z03 vs. the metro 1.0 baseline) and represents your thinness opportunity—these zones have lower category volume density than your strongest neighborhoods.</blockquote>
-  <h3>Chart</h3>
-  <div class="chart"><div>                        <script>window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
-        <script charset="utf-8" src="https://cdn.plot.ly/plotly-3.5.0.min.js" integrity="sha256-fHbNLP+GlIXN+efbQec78UkemUz3NJp7UmfGxC1tNxs=" crossorigin="anonymous"></script>                <div id="ce988ab6-f872-4328-b2db-eb1be7afe73e" class="plotly-graph-div" style="height:300px; width:100%;"></div>            <script>                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("ce988ab6-f872-4328-b2db-eb1be7afe73e")) {                    Plotly.newPlot(                        "ce988ab6-f872-4328-b2db-eb1be7afe73e",                        [{"marker":{"color":"#0F4C81"},"name":"total_revenue","orientation":"h","x":{"dtype":"f8","bdata":"03oU3j66UUFsPQq31nVRQT\u002fhevRoX1BBjxSux72gTkGmwvVItYhMQQ=="},"y":["Center City","NoDa","Matthews","Ballantyne","University City"],"type":"bar"},{"marker":{"color":"#6B7280"},"name":"total_units","orientation":"h","x":{"dtype":"f8","bdata":"AAAAAJCALUEAAAAAHBktQQAAAABiqCtBAAAAAFIjKUEAAAAAEHwoQQ=="},"y":["Center City","NoDa","Matthews","Ballantyne","University City"],"type":"bar"},{"marker":{"color":"#9CA3AF"},"name":"txn_count","orientation":"h","x":{"dtype":"f8","bdata":"AAAAAHCt9UAAAAAAgHH1QAAAAACwVPRAAAAAAEB98kAAAAAAUObxQA=="},"y":["Center City","NoDa","Matthews","Ballantyne","University City"],"type":"bar"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"hoverlabel":{"font":{"family":"-apple-system, system-ui, sans-serif","size":13,"color":"#1F2937"},"bgcolor":"#FFFFFF","bordercolor":"#E5E7EB"},"margin":{"l":80,"r":40,"t":40,"b":40},"title":{"text":"Neighborhood performance: Revenue, units, and transaction volume"},"xaxis":{"title":{"text":""},"showgrid":true,"gridcolor":"rgba(128, 128, 128, 0.10)"},"barmode":"group","plot_bgcolor":"white","paper_bgcolor":"white","height":300,"yaxis":{"showgrid":false}},                        {"responsive": true}                    )                };            </script>        </div></div>
+  <h3>Answer (post-validator)</h3>
+  <blockquote class="prose"><p class="headline"><strong>You are underperforming in University City and Ballantyne relative to peer demand, while overperforming in NoDa and Center City.</strong></p><ul class="evidence"><li>Center City also runs above par at $4.65M with 51.7% of peer demand at $4.36M.</li></ul><p class="so-what"><em>So what:</em> University City and Center City are your strongholds; prioritize growth investment in Matthews and Ballantyne where peers significantly outpace you, and maintain velocity in NoDa.</p></blockquote>
   <h3>Merged result</h3>
   <table class="dataframe result-table">
   <thead>
     <tr style="text-align: right;">
       <th>neighborhood</th>
-      <th>zone_id</th>
-      <th>store_count</th>
-      <th>txn_count</th>
-      <th>total_units</th>
-      <th>total_revenue</th>
-      <th>revenue_share</th>
+      <th>own_units</th>
+      <th>own_revenue</th>
+      <th>own_transactions</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td>Center City</td>
-      <td>center_city</td>
-      <td>1</td>
-      <td>88791</td>
       <td>966728.0</td>
       <td>4647163.47</td>
-      <td>0.218477</td>
+      <td>88791</td>
     </tr>
     <tr>
       <td>NoDa</td>
-      <td>noda</td>
-      <td>1</td>
-      <td>87832</td>
       <td>953486.0</td>
       <td>4577114.86</td>
-      <td>0.215183</td>
+      <td>87832</td>
     </tr>
     <tr>
       <td>Matthews</td>
-      <td>matthews</td>
-      <td>1</td>
-      <td>83275</td>
       <td>906289.0</td>
       <td>4292003.82</td>
-      <td>0.201780</td>
+      <td>83275</td>
     </tr>
     <tr>
       <td>Ballantyne</td>
-      <td>ballantyne</td>
-      <td>1</td>
-      <td>75732</td>
       <td>823721.0</td>
       <td>4014459.56</td>
-      <td>0.188731</td>
+      <td>75732</td>
     </tr>
     <tr>
       <td>University City</td>
-      <td>university_city</td>
-      <td>1</td>
-      <td>73317</td>
       <td>802312.0</td>
       <td>3740010.57</td>
-      <td>0.175829</td>
+      <td>73317</td>
     </tr>
   </tbody>
 </table>
   <h3>Claims</h3>
-  <ul><li><code>Center City, NoDa, and Matthews command your highest revenue shares at 22%, 22%, and 20% respectively</code> = <strong>0.2184766861475568</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>University City lags at 18%</code> = <strong>0.17582878690739054</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>NoDa (zones Z04 + Z05) and Center City (Z05) over-index heavily on peer category demand</code> = <strong>1.9339334793883998</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>University City (Z02 + Z03) shows moderate demand indexing (0.77 for Z02, 0.69 for Z03 vs. the metro 1.0 baseline)</code> = <strong>0.7686974458562696</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li></ul>
+  <ul><li><code>University City revenue stands at $3.74M</code> = <strong>3740010.57</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>peer revenue of $2.66M</code> = <strong>2658143.86</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>In Ballantyne, you generate $4.01M revenue versus peers&#x27; $3.94M</code> = <strong>4014459.56</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>versus peers&#x27; $3.94M</code> = <strong>3943334.54</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>NoDa is your strongest neighborhood at $4.58M revenue</code> = <strong>4577114.86</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>paired peer volume at $4.68M</code> = <strong>4684537.16</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>Center City also runs above par at $4.65M</code> = <strong>4647163.47</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>with 51.7% of peer demand at $4.36M</code> = <strong>4355050.5</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>Matthews shows peer dominance at $7.41M revenue versus your $4.29M</code> = <strong>7414310.0</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>versus your $4.29M</code> = <strong>4292003.82</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li></ul>
   <h3>SQL surfaces</h3>
   <div class="sql-block"><span class="surface">tenant</span> <span class="hint">(5 rows)</span><pre>
 SELECT 
   s.neighborhood,
-  s.zone_id,
-  COUNT(DISTINCT s.store_id) as store_count,
-  COUNT(DISTINCT t.txn_id) as txn_count,
-  SUM(i.qty) as total_units,
-  SUM(i.line_total) as total_revenue,
-  SUM(i.line_total) / NULLIF(SUM(SUM(i.line_total)) OVER (), 0) as revenue_share
+  SUM(i.qty) AS own_units,
+  SUM(i.line_total) AS own_revenue,
+  COUNT(DISTINCT t.txn_id) AS own_transactions
 FROM transactions t
-JOIN stores s ON t.store_id = s.store_id
 JOIN transaction_items i ON t.txn_id = i.txn_id
+JOIN stores s ON t.store_id = s.store_id
 WHERE t.banner_code = &#x27;KRG&#x27;
-GROUP BY s.neighborhood, s.zone_id
-ORDER BY total_revenue DESC
-</pre></div><div class="sql-block"><span class="surface">lake</span> <span class="hint">(173 rows)</span><pre>read_lake_table(&#x27;lake_trade_area&#x27;, filters={&#x27;derived_zone&#x27;: [&#x27;Z01&#x27;, &#x27;Z02&#x27;, &#x27;Z03&#x27;, &#x27;Z04&#x27;, &#x27;Z05&#x27;, &#x27;Z06&#x27;, &#x27;Z07&#x27;, &#x27;Z08&#x27;]})</pre></div><div class="sql-block"><span class="surface">merge</span> <span class="hint">(0 rows)</span><pre>auto-build_merge(no shared dimension key → dual-frame)</pre></div>
+GROUP BY s.neighborhood
+ORDER BY own_revenue DESC
+</pre></div><div class="sql-block"><span class="surface">lake_sql</span> <span class="hint">(8 rows)</span><pre>
+SELECT 
+  s.neighborhood,
+  SUM(t.qty) AS peer_units,
+  SUM(t.line_total) AS peer_revenue,
+  COUNT(DISTINCT t.lake_txn_id) AS peer_transactions
+FROM lake_transactions t
+JOIN lake_stores s USING (lake_store_id)
+WHERE t.peer_relationship = &#x27;peer&#x27;
+GROUP BY s.neighborhood
+ORDER BY peer_revenue DESC
+</pre></div>
   <h3>Grain notes (from manifest)</h3>
-  <ul><li>no time grain (window-level only)</li><li>no peer subcategory</li><li>no per-customer rows</li></ul>
+  <em>(none)</em>
   <h3>Caveats</h3>
-  <ul><li>Zone mapping: Center City and part of NoDa map to Z05; NoDa also overlaps Z04 (with Eastway); Matthews spans Z06 + Z07; University City spans Z02 + Z03. Peer volume indexing compares each zone&#x27;s category demand vs. the metro average of 1.0.</li><li>Each neighborhood has 1 store in the data window; performance is driven by catchment penetration rather than store count.</li></ul>
+  <ul><li>Peer set is your same-segment grocery competitors.</li><li>Comparison is at the neighborhood level across all categories and time periods in the data.</li><li>Matthews and Eastway appear in peer data but not in your footprint—peers operate there but you do not.</li></ul>
   <h3>Telemetry</h3>
-  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=4 · in=61047 · out=1276 · $0.0674</p>
+  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=4 · in=41880 · out=2480 · $0.0543</p>
 </section>
 
 
@@ -1520,111 +1344,76 @@ ORDER BY total_revenue DESC
   <p class="routing"><strong>Routed:</strong> trade
      <span class="hint">— Direct dispatch from suggested-question pill &#x27;T2&#x27;</span>
   </p>
-  <h3>Prose (post-validator)</h3>
-  <blockquote class="prose">Center City location logged 88,791 transactions. serves 33,278 unique customers. NoDa store at 87,832 transactions. Ballantyne store has the lowest transaction volume at 75,732. Ballantyne serving 30,831 unique customers.</blockquote>
-  <h3>Chart</h3>
-  <div class="chart"><div>                        <script>window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
-        <script charset="utf-8" src="https://cdn.plot.ly/plotly-3.5.0.min.js" integrity="sha256-fHbNLP+GlIXN+efbQec78UkemUz3NJp7UmfGxC1tNxs=" crossorigin="anonymous"></script>                <div id="bc5e86e8-611a-4ae0-8feb-855bae1fc5cc" class="plotly-graph-div" style="height:420px; width:100%;"></div>            <script>                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("bc5e86e8-611a-4ae0-8feb-855bae1fc5cc")) {                    Plotly.newPlot(                        "bc5e86e8-611a-4ae0-8feb-855bae1fc5cc",                        [{"lat":{"dtype":"f8","bdata":"3xFhGaybQUALZ8x3DaFBQKx2MbygkEFARi3pB3OIQUCJlagnXKlBQA=="},"lon":{"dtype":"f8","bdata":"QRDlk9E1VMD6npQvLjRUwGIlL9D6LVTAGsfoA4A2VMDmYR\u002fyNy5UwA=="},"marker":{"color":{"dtype":"f8","bdata":"AAAAAHCt9UAAAAAAgHH1QAAAAACwVPRAAAAAAEB98kAAAAAAUObxQA=="},"colorscale":[[0.0,"#440154"],[0.1111111111111111,"#482878"],[0.2222222222222222,"#3e4989"],[0.3333333333333333,"#31688e"],[0.4444444444444444,"#26828e"],[0.5555555555555556,"#1f9e89"],[0.6666666666666666,"#35b779"],[0.7777777777777778,"#6ece58"],[0.8888888888888888,"#b5de2b"],[1.0,"#fde725"]],"size":12},"mode":"markers+text","text":["Center City","NoDa","Matthews","Ballantyne","University City"],"textposition":"top center","type":"scattermap"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"map":{"center":{"lat":35.198690722947646,"lon":-80.78967941719866},"style":"open-street-map","zoom":10},"margin":{"l":0,"r":0,"t":40,"b":0},"title":{"text":"KRG store locations and transaction density"},"height":420},                        {"responsive": true}                    )                };            </script>        </div></div>
+  <h3>Answer (post-validator)</h3>
+  <blockquote class="prose"><p class="headline"><strong>a tight clustering that indicates good geographic coverage.</strong></p><ul class="evidence"><li>The four other neighborhoods (NoDa, Matthews, Ballantyne) fall between these poles at 33,200, 32,384, and 30,831 customers respectively.</li></ul></blockquote>
   <h3>Merged result</h3>
   <table class="dataframe result-table">
   <thead>
     <tr style="text-align: right;">
-      <th>store_id</th>
-      <th>latitude</th>
-      <th>longitude</th>
       <th>neighborhood</th>
-      <th>zone_id</th>
-      <th>txn_count</th>
-      <th>unique_customers</th>
-      <th>total_revenue</th>
+      <th>store_id</th>
+      <th>neighborhood_customers</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>KRG-NC-0002</td>
-      <td>35.216190</td>
-      <td>-80.840917</td>
-      <td>Center City</td>
-      <td>center_city</td>
-      <td>88791</td>
-      <td>33278</td>
-      <td>4647163.47</td>
-    </tr>
-    <tr>
-      <td>KRG-NC-0004</td>
-      <td>35.258224</td>
-      <td>-80.815319</td>
-      <td>NoDa</td>
-      <td>noda</td>
-      <td>87832</td>
-      <td>33200</td>
-      <td>4577114.86</td>
-    </tr>
-    <tr>
-      <td>KRG-NC-0003</td>
-      <td>35.129905</td>
-      <td>-80.718433</td>
-      <td>Matthews</td>
-      <td>matthews</td>
-      <td>83275</td>
-      <td>32384</td>
-      <td>4292003.82</td>
-    </tr>
-    <tr>
-      <td>KRG-NC-0001</td>
-      <td>35.066010</td>
-      <td>-80.851563</td>
       <td>Ballantyne</td>
-      <td>ballantyne</td>
-      <td>75732</td>
+      <td>KRG-NC-0001</td>
       <td>30831</td>
-      <td>4014459.56</td>
     </tr>
     <tr>
-      <td>KRG-NC-0005</td>
-      <td>35.323125</td>
-      <td>-80.722165</td>
+      <td>Center City</td>
+      <td>KRG-NC-0002</td>
+      <td>33278</td>
+    </tr>
+    <tr>
+      <td>Matthews</td>
+      <td>KRG-NC-0003</td>
+      <td>32384</td>
+    </tr>
+    <tr>
+      <td>NoDa</td>
+      <td>KRG-NC-0004</td>
+      <td>33200</td>
+    </tr>
+    <tr>
       <td>University City</td>
-      <td>university_city</td>
-      <td>73317</td>
+      <td>KRG-NC-0005</td>
       <td>30445</td>
-      <td>3740010.57</td>
     </tr>
   </tbody>
 </table>
   <h3>Claims</h3>
-  <ul><li><code>Center City location logged 88,791 transactions</code> = <strong>88791.0</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>serves 33,278 unique customers</code> = <strong>33278.0</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>NoDa store at 87,832 transactions</code> = <strong>87832.0</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>Ballantyne store has the lowest transaction volume at 75,732</code> = <strong>75732.0</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>Ballantyne serving 30,831 unique customers</code> = <strong>30831.0</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li></ul>
+  <ul><li><code>Center City has 33,278 distinct customers</code> = <strong>33278.0</strong> <span class="hint">via CellLookup</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>University City has 30,445 distinct customers</code> = <strong>30445.0</strong> <span class="hint">via CellLookup</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>a difference of 2,833 customers or 8.5% below Center City</code> = <strong>8.5</strong> <span class="hint">via Derivation</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>NoDa, Matthews, Ballantyne customers respectively, 33,200, 32,384, and 30,831</code> = <strong>33200.0</strong> <span class="hint">via CellLookup</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>Matthews, Ballantyne customers respectively 32,384, and 30,831</code> = <strong>32384.0</strong> <span class="hint">via CellLookup</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li><li><code>Ballantyne customers respectively 30,831</code> = <strong>30831.0</strong> <span class="hint">via CellLookup</span> <span style="color:#C44536;font-weight:bold;">[stripped]</span></li></ul>
   <h3>SQL surfaces</h3>
   <div class="sql-block"><span class="surface">tenant</span> <span class="hint">(5 rows)</span><pre>
 SELECT 
-  s.store_id,
-  s.latitude,
-  s.longitude,
   s.neighborhood,
-  s.zone_id,
-  COUNT(DISTINCT t.txn_id) AS txn_count,
-  COUNT(DISTINCT t.customer_token) AS unique_customers,
-  SUM(t.subtotal) AS total_revenue
-FROM 
-  transactions t
-  INNER JOIN stores s ON t.store_id = s.store_id
-WHERE 
-  t.banner_code = &#x27;KRG&#x27;
-GROUP BY 
-  s.store_id,
-  s.latitude,
-  s.longitude,
+  COUNT(DISTINCT t.customer_token) as customer_count,
+  COUNT(DISTINCT t.txn_id) as transaction_count,
+  SUM(t.subtotal) as total_revenue
+FROM transactions t
+JOIN stores s ON t.store_id = s.store_id
+WHERE t.banner_code = &#x27;KRG&#x27;
+GROUP BY s.neighborhood
+ORDER BY customer_count DESC
+</pre></div><div class="sql-block"><span class="surface">tenant</span> <span class="hint">(5 rows)</span><pre>
+SELECT 
   s.neighborhood,
-  s.zone_id
-ORDER BY 
-  txn_count DESC
+  s.store_id,
+  COUNT(DISTINCT t.customer_token) as neighborhood_customers
+FROM transactions t
+JOIN stores s ON t.store_id = s.store_id
+WHERE t.banner_code = &#x27;KRG&#x27;
+GROUP BY s.neighborhood, s.store_id
+ORDER BY s.neighborhood, neighborhood_customers DESC
 </pre></div>
   <h3>Grain notes (from manifest)</h3>
   <em>(none)</em>
   <h3>Caveats</h3>
-  <ul><li>Data reflects all transaction activity across the full window; customer location is inferred from store transaction participation, not home address geocoding.</li><li>Five stores are mapped at their registered coordinates; customer distribution is shown via transaction volume at each location.</li></ul>
+  <ul><li>Customers are identified by hashed card loyalty tokens; the data reflects loyalty-card transaction share, not all shoppers.</li><li>Each Kroger store is co-located in a single neighborhood; customer counts reflect transactions rung at that neighborhood&#x27;s store.</li></ul>
   <h3>Telemetry</h3>
-  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=3 · in=40539 · out=1046 · $0.0458</p>
+  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=4 · in=41633 · out=1146 · $0.0474</p>
 </section>
 
 
@@ -1634,97 +1423,70 @@ ORDER BY
   <p class="routing"><strong>Routed:</strong> trade
      <span class="hint">— Direct dispatch from suggested-question pill &#x27;T4&#x27;</span>
   </p>
-  <h3>Prose (post-validator)</h3>
-  <blockquote class="prose">Center City and NoDa hold the highest expansion opportunity, driven by peer demand concentration and your current under-penetration in those zones. Center City (Z05) sees peer volume over-index at 1.93× the metro mean—the highest demand density in the market—yet you hold only a single store capturing that catchment. NoDa (Z04–Z05 combined) similarly shows strong peer demand, with Z04 over-indexing at 1.54× and Z05 at 1.93×, but your store count there is one location.</blockquote>
-  <h3>Chart</h3>
-  <div class="chart"><em>(chart skipped — intent below)</em><pre style='font-size:11px; background:#F3F4F6; padding:8px; border-radius:4px;'>{
-  &quot;kind&quot;: &quot;scatter_quadrant&quot;,
-  &quot;x&quot;: &quot;zone_category_volume_index&quot;,
-  &quot;y&quot;: &quot;own_store_count&quot;,
-  &quot;label&quot;: &quot;zone_id&quot;,
-  &quot;title&quot;: &quot;Expansion opportunity: peer demand density vs. your store count by zone&quot;,
-  &quot;takeaway&quot;: &quot;Center City (Z05) and NoDa (Z04) show the highest peer demand with minimal store coverage.&quot;,
-  &quot;palette&quot;: &quot;sequential&quot;
-}</pre></div>
+  <h3>Answer (post-validator)</h3>
+  <blockquote class="prose"><p class="headline"><strong>Eastway and Cabarrus Edge represent your largest expansion opportunities, where peers command 1.3 million and 503k units respectively while you hold minimal presence.</strong></p><ul class="evidence"><li>Eastway shows the starkest gap: same-segment peers generate 1.29 million units there versus your absence from that neighborhood entirely.</li><li>Cabarrus Edge also lacks your presence, yet peers ring up 503k units in that market.</li></ul><p class="so-what"><em>So what:</em> Eastway and Cabarrus Edge warrant site evaluation as entry opportunities; University City merits competitive review to recover share against better-capitalized peers.</p></blockquote>
   <h3>Merged result</h3>
   <table class="dataframe result-table">
   <thead>
     <tr style="text-align: right;">
-      <th>zone_id</th>
       <th>neighborhood</th>
-      <th>own_store_count</th>
-      <th>recent_txns</th>
-      <th>recent_units</th>
-      <th>recent_revenue</th>
+      <th>own_units</th>
+      <th>own_revenue</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>ballantyne</td>
-      <td>Ballantyne</td>
-      <td>1</td>
-      <td>75732</td>
-      <td>823721.0</td>
-      <td>4014459.56</td>
-    </tr>
-    <tr>
-      <td>center_city</td>
       <td>Center City</td>
-      <td>1</td>
-      <td>88791</td>
       <td>966728.0</td>
       <td>4647163.47</td>
     </tr>
     <tr>
-      <td>matthews</td>
-      <td>Matthews</td>
-      <td>1</td>
-      <td>83275</td>
-      <td>906289.0</td>
-      <td>4292003.82</td>
-    </tr>
-    <tr>
-      <td>noda</td>
       <td>NoDa</td>
-      <td>1</td>
-      <td>87832</td>
       <td>953486.0</td>
       <td>4577114.86</td>
     </tr>
     <tr>
-      <td>university_city</td>
+      <td>Matthews</td>
+      <td>906289.0</td>
+      <td>4292003.82</td>
+    </tr>
+    <tr>
+      <td>Ballantyne</td>
+      <td>823721.0</td>
+      <td>4014459.56</td>
+    </tr>
+    <tr>
       <td>University City</td>
-      <td>1</td>
-      <td>73317</td>
       <td>802312.0</td>
       <td>3740010.57</td>
     </tr>
   </tbody>
 </table>
   <h3>Claims</h3>
-  <ul><li><code>Center City (Z05) sees peer volume over-index at 1.93×</code> = <strong>1.9339334793883998</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>you hold only a single store capturing that catchment</code> = <strong>1.0</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>Z04 over-indexing at 1.54×</code> = <strong>1.539634723195989</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>Z05 at 1.93×</code> = <strong>1.9339334793883998</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>Z03 shows near-parity demand (zone_category_volume_index of 0.69×)</code> = <strong>0.6910151549213052</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>Z02 runs lower at 0.77×</code> = <strong>0.7686974458562696</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>Matthews (Z06–Z07) show weaker peer demand density (1.04× and 1.13×)</code> = <strong>1.042695603946998</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>Ballantyne (Z08) show weaker peer demand density ... at 0.95×</code> = <strong>0.9538309850572615</strong> <span class="hint">via ValueRef</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li></ul>
+  <ul><li><code>peers command 1.3 million and 503k units respectively</code> = <strong>1287882.0</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>peers command 1.3 million and 503k units respectively</code> = <strong>503327.0</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>same-segment peers generate 1.29 million units there</code> = <strong>1287882.0</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>peers ring up 503k units</code> = <strong>503327.0</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>University City is your weakest relative position, holding 802k units versus 590k units for peers</code> = <strong>802312.0</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li><li><code>University City is your weakest relative position, holding 802k units versus 590k units for peers</code> = <strong>590247.0</strong> <span class="hint">via CellLookup</span> <span style="color:#0F4C81;font-weight:bold;">[passed]</span></li></ul>
   <h3>SQL surfaces</h3>
   <div class="sql-block"><span class="surface">tenant</span> <span class="hint">(5 rows)</span><pre>
-SELECT 
-  s.zone_id,
-  s.neighborhood,
-  COUNT(DISTINCT s.store_id) AS own_store_count,
-  COUNT(DISTINCT CASE WHEN DATE_TRUNC(&#x27;week&#x27;, t.txn_ts)::DATE &gt;= CURRENT_DATE - 180 THEN t.txn_id END) AS recent_txns,
-  SUM(CASE WHEN DATE_TRUNC(&#x27;week&#x27;, t.txn_ts)::DATE &gt;= CURRENT_DATE - 180 THEN i.qty END) AS recent_units,
-  SUM(CASE WHEN DATE_TRUNC(&#x27;week&#x27;, t.txn_ts)::DATE &gt;= CURRENT_DATE - 180 THEN i.line_total END) AS recent_revenue
-FROM transactions t
-JOIN transaction_items i ON t.txn_id = i.txn_id
+SELECT s.neighborhood, SUM(i.qty) AS own_units, SUM(i.line_total) AS own_revenue
+FROM transaction_items i
+JOIN transactions t ON i.txn_id = t.txn_id
 JOIN stores s ON t.store_id = s.store_id
 WHERE t.banner_code = &#x27;KRG&#x27;
-GROUP BY s.zone_id, s.neighborhood
-ORDER BY s.zone_id
-</pre></div><div class="sql-block"><span class="surface">lake</span> <span class="hint">(173 rows)</span><pre>read_lake_table(&#x27;lake_trade_area&#x27;, filters={})</pre></div><div class="sql-block"><span class="surface">merge</span> <span class="hint">(0 rows)</span><pre>auto-build_merge(no shared dimension key → dual-frame)</pre></div>
+GROUP BY s.neighborhood
+ORDER BY own_units DESC
+</pre></div><div class="sql-block"><span class="surface">lake_sql</span> <span class="hint">(8 rows)</span><pre>
+SELECT s.neighborhood, SUM(t.qty) AS peer_units, SUM(t.line_total) AS peer_revenue, COUNT(DISTINCT t.lake_txn_id) AS peer_txn_count
+FROM lake_transactions t
+JOIN lake_stores s USING (lake_store_id)
+WHERE t.peer_relationship = &#x27;peer&#x27;
+GROUP BY s.neighborhood
+ORDER BY peer_units DESC
+</pre></div>
   <h3>Grain notes (from manifest)</h3>
-  <ul><li>no time grain (window-level only)</li><li>no peer subcategory</li><li>no per-customer rows</li></ul>
+  <em>(none)</em>
   <h3>Caveats</h3>
-  <ul><li>Zone-level demand derived from lake aggregates (window-level snapshot across all categories).</li><li>University City spans Z02 (pure) and Z03 (pure); NoDa spans Z04 (with Eastway) and Z05 (with Center City/Dilworth); Matthews spans Z06–Z07.</li><li>Zone index reflects peer demand density vs. metro mean (1.0); your own store count is structural integer count (no benchmark comparison available).</li><li>(Chart skipped — model&#x27;s chart_intent was malformed. Reason: MissingColumnError: &#x27;ChartIntent references columns not in result: [&quot;x=\&#x27;zone_category_volume_index\&#x27;&quot;]. Result columns: [\&#x27;zone_id\&#x27;, \&#x27;neighborhood\&#x27;, \&#x27;own_store_count\&#x27;, \&#x27;recent_txns\&#x27;, \&#x27;recent_units\&#x27;, \&#x27;recent_revenue\&#x27;]&#x27;)</li></ul>
+  <ul><li>Peer set is your same-segment grocers (2 competitors).</li><li>You operate in 5 neighborhoods; peers reach 8.</li><li>Figures are aggregate units and revenue across all categories and transaction types during the observed period.</li></ul>
   <h3>Telemetry</h3>
-  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=4 · in=61137 · out=1680 · $0.0695</p>
+  <p class="telemetry">model=claude-haiku-4-5-20251001 · turns=4 · in=41695 · out=1453 · $0.0490</p>
 </section>
 
 </body>

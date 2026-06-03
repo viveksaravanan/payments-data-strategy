@@ -638,6 +638,14 @@ READ_LAKE_TOOL = {
 }
 
 
+# Wave 3.5 §2 decision 6 / §11.2 — charts are held for Wave 4. The
+# chart layer (chart_build.py, ChartIntent) is kept intact but DORMANT:
+# the model can no longer author a chart_intent (removed from the emit
+# schema), and the specialist's build path is gated behind this flag.
+# Wave 4 flips it to True and re-adds the chart_intent schema field.
+CHARTS_ENABLED = False
+
+
 EMIT_RESPONSE_TOOL = {
     "name": "emit_response",
     "description": (
@@ -645,105 +653,45 @@ EMIT_RESPONSE_TOOL = {
         "agent loop ends — the structured response you emit here is "
         "what the user sees. You MUST call emit_response exactly "
         "once at the end of every answer; do not emit a free-text "
-        "final turn. The validator and chart builder run on the "
-        "structured args you pass.\n"
+        "final turn.\n"
         "\n"
-        "PRECONDITION (Wave 3 Stage 6.5 Fix 9): when BOTH "
-        "query_tenant AND read_lake_table have returned rows, you "
-        "MUST call build_merge first. emit_response will reject "
-        "until the merge has run (or failed and returned both real "
-        "frames). Author chart_intent and claims against the "
-        "merged frame's REAL columns, never guesses."
+        "Your answer is structured into named fields: a one-sentence "
+        "`headline` (the finding that matters), an `evidence` list of "
+        "2-4 supporting points each grounding a specific number, an "
+        "optional `so_what` (the action or implication), and `caveats`. "
+        "Every metric number in ANY text field must be backed by an "
+        "entry in `claims`, which the validator recomputes against your "
+        "query results. Do NOT end any field with a question or narrate "
+        "what you would do next — commit to the answer you have."
     ),
     "input_schema": {
         "type": "object",
         "properties": {
-            "prose": {
+            "headline": {
                 "type": "string",
                 "description": (
-                    "2-5 sentence executive-readable answer. Every metric "
-                    "number you state here MUST be backed by an entry in "
-                    "the `claims` list, OR fall outside the metric/structural "
-                    "scanner (years, entity counts like \"5 stores\" are exempt)."
+                    "The single most important finding, as ONE complete "
+                    "sentence that answers the question. Every metric "
+                    "number here must be backed by a `claims` entry. Never "
+                    "a question, never a description of what you would do."
                 ),
             },
-            "chart_intent": {
-                "type": "object",
+            "evidence": {
+                "type": "array",
+                "items": {"type": "string"},
                 "description": (
-                    "Chart shape — names result columns, never values. "
-                    "Per-kind required fields (besides `kind` and "
-                    "`title`):\n"
-                    "  - time_series_vs_peers: `x` (time col), `series` "
-                    "(list of value cols), `y_format`.\n"
-                    "  - cross_merchant_comparison: `x` (label col), "
-                    "`series` (list of value cols), `y_format`.\n"
-                    "  - heatmap: `row`, `col`, `value`.\n"
-                    "  - scatter_quadrant: `x`, `y` (and optional "
-                    "`label`, `size`).\n"
-                    "  - waterfall: `x` (label col), `y` (value col).\n"
-                    "  - geo_map: `lat`, `lon`.\n"
-                    "  - kpi_callout: `value` (numeric col — uses "
-                    "first row).\n"
-                    "  - small_multiples: `facet`, `x`, `series`.\n"
-                    "  - table_drilldown: `columns` (list of cols)."
+                    "2-4 supporting points. Each is one sentence grounding "
+                    "a specific number (each number backed by a `claims` "
+                    "entry whose `text_span` is a substring of that "
+                    "sentence). Omit for a headline-only definitional answer."
                 ),
-                "properties": {
-                    "kind": {
-                        "type": "string",
-                        "enum": [
-                            "time_series_vs_peers",
-                            "cross_merchant_comparison",
-                            "heatmap",
-                            "scatter_quadrant",
-                            "waterfall",
-                            "geo_map",
-                            "kpi_callout",
-                            "small_multiples",
-                            "table_drilldown",
-                        ],
-                    },
-                    "title": {"type": "string"},
-                    "takeaway": {"type": "string"},
-                    "x": {"type": "string"},
-                    "y": {"type": "string"},
-                    "series": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                    },
-                    "y_format": {
-                        "type": "string",
-                        "enum": ["index", "currency", "pct",
-                                 "count", "raw"],
-                    },
-                    "row": {"type": "string"},
-                    "col": {"type": "string"},
-                    "value": {"type": "string"},
-                    "label": {"type": "string"},
-                    "size": {"type": "string"},
-                    "delta": {"type": "string"},
-                    "facet": {"type": "string"},
-                    "columns": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                    },
-                    "lat": {"type": "string"},
-                    "lon": {"type": "string"},
-                    "palette": {
-                        "type": "string",
-                        "enum": ["diverging", "sequential"],
-                    },
-                    "source": {
-                        "type": "string",
-                        "enum": ["tenant", "lake", "merged"],
-                        "description": (
-                            "Which captured frame the chart builds "
-                            "from. Default 'merged' after a successful "
-                            "build_merge; use 'tenant' or 'lake' in "
-                            "the merge-fail dual-frame path."
-                        ),
-                    },
-                },
-                "required": ["kind"],
+            },
+            "so_what": {
+                "type": "string",
+                "description": (
+                    "Optional — the recommended action or implication, one "
+                    "sentence. Omit when there is no actionable so-what."
+                ),
             },
             "claims": {
                 "type": "array",
@@ -844,7 +792,7 @@ EMIT_RESPONSE_TOOL = {
                 "description": "Short clarifying notes (peer set, window, etc).",
             },
         },
-        "required": ["prose", "chart_intent", "claims"],
+        "required": ["headline", "claims"],
     },
 }
 
@@ -976,11 +924,19 @@ _INTERNAL_NARRATION_PATTERNS = [
     r"peer benchmark fetch",
     r"\blet me (?:pull|fetch|query|grab|retrieve|try)\b",
     r"\bi(?:'ll| will) need to\b",
+    r"\bi would need to\b",
     r"\bi need to (?:pull|fetch|query|grab|retrieve|compare|check)\b",
     r"to (?:provide|give you) a full[^.]*?\bi(?:'ll| will)\b",
     r"to answer this (?:question )?properly,? i (?:need|have) to",
     r"i(?:'ve| have) fetched but",
     r"unable to retrieve complete peer data",
+    # Wave 3.5 — punt-with-a-question / offer-to-continue. A finished
+    # answer commits; it never asks the user what to do next or ends
+    # on a question mark.
+    r"\bwould you like me to\b",
+    r"\bdo you want me to\b",
+    r"\bshall i\b",
+    r"\?\s*$",
 ]
 _INTERNAL_NARRATION_RE = re.compile(
     "|".join(_INTERNAL_NARRATION_PATTERNS),

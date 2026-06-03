@@ -66,13 +66,24 @@ class AgentResponse:
     chart
         Plotly figure built deterministically from
         ``(chart_intent, result)`` by ``chart_build.build_chart``.
-    prose
-        Narrative answer. Validated by ``claims.validate_claims``
-        against ``result`` + ``claims`` — every metric numeric in
-        prose must be covered by a passing claim (§1.4 two-pass scan).
+        Held dormant in Wave 3.5 (charts deferred to Wave 4); always
+        ``None`` while ``CHARTS_ENABLED`` is false.
+    headline
+        Wave 3.5 structured contract — the one finding that matters,
+        a single sentence. Validated by ``claims.validate_structured_response``
+        against ``result`` + ``claims``; every metric numeric in any
+        text field must be covered by a passing claim (§1.4 two-pass scan).
+    evidence
+        2–4 supporting points, each grounding a specific number. May be
+        empty for a degenerate headline-only answer (definitional /
+        advisor questions).
+    so_what
+        Optional recommended action or implication. ``None`` when there
+        is no actionable so-what.
     claims
         List of ``claims.Claim`` instances. Each declared claim binds
-        a numeric in ``prose`` to a cell or derivation over ``result``.
+        a numeric in one of the text fields to a cell or derivation
+        over ``result``.
     caveats
         Code-injected when a factual condition holds (e.g. "k-anonymity
         suppression fired for 3 cells"; "peer set is 2 grocers").
@@ -84,12 +95,21 @@ class AgentResponse:
         dashboard can show it. Drawn from ``src.lake.manifest``.
     telemetry
         Model identifier + token / cost / turn accounting.
+
+    The legacy single-string ``prose`` is no longer a stored field — it
+    is a read-only derived property joining headline + evidence + so_what.
+    This keeps the preview harness, the forbidden-mechanics-terms scan,
+    and any ``.prose`` reader working, while forcing every *writer* through
+    the structured fields (a ``prose=`` constructor kwarg now fails — a
+    deliberate tripwire surfacing every writer that must migrate).
     """
     result: pd.DataFrame
     chart_intent: dict[str, Any]
     chart: Any                          # plotly.graph_objects.Figure at runtime
-    prose: str
+    headline: str
     claims: list[Any]                   # list[claims.Claim] — forward ref
+    evidence: list[str] = field(default_factory=list)
+    so_what: str | None = None
     caveats: list[str] = field(default_factory=list)
     sql: list[SqlSurface] = field(default_factory=list)
     grain_notes: list[str] = field(default_factory=list)
@@ -101,6 +121,21 @@ class AgentResponse:
     # Stored as a list of dicts to avoid a hard dependency from
     # response.py on claims.py.
     claim_dispositions: list[dict[str, Any]] = field(default_factory=list)
+
+    @property
+    def prose(self) -> str:
+        """Derived single-string view of the structured answer — the
+        joined headline + evidence + so_what. Read-only by design: every
+        writer must set the structured fields. Used by the §1.4
+        forbidden-mechanics scan, the preview harness, and any legacy
+        ``.prose`` consumer."""
+        parts: list[str] = [self.headline] if self.headline else []
+        parts += list(self.evidence)
+        if self.so_what:
+            parts.append(self.so_what)
+        return " ".join(
+            p.strip().rstrip(".") + "." for p in parts if p.strip()
+        )
 
 
 # ---------------------------------------------------------------------
