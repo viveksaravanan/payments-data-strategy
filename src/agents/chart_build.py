@@ -717,100 +717,40 @@ _BUILDERS = {
 
 
 # ---------------------------------------------------------------------
-# Column reconciler — Wave 3 Stage 6.5 follow-up #7.
+# Chart-intent reconciler (Wave 3 Stage 7 trim).
 #
-# The model occasionally authors a chart_intent that names a column
-# the merge layer renamed or didn't carry through (e.g. asks for
-# `own_store_count` when the merged result has `store_count`, asks
-# for `total_revenue` when the result has `cell_revenue`). The
-# structural guarantee "every plotted number traces to a result
-# cell" depends on every named column existing — but when the
-# requested name is just a near-miss for a real column, the right
-# fix is to rewrite the name, not skip the whole chart.
+# This used to host a synonym-remap layer (own_asp → own_value,
+# total_revenue → cell_revenue, case-insensitive matches, prefix
+# stripping) that compensated for the model authoring near-miss
+# column names. After Fix 13 (ValueRef substitutes peer values
+# server-side) and Fix 10a (build_merge auto-invokes with explicit
+# own_value/peer_benchmark column names), the synonym layer was no
+# longer load-bearing — the model writes the names it sees in the
+# tool result it just received. The remap is retired here.
 #
-# The reconciler runs BEFORE the per-kind builders. It rewrites
-# each column-referencing field in the intent to point at a real
-# column in the result, using:
-#   1. An explicit synonym table (most common rewrites).
-#   2. Prefix/suffix stripping (own_, peer_).
-#   3. Case-insensitive direct match.
-# If a `series` list has partial matches, the invalid entries are
-# dropped (a 2-series chart minus one bad series beats no chart).
-# Only if NOTHING reconciles is the original name kept — _require_columns
-# then raises and the caller (specialist) falls back to chart=None
-# with an honest caveat.
+# What remains in the reconciler:
+#   1. Drop invalid entries from list-valued fields (series,
+#      columns) — partial chart beats no chart.
+#   2. Auto-add ``peer_benchmark`` to series for cross-merchant
+#      chart kinds when the merged frame has it (Fix 14 —
+#      server-enforces the dual-trace shape the model unreliably
+#      authors).
 #
 # The reconciler ONLY rewrites NAMES — never invents data. The
 # structural guarantee still holds: every plotted value still comes
 # from a cell in result.
 # ---------------------------------------------------------------------
 
-# Common synonyms the model authors when its mental model of the
-# result columns drifts from what the merge layer actually produces.
-# Each entry maps an "intent name" → "result column name".
-COLUMN_SYNONYMS: dict[str, str] = {
-    # own_/peer_ prefix variants
-    "own_store_count": "store_count",
-    "peer_store_count": "store_count",
-    "own_revenue": "cell_revenue",
-    "peer_revenue": "cell_revenue",
-    "total_revenue": "cell_revenue",
-    "own_units": "cell_units",
-    "peer_units": "cell_units",
-    "total_units": "cell_units",
-    # asp / avg unit price aliases
-    "avg_unit_price": "own_value",
-    "own_asp": "own_value",
-    "asp": "own_value",
-    "unit_price": "own_value",
-    # basket aliases
-    "avg_basket": "own_value",
-    "avg_basket_size": "own_value",
-    # category aliases (the model sometimes types category_type)
-    "category_type": "category",
-    "cat": "category",
-    # zone aliases
-    "zone": "derived_zone",
-    "zone_id": "derived_zone",
-    # peer-relationship aliases
-    "peer_type": "peer_relationship",
-    "relationship": "peer_relationship",
-}
-
 
 def _reconcile_column(name: str, result_columns: list[str]) -> str | None:
-    """Try to map ``name`` to a real column in ``result_columns``.
-    Returns the matched column name or None if no match found."""
+    """Return ``name`` if it's a real column in ``result_columns``,
+    else ``None``. After the Stage 7 trim the remap layer is gone —
+    the model writes the names it saw in the tool result; if it
+    didn't, the column-name field gets dropped (for lists) or
+    surfaces as ``MissingColumnError`` (for scalars), and the
+    specialist's chart-error fallback ships the caveat."""
     if name in result_columns:
         return name
-
-    # 1. Synonym table — explicit known rewrites.
-    if name in COLUMN_SYNONYMS:
-        target = COLUMN_SYNONYMS[name]
-        if target in result_columns:
-            return target
-
-    # 2. Case-insensitive direct match.
-    lower_map = {c.lower(): c for c in result_columns}
-    if name.lower() in lower_map:
-        return lower_map[name.lower()]
-
-    # 3. Prefix stripping — own_X, peer_X → X.
-    for prefix in ("own_", "peer_"):
-        if name.startswith(prefix):
-            stem = name[len(prefix):]
-            if stem in result_columns:
-                return stem
-            if stem.lower() in lower_map:
-                return lower_map[stem.lower()]
-
-    # 4. Suffix stripping — X_count, X_share variants (rare).
-    for suffix in ("_count", "_share"):
-        if name.endswith(suffix):
-            stem = name[: -len(suffix)]
-            if stem in result_columns:
-                return stem
-
     return None
 
 

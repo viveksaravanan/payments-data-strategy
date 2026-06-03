@@ -570,59 +570,6 @@ def test_emit_accepted_when_merge_clean_and_units_match(viewer_krg) -> None:
     assert specialist._emit_args is not None
 
 
-def test_precondition_retry_cap_force_accepts_after_n_rejections(viewer_krg) -> None:
-    """Wave 3 Stage 6.5 follow-up #6 (Fix B): after
-    MAX_PRECONDITION_REJECTIONS rejections of emit_response, the
-    next rejection becomes a force-accept (no raise) so the loop
-    doesn't burn turns/cost re-asking the model. The downstream
-    graceful path handles the bad spec; the user sees a caveat.
-
-    Wave 3 Stage 6.5 Fix 10 update: the "missing build_merge"
-    precondition no longer rejects (auto-invoke covers it). The
-    floor still exists for OTHER preconditions — e.g. Fix 9c's
-    multi-row CellLookup without agg. This test drives that path."""
-    from src.agents.specialist import MAX_PRECONDITION_REJECTIONS
-    specialist = PricingSpecialist(viewer_krg)
-    specialist._reset_state()
-    # Force into a state where auto-invoke is bypassed (merge already
-    # attempted) so the only rejection path is Fix 9c's multi-row
-    # CellLookup-without-agg.
-    specialist._merged_frame = pd.DataFrame({
-        "category": ["DAIRY", "DAIRY", "DAIRY"],
-        "own_value": [1.0, 1.1, 1.2],
-        "peer_benchmark": [0.95, 0.98, 1.0],
-        "gap": [0.05, 0.12, 0.20],
-    })
-    specialist._tenant_frame = pd.DataFrame({"category": ["DAIRY"]})
-    specialist._lake_frame = pd.DataFrame({"category": ["DAIRY"]})
-    specialist._merge_attempted = True
-    bad_args = {
-        "prose": "Multi-row claim without agg.",
-        "chart_intent": {"kind": "kpi_callout", "value": "own_value"},
-        "claims": [
-            {
-                "text_span": "your dairy index is 1.1",
-                "value": 1.1,
-                "source": {
-                    "type": "CellLookup",
-                    "row_filter": {"category": "DAIRY"},  # matches 3 rows
-                    "column": "own_value",
-                    # No agg — Fix 9c rejects.
-                },
-            },
-        ],
-    }
-    # First N-1 rejections raise.
-    for _ in range(MAX_PRECONDITION_REJECTIONS - 1):
-        with pytest.raises(LakeToolError):
-            specialist._dispatch_tool("emit_response", bad_args)
-    # The Nth rejection force-accepts.
-    out = specialist._dispatch_tool("emit_response", bad_args)
-    assert out == {"ok": True}
-    assert specialist._force_accept_emit is True
-    assert specialist._emit_args is not None
-
-
 def test_max_turns_is_six(viewer_krg) -> None:
     """Wave 3 Stage 6.5 follow-up #6 (Fix B): MAX_TURNS lowered
     from 10 to 6 — converging pills finish in 3-5; 10 only ever
@@ -642,37 +589,6 @@ def test_wall_clock_ceiling_constant_present() -> None:
 # ---------------------------------------------------------------------
 # Wave 3 Stage 6.5 follow-up #7 — column reconciler in chart_build
 # ---------------------------------------------------------------------
-
-def test_reconciler_remaps_known_synonym() -> None:
-    """own_store_count → store_count via the synonym table."""
-    from src.agents.chart_build import _reconcile_intent
-    result = pd.DataFrame({
-        "derived_zone": ["Z05", "Z08"],
-        "store_count": [3, 1],
-    })
-    intent = {
-        "kind": "cross_merchant_comparison",
-        "x": "derived_zone",
-        "series": ["own_store_count"],
-    }
-    reconciled, notes = _reconcile_intent(intent, result)
-    assert reconciled["series"] == ["store_count"]
-    assert any("own_store_count" in n for n in notes)
-
-
-def test_reconciler_strips_own_prefix() -> None:
-    """own_value (no synonym entry) → value via prefix stripping when
-    `value` exists in result."""
-    from src.agents.chart_build import _reconcile_intent
-    result = pd.DataFrame({"category": ["DAIRY"], "value": [1.2]})
-    intent = {"kind": "kpi_callout", "value": "own_value"}
-    # own_value is a known synonym → maps via synonym table to itself
-    # (no remap), so test on a truly synthetic prefix case:
-    intent2 = {"kind": "kpi_callout", "value": "own_revenue_per_txn"}
-    result2 = pd.DataFrame({"revenue_per_txn": [12.5]})
-    reconciled, notes = _reconcile_intent(intent2, result2)
-    assert reconciled["value"] == "revenue_per_txn"
-
 
 def test_reconciler_partial_series_drops_invalid() -> None:
     """A series list with one valid + one invalid column drops the
@@ -694,25 +610,6 @@ def test_reconciler_partial_series_drops_invalid() -> None:
     assert any("fictional_metric" in n for n in notes)
 
 
-def test_reconciler_case_insensitive() -> None:
-    from src.agents.chart_build import _reconcile_intent
-    result = pd.DataFrame({
-        "Price_Index": [1.05, 0.95],
-        "Volume": [100, 200],
-        "Category": ["DAIRY", "BREAD"],
-    })
-    intent = {
-        "kind": "scatter_quadrant",
-        "x": "price_index",      # lowercase, result has "Price_Index"
-        "y": "volume",            # lowercase, result has "Volume"
-        "label": "category",      # lowercase, result has "Category"
-    }
-    reconciled, _ = _reconcile_intent(intent, result)
-    assert reconciled["x"] == "Price_Index"
-    assert reconciled["y"] == "Volume"
-    assert reconciled["label"] == "Category"
-
-
 def test_reconciler_passthrough_when_columns_already_match() -> None:
     """No remap, no notes when intent columns are already in result."""
     from src.agents.chart_build import _reconcile_intent
@@ -731,34 +628,19 @@ def test_reconciler_passthrough_when_columns_already_match() -> None:
     assert notes == []
 
 
-def test_build_chart_uses_reconciler() -> None:
-    """End-to-end: build_chart() reconciles synonyms before assertion."""
-    from src.agents.chart_build import build_chart
-    result = pd.DataFrame({
-        "derived_zone": ["Z02", "Z05", "Z08"],
-        "store_count": [2, 4, 1],
-    })
-    intent = {
-        "kind": "cross_merchant_comparison",
-        "x": "derived_zone",
-        "series": ["own_store_count"],   # synonym for store_count
-        "title": "Stores by zone",
-        "y_format": "count",
-    }
-    fig = build_chart(intent, result)
-    assert fig is not None  # builder succeeded — reconciler worked
-
-
 # ---------------------------------------------------------------------
 # Wave 3 Stage 6.5 follow-up #7 — merge_incomplete carries own columns
+# (Stage 7 trim: broadcast fallback retired; tests cover the
+# now-simpler own.copy() fallback path)
 # ---------------------------------------------------------------------
 
-def test_build_result_empty_merge_carries_own_columns(viewer_krg) -> None:
-    """When both frames are present and the merge spec is empty, the
-    fallback frame carries the own side's columns alongside the
-    peer frame so the chart reconciler has something to remap
-    against. The `merge_incomplete` flag fires the side-by-side
-    caveat downstream."""
+def test_build_result_empty_merge_returns_own_with_incomplete_flag(viewer_krg) -> None:
+    """Stage 7 trim: when both frames are present and the merge spec
+    is empty, the legacy _build_result returns own.copy() with
+    merge_incomplete attr set. The broadcast fallback that used to
+    repeat own scalars down peer rows is retired (it caused the
+    all-stripped cascade pre-Fix-7; Fix 9b's dual-frame on the
+    emit_response path handles real merge failures)."""
     specialist = PricingSpecialist(viewer_krg)
     specialist._reset_state()
     specialist._tenant_frame = pd.DataFrame({
@@ -772,13 +654,18 @@ def test_build_result_empty_merge_carries_own_columns(viewer_krg) -> None:
     })
     out = specialist._build_result({})  # empty merge spec
     assert out.attrs.get("merge_incomplete") is True
+    # Stage 7 trim: own.copy() returned — peer columns are NOT
+    # broadcast into it (that was the all-stripped-cascade bug pre-
+    # Fix-7). Dual-frame routing on the emit_response path handles
+    # peer access via _merge_fail_payload.
     assert "own_asp" in out.columns
-    assert "price_index" in out.columns
+    assert "price_index" not in out.columns
 
 
-def test_build_result_failed_merge_carries_own_columns(viewer_krg) -> None:
-    """If the merge raises (bad keys), fallback carries own columns
-    instead of silently dropping them to peer.copy()."""
+def test_build_result_failed_merge_returns_own_with_incomplete_flag(viewer_krg) -> None:
+    """Stage 7 trim: if the merge raises (bad keys), the legacy
+    _build_result returns own.copy() with merge_incomplete attr set.
+    The broadcast-carry-both-sides fallback is retired."""
     specialist = PricingSpecialist(viewer_krg)
     specialist._reset_state()
     specialist._tenant_frame = pd.DataFrame({
@@ -798,6 +685,8 @@ def test_build_result_failed_merge_carries_own_columns(viewer_krg) -> None:
     })
     assert out.attrs.get("merge_incomplete") is True
     assert "own_asp" in out.columns
+    # Stage 7 trim: peer columns not broadcast in.
+    assert "price_index" not in out.columns
 
 
 # ---------------------------------------------------------------------

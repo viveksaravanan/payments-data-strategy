@@ -67,17 +67,13 @@ from src.agents.response import (
 DEFAULT_MAX_TURNS = 6
 MAX_TOKENS = 4096
 
-# Wave 3 Stage 6.5 follow-up #6 — runtime/convergence bounds.
-# The structural preconditions in _validate_emit_args used to retry
-# until MAX_TURNS, producing 8h+ batch run-times when a model
-# couldn't satisfy them. The two ceilings below cap that:
-#   * MAX_PRECONDITION_REJECTIONS — after N rejections, the loop
-#     stops re-asking. The next emit is accepted (the silent fallback
-#     paths in ``_build_result`` produce a degraded but coherent
-#     result + caveat).
-#   * WALL_CLOCK_CEILING_SEC — hard wall on per-question wall-clock.
-#     Hit it → exit immediately to graceful degradation.
-MAX_PRECONDITION_REJECTIONS = 3
+# Wave 3 Stage 7 trim — only the wall-clock ceiling remains as a
+# runtime bound. The earlier MAX_PRECONDITION_REJECTIONS retry-cap
+# floor is retired: auto-invoke build_merge (Fix 10a) handles the
+# main rejection case (missing build_merge), so the precondition
+# now rarely fires; when it does (Fix 9c multi-row CellLookup
+# without agg), the model retries within MAX_TURNS=6 and the
+# wall-clock ceiling catches any genuine runaway.
 WALL_CLOCK_CEILING_SEC = 90.0
 
 
@@ -154,10 +150,9 @@ class Specialist:
         self._in_tokens:    int = 0
         self._out_tokens:   int = 0
         self._cost_usd:     float = 0.0
-        # Wave 3 Stage 6.5 follow-up #6 — convergence + wall-clock bounds.
-        self._precondition_rejections: int = 0
+        # Wave 3 Stage 6.5 follow-up #6 — wall-clock bound only after
+        # Stage 7's retire-cap-floor trim.
         self._answer_started_at: float = 0.0
-        self._force_accept_emit: bool = False
         # Wave 3 Stage 6.5 Fix 9 — merge becomes its own tool turn.
         # ``_merged_frame`` is the result-of-record after a clean
         # build_merge. ``_merge_fail_payload`` carries both real
@@ -397,15 +392,10 @@ class Specialist:
             # first; the precondition mainly catches genuinely
             # broken authoring (multi-row CellLookup without agg —
             # Fix 9c).
-            try:
-                self._validate_emit_args(args)
-            except LakeToolError:
-                self._precondition_rejections += 1
-                if self._precondition_rejections >= MAX_PRECONDITION_REJECTIONS:
-                    self._force_accept_emit = True
-                    self._emit_args = args
-                    return {"ok": True}
-                raise
+            # Wave 3 Stage 7 trim: precondition raises are no longer
+            # caught with a retry-cap floor; the model retries within
+            # MAX_TURNS=6 and wall-clock ceiling catches runaway.
+            self._validate_emit_args(args)
             self._emit_args = args
             return {"ok": True}
         raise ValueError(f"Unknown tool: {name}")
@@ -978,12 +968,19 @@ class Specialist:
         # with MissingColumnError. Carry both sides + flag the frame
         # so _finalize_from_emit can add a "merge spec missing /
         # failed" caveat.
+        # Wave 3 Stage 7 trim: removed the _fallback_carry_both_sides
+        # broadcast (own-scalar repeated down peer rows) that caused
+        # the original all-stripped cascade pre-Fix-7. The dual-frame
+        # routing on the emit_response path (Fix 9b + Fix 10a auto-
+        # invoke) handles real merge failures via _merge_fail_payload;
+        # this legacy _build_result path is only reachable when the
+        # model emits a text turn with a fenced render block (rare
+        # with Fix 9+). On failure, return own.copy() and flag
+        # merge_incomplete so the caveat fires.
         if not merge_spec:
-            fallback = self._fallback_carry_both_sides(own, peer)
+            fallback = own.copy()
             fallback.attrs["merge_incomplete"] = True
-            fallback.attrs["merge_incomplete_reason"] = (
-                "empty merge spec"
-            )
+            fallback.attrs["merge_incomplete_reason"] = "empty merge spec"
             return fallback
         try:
             return merge_own_and_peer(
@@ -996,73 +993,12 @@ class Specialist:
                 viewer=self.context.viewing_merchant_id,
             )
         except (KeyError, MergeGrainError, ViewerScopingError) as exc:
-            # Best-effort: try a partial merge keyed on whatever
-            # join columns exist in BOTH frames, with the model's
-            # named own/peer value cols if present. If that still
-            # fails, carry both sides side-by-side.
-            try:
-                best_effort_keys = [
-                    k for k in (merge_spec.get("on") or [])
-                    if k in own.columns and k in peer.columns
-                ]
-                if (
-                    best_effort_keys
-                    and merge_spec.get("own_value_col") in own.columns
-                    and merge_spec.get("peer_value_col") in peer.columns
-                ):
-                    return merge_own_and_peer(
-                        own_df=own,
-                        peer_df=peer,
-                        on=best_effort_keys,
-                        own_value_col=merge_spec["own_value_col"],
-                        peer_value_col=merge_spec["peer_value_col"],
-                        gap_op=merge_spec.get("gap_op", "difference"),
-                        viewer=self.context.viewing_merchant_id,
-                    )
-            except Exception:                            # noqa: BLE001
-                pass
-            fallback = self._fallback_carry_both_sides(own, peer)
+            fallback = own.copy()
             fallback.attrs["merge_incomplete"] = True
             fallback.attrs["merge_incomplete_reason"] = (
                 f"{type(exc).__name__}: {exc}"
             )
             return fallback
-
-    @staticmethod
-    def _fallback_carry_both_sides(
-        own: pd.DataFrame, peer: pd.DataFrame,
-    ) -> pd.DataFrame:
-        """When the merge can't run but both frames have content,
-        return a frame that CARRIES own-side columns alongside the
-        peer frame. This gives the chart reconciler something to
-        remap own_X / total_X / avg_X references against — better
-        than the old peer.copy() that silently dropped the own side
-        and caused every chart to skip with MissingColumnError.
-
-        Strategy:
-        - Start from peer.copy() (keeps its row grain and dimensions).
-        - For each column in own that is NOT in peer, append it as a
-          new column carrying the full own-side series broadcast
-          across peer's rows. For a single-row own frame, that's the
-          scalar value; for a multi-row own frame, we attach the
-          first row's value (best-effort — the chart reconciler will
-          surface a side-by-side caveat downstream).
-        - Don't try to align on a join key — that's what the merge
-          spec is for, and the model already failed to provide one.
-        """
-        out = peer.copy()
-        if len(own) == 0:
-            return out
-        own_only_cols = [c for c in own.columns if c not in out.columns]
-        for col in own_only_cols:
-            # Broadcast the own scalar (first row's value) across
-            # peer rows. Not perfect; gives the reconciler something
-            # to point at. The caveat downstream tells the user.
-            try:
-                out[col] = own[col].iloc[0]
-            except Exception:                            # noqa: BLE001
-                continue
-        return out
 
     @staticmethod
     def _parse_claims(claims_json: list[Any]) -> list[Claim]:
@@ -1267,11 +1203,6 @@ class Specialist:
                 "the gap column is intentionally null. Use the two "
                 "columns directionally rather than subtractively."
             )
-        if self._force_accept_emit:
-            effective_caveats.append(
-                "Result reflects the agent's best attempt within "
-                "the turn budget; the comparison may be partial."
-            )
         if result.attrs.get("merge_incomplete"):
             reason = result.attrs.get("merge_incomplete_reason", "")
             effective_caveats.append(
@@ -1365,9 +1296,7 @@ class Specialist:
         self._in_tokens = 0
         self._out_tokens = 0
         self._cost_usd = 0.0
-        self._precondition_rejections = 0
         self._answer_started_at = time.monotonic()
-        self._force_accept_emit = False
         self._merged_frame = None
         self._merge_fail_payload = None
         self._merge_attempted = False
