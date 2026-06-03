@@ -21,3 +21,4 @@ class AnomalyDetectionSpecialist(Specialist):
     # Wave 3 Stage 6.5 Fix 12 — anomalies key off week-over-week
     # divergence between own + peer.
     PREFERRED_PEER_METRIC = "wow_delta"
+    PEER_ROUTING_KIND = "anomaly"   # Wave 3.5 §6 — cross-segment baseline labeled, or own-trend

@@ -20,3 +20,4 @@ class DemandForecastingSpecialist(Specialist):
     MAX_TURNS = 6
     # Wave 3 Stage 6.5 Fix 12 — demand reads peer unit velocity.
     PREFERRED_PEER_METRIC = "units_index"
+    PEER_ROUTING_KIND = "comparative"   # Wave 3.5 §6 — cross-segment fallback, labeled

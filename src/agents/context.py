@@ -58,6 +58,12 @@ class MerchantContext:
     viewing_merchant_id:      str
     viewing_merchant_name:    str
     viewing_merchant_segment: str
+    # Wave 3.5 §6 — number of OTHER merchants in the same segment.
+    # Drives peer-availability routing (pricing declines when 0;
+    # comparative specialists fall back to cross-segment, labeled).
+    # Config-derived (D12: a 6th merchant updates it with no code
+    # change); equals the `segment_peer_count` the lake build emits.
+    segment_peer_count:       int = 0
 
     @classmethod
     def for_merchant(cls, merchant_id: str) -> "MerchantContext":
@@ -67,8 +73,14 @@ class MerchantContext:
                 f"Unknown merchant_id: {merchant_id!r}. "
                 f"Expected one of {sorted(name_by_id)}."
             )
+        viewer_segment = seg_by_id[merchant_id]
+        peer_count = sum(
+            1 for mid, seg in seg_by_id.items()
+            if mid != merchant_id and seg == viewer_segment
+        )
         return cls(
             viewing_merchant_id=merchant_id,
             viewing_merchant_name=name_by_id[merchant_id],
-            viewing_merchant_segment=seg_by_id[merchant_id],
+            viewing_merchant_segment=viewer_segment,
+            segment_peer_count=peer_count,
         )

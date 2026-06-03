@@ -155,12 +155,11 @@ def test_advisor_off_grain_sku_filter_rejected_with_decline_template() -> None:
     the decline guidance verbatim."""
     # Normalize line breaks so split phrases match.
     prompt = " ".join(ConversationalAdvisor.PROMPT_PATH.read_text().split())
-    # Decline template for peer SKU.
-    assert "Peer SKU detail isn't published" in prompt
-    # Decline template for daily peer grain.
-    assert "Daily peer grain isn't published" in prompt or "monthly grain" in prompt
-    # Decline template for cohort mean spend.
-    assert "median + IQR only" in prompt or "median + p25" in prompt
+    # Wave 3.5 capability boundaries the advisor must decline gracefully:
+    # peer SKU, cross-merchant cohorts/overlap, peer behavioral segments.
+    assert "Peer SKU" in prompt and "not published" in prompt
+    assert "Cross-merchant shopper cohorts" in prompt or "cohort" in prompt
+    assert "no consumer linkage" in prompt
 
 
 # ---------------------------------------------------------------------
@@ -176,15 +175,14 @@ def test_advisor_prompt_declares_base_rate_framing() -> None:
     assert "3×" in prompt or "3x" in prompt or "store average" in prompt
 
 
-def test_advisor_prompt_segments_are_derived_not_loyalty_type() -> None:
-    """The segment_mix block must explicitly warn against calling the
-    behavioral_segment "loyalty_type"."""
+def test_advisor_prompt_declines_peer_behavioral_segmentation() -> None:
+    """Wave 3.5: the peer line-item lake has no consumer linkage, so peer
+    behavioral segmentation (premium vs occasional shoppers) isn't
+    available. The advisor must declare that boundary (and may still
+    segment the viewer's OWN shoppers from tenant data)."""
     prompt = ConversationalAdvisor.PROMPT_PATH.read_text()
-    assert "DERIVED" in prompt
-    assert "loyalty_type" in prompt
-    # Lower-cased combo check: "never" + "loyalty_type" together
-    # (the prompt has "Never call this 'loyalty_type'").
-    assert "Never call this" in prompt or "never claim" in prompt.lower()
+    assert "Behavioral segmentation of peers" in prompt
+    assert "not available" in prompt
 
 
 def test_advisor_prompt_never_mentions_fraud() -> None:

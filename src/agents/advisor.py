@@ -33,3 +33,4 @@ class ConversationalAdvisor(Specialist):
     PROMPT_PATH = Path(__file__).parent / "prompts" / "advisor.md"
     MAX_TURNS = 6
     MERGE_REQUIRED = False
+    PEER_ROUTING_KIND = "advisor"   # Wave 3.5 §6 — route to specialist rule, else cross-segment labeled

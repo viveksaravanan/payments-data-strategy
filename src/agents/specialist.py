@@ -133,6 +133,19 @@ class Specialist:
     # the preferred column is not in the lake frame.
     PREFERRED_PEER_METRIC: str | None = None
 
+    # Wave 3.5 §6 — which peer-availability rule applies when the
+    # viewer has zero same-segment peers. Subclasses set one of:
+    #   "pricing"     → decline peer comparison; own-data only, no
+    #                   cross-segment substitution.
+    #   "comparative" → demand / trade-area / trends: fall back to the
+    #                   broader merchant set, clearly labeled.
+    #   "anomaly"     → cross-segment baseline labeled, or own-trend.
+    #   "advisor"     → free-form: route to a specialist's rule, else
+    #                   default to cross-segment labeled.
+    # The directive text is computed structurally from this kind +
+    # ``context.segment_peer_count`` and injected at {{peer_routing}}.
+    PEER_ROUTING_KIND: str = "comparative"
+
     def __init__(self, context: MerchantContext) -> None:
         if not self.AGENT_LABEL or self.PROMPT_PATH is None:
             raise NotImplementedError(
@@ -161,6 +174,12 @@ class Specialist:
         self._merged_frame: pd.DataFrame | None = None
         self._merge_fail_payload: tuple[pd.DataFrame, pd.DataFrame] | None = None
         self._merge_attempted: bool = False
+        # Wave 3.5 — the lake frame came from `query_lake_sql` (the new
+        # two-query flow) rather than `read_lake_table`. In that flow
+        # there is no merge: the agent runs query_tenant + query_lake_sql
+        # and compares; claims resolve per-frame. This flag routes emit
+        # around the build_merge auto-invoke + the Fix 9a merge gate.
+        self._lake_from_sql: bool = False
 
     # ---- Prompt rendering -------------------------------------------
 
@@ -184,6 +203,53 @@ class Specialist:
                    "{{viewer_segment}}",
                    self.context.viewing_merchant_segment,
                )
+               .replace("{{peer_routing}}", self._peer_routing_directive())
+        )
+
+    def _peer_routing_directive(self) -> str:
+        """Compute the Wave 3.5 §6 peer-availability directive from this
+        specialist's ``PEER_ROUTING_KIND`` + the viewer's
+        ``segment_peer_count``. Structural — derived from metadata, not
+        a rule the model must remember."""
+        n = self.context.segment_peer_count
+        seg = self.context.viewing_merchant_segment
+        if n >= 1:
+            plural = "peer" if n == 1 else "peers"
+            return (
+                f"**Peer availability:** you have **{n} same-segment "
+                f"{plural}** ({seg}). Peer comparisons use the "
+                f"`peer_relationship = 'peer'` rows from `query_lake_sql` "
+                f"— your same-segment competitors, in real dollars."
+            )
+        # Zero same-segment peers (e.g. the only QSR / off-price banner).
+        if self.PEER_ROUTING_KIND == "pricing":
+            return (
+                f"**Peer availability — NONE.** You are the only "
+                f"`{seg}` merchant in the panel, so there are **no "
+                f"comparable same-segment peers**. A price comparison "
+                f"against a different segment is apples-to-oranges and "
+                f"is **not allowed**. Answer from your OWN data "
+                f"(`query_tenant`) only and state plainly that no "
+                f"comparable peers are available. Do NOT pull "
+                f"`peer_relationship = 'merchant'` (cross-segment) rows "
+                f"as a price benchmark."
+            )
+        if self.PEER_ROUTING_KIND == "anomaly":
+            return (
+                f"**Peer availability — no same-segment peers.** You are "
+                f"the only `{seg}` merchant. Use a cross-segment baseline "
+                f"(`peer_relationship = 'merchant'`), clearly labeled as "
+                f"the broader merchant set; or fall back to your own "
+                f"trend if a cross-segment baseline is not meaningful."
+            )
+        # comparative (demand / trade-area / trends) + advisor default.
+        return (
+            f"**Peer availability — no same-segment peers.** You are the "
+            f"only `{seg}` merchant, so a same-segment comparison isn't "
+            f"possible. You MAY compare against the broader merchant set "
+            f"(`peer_relationship = 'merchant'` from `query_lake_sql`), "
+            f"but you MUST label it clearly as *the broader merchant "
+            f"set, not same-segment peers.*"
         )
 
     # ---- Public ------------------------------------------------------
@@ -355,6 +421,8 @@ class Specialist:
             # default) and CellLookup resolve against it unchanged
             # (Wave 3.5 §10.1 / Finding 9).
             self._lake_frame = payload["frame"]
+            self._lake_from_sql = True
+            self._lake_manifest = None
             self._sql_log.append({
                 "surface":   "lake_sql",
                 "query":     args["sql"],
@@ -393,6 +461,7 @@ class Specialist:
             # tenant-only — dropping the lake side.
             if (
                 self.MERGE_REQUIRED
+                and not self._lake_from_sql  # Wave 3.5 two-query flow: no merge
                 and self._tenant_frame is not None
                 and len(self._tenant_frame) > 0
                 and self._lake_frame is not None
@@ -819,6 +888,7 @@ class Specialist:
         #     must have run (clean merge or merge-fail) before emit. ---
         if (
             self.MERGE_REQUIRED
+            and not self._lake_from_sql  # Wave 3.5 two-query flow: no merge gate
             and tenant_ready and lake_ready
             and not self._merge_attempted
         ):
@@ -1141,15 +1211,21 @@ class Specialist:
         # the reason in caveats.
         chart = None
         chart_error: str | None = None
-        try:
-            chart = build_chart(chart_intent, result)
-        except (MissingColumnError, UnsupportedIntentError,
-                NonNumericChartColumnError, KeyError) as exc:
-            chart_error = f"{type(exc).__name__}: {exc}"
-        except Exception as exc:                          # noqa: BLE001
-            # Unexpected error from a per-kind builder (NaN values in
-            # a Plotly indicator, etc.); same fallback path.
-            chart_error = f"chart build raised: {type(exc).__name__}: {exc}"
+        # Wave 3.5 §2.6 — charts are held for Wave 4. When the model
+        # omits chart_intent (the 3.5 prose-only contract), skip chart
+        # building entirely: no chart, and NO "chart skipped" caveat
+        # (it isn't malformed — it's intentionally absent). A populated
+        # chart_intent (legacy read_lake_table flow) still builds.
+        if chart_intent and chart_intent.get("kind"):
+            try:
+                chart = build_chart(chart_intent, result)
+            except (MissingColumnError, UnsupportedIntentError,
+                    NonNumericChartColumnError, KeyError) as exc:
+                chart_error = f"{type(exc).__name__}: {exc}"
+            except Exception as exc:                      # noqa: BLE001
+                # Unexpected error from a per-kind builder (NaN values in
+                # a Plotly indicator, etc.); same fallback path.
+                chart_error = f"chart build raised: {type(exc).__name__}: {exc}"
 
         # Validator runs against ``result`` (the chart's substrate)
         # for Pass B; Pass A's per-claim resolve honors each claim's
@@ -1201,7 +1277,7 @@ class Specialist:
         if len(result) == 0:
             effective_caveats.append(
                 "(No data was fetched before emit_response — model "
-                "skipped query_tenant / read_lake_table. Result frame "
+                "skipped query_tenant / query_lake_sql. Result frame "
                 "is empty.)"
             )
         # Side-by-side caveat when own_value and peer_benchmark are
@@ -1315,6 +1391,7 @@ class Specialist:
         self._merged_frame = None
         self._merge_fail_payload = None
         self._merge_attempted = False
+        self._lake_from_sql = False
 
     @staticmethod
     def _extract_text(content_blocks: list[Any]) -> str:

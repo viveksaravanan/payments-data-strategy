@@ -92,20 +92,21 @@ def test_trade_cohort_only_answer(viewer_krg, monkeypatch) -> None:
 # Prompt invariants
 # ---------------------------------------------------------------------
 
-def test_trade_prompt_declares_no_raw_mean() -> None:
-    """The Trade-Area prompt must state the median-only rule (D24.2
-    — concentration risk; never publish raw mean spend)."""
+def test_trade_prompt_declines_cross_merchant_cohorts() -> None:
+    """Wave 3.5: the line-item lake drops consumer linkage, so
+    cross-merchant cohort / overlap questions are no longer answerable.
+    The prompt must declare that boundary."""
     prompt = TradeAreaSpecialist.PROMPT_PATH.read_text().lower()
-    assert "median" in prompt
-    assert "raw mean" in prompt or "no raw mean" in prompt or "never publish raw mean" in prompt or "never say" in prompt
+    assert "no consumer linkage" in prompt
+    assert "cohort" in prompt and "isn't available" in prompt
 
 
-def test_trade_prompt_declines_peer_revenue() -> None:
-    """The prompt must offer a decline-gracefully template for
-    out-of-grain asks ("what's Acme's revenue in Z05?")."""
+def test_trade_prompt_declines_single_competitor_figure() -> None:
+    """Peer identity is reduced to the relationship label, so a single
+    competitor's figure can't be isolated. The prompt declines it."""
     prompt = TradeAreaSpecialist.PROMPT_PATH.read_text().lower()
-    assert "per-merchant" in prompt or "share_of_zone" in prompt
-    assert "decline" in prompt or "isn't published" in prompt or "not published" in prompt
+    assert "acme" in prompt  # the worked decline example
+    assert "isn't available" in prompt or "not available" in prompt
 
 
 def test_trade_prompt_never_mentions_fraud() -> None:
@@ -114,15 +115,11 @@ def test_trade_prompt_never_mentions_fraud() -> None:
     assert "tampering" not in prompt
 
 
-def test_trade_prompt_cohort_table_omits_peer_relationship() -> None:
-    """The prompt must say the cohort table has NO peer_relationship —
-    that's the structural difference from the other lake tables."""
+def test_trade_prompt_uses_query_lake_sql_with_real_neighborhood() -> None:
+    """Wave 3.5: peer geography is the real `neighborhood` name via
+    query_lake_sql — no Z-codes, no read_lake_table, no zone mapping."""
     prompt = TradeAreaSpecialist.PROMPT_PATH.read_text()
-    # The prompt block describing the cohort table must call out the
-    # `peer_relationship` absence near the dimension list.
-    assert "NO\n" in prompt or "(NO" in prompt
-    # And the peer_relationship reference is on the same line as the
-    # NO callout (within the cohort-table section).
-    cohort_section = prompt.split("lake_cross_merchant_cohorts", 1)[-1]
-    assert "peer_relationship" in cohort_section
-    assert "NO" in cohort_section
+    assert "query_lake_sql" in prompt
+    assert "neighborhood" in prompt
+    assert "read_lake_table" not in prompt
+    assert "derived_zone" not in prompt and "Z01" not in prompt

@@ -25,3 +25,4 @@ class PricingSpecialist(Specialist):
     MAX_TURNS = 6   # Wave 3 Stage 6.5 follow-up #6 — converging pills finish in 3-5
     # Wave 3 Stage 6.5 Fix 12 — pricing reads peer prices.
     PREFERRED_PEER_METRIC = "price_index"
+    PEER_ROUTING_KIND = "pricing"   # Wave 3.5 §6 — decline when 0 same-segment peers

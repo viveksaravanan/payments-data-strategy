@@ -22,3 +22,4 @@ class TradeAreaSpecialist(Specialist):
     # Wave 3 Stage 6.5 Fix 12 — trade-area peers compare on share-
     # of-zone (units-comparable across own + peer).
     PREFERRED_PEER_METRIC = "share_of_zone"
+    PEER_ROUTING_KIND = "comparative"   # Wave 3.5 §6 — cross-segment fallback, labeled

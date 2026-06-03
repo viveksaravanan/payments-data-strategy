@@ -139,8 +139,11 @@ def test_demand_prompt_never_mentions_fraud() -> None:
     assert "tampering" not in prompt
 
 
-def test_demand_prompt_declares_no_daily_grain() -> None:
-    """The prompt must explicitly state the "no daily peer grain"
-    Exclude so the model knows to decline daily asks."""
+def test_demand_prompt_uses_query_lake_sql_flow() -> None:
+    """Wave 3.5: peer data comes from query_lake_sql (line-item lake).
+    The prompt must teach that flow and the partial-week guard (the old
+    fixed-grain "no daily" Exclude no longer applies — txn_date is daily)."""
     prompt = DemandForecastingSpecialist.PROMPT_PATH.read_text().lower()
-    assert "no daily" in prompt or "week is the finest" in prompt
+    assert "query_lake_sql" in prompt
+    assert "read_lake_table" not in prompt
+    assert "partial" in prompt  # partial-week guard retained

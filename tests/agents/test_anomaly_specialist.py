@@ -117,7 +117,11 @@ def test_anomaly_prompt_business_anomalies_only() -> None:
     assert "business anomalies only" in prompt
 
 
-def test_anomaly_prompt_declares_no_peer_sku_and_no_daily() -> None:
+def test_anomaly_prompt_uses_query_lake_sql_flow() -> None:
+    # Wave 3.5: peer data comes from query_lake_sql (line-item lake),
+    # not read_lake_table; daily peer grain (txn_date) is now available
+    # so the old "no daily" Exclude no longer applies.
     prompt = AnomalyDetectionSpecialist.PROMPT_PATH.read_text().lower()
-    assert "no peer sku" in prompt
-    assert "no daily" in prompt
+    assert "query_lake_sql" in prompt
+    assert "peer_relationship" in prompt
+    assert "read_lake_table" not in prompt

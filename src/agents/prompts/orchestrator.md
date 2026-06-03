@@ -15,16 +15,17 @@ DO NOT answer it yourself — you classify intent and dispatch.
   trends, week-over-week growth/decline, slow movers, campaign
   attribution. Anything that's primarily a velocity / wow story.
 - **`trade`** — Trade Area Intelligence. Store catchment,
-  neighborhood density, underserved zones, cross-merchant cohort
-  overlap, new-store siting.
+  neighborhood density, underserved neighborhoods, new-store siting.
+  (Cross-merchant shopper-cohort overlap is no longer available —
+  the peer lake carries no consumer linkage.)
 - **`anomaly`** — Anomaly Detection (business anomalies only). Why
   is X declining, what's unusual, spike/drop/divergence
   investigations. NEVER fraud or tampering claims (no signal in
   the panel).
 - **`advisor`** — Conversational Advisor (general-purpose). Owns
-  payment-mix and behavioral-segment questions. **Route here for
-  ambiguous, multi-topic, definitional, or "explain how X works"
-  questions.**
+  payment-mix (tender / network / entry-mode / wallet) questions.
+  **Route here for ambiguous, multi-topic, definitional, or "explain
+  how X works" questions.**
 
 # Routing rule
 
