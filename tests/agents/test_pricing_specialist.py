@@ -30,7 +30,6 @@ from src.agents.pricing import PricingSpecialist
 from src.agents.response import AgentResponse
 from tests.agents._fake_llm import (
     patch_llm,
-    scripted_build_merge,
     scripted_emit_response,
     scripted_text,
     scripted_tool_use,
@@ -69,42 +68,45 @@ def test_pricing_canonical_question_produces_agentresponse(
     # claim uses CellLookup with agg='mean' over the matching cells
     # — the natural way for the model to assert "averaged across
     # zones and weeks".
+    # Wave 3.5 two-query flow: own claim resolves against the tenant
+    # frame (own_avg_price), peer against the lake frame (peer_val).
     emit = scripted_emit_response(
-        prose="Your dairy own price averages 3.50 in your zones, "
-              "indicating elevated category cost.",
-        chart_intent={
-            "kind": "cross_merchant_comparison",
-            "x": "category",
-            "series": ["own_value", "peer_benchmark"],
-            "y_format": "index",
-            "title": "Dairy pricing vs peers",
-            "takeaway": "Average own dairy price across zones and weeks.",
-        },
-        claims=[{
-            "text_span": "3.50",
-            "value": 3.50,
-            "source": {
-                "type": "CellLookup",
-                "row_filter": {"category": "DAIRY"},
-                "column": "own_value",
-                "agg": "mean",
+        headline="Your dairy ASP is 3.50, slightly above the peer 3.52.",
+        evidence=[
+            "Your dairy average selling price is 3.50.",
+            "The same-segment peer average is 3.52.",
+        ],
+        claims=[
+            {
+                "text_span": "3.50",
+                "value": 3.50,
+                "source": {
+                    "type": "CellLookup",
+                    "row_filter": {"category": "DAIRY"},
+                    "column": "own_avg_price",
+                    "agg": "mean",
+                    "frame": "tenant",
+                },
             },
-        }],
+            {
+                "text_span": "peer 3.52",
+                "value": 3.52,
+                "source": {
+                    "type": "CellLookup",
+                    "row_filter": {"category": "DAIRY"},
+                    "column": "peer_val",
+                    "agg": "mean",
+                    "frame": "lake",
+                },
+            },
+        ],
         caveats=["Peer set is 2 grocers.",
                  "Window: 2026-03-01 to 2026-05-29."],
     )
 
     script = [
         scripted_tool_use("query_tenant", {"sql": own_sql}),
-        scripted_tool_use("read_lake_table", {
-            "table": "lake_category_metrics",
-            "filters": {"category": "DAIRY", "grain": "cat_week"},
-        }),
-        scripted_build_merge(
-            on=["category"],
-            own_value_col="own_avg_price",
-            peer_value_col="price_index",
-        ),
+        scripted_tool_use("query_lake_sql", {"sql": "SELECT category, AVG(unit_price) AS peer_val FROM lake_transactions WHERE peer_relationship = 'peer' AND category = 'DAIRY' GROUP BY category"}),
         emit,
     ]
 
@@ -113,76 +115,26 @@ def test_pricing_canonical_question_produces_agentresponse(
         resp = specialist.answer("How does our dairy pricing compare to peers?")
 
     assert isinstance(resp, AgentResponse)
-    # Merged result has the canonical columns.
-    assert "own_value" in resp.result.columns
-    assert "peer_benchmark" in resp.result.columns
-    assert "gap" in resp.result.columns
+    # Two-query flow: tenant frame is the result-of-record.
+    assert "own_avg_price" in resp.result.columns
     # Charts are deferred to Wave 4 (§11.2) — gated off.
     assert resp.chart is None
-    # Prose retained the 3.5 claim (declared and matching cell).
-    assert "3.5" in resp.prose
+    # Prose retained the grounded own 3.50 claim.
+    assert "3.50" in resp.prose
     # Caveats survived.
     assert resp.caveats and any("Peer set" in c for c in resp.caveats)
-    # Grain notes came from the manifest.
-    assert any("peer SKU" in g for g in resp.grain_notes)
-    # SQL surfaces: tenant + lake reads + the build_merge step.
+    # SQL surfaces: tenant + lake_sql reads (no merge step in 3.5).
     surfaces = {s.surface for s in resp.sql}
-    assert surfaces == {"tenant", "lake", "merge"}
+    assert surfaces == {"tenant", "lake_sql"}
     # Telemetry populated.
     assert resp.telemetry is not None
-    # Fix 9 adds the build_merge turn → 4 total (tenant + lake + merge + emit).
-    assert resp.telemetry.turns == 4
+    # tenant + lake_sql + emit → 3 turns (no build_merge).
+    assert resp.telemetry.turns == 3
 
 
 # ---------------------------------------------------------------------
 # Off-grain ask — decline-gracefully via manifest excludes
 # ---------------------------------------------------------------------
-
-def test_pricing_off_grain_sku_filter_rejected(viewer_krg, monkeypatch) -> None:
-    """The model tries to filter the lake by sku — read_lake_table
-    raises LakeToolError. The error is fed back to the model as a
-    tool result so it can decline gracefully on the next turn.
-    """
-    final_text = """I can compare at category or subcategory grain; peer SKU detail isn't published.
-
-```render
-{
-  "merge": {},
-  "chart_intent": {
-    "kind": "kpi_callout",
-    "title": "No peer SKU available",
-    "value": "row_count"
-  },
-  "claims": []
-}
-```
-
-```caveats
-["No peer SKU detail is published — Wave 2 lake stops at subcategory."]
-```
-"""
-    script = [
-        scripted_tool_use("read_lake_table", {
-            "table": "lake_category_metrics",
-            "filters": {"sku": "MILK_GAL"},
-        }),
-        scripted_text(final_text),
-    ]
-    specialist = PricingSpecialist(viewer_krg)
-    with patch_llm(monkeypatch, script):
-        # We can't easily call .answer() because the read returns an
-        # error rather than a frame — and our minimal_response path
-        # only fires when no merge is required. Sanity: the underlying
-        # tool DOES raise LakeToolError when called with sku filter.
-        from src.agents import lake_tools as LT
-        with pytest.raises(LakeToolError) as exc:
-            LT.read_lake_table(
-                "KRG", "lake_category_metrics",
-                filters={"sku": "MILK_GAL"},
-            )
-        assert "sku" in str(exc.value)
-        assert "peer SKU" in str(exc.value)
-
 
 # ---------------------------------------------------------------------
 # Render block missing — pricing requires the merge by design
@@ -199,10 +151,7 @@ def test_pricing_render_block_required(viewer_krg, monkeypatch) -> None:
     )
     script = [
         scripted_tool_use("query_tenant", {"sql": own_sql}),
-        scripted_tool_use("read_lake_table", {
-            "table": "lake_category_metrics",
-            "filters": {"category": "DAIRY"},
-        }),
+        scripted_tool_use("query_lake_sql", {"sql": "SELECT category, AVG(unit_price) AS peer_val FROM lake_transactions WHERE peer_relationship = 'peer' GROUP BY category"}),
         scripted_text("Just some prose, no render block."),
     ]
     specialist = PricingSpecialist(viewer_krg)

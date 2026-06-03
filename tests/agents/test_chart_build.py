@@ -468,29 +468,6 @@ def test_table_drilldown_small_result_unchanged() -> None:
     assert "top" not in fig.layout.title.text.lower()
 
 
-def test_lake_zero_rows_diagnostic_present() -> None:
-    """Regression — when read_lake_table returns 0 rows, the payload
-    must include a zero_rows_diagnostic so the model retries with a
-    corrected filter instead of concluding "dataset not populated"."""
-    from src.agents.lake_tools import read_lake_table
-    payload = read_lake_table(
-        "KRG", "lake_category_metrics",
-        # Bogus grain value — manifest dimensions allow `grain` but
-        # only subcat_week / cat_week / cat_month are present in data.
-        filters={"grain": "cat_month"},
-    )
-    assert payload["row_count"] == 0
-    assert "zero_rows_diagnostic" in payload
-    diag = payload["zero_rows_diagnostic"]
-    assert "available_values_per_filter" in diag
-    assert "grain" in diag["available_values_per_filter"]
-    # The available values include subcat_week / cat_week (the real
-    # populated grains the model should have used).
-    available = diag["available_values_per_filter"]["grain"]
-    assert any("subcat_week" in v for v in available)
-    assert any("cat_week" in v for v in available)
-
-
 def test_all_nine_kinds_routable() -> None:
     """The D25.3 vocabulary is exactly nine kinds; the builder
     dispatch table must cover all of them so the model can't pick an

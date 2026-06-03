@@ -189,40 +189,6 @@ def _maybe_coerce_dates(
     return own_out, peer_out
 
 
-def check_magnitude_compatibility(
-    merged: pd.DataFrame,
-    *,
-    threshold: float = 100.0,
-) -> tuple[bool, dict[str, float]]:
-    """Compare ``own_value`` and ``peer_benchmark`` median magnitudes;
-    return ``(compatible, diagnostics)``. ``compatible == False`` when
-    the ratio between non-zero median |values| exceeds ``threshold``
-    — the signal of a unit/scale mismatch (e.g. raw $ vs index).
-
-    Used by ``Specialist._dispatch_tool('emit_response', ...)`` to
-    surface a structured tool error rather than computing a
-    nonsense ``gap`` (D4's batch-7 ``625779.0 − 1.002976 = 625778``).
-    """
-    diag: dict[str, float] = {
-        "own_median_abs": float("nan"),
-        "peer_median_abs": float("nan"),
-        "ratio": float("nan"),
-        "threshold": threshold,
-    }
-    if len(merged) == 0 or "own_value" not in merged.columns \
-       or "peer_benchmark" not in merged.columns:
-        return True, diag
-    own_med = float(merged["own_value"].abs().median())
-    peer_med = float(merged["peer_benchmark"].abs().median())
-    diag["own_median_abs"] = own_med
-    diag["peer_median_abs"] = peer_med
-    if not (own_med > 0 and peer_med > 0):
-        return True, diag
-    ratio = max(own_med, peer_med) / min(own_med, peer_med)
-    diag["ratio"] = ratio
-    return ratio <= threshold, diag
-
-
 class ViewerScopingError(ValueError):
     """Raised when ``merge_own_and_peer`` is asked to merge an own
     frame that contains rows for merchants other than the viewer,
@@ -374,28 +340,4 @@ def merge_own_and_peer(
     else:                                       # pragma: no cover
         raise ValueError(f"Unknown gap_op {gap_op!r}")
 
-    # --- Unit-compatibility on the gap (Wave 3 Stage 6.5 follow-up #6
-    # softening). When own_value and peer_benchmark are in different
-    # units / scales, the difference (or ratio) is not directionally
-    # meaningful — but the side-by-side comparison still is. NaN the
-    # gap column and attach a flag attribute the specialist reads to
-    # add a side-by-side caveat. Do NOT raise — different units is a
-    # valid, complete result (just not subtractable). The prior
-    # behavior (specialist rejecting + the model retrying to find a
-    # subtractable pair) caused most of the batch-12 thrash on P2 /
-    # D3 / D4 / T4.
-    ok, mag_diag = check_magnitude_compatibility(merged)
-    gap_is_directional = not ok
-    if gap_is_directional:
-        merged["gap"] = float("nan")
-
-    result = merged.reset_index(drop=True)
-    # Attach as a DataFrame attribute (best-effort — pandas attrs
-    # survive a reset_index and a copy). The specialist's
-    # ``_finalize_from_emit`` reads ``gap_is_directional`` and adds a
-    # caveat. If the attribute is dropped by some pandas op, the
-    # specialist can re-run ``check_magnitude_compatibility`` as a
-    # safety net.
-    result.attrs["gap_is_directional"] = gap_is_directional
-    result.attrs["magnitude_diagnostic"] = mag_diag
-    return result
+    return merged.reset_index(drop=True)

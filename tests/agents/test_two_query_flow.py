@@ -58,7 +58,6 @@ def test_two_query_flow_clean_response() -> None:
         {"sql": "SELECT category, AVG(unit_price) AS peer_asp FROM lake_transactions "
                 "WHERE peer_relationship = 'peer' AND category = 'DAIRY' GROUP BY category"},
     )
-    assert spec._lake_from_sql is True
 
     own_asp = round(float(spec._tenant_frame["own_asp"].iloc[0]), 2)
     peer_asp = round(float(spec._lake_frame["peer_asp"].iloc[0]), 2)

@@ -35,7 +35,6 @@ from src.lake.isolation import (
     wrap_tenant_query,
 )
 from src.lake.lake_sql import LakeSqlError, run_lake_sql
-from src.lake.manifest import manifest_for
 from src.lake.scope import (
     IdentityLeakError,
     assert_no_identity_leak,
@@ -131,13 +130,43 @@ _TENANT_TABLE_DESCRIPTIONS: dict[str, dict[str, Any]] = {
 }
 
 
-_LAKE_TABLES_FOR_SCHEMA = [
-    "lake_category_metrics",
-    "lake_payment_mix",
-    "lake_segment_mix",
-    "lake_trade_area",
-    "lake_cross_merchant_cohorts",
-]
+def _lake_items_schema() -> dict[str, Any]:
+    """Introspect the Wave 3.5 line-item lake schema from any viewer's
+    materialized pair — the column schema is identical across viewers.
+    Returns ``{table: {description, columns}}`` for ``query_lake_sql``."""
+    import pyarrow.parquet as pq
+
+    from src.lake.lake_sql import DATA_LAKE_ITEMS
+
+    out: dict[str, Any] = {}
+    if not DATA_LAKE_ITEMS.exists():
+        return out
+    viewer_dirs = sorted(p for p in DATA_LAKE_ITEMS.iterdir() if p.is_dir())
+    if not viewer_dirs:
+        return out
+    vdir = viewer_dirs[0]
+    descriptions = {
+        "lake_transactions": (
+            "Peer purchase lines — resolves to YOUR peer set, your own "
+            "rows absent. Aggregating SQL only (query_lake_sql)."
+        ),
+        "lake_stores": (
+            "Peer store reference; JOIN via lake_store_id. Carries "
+            "neighborhood, peer_relationship, peer_segment."
+        ),
+    }
+    for table in ("lake_transactions", "lake_stores"):
+        path = vdir / f"{table}.parquet"
+        if not path.exists():
+            continue
+        schema = pq.read_schema(path)
+        out[table] = {
+            "description": descriptions.get(table, ""),
+            "columns": [
+                {"name": f.name, "type": str(f.type)} for f in schema
+            ],
+        }
+    return out
 
 
 def schema_info() -> dict[str, Any]:
@@ -148,9 +177,9 @@ def schema_info() -> dict[str, Any]:
     the schema); descriptions + join hints from
     ``_TENANT_TABLE_DESCRIPTIONS``.
 
-    Lake tables: dimensions + metrics + excludes + k_floor read
-    from the Wave 2 manifest. No fixed column lists for the lake —
-    the manifest is the contract.
+    Lake tables (Wave 3.5): the two line-item tables, introspected from
+    a viewer's materialized pair — queried with aggregating SQL via
+    ``query_lake_sql``.
 
     Always-on, no input, cheap.
     """
@@ -173,29 +202,15 @@ def schema_info() -> dict[str, Any]:
             "columns": columns,
         }
 
-    lake: dict[str, Any] = {}
-    for table in _LAKE_TABLES_FOR_SCHEMA:
-        try:
-            spec = manifest_for(table)
-        except KeyError:
-            continue
-        lake[table] = {
-            "finest_grain": spec["finest_grain"],
-            "dimensions":   spec["dimensions"],
-            "metrics":      spec["metrics"],
-            "excludes":     spec["excludes"],
-            "k_floor":      spec["k_floor"],
-        }
+    lake = _lake_items_schema()
 
     tips = [
         "Always call schema_info first; it tells you the real column names so you don't burn turns guessing.",
         "transaction_items has NO banner_code — scope it by joining to transactions and filtering transactions.banner_code = '<viewer>'.",
         "Join transaction_items → products via sku for product detail; via canonical_id for cross-merchant.",
-        "Lake reads are by table name + filters; no SQL. Filter keys must be in the table's dimensions list.",
-        "Lake automatically excludes your own merchant. Real banner_code never reaches you — peer_relationship (segment_peer | cross_segment) is what you see.",
-        "WEEK BOUNDARY (load-bearing for merges on period_start): the lake's period_start is Monday of each week, dtype `date`. To produce a tenant-side period_start that joins cleanly, use this SQL pattern: `SELECT DATE_TRUNC('week', t.txn_ts)::DATE AS period_start, ... FROM transactions t WHERE t.banner_code = '<viewer>' GROUP BY DATE_TRUNC('week', t.txn_ts)`. The cast to `::DATE` matches the lake's dtype. The merge layer also auto-coerces date/datetime mismatches as a safety net, so a slightly different cast still works — but the canonical pattern avoids that fallback.",
-        "MONTH BOUNDARY: lake_payment_mix.month_start is the 1st of each month, dtype `date`. Tenant equivalent: `DATE_TRUNC('month', t.txn_ts)::DATE AS month_start`.",
-        "COMPARABLE UNITS (load-bearing for merges): pick own_value_col and peer_value_col that are in the SAME UNITS. Examples that work: own units (SUM(qty)) vs peer units_index (both are 'units' shape — comparison is meaningful); own avg unit_price (AVG(unit_price)) vs peer price_index. Examples that DON'T work: own revenue (SUM(line_total) in dollars) vs peer revenue_index (a unitless ratio centered ≈1.0) — the merge layer will reject this as a magnitude mismatch.",
+        "Peer data: query lake_transactions / lake_stores with aggregating SQL via query_lake_sql. It resolves to YOUR peer set; your own rows are absent. peer_relationship = 'peer' (same segment) | 'merchant' (different segment).",
+        "neighborhood lives on lake_stores, not lake_transactions — JOIN lake_stores USING (lake_store_id) to group by neighborhood.",
+        "k=5 floor: groups backed by fewer than 5 lines are dropped and counted in `suppressed`. For transaction-level shares use COUNT(DISTINCT lake_txn_id); the line-count floor is the suppression gate only.",
     ]
 
     return {
@@ -258,235 +273,6 @@ def query_lake_sql(viewer: str, sql: str) -> dict[str, Any]:
         raise LakeToolError(f"DuckDB execution failed: {exc}") from exc
 
     return _df_to_payload(df, sql=sql, suppressed=n_suppressed)
-
-
-# ---------------------------------------------------------------------
-# read_lake_table
-# ---------------------------------------------------------------------
-
-def read_lake_table(
-    viewer: str,
-    table: str,
-    filters: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    """Read a Wave 2 lake table, scoped to ``viewer``.
-
-    Steps:
-
-    1. Resolve the manifest for ``table`` — ``KeyError`` if the table
-       doesn't exist in the lake (mapped to ``LakeToolError`` for the
-       model).
-    2. Validate every ``filters`` key is in the manifest's
-       ``dimensions`` list. An off-grain key (e.g. ``sku`` on
-       ``lake_category_metrics``) is rejected with a message quoting
-       the relevant ``Excludes`` — so the agent can decline gracefully.
-    3. Read ``data/lake/<table>.parquet``; apply equality filters
-       (single value or list-membership).
-    4. ``scope_for_viewer`` strips the viewer's rows + adds
-       ``peer_relationship`` + drops ``banner_code``.
-    5. ``assert_no_identity_leak`` — the safety check before
-       returning anything to the LLM.
-
-    Returns ``{rows, columns, row_count, truncated,
-    manifest: {finest_grain, dimensions, metrics, excludes, k_floor,
-    ladder}, table: <name>}``.
-    """
-    try:
-        manifest = manifest_for(table)
-    except KeyError as exc:
-        raise LakeToolError(
-            f"Unknown lake table {table!r}. Known tables: "
-            f"{_lake_tables_list()}."
-        ) from exc
-
-    filters = filters or {}
-    _validate_filter_keys(table, filters, manifest)
-
-    path = DATA_LAKE / f"{table}.parquet"
-    if not path.exists():
-        raise LakeToolError(
-            f"Lake table {table!r} is not materialized at {path}. "
-            f"Run `make lake` to build it from data/raw/."
-        )
-    df_all = pd.read_parquet(path)
-    df = _apply_filters(df_all, filters)
-
-    # Scope-and-strip. Cohort table has no banner_code so this is a
-    # no-op there (preserves the table's natural shape).
-    df = scope_for_viewer(df, viewer)
-
-    try:
-        assert_no_identity_leak(df)
-    except IdentityLeakError as exc:
-        # Should never happen — scope_for_viewer is the contract
-        # boundary. If it does, that's a bug, not a model issue.
-        raise LakeToolError(
-            f"Lake response carried identity columns: {exc}"
-        ) from exc
-
-    payload = _df_to_payload(df, table=table)
-    payload["manifest"] = {
-        "finest_grain": manifest["finest_grain"],
-        "dimensions":   manifest["dimensions"],
-        "metrics":      manifest["metrics"],
-        "excludes":     manifest["excludes"],
-        "k_floor":      manifest["k_floor"],
-        "ladder":       manifest["ladder"],
-    }
-    # Wave 3 Stage 6.5 Fix 11a — pre-computed per-dimension aggregates.
-    # The model claims at category/zone/etc. grain ("BABY price index
-    # is X"); the validator recomputes mean across all matching rows.
-    # Surfacing the exact mean lets the model COPY the value rather
-    # than guess it. The computation here uses the SAME function the
-    # validator uses (claims.aggregate_column) so a copied value
-    # passes verbatim, never normalizes.
-    payload["aggregates"] = _compute_lake_aggregates(df, manifest)
-    # When filters match 0 rows, the model has been observed to
-    # conclude "the dataset isn't populated" — false (the data exists,
-    # the filter was wrong). Surface diagnostic guidance: available
-    # values per filter dimension so the model can retry with a
-    # corrected filter, or report honestly that grain X has no data
-    # and use the available alternative.
-    if len(df) == 0:
-        diagnostics: dict[str, list[Any]] = {}
-        for k, v in filters.items():
-            try:
-                available = sorted(
-                    {str(x) for x in df_all[k].dropna().unique().tolist()}
-                )
-            except KeyError:
-                continue
-            # Cap to avoid bloating the payload.
-            if len(available) > 30:
-                available = available[:30] + [f"… ({len(available)} total)"]
-            diagnostics[k] = available
-        payload["zero_rows_diagnostic"] = {
-            "message": (
-                "Lake read returned 0 rows. The data exists — your "
-                "filter values did not match. Either retry with a "
-                "filter value listed below, or report 'no peer data "
-                "at this grain' and use the available alternative. "
-                "Do NOT conclude 'the dataset isn't populated' — "
-                "that is false."
-            ),
-            "available_values_per_filter": diagnostics,
-        }
-    return payload
-
-
-def _compute_lake_aggregates(
-    df: pd.DataFrame, manifest: dict[str, Any],
-) -> dict[str, Any]:
-    """Wave 3 Stage 6.5 Fix 11a — per-single-dimension means of every
-    numeric manifest metric, computed over the post-scope frame.
-
-    Returns a nested dict::
-
-        {
-          "by_category": {
-            "BABY":  {"price_index": 1.0154, "units_index": 0.94, ...},
-            "MEAT":  {"price_index": 1.0258, ...},
-            ...
-          },
-          "by_derived_zone": {...},
-          ...
-        }
-
-    The model copies values verbatim into `claim.value`, pairs each
-    with a single-dimension row_filter (e.g. ``{category: "BABY"}``)
-    + ``agg="mean"``, and the validator recomputes via
-    ``aggregate_column`` against the same column over the same scoped
-    frame. Byte-identical by construction — the same code path
-    produces both numbers.
-
-    Bounded: single-dimension groupings only, no combinatorial
-    cross-products. For ``lake_category_metrics`` the largest section
-    is ``by_subcategory`` × 7 metrics ≈ 350 entries.
-    """
-    # Imported lazily to avoid a circular import at module load.
-    from src.agents.claims import aggregate_column
-
-    dimensions = list(manifest.get("dimensions", []))
-    metrics = list(manifest.get("metrics", []))
-
-    out: dict[str, Any] = {}
-    if df is None or len(df) == 0:
-        return out
-
-    # Restrict to metrics actually present + numeric.
-    present_metrics: list[str] = []
-    for m in metrics:
-        if m not in df.columns:
-            continue
-        if not pd.api.types.is_numeric_dtype(df[m]):
-            continue
-        present_metrics.append(m)
-
-    if not present_metrics:
-        return out
-
-    for dim in dimensions:
-        if dim not in df.columns:
-            continue
-        try:
-            unique_vals = df[dim].dropna().unique().tolist()
-        except Exception:                                  # noqa: BLE001
-            continue
-        # Bound the size — if a dim has too many distinct values
-        # (e.g. period_start across many weeks), skip it for the
-        # payload size budget; the model can still claim against it
-        # with single-row filters.
-        if len(unique_vals) > 60:
-            continue
-        section: dict[str, dict[str, float]] = {}
-        for val in unique_vals:
-            sub = df[df[dim] == val]
-            if len(sub) == 0:
-                continue
-            entry: dict[str, float] = {}
-            for metric in present_metrics:
-                try:
-                    entry[metric] = aggregate_column(sub, metric, "mean")
-                except (ValueError, TypeError):
-                    continue
-            if entry:
-                # JSON-safe keys — string-cast in case of non-string
-                # dimension values (e.g. dates, ints).
-                section[str(val)] = entry
-        if section:
-            out[f"by_{dim}"] = section
-    return out
-
-
-def _validate_filter_keys(
-    table: str,
-    filters: dict[str, Any],
-    manifest: dict[str, Any],
-) -> None:
-    """Every filter key must be one of the table's published
-    dimensions. Off-grain filters get rejected with the relevant
-    ``Excludes`` so the agent can either drop the filter or decline."""
-    dims = set(manifest["dimensions"])
-    bad = [k for k in filters if k not in dims]
-    if not bad:
-        return
-    raise LakeToolError(
-        f"Filter keys {bad} are not dimensions of {table!r}. "
-        f"Published dimensions: {sorted(dims)}. "
-        f"Excludes: {manifest['excludes']}."
-    )
-
-
-def _apply_filters(df: pd.DataFrame, filters: dict[str, Any]) -> pd.DataFrame:
-    """Apply equality filters. Each value can be a scalar or a list
-    (treated as IN). Missing dimensions raise (would have been caught
-    by ``_validate_filter_keys`` upstream)."""
-    for k, v in filters.items():
-        if isinstance(v, list):
-            df = df[df[k].isin(v)]
-        else:
-            df = df[df[k] == v]
-    return df
 
 
 # ---------------------------------------------------------------------
@@ -593,47 +379,6 @@ QUERY_LAKE_SQL_TOOL = {
             },
         },
         "required": ["sql"],
-    },
-}
-
-
-READ_LAKE_TOOL = {
-    "name": "read_lake_table",
-    "description": (
-        "Read a Wave 2 anonymized lake table (peer data, k≥50). "
-        "Tables: lake_category_metrics, lake_payment_mix, "
-        "lake_segment_mix, lake_trade_area, "
-        "lake_cross_merchant_cohorts. Filters must use dimensions "
-        "listed in the table's manifest; off-grain filters (e.g. "
-        "`sku` on lake_category_metrics) are rejected with the "
-        "manifest's Excludes so you know what isn't published. "
-        "Your own merchant's rows are stripped automatically; the "
-        "real banner_code is replaced with `peer_relationship` "
-        "(segment_peer or cross_segment). Cohort table has no "
-        "banner column."
-    ),
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "table": {
-                "type": "string",
-                "enum": [
-                    "lake_category_metrics", "lake_payment_mix",
-                    "lake_segment_mix", "lake_trade_area",
-                    "lake_cross_merchant_cohorts",
-                ],
-            },
-            "filters": {
-                "type": "object",
-                "description": (
-                    "Equality filters keyed by dimension name; values "
-                    "can be a string or a list of strings (IN). E.g. "
-                    "`{\"category\": \"DAIRY\", \"derived_zone\": "
-                    "[\"Z05\", \"Z08\"]}`."
-                ),
-            },
-        },
-        "required": ["table"],
     },
 }
 
@@ -797,84 +542,12 @@ EMIT_RESPONSE_TOOL = {
 }
 
 
-BUILD_MERGE_TOOL = {
-    "name": "build_merge",
-    "description": (
-        "Combine your tenant query result with the lake read into a "
-        "single comparison frame at matching grain. Call this AFTER "
-        "both query_tenant and read_lake_table have returned non-empty "
-        "rows. The server runs the merge against the captured frames "
-        "and returns the merged frame's REAL columns + dtypes + a "
-        "50-row preview — author your chart_intent and claims against "
-        "those names, NOT guesses based on the prompt's spec.\n"
-        "\n"
-        "Required precondition for emit_response: when both tenant and "
-        "lake frames are populated, you MUST call build_merge before "
-        "emit_response. Single-source questions (tenant-only, e.g. "
-        "the cohort table where peer comparison is window-level) skip "
-        "this call.\n"
-        "\n"
-        "If the merge cannot run (mismatched join keys, grain "
-        "incompatibility, etc.), build_merge returns "
-        "`merge_failed: true` with BOTH real frames unmerged. In that "
-        "case author claims with `frame: 'tenant'` or `frame: 'lake'` "
-        "so each claim resolves against the right source — see Rule 8 "
-        "in the shared answering rules."
-    ),
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "on": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": "Join keys present in BOTH frames.",
-            },
-            "own_value_col": {
-                "type": "string",
-                "description": (
-                    "Tenant column whose values become `own_value` "
-                    "in the merged frame."
-                ),
-            },
-            "peer_value_col": {
-                "type": "string",
-                "description": (
-                    "Lake column whose values become `peer_benchmark` "
-                    "in the merged frame."
-                ),
-            },
-            "gap_op": {
-                "type": "string",
-                "enum": ["difference", "ratio"],
-                "description": (
-                    "How to compute the `gap` column. Defaults to "
-                    "`difference`. When the pair is in mismatched "
-                    "units (own $/unit vs peer index), the server "
-                    "NaNs `gap` automatically and emits a "
-                    "side-by-side caveat."
-                ),
-            },
-        },
-        "required": ["on", "own_value_col", "peer_value_col"],
-    },
-}
-
-
 TOOLS_SPECIALIST = [
     SCHEMA_INFO_TOOL,
     QUERY_TENANT_TOOL,
     QUERY_LAKE_SQL_TOOL,
-    READ_LAKE_TOOL,
-    BUILD_MERGE_TOOL,
     EMIT_RESPONSE_TOOL,
 ]
-
-
-def _lake_tables_list() -> list[str]:
-    """Lake-table list for the error path (uses manifest as source of
-    truth)."""
-    from src.lake.manifest import list_tables
-    return list_tables()
 
 
 # ---------------------------------------------------------------------

@@ -34,22 +34,20 @@ def test_chart_takeaways_module_deleted() -> None:
 
 
 def test_no_make_chart_in_lake_tools() -> None:
-    """The Wave 3 tool surface has no `make_chart` tool — chart
-    construction goes through `chart_build.build_chart` deterministically
-    from the merged result. The Wave 3 tools are schema_info
-    (column-list introspection so the model doesn't guess) +
-    query_tenant (own data) + query_lake_sql (Wave 3.5: peer data via
-    aggregating SQL on the line-item lake) + read_lake_table (Wave 2
-    peer aggregates, scoped — retired in Wave 3.5 Stage E) + build_merge
-    (Fix 9: server-side merge that returns real columns before
-    chart/claims author against them) + emit_response (structured
-    terminator that feeds the §1 contract)."""
+    """The Wave 3.5 tool surface is exactly four tools: schema_info
+    (column-list introspection), query_tenant (own data), query_lake_sql
+    (peer data via aggregating SQL on the line-item lake), and
+    emit_response (structured terminator feeding the §1 contract). The
+    Wave 2 read_lake_table and Wave 3 build_merge were removed in Stage E
+    (SPEC §11); there is no make_chart tool — charts are deferred to
+    Wave 4."""
     from src.agents import lake_tools as LT
     tool_names = {t["name"] for t in LT.TOOLS_SPECIALIST}
     assert "make_chart" not in tool_names
+    assert "read_lake_table" not in tool_names
+    assert "build_merge" not in tool_names
     assert tool_names == {
-        "schema_info", "query_tenant", "query_lake_sql", "read_lake_table",
-        "build_merge", "emit_response",
+        "schema_info", "query_tenant", "query_lake_sql", "emit_response",
     }
 
 

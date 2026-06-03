@@ -31,7 +31,6 @@ from src.agents.lake_tools import LakeToolError, sanitize_prose
 from src.agents.pricing import PricingSpecialist
 from src.agents.response import (
     MergeUnitMismatchError,
-    check_magnitude_compatibility,
     merge_own_and_peer,
 )
 
@@ -208,7 +207,7 @@ def test_prose_business_fallback_when_all_claims_stripped(viewer_krg) -> None:
     business-language string. No mechanics terms reach the user."""
     specialist = PricingSpecialist(viewer_krg)
     specialist._reset_state()
-    specialist._merged_frame = pd.DataFrame({
+    specialist._tenant_frame = pd.DataFrame({
         "category": ["MEAT"], "own_value": [1000.0],
         "peer_benchmark": [1.06], "gap": [998.94],
     })
@@ -241,7 +240,7 @@ def test_evidence_promoted_to_headline_when_headline_empty(viewer_krg) -> None:
     specialist = PricingSpecialist(viewer_krg)
     specialist._reset_state()
     # Clean-merge path — the merged frame is the result-of-record.
-    specialist._merged_frame = pd.DataFrame({
+    specialist._tenant_frame = pd.DataFrame({
         "category": ["DAIRY"], "own_value": [3.99],
         "peer_benchmark": [1.06], "gap": [2.93],
         "price_index": [1.06],
@@ -276,7 +275,7 @@ def test_empty_headline_and_no_evidence_falls_back(viewer_krg) -> None:
     business-fallback string, never a claim-fragment synthesis."""
     specialist = PricingSpecialist(viewer_krg)
     specialist._reset_state()
-    specialist._merged_frame = pd.DataFrame({
+    specialist._tenant_frame = pd.DataFrame({
         "category": ["DAIRY"], "own_value": [3.99],
         "peer_benchmark": [1.06], "gap": [2.93], "price_index": [1.06],
     })
@@ -376,58 +375,6 @@ def test_merge_dtype_matched_keys_unchanged() -> None:
     assert len(merged) == 2
 
 
-# ---------------------------------------------------------------------
-# Fix 2 — magnitude compatibility check
-# ---------------------------------------------------------------------
-
-def test_magnitude_check_flags_raw_revenue_vs_index() -> None:
-    """D4's batch-7 bug — raw revenue (~625k) subtracted from a
-    unitless index (~1.0). The check must flag this as
-    incompatible."""
-    merged = pd.DataFrame({
-        "own_value":      [625779.0, 411222.0, 583011.0],
-        "peer_benchmark": [1.002,    0.998,    1.011],
-    })
-    ok, diag = check_magnitude_compatibility(merged)
-    assert ok is False
-    assert diag["ratio"] > 100
-
-
-def test_magnitude_check_passes_comparable_units() -> None:
-    """own AVG(qty) ~1.2 vs peer units_index ~1.0 — comparable
-    units, ratio ~1.2× < 100× threshold."""
-    merged = pd.DataFrame({
-        "own_value":      [1.20, 1.25, 1.30],
-        "peer_benchmark": [0.95, 1.05, 1.00],
-    })
-    ok, diag = check_magnitude_compatibility(merged)
-    assert ok is True
-    assert diag["ratio"] < 100
-
-
-def test_magnitude_check_handles_zero_peer_safely() -> None:
-    """When peer_benchmark median is 0 (e.g. wow_delta close to
-    flat), the check returns True (no ratio defined) rather than
-    raising or false-positiving."""
-    merged = pd.DataFrame({
-        "own_value":      [1.20, 1.25],
-        "peer_benchmark": [0.0,  0.0],
-    })
-    ok, _ = check_magnitude_compatibility(merged)
-    assert ok is True
-
-
-def test_magnitude_check_handles_empty_merge() -> None:
-    """An empty merge result (no rows) is structurally compatible
-    by default — there's no comparison to make."""
-    merged = pd.DataFrame(
-        {"own_value": [], "peer_benchmark": []}
-    )
-    ok, _ = check_magnitude_compatibility(merged)
-    assert ok is True
-
-
-# ---------------------------------------------------------------------
 # Fixes 1 + 2 + 5 — Specialist emit_response preconditions
 # ---------------------------------------------------------------------
 
@@ -451,178 +398,6 @@ def test_emit_rejected_with_no_data_fetched(viewer_krg) -> None:
             "claims": [],
         })
     assert "fetch data" in str(exc.value).lower()
-
-
-def test_emit_auto_invokes_build_merge_when_model_skips(viewer_krg) -> None:
-    """Wave 3 Stage 6.5 Fix 10a — when both tenant and lake frames
-    are populated and the model calls emit_response without first
-    calling build_merge, the server auto-invokes the merge before
-    the precondition gate runs. Replaces the prior "Fix 9a reject"
-    behavior — Haiku has proven it won't reliably call build_merge,
-    so the server does it.
-
-    The auto-invoke derives a dimension-only spec from the lake's
-    manifest, runs ``merge_own_and_peer``, and sets
-    ``self._merged_frame`` (or routes to dual-frame on failure).
-    Emit then succeeds; chart_intent + claims author against the
-    merged frame's REAL columns at finalize time."""
-    specialist = PricingSpecialist(viewer_krg)
-    specialist._reset_state()
-    specialist._tenant_frame = pd.DataFrame({
-        "category": ["DAIRY"], "own_avg_qty": [1.2],
-    })
-    specialist._lake_frame = pd.DataFrame({
-        "category": ["DAIRY"], "units_index": [0.95],
-        "peer_relationship": ["segment_peer"],
-    })
-    specialist._lake_manifest = {
-        "dimensions": ["peer_relationship", "category", "subcategory",
-                        "derived_zone", "period_start", "grain"],
-        "metrics": ["units_index", "price_index", "txn_count"],
-    }
-
-    out = specialist._dispatch_tool("emit_response", {
-        "headline": "Concrete answer with 1.2 vs 0.95.",
-        "chart_intent": {"kind": "kpi_callout", "value": "own_value"},
-        "claims": [],
-    })
-    assert out == {"ok": True}
-    # Auto-invoke ran: merged frame is set and merge surface logged.
-    assert specialist._merge_attempted is True
-    assert specialist._merged_frame is not None
-    assert "own_value" in specialist._merged_frame.columns
-    assert "peer_benchmark" in specialist._merged_frame.columns
-    surfaces = [s["surface"] for s in specialist._sql_log]
-    assert "merge" in surfaces
-
-
-def test_build_merge_returns_real_columns_before_emit(viewer_krg) -> None:
-    """Fix 9a: build_merge runs the server-side merge and returns the
-    REAL merged frame's columns + dtypes + a 50-row preview, same
-    shape as query_tenant / read_lake_table payloads. The model
-    authors chart_intent and claims against these names."""
-    specialist = PricingSpecialist(viewer_krg)
-    specialist._reset_state()
-    specialist._tenant_frame = pd.DataFrame({
-        "category": ["DAIRY"], "own_avg_qty": [1.2],
-    })
-    specialist._lake_frame = pd.DataFrame({
-        "category": ["DAIRY"], "units_index": [0.95],
-        "peer_relationship": ["segment_peer"],
-    })
-    payload = specialist._dispatch_tool("build_merge", {
-        "on": ["category"],
-        "own_value_col": "own_avg_qty",
-        "peer_value_col": "units_index",
-        "gap_op": "difference",
-    })
-    assert payload["merge_failed"] is False
-    assert payload["row_count"] == 1
-    # The merged frame's real columns must include the canonical
-    # own_value / peer_benchmark / gap triple.
-    assert "own_value" in payload["columns"]
-    assert "peer_benchmark" in payload["columns"]
-    assert "gap" in payload["columns"]
-    assert "category" in payload["columns"]
-    # dtypes are surfaced so the model knows what's numeric.
-    assert payload["dtypes"]["own_value"].startswith(("int", "float"))
-    # The merged frame is stored as the result-of-record.
-    assert specialist._merged_frame is not None
-    assert specialist._merge_attempted is True
-
-
-def test_build_merge_failure_returns_both_frames_unmerged(viewer_krg) -> None:
-    """Fix 9b: when build_merge fails (mismatched join keys,
-    incompatible grain), it returns ``merge_failed=True`` with BOTH
-    real frames unmerged — does NOT broadcast a scalar across rows.
-    The model then composes claims with frame: 'tenant' / 'lake'."""
-    specialist = PricingSpecialist(viewer_krg)
-    specialist._reset_state()
-    specialist._tenant_frame = pd.DataFrame({
-        "category": ["DAIRY"], "own_avg_qty": [1.2],
-    })
-    specialist._lake_frame = pd.DataFrame({
-        "category": ["DAIRY"], "derived_zone": ["Z05"],
-        "units_index": [0.95], "peer_relationship": ["segment_peer"],
-    })
-    payload = specialist._dispatch_tool("build_merge", {
-        "on": ["category", "derived_zone"],  # not in tenant
-        "own_value_col": "own_avg_qty",
-        "peer_value_col": "units_index",
-        "gap_op": "difference",
-    })
-    assert payload["merge_failed"] is True
-    # Both real frames are returned, NOT broadcast.
-    assert payload["tenant"]["row_count"] == 1
-    assert payload["lake"]["row_count"] == 1
-    assert "own_avg_qty" in payload["tenant"]["columns"]
-    assert "units_index" in payload["lake"]["columns"]
-    # Merged frame is NOT set (so the validator path uses the dual-
-    # frame branch).
-    assert specialist._merged_frame is None
-    assert specialist._merge_fail_payload is not None
-    assert specialist._merge_attempted is True
-
-
-def test_magnitude_mismatch_accepts_as_side_by_side(viewer_krg) -> None:
-    """Wave 3 Stage 6.5 follow-up #6 softening (Fix A) — preserved
-    through Fix 9. When own and peer columns are in different units,
-    the merge layer nullifies the ``gap`` column. build_merge still
-    succeeds; subsequent emit_response is accepted."""
-    specialist = PricingSpecialist(viewer_krg)
-    specialist._reset_state()
-    specialist._tenant_frame = pd.DataFrame({
-        "category": ["DAIRY"], "own_revenue": [625779.0],
-    })
-    specialist._lake_frame = pd.DataFrame({
-        "category": ["DAIRY"], "revenue_index": [1.002],
-        "peer_relationship": ["segment_peer"],
-    })
-    payload = specialist._dispatch_tool("build_merge", {
-        "on": ["category"],
-        "own_value_col": "own_revenue",
-        "peer_value_col": "revenue_index",
-        "gap_op": "difference",
-    })
-    assert payload["merge_failed"] is False
-    assert payload["gap_is_directional"] is True
-    # Now emit accepts.
-    out = specialist._dispatch_tool("emit_response", {
-        "headline": "Your $625k revenue against a peer revenue_index of 1.002 indicates ~baseline performance.",
-        "chart_intent": {"kind": "kpi_callout", "value": "own_value"},
-        "claims": [],
-    })
-    assert out == {"ok": True}
-    assert specialist._emit_args is not None
-    import math
-    assert math.isnan(specialist._merged_frame["gap"].iloc[0])
-
-
-def test_emit_accepted_when_merge_clean_and_units_match(viewer_krg) -> None:
-    """Sanity check: build_merge succeeds, then emit_response is
-    accepted."""
-    specialist = PricingSpecialist(viewer_krg)
-    specialist._reset_state()
-    specialist._tenant_frame = pd.DataFrame({
-        "category": ["DAIRY"], "own_avg_qty": [1.2],
-    })
-    specialist._lake_frame = pd.DataFrame({
-        "category": ["DAIRY"], "units_index": [0.95],
-        "peer_relationship": ["segment_peer"],
-    })
-    specialist._dispatch_tool("build_merge", {
-        "on": ["category"],
-        "own_value_col": "own_avg_qty",
-        "peer_value_col": "units_index",
-        "gap_op": "difference",
-    })
-    out = specialist._dispatch_tool("emit_response", {
-        "headline": "Concrete answer with 1.2 vs 0.95.",
-        "chart_intent": {"kind": "kpi_callout"},
-        "claims": [],
-    })
-    assert out == {"ok": True}
-    assert specialist._emit_args is not None
 
 
 def test_max_turns_is_six(viewer_krg) -> None:
@@ -815,17 +590,14 @@ def test_multi_row_cell_lookup_without_agg_rejected_at_emit(viewer_krg) -> None:
     model retries with ``agg="sum"`` or ``agg="mean"``."""
     specialist = PricingSpecialist(viewer_krg)
     specialist._reset_state()
-    # Multi-row merged frame: filter on category matches 3 rows.
-    specialist._merged_frame = pd.DataFrame({
+    # Multi-row tenant frame: filter on category matches 3 rows.
+    specialist._tenant_frame = pd.DataFrame({
         "category": ["DAIRY", "DAIRY", "DAIRY"],
         "period_start": ["2026-04-06", "2026-04-13", "2026-04-20"],
         "own_value":   [1000.0, 1100.0, 1200.0],
         "peer_benchmark": [1.0, 1.05, 1.06],
         "gap":         [999.0, 1099.0, 1198.99],
     })
-    specialist._tenant_frame = pd.DataFrame({"category": ["DAIRY"]})
-    specialist._lake_frame   = pd.DataFrame({"category": ["DAIRY"]})
-    specialist._merge_attempted = True
     bad_args = {
         "headline": "Meat revenue totals 3.94M.",
         "chart_intent": {"kind": "kpi_callout", "value": "own_value"},
@@ -860,7 +632,7 @@ def test_chart_intent_is_ignored_when_charts_deferred(viewer_krg) -> None:
     in ``test_chart_build.py`` (chart_build.py is kept intact/dormant)."""
     specialist = PricingSpecialist(viewer_krg)
     specialist._reset_state()
-    specialist._merged_frame = pd.DataFrame({
+    specialist._tenant_frame = pd.DataFrame({
         "period_start": pd.to_datetime(
             ["2026-04-06", "2026-04-13", "2026-04-20"]
         ),
@@ -927,7 +699,7 @@ def test_no_mechanics_terms_in_assembled_response_prose(viewer_krg) -> None:
     from src.agents.lake_tools import _FORBIDDEN_MECHANICS_TERMS
     specialist = PricingSpecialist(viewer_krg)
     specialist._reset_state()
-    specialist._merged_frame = pd.DataFrame({
+    specialist._tenant_frame = pd.DataFrame({
         "category": ["MEAT"], "own_value": [1000.0],
         "peer_benchmark": [1.06], "gap": [998.94],
     })
@@ -973,133 +745,6 @@ _LAKE_TRADE_MANIFEST = {
     "metrics": ["store_count", "cell_units", "cell_revenue",
                 "share_of_zone", "zone_category_volume_index", "txn_count"],
 }
-
-
-def test_auto_invoke_uses_dimension_keys_only(viewer_krg) -> None:
-    """Fix 10a — auto-invoke must join on dimension columns ONLY,
-    never on a metric column that coincidentally shares a name.
-    P3-style fixture: tenant has computed ``promo_active_share``
-    (own-side), lake has manifest metric ``promo_active_share``.
-    Both also share ``category`` (a dimension). The join key must be
-    ``category``, not ``promo_active_share``."""
-    specialist = PricingSpecialist(viewer_krg)
-    specialist._reset_state()
-    specialist._tenant_frame = pd.DataFrame({
-        "category": ["DAIRY"],
-        "promo_active_share": [0.18],   # ← tenant-computed, NOT a dim
-        "own_revenue": [625.0],
-    })
-    specialist._lake_frame = pd.DataFrame({
-        "category": ["DAIRY"],
-        "promo_active_share": [0.22],   # ← lake metric (manifest)
-        "price_index": [1.06],
-        "peer_relationship": ["segment_peer"],
-    })
-    specialist._lake_manifest = _LAKE_CAT_MANIFEST
-    specialist._auto_invoke_build_merge()
-    # Auto-invoke joined on category (the only shared dimension).
-    assert specialist._merged_frame is not None
-    # Locate the merge log entry; the `on=[...]` portion must NOT
-    # include promo_active_share even though both frames carry it.
-    merge_log = next(
-        s for s in specialist._sql_log if s["surface"] == "merge"
-    )
-    import re as _re
-    on_section = _re.search(r"on=\[([^\]]*)\]", merge_log["query"])
-    assert on_section is not None, merge_log["query"]
-    on_str = on_section.group(1)
-    assert "promo_active_share" not in on_str
-    assert "category" in on_str
-
-
-def test_auto_invoke_empty_intersection_routes_to_dual_frame(viewer_krg) -> None:
-    """Fix 10a — T1/T4 shape: tenant has semantic neighborhood labels
-    in ``zone_id`` (``ballantyne``, ``noda``, …), lake_trade_area has
-    ``derived_zone`` (Z01..Z08, k-means clusters). No shared
-    dimension key. Auto-invoke must NOT force a join; it routes to
-    the dual-frame path (``_merge_fail_payload`` set, ``_merged_frame``
-    None)."""
-    specialist = PricingSpecialist(viewer_krg)
-    specialist._reset_state()
-    specialist._tenant_frame = pd.DataFrame({
-        "zone_id": ["ballantyne"],
-        "neighborhood": ["Ballantyne"],
-        "n_stores": [1],
-        "own_revenue": [4014459.56],
-    })
-    specialist._lake_frame = pd.DataFrame({
-        "derived_zone": ["Z08"],
-        "category": ["MEAT"],
-        "store_count": [1],
-        "share_of_zone": [0.5],
-        "peer_relationship": ["segment_peer"],
-    })
-    specialist._lake_manifest = _LAKE_TRADE_MANIFEST
-    specialist._auto_invoke_build_merge()
-    assert specialist._merged_frame is None
-    assert specialist._merge_fail_payload is not None
-    assert specialist._merge_attempted is True
-
-
-def test_auto_invoke_succeeds_on_category_join(viewer_krg) -> None:
-    """Fix 10a — P1/D3 shape: tenant and lake share ``category`` (a
-    dimension). Auto-invoke runs the merge and sets
-    ``_merged_frame`` with peer columns carried through."""
-    specialist = PricingSpecialist(viewer_krg)
-    specialist._reset_state()
-    specialist._tenant_frame = pd.DataFrame({
-        "category": ["DAIRY"],
-        "own_avg_price": [3.50],
-        "own_revenue": [1976794.19],
-    })
-    specialist._lake_frame = pd.DataFrame({
-        "category": ["DAIRY"],
-        "price_index": [1.06],
-        "units_index": [0.95],
-        "peer_relationship": ["segment_peer"],
-    })
-    specialist._lake_manifest = _LAKE_CAT_MANIFEST
-    specialist._auto_invoke_build_merge()
-    assert specialist._merged_frame is not None
-    assert specialist._merge_fail_payload is None
-    # Canonical merge columns are present.
-    assert "own_value" in specialist._merged_frame.columns
-    assert "peer_benchmark" in specialist._merged_frame.columns
-    # Peer carry-through columns survived the merge (the lake's
-    # other metrics that weren't picked as peer_value_col).
-    assert "units_index" in specialist._merged_frame.columns
-
-
-def test_force_accept_escape_synthesizes_dual_frame_payload(viewer_krg) -> None:
-    """Fix 10b — if some path bypasses Fix 10a (e.g. an unexpected
-    exception in _auto_invoke_build_merge), the force-accept escape
-    in _finalize_from_emit must synthesize a dual-frame payload
-    rather than collapse to tenant-only. The lake side is never
-    silently dropped."""
-    specialist = PricingSpecialist(viewer_krg)
-    specialist._reset_state()
-    specialist._tenant_frame = pd.DataFrame({
-        "category": ["DAIRY"], "own_value": [3.50],
-    })
-    specialist._lake_frame = pd.DataFrame({
-        "category": ["DAIRY"], "price_index": [1.06],
-        "peer_relationship": ["segment_peer"],
-    })
-    # No merge attempted, no merged frame, no merge_fail_payload.
-    specialist._merged_frame = None
-    specialist._merge_fail_payload = None
-    specialist._merge_attempted = False
-    specialist._emit_args = {
-        "headline": "Your dairy price is 3.50 vs peer index 1.06.",
-        "chart_intent": {"kind": "kpi_callout", "value": "own_value"},
-        "claims": [],
-        "caveats": [],
-    }
-    response = specialist._finalize_from_emit(converged=True, turns=4)
-    # Lake side WAS preserved — the synthesized payload is set.
-    assert specialist._merge_fail_payload is not None
-    tenant, lake = specialist._merge_fail_payload
-    assert "price_index" in lake.columns
 
 
 def test_untagged_peer_claim_resolves_against_lake_frame() -> None:
@@ -1167,101 +812,6 @@ def test_untagged_claim_prefers_result_frame_when_present() -> None:
 # ---------------------------------------------------------------------
 
 
-def test_lake_aggregate_byte_identical_to_validator_recompute() -> None:
-    """Fix 11a load-bearing invariant: the aggregate the lake tool
-    surfaces and the value the validator recomputes must be
-    BYTE-IDENTICAL floats. Otherwise the model copies the surfaced
-    value, the validator computes a fractionally different number,
-    and the claim normalizes-not-passes — which the user has flagged
-    as a failure signal."""
-    from src.agents.claims import (
-        CellLookup,
-        aggregate_column,
-    )
-    # A multi-row frame that mirrors lake_category_metrics' shape:
-    # multiple (zone × week) rows per category.
-    df = pd.DataFrame({
-        "category": ["BABY"] * 4 + ["MEAT"] * 3,
-        "derived_zone": ["Z01", "Z02", "Z01", "Z02", "Z01", "Z02", "Z03"],
-        "price_index": [1.05, 1.03, 1.07, 1.01, 1.02, 1.04, 1.03],
-    })
-    # The aggregate the lake tool surfaces for BABY:
-    surfaced_baby = aggregate_column(
-        df[df["category"] == "BABY"], "price_index", "mean",
-    )
-    # The value the validator recomputes for a model claim:
-    claim = CellLookup(
-        row_filter={"category": "BABY"}, column="price_index", agg="mean",
-    )
-    validator_recomputed = claim.resolve(df)
-    assert surfaced_baby == validator_recomputed, (
-        f"surfaced={surfaced_baby!r} validator={validator_recomputed!r}"
-    )
-    # Cross-check raw IEEE-754 bits via repr.
-    assert repr(surfaced_baby) == repr(validator_recomputed)
-
-
-def test_claim_copying_surfaced_aggregate_passes_not_normalized() -> None:
-    """Fix 11a: when the model copies a surfaced aggregate value
-    verbatim into ``claim.value`` and uses a single-dimension
-    row_filter + agg='mean', the validator recomputes the identical
-    value and the claim status is ``passed`` (NOT ``normalized``).
-    A wall of ``normalized`` would mean the model is rounding and
-    the surfaced/recomputed values aren't byte-identical."""
-    from src.agents.claims import (
-        CellLookup,
-        Claim,
-        aggregate_column,
-        validate_claims,
-    )
-    df = pd.DataFrame({
-        "category": ["BABY"] * 4 + ["MEAT"] * 3,
-        "price_index": [1.05, 1.03, 1.07, 1.01, 1.02, 1.04, 1.03],
-    })
-    surfaced = aggregate_column(
-        df[df["category"] == "BABY"], "price_index", "mean",
-    )
-    # Model copies the EXACT surfaced value (with full precision).
-    claim = Claim(
-        text_span=f"BABY peer price index of {surfaced}",
-        value=surfaced,
-        source=CellLookup(
-            row_filter={"category": "BABY"},
-            column="price_index",
-            agg="mean",
-            frame="lake",
-        ),
-    )
-    report = validate_claims(
-        prose=f"BABY peer price index of {surfaced}.",
-        claims=[claim],
-        result=df,
-        frames={"lake": df},
-    )
-    assert report.claim_dispositions[0].status == "passed"
-
-
-def test_read_lake_table_payload_includes_aggregates_block() -> None:
-    """Fix 11a end-to-end: read_lake_table's tool payload includes an
-    ``aggregates`` block keyed by ``by_<dimension>`` for each
-    manifest dimension, with each entry mapping metric → mean."""
-    from src.agents import lake_tools as LT
-    payload = LT.read_lake_table(
-        "KRG", "lake_category_metrics",
-        filters={"grain": "cat_week", "category": "DAIRY"},
-    )
-    assert "aggregates" in payload
-    agg = payload["aggregates"]
-    assert isinstance(agg, dict)
-    # category was filtered to DAIRY, so by_category exists.
-    assert "by_category" in agg
-    # Each section is dim_value → {metric: mean}.
-    dairy_entry = agg["by_category"].get("DAIRY")
-    assert dairy_entry is not None
-    assert "price_index" in dairy_entry
-    assert isinstance(dairy_entry["price_index"], float)
-
-
 def test_list_valued_row_filter_resolves_via_isin() -> None:
     """Fix 11b: a CellLookup with a list-valued row_filter entry
     (the model's IN-clause shape — ``{"derived_zone": ["Z02","Z03"]}``
@@ -1296,14 +846,11 @@ def test_fix9c_gate_counts_list_valued_multi_row_correctly(viewer_krg) -> None:
     silently passed and then crashed at validation)."""
     specialist = PricingSpecialist(viewer_krg)
     specialist._reset_state()
-    specialist._merged_frame = pd.DataFrame({
+    specialist._tenant_frame = pd.DataFrame({
         "derived_zone": ["Z01", "Z02", "Z03"],
         "category": ["MEAT", "MEAT", "MEAT"],
         "share_of_zone": [0.10, 0.42, 0.41],
     })
-    specialist._tenant_frame = pd.DataFrame({"x": [1]})
-    specialist._lake_frame = pd.DataFrame({"x": [1]})
-    specialist._merge_attempted = True
     # Multi-row list-valued filter without agg → must reject.
     args = {
         "headline": "x",
@@ -1341,139 +888,6 @@ def test_apply_row_filter_scalar_vs_list_consistent() -> None:
     assert len(scalar) == len(one_list) == 2
     assert scalar["price_index"].tolist() == one_list["price_index"].tolist()
 
-
-# ---------------------------------------------------------------------
-# Wave 3 Stage 6.5 Fix 12 — per-agent semantic peer_value_col defaults
-# ---------------------------------------------------------------------
-
-
-def test_pricing_auto_invoke_picks_price_index_not_first_metric(viewer_krg) -> None:
-    """Fix 12: PricingSpecialist.PREFERRED_PEER_METRIC='price_index'
-    overrides the first-available-metric heuristic. The Fix 10a
-    default would have picked `txn_count` (first manifest metric);
-    Fix 12 makes the auto-invoke pick the semantically-right column
-    so the merged frame's `peer_benchmark` is meaningful for the
-    specialist's question."""
-    specialist = PricingSpecialist(viewer_krg)
-    specialist._reset_state()
-    specialist._tenant_frame = pd.DataFrame({
-        "category": ["DAIRY"], "own_avg_price": [3.50],
-    })
-    specialist._lake_frame = pd.DataFrame({
-        "category": ["DAIRY"],
-        "price_index": [1.06],
-        "txn_count": [842],
-        "units_index": [0.95],
-        "peer_relationship": ["segment_peer"],
-    })
-    specialist._lake_manifest = _LAKE_CAT_MANIFEST
-    specialist._auto_invoke_build_merge()
-    assert specialist._merged_frame is not None
-    # Locate the merge log entry; peer=... must be 'price_index'.
-    merge_log = next(
-        s for s in specialist._sql_log if s["surface"] == "merge"
-    )
-    assert "peer='price_index'" in merge_log["query"], merge_log["query"]
-
-
-def test_demand_auto_invoke_picks_units_index() -> None:
-    """Fix 12: DemandForecastingSpecialist prefers `units_index`."""
-    from src.agents.context import MerchantContext
-    from src.agents.demand import DemandForecastingSpecialist
-    spec = DemandForecastingSpecialist(MerchantContext.for_merchant("KRG"))
-    spec._reset_state()
-    spec._tenant_frame = pd.DataFrame({
-        "category": ["DAIRY"], "own_units": [10000.0],
-    })
-    spec._lake_frame = pd.DataFrame({
-        "category": ["DAIRY"],
-        "txn_count": [842],
-        "units_index": [0.95],
-        "price_index": [1.06],
-        "peer_relationship": ["segment_peer"],
-    })
-    spec._lake_manifest = _LAKE_CAT_MANIFEST
-    spec._auto_invoke_build_merge()
-    merge_log = next(
-        s for s in spec._sql_log if s["surface"] == "merge"
-    )
-    assert "peer='units_index'" in merge_log["query"]
-
-
-def test_anomaly_auto_invoke_picks_wow_delta() -> None:
-    """Fix 12: AnomalyDetectionSpecialist prefers `wow_delta`."""
-    from src.agents.context import MerchantContext
-    from src.agents.anomaly import AnomalyDetectionSpecialist
-    spec = AnomalyDetectionSpecialist(MerchantContext.for_merchant("KRG"))
-    spec._reset_state()
-    spec._tenant_frame = pd.DataFrame({
-        "category": ["DAIRY"], "own_wow_change": [-0.04],
-    })
-    spec._lake_frame = pd.DataFrame({
-        "category": ["DAIRY"],
-        "txn_count": [842],
-        "wow_delta": [0.01],
-        "units_index": [0.95],
-        "peer_relationship": ["segment_peer"],
-    })
-    spec._lake_manifest = _LAKE_CAT_MANIFEST
-    spec._auto_invoke_build_merge()
-    merge_log = next(
-        s for s in spec._sql_log if s["surface"] == "merge"
-    )
-    assert "peer='wow_delta'" in merge_log["query"]
-
-
-def test_trade_auto_invoke_picks_share_of_zone() -> None:
-    """Fix 12: TradeAreaSpecialist prefers `share_of_zone`."""
-    from src.agents.context import MerchantContext
-    from src.agents.trade import TradeAreaSpecialist
-    spec = TradeAreaSpecialist(MerchantContext.for_merchant("KRG"))
-    spec._reset_state()
-    spec._tenant_frame = pd.DataFrame({
-        "derived_zone": ["Z01"], "own_share": [0.30],
-    })
-    spec._lake_frame = pd.DataFrame({
-        "derived_zone": ["Z01"],
-        "txn_count": [842],
-        "share_of_zone": [0.42],
-        "store_count": [2],
-        "peer_relationship": ["segment_peer"],
-    })
-    spec._lake_manifest = _LAKE_TRADE_MANIFEST
-    spec._auto_invoke_build_merge()
-    merge_log = next(
-        s for s in spec._sql_log if s["surface"] == "merge"
-    )
-    assert "peer='share_of_zone'" in merge_log["query"]
-
-
-def test_preferred_peer_metric_falls_back_when_absent(viewer_krg) -> None:
-    """Fix 12: when the preferred metric is not in the lake frame
-    (e.g. Advisor on lake_payment_mix doesn't have price_index),
-    auto-invoke falls back to the first-available manifest metric.
-    No crash, no skip — degrades gracefully."""
-    specialist = PricingSpecialist(viewer_krg)
-    specialist._reset_state()
-    specialist._tenant_frame = pd.DataFrame({
-        "category": ["DAIRY"], "own_avg_price": [3.50],
-    })
-    # Lake DOES NOT have price_index this time — only txn_count and
-    # units_index. Auto-invoke should fall back to first available.
-    specialist._lake_frame = pd.DataFrame({
-        "category": ["DAIRY"],
-        "txn_count": [842],
-        "units_index": [0.95],
-        "peer_relationship": ["segment_peer"],
-    })
-    specialist._lake_manifest = _LAKE_CAT_MANIFEST
-    specialist._auto_invoke_build_merge()
-    assert specialist._merged_frame is not None
-    merge_log = next(
-        s for s in specialist._sql_log if s["surface"] == "merge"
-    )
-    # txn_count is first in the manifest's metrics list and present.
-    assert "peer='txn_count'" in merge_log["query"]
 
 
 # ---------------------------------------------------------------------
@@ -1519,28 +933,6 @@ def test_value_ref_claim_passes_byte_identical(viewer_krg) -> None:
         lake[lake["category"] == "MEAT"], "units_index", "mean",
     )
     assert claim.value == expected
-
-
-def test_value_ref_byte_identical_to_surfaced_aggregate() -> None:
-    """Fix 13a invariant: the value ValueRef resolves to must be
-    byte-identical to what ``_compute_lake_aggregates`` surfaces in
-    the read_lake_table payload (same code path, same frame).
-    Otherwise the model copies the surfaced value through ValueRef,
-    the validator gets a fractionally different number, and the
-    claim normalizes-not-passes."""
-    from src.agents import lake_tools as LT
-    from src.agents.claims import ValueRef
-    payload = LT.read_lake_table(
-        "KRG", "lake_category_metrics",
-        filters={"grain": "cat_week"},
-    )
-    surfaced = payload["aggregates"]["by_category"]["MEAT"]["units_index"]
-    # ValueRef resolves against the same post-scope frame.
-    df = payload["frame"]
-    ref = ValueRef(by="category", value="MEAT", metric="units_index",
-                   frame="lake")
-    resolved = ref.resolve(df, frames={"lake": df})
-    assert repr(surfaced) == repr(resolved)
 
 
 def test_datetime_column_claim_strips_cleanly_no_typeerror() -> None:

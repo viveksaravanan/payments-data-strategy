@@ -60,7 +60,6 @@ from src.agents.response import (
     SqlSurface,
     Telemetry,
     ViewerScopingError,
-    check_magnitude_compatibility,
     merge_own_and_peer,
 )
 
@@ -167,20 +166,6 @@ class Specialist:
         # Wave 3 Stage 6.5 follow-up #6 — wall-clock bound only after
         # Stage 7's retire-cap-floor trim.
         self._answer_started_at: float = 0.0
-        # Wave 3 Stage 6.5 Fix 9 — merge becomes its own tool turn.
-        # ``_merged_frame`` is the result-of-record after a clean
-        # build_merge. ``_merge_fail_payload`` carries both real
-        # frames when the merge fails — claims author against named
-        # frames in that path.
-        self._merged_frame: pd.DataFrame | None = None
-        self._merge_fail_payload: tuple[pd.DataFrame, pd.DataFrame] | None = None
-        self._merge_attempted: bool = False
-        # Wave 3.5 — the lake frame came from `query_lake_sql` (the new
-        # two-query flow) rather than `read_lake_table`. In that flow
-        # there is no merge: the agent runs query_tenant + query_lake_sql
-        # and compares; claims resolve per-frame. This flag routes emit
-        # around the build_merge auto-invoke + the Fix 9a merge gate.
-        self._lake_from_sql: bool = False
 
     # ---- Prompt rendering -------------------------------------------
 
@@ -426,8 +411,6 @@ class Specialist:
             # default) and CellLookup resolve against it unchanged
             # (Wave 3.5 §10.1 / Finding 9).
             self._lake_frame = payload["frame"]
-            self._lake_from_sql = True
-            self._lake_manifest = None
             self._sql_log.append({
                 "surface":   "lake_sql",
                 "query":     args["sql"],
@@ -435,365 +418,15 @@ class Specialist:
                 "suppressed": payload.get("suppressed", 0),
             })
             return payload
-        if name == "read_lake_table":
-            payload = LT.read_lake_table(
-                self.context.viewing_merchant_id,
-                args["table"],
-                args.get("filters") or {},
-            )
-            self._lake_frame = payload["frame"]
-            self._lake_manifest = payload["manifest"]
-            self._sql_log.append({
-                "surface":   "lake",
-                "query":     f"read_lake_table({args['table']!r}, "
-                             f"filters={args.get('filters') or {}})",
-                "row_count": payload["row_count"],
-            })
-            return payload
-        if name == "build_merge":
-            return self._dispatch_build_merge(args)
         if name == "emit_response":
-            # Wave 3 Stage 6.5 Fix 10a — auto-invoke build_merge
-            # server-side when the model has fetched both frames but
-            # skipped the explicit build_merge tool call. The Fix 9a
-            # precondition still fires AS the gate, but auto-invoke
-            # ensures the merge has actually been ATTEMPTED before
-            # the gate runs (so it doesn't reject), AND that the
-            # merged frame OR the dual-frame payload is set so
-            # _finalize_from_emit reaches the peer data. Without
-            # this, Haiku skips build_merge, gets rejected 3×,
-            # force-accepts, and _finalize_from_emit silently picks
-            # tenant-only — dropping the lake side.
-            if (
-                self.MERGE_REQUIRED
-                and not self._lake_from_sql  # Wave 3.5 two-query flow: no merge
-                and self._tenant_frame is not None
-                and len(self._tenant_frame) > 0
-                and self._lake_frame is not None
-                and len(self._lake_frame) > 0
-                and self._merged_frame is None
-                and self._merge_fail_payload is None
-                and not self._merge_attempted
-            ):
-                self._auto_invoke_build_merge()
-            # Structural preconditions (Wave 3 Stage 6.5 follow-ups
-            # #5 / #6 / #9). After Fix 10a, the auto-invoke runs
-            # first; the precondition mainly catches genuinely
-            # broken authoring (multi-row CellLookup without agg —
-            # Fix 9c).
-            # Wave 3 Stage 7 trim: precondition raises are no longer
-            # caught with a retry-cap floor; the model retries within
-            # MAX_TURNS=6 and wall-clock ceiling catches runaway.
+            # Structural preconditions: data-before-emit (Fix 5), a
+            # non-empty headline (Wave 3.5), and multi-row CellLookup
+            # needs agg (Fix 9c). The model retries within MAX_TURNS;
+            # the wall-clock ceiling catches a runaway.
             self._validate_emit_args(args)
             self._emit_args = args
             return {"ok": True}
         raise ValueError(f"Unknown tool: {name}")
-
-    # ---- build_merge -------------------------------------------------
-
-    def _dispatch_build_merge(
-        self, args: dict[str, Any],
-    ) -> dict[str, Any]:
-        """Run ``merge_own_and_peer`` server-side against the captured
-        tenant + lake frames and return the REAL merged frame's
-        columns/dtypes/preview to the model (Wave 3 Stage 6.5 Fix 9a).
-
-        On success: stores the merged frame as ``self._merged_frame``
-        (the result-of-record); subsequent ``emit_response`` authors
-        against these real names.
-
-        On failure (mismatched/missing join keys, grain
-        incompatibility): returns ``merge_failed=True`` with BOTH
-        real frames unmerged (Fix 9b) — does NOT broadcast a scalar
-        across rows (that was the cause of the all-stripped
-        cascade). The model then authors side-by-side prose + claims
-        with ``frame: 'tenant' | 'lake'``.
-        """
-        tenant_ready = (
-            self._tenant_frame is not None
-            and len(self._tenant_frame) > 0
-        )
-        lake_ready = (
-            self._lake_frame is not None
-            and len(self._lake_frame) > 0
-        )
-        if not (tenant_ready and lake_ready):
-            raise LakeToolError(
-                "build_merge rejected: requires non-empty results "
-                "from BOTH query_tenant AND read_lake_table. "
-                f"tenant_rows={len(self._tenant_frame) if self._tenant_frame is not None else 0}; "
-                f"lake_rows={len(self._lake_frame) if self._lake_frame is not None else 0}. "
-                "Call the missing tool(s) first."
-            )
-
-        self._merge_attempted = True
-        on = list(args.get("on") or [])
-        own_value_col = args.get("own_value_col") or ""
-        peer_value_col = args.get("peer_value_col") or ""
-        gap_op = args.get("gap_op", "difference")
-
-        try:
-            merged = merge_own_and_peer(
-                own_df=self._tenant_frame,
-                peer_df=self._lake_frame,
-                on=on,
-                own_value_col=own_value_col,
-                peer_value_col=peer_value_col,
-                gap_op=gap_op,
-                viewer=self.context.viewing_merchant_id,
-            )
-        except (KeyError, MergeGrainError, ViewerScopingError) as exc:
-            # Merge-fail dual-frame path (Fix 9b). Return BOTH real
-            # frames so the model authors per-frame claims, with
-            # business-language guidance.
-            self._merge_fail_payload = (
-                self._tenant_frame, self._lake_frame,
-            )
-            self._sql_log.append({
-                "surface":   "merge",
-                "query":     f"build_merge(on={on!r}, own={own_value_col!r}, peer={peer_value_col!r}, gap_op={gap_op!r}) → FAILED",
-                "row_count": 0,
-            })
-            return {
-                "merge_failed": True,
-                "reason": f"{type(exc).__name__}: {exc}",
-                "tenant": self._df_summary(self._tenant_frame),
-                "lake":   self._df_summary(self._lake_frame),
-                "guidance": (
-                    "The merge could not run. Compose your answer "
-                    "side-by-side: state one fact from the tenant "
-                    "frame (your own data, e.g. $/unit) AND one fact "
-                    "from the lake frame (peer benchmark, often a "
-                    "unitless index). Tie them together in prose; do "
-                    "not invent a synthetic gap column. EACH claim "
-                    "must set source.frame = 'tenant' or 'lake' so it "
-                    "resolves against the right source. For the "
-                    "chart, set chart_intent.source = 'tenant' or "
-                    "'lake' to plot from one real frame."
-                ),
-            }
-
-        if len(merged) == 0:
-            # Empty merge — not a fatal error structurally, but the
-            # downstream chart + claims would all return empty. Treat
-            # as a merge-fail so the model authors per-frame.
-            self._merge_fail_payload = (
-                self._tenant_frame, self._lake_frame,
-            )
-            self._sql_log.append({
-                "surface":   "merge",
-                "query":     f"build_merge(on={on!r}, own={own_value_col!r}, peer={peer_value_col!r}, gap_op={gap_op!r}) → 0 rows",
-                "row_count": 0,
-            })
-            return {
-                "merge_failed": True,
-                "reason": (
-                    f"Inner merge on {on} produced 0 rows. Typical "
-                    "cause: a value-domain mismatch on a join key "
-                    "(period_start dtype/casing, category casing, "
-                    "etc.). Check the actual values in each frame."
-                ),
-                "tenant": self._df_summary(self._tenant_frame),
-                "lake":   self._df_summary(self._lake_frame),
-                "guidance": (
-                    "Inspect the join-key values in both frames. If "
-                    "they genuinely don't align, answer side-by-side "
-                    "(set source.frame on each claim and "
-                    "chart_intent.source on the chart)."
-                ),
-            }
-
-        self._merged_frame = merged
-        self._sql_log.append({
-            "surface":   "merge",
-            "query":     f"build_merge(on={on!r}, own={own_value_col!r}, peer={peer_value_col!r}, gap_op={gap_op!r})",
-            "row_count": len(merged),
-        })
-        return {
-            "merge_failed": False,
-            "row_count": len(merged),
-            **self._df_summary(merged),
-            "gap_is_directional": bool(merged.attrs.get("gap_is_directional", False)),
-            "magnitude_diagnostic": merged.attrs.get("magnitude_diagnostic", {}),
-            "guidance": (
-                "Author your chart_intent and claims against these "
-                "EXACT column names. The merged frame is the "
-                "result-of-record; chart_intent.source defaults to "
-                "'merged' and claim sources default to the merged "
-                "frame — you don't need to set 'frame' explicitly "
-                "after a clean merge."
-            ),
-        }
-
-    def _auto_invoke_build_merge(self) -> None:
-        """Wave 3 Stage 6.5 Fix 10a — server-side merge fallback when
-        the model skipped the explicit ``build_merge`` tool call.
-
-        Derives the merge spec from:
-        * ``on`` = (tenant columns) ∩ (lake columns) ∩ manifest
-          dimensions for the lake table the model read. **Dimension
-          keys only** — never join on a metric column, even if the
-          tenant SQL happens to compute a column whose name collides
-          with a lake metric (e.g. P3's tenant-computed
-          ``promo_active_share``).
-        * ``own_value_col`` = first non-dimension numeric column in
-          the tenant frame.
-        * ``peer_value_col`` = first manifest metric that exists in
-          the lake frame.
-
-        On empty dimension intersection (T1/T4: neighborhood vs
-        Z-code label spaces), routes to the dual-frame path without
-        forcing a join. On merge failure or 0-row merge result, same
-        — dual-frame path is the structural answer.
-
-        Sets ``self._merge_attempted = True`` either way so the Fix
-        9a precondition gate in ``_validate_emit_args`` doesn't fire.
-        """
-        manifest = self._lake_manifest or {}
-        manifest_dims: set[str] = set(manifest.get("dimensions", []))
-        manifest_metrics: list[str] = list(manifest.get("metrics", []))
-        tenant = self._tenant_frame
-        lake = self._lake_frame
-        assert tenant is not None and lake is not None  # caller guarantees
-
-        tenant_cols = set(tenant.columns)
-        lake_cols = set(lake.columns)
-        # Dimension-only intersection. Manifest is the source of
-        # truth: a column shared by both frames is only a join key
-        # if the manifest declares it a dimension.
-        shared_dims = sorted(tenant_cols & lake_cols & manifest_dims)
-
-        if not shared_dims:
-            # Empty intersection → dual-frame path. Don't force a
-            # meaningless join.
-            self._merge_fail_payload = (tenant, lake)
-            self._merge_attempted = True
-            self._sql_log.append({
-                "surface":   "merge",
-                "query":     "auto-build_merge(no shared dimension key → dual-frame)",
-                "row_count": 0,
-            })
-            return
-
-        # Pick own_value_col: first non-dimension numeric column in
-        # tenant. Skip columns the manifest also names as dimensions
-        # (those are join keys, not values).
-        own_value_col: str | None = None
-        for col in tenant.columns:
-            if col in manifest_dims:
-                continue
-            try:
-                if pd.api.types.is_numeric_dtype(tenant[col]):
-                    own_value_col = col
-                    break
-            except Exception:                                # noqa: BLE001
-                continue
-
-        # Pick peer_value_col. Wave 3 Stage 6.5 Fix 12: prefer the
-        # subclass's PREFERRED_PEER_METRIC (pricing → price_index,
-        # demand → units_index, etc.) so the merged frame's
-        # peer_benchmark column is semantically meaningful for the
-        # specialist's question. Fall back to first-available
-        # manifest metric only when the preferred column isn't in
-        # the lake frame (e.g. lake_payment_mix doesn't have
-        # price_index — Advisor on payment_mix falls back).
-        peer_value_col: str | None = None
-        if (
-            self.PREFERRED_PEER_METRIC
-            and self.PREFERRED_PEER_METRIC in lake_cols
-            and self.PREFERRED_PEER_METRIC in manifest_metrics
-        ):
-            peer_value_col = self.PREFERRED_PEER_METRIC
-        else:
-            for metric in manifest_metrics:
-                if metric in lake_cols:
-                    peer_value_col = metric
-                    break
-
-        if own_value_col is None or peer_value_col is None:
-            # Can't derive a defensible spec → dual-frame.
-            self._merge_fail_payload = (tenant, lake)
-            self._merge_attempted = True
-            self._sql_log.append({
-                "surface":   "merge",
-                "query":     (
-                    f"auto-build_merge(no derivable value columns; "
-                    f"own={own_value_col!r} peer={peer_value_col!r} "
-                    f"→ dual-frame)"
-                ),
-                "row_count": 0,
-            })
-            return
-
-        try:
-            merged = merge_own_and_peer(
-                own_df=tenant,
-                peer_df=lake,
-                on=shared_dims,
-                own_value_col=own_value_col,
-                peer_value_col=peer_value_col,
-                gap_op="difference",
-                viewer=self.context.viewing_merchant_id,
-            )
-        except (KeyError, MergeGrainError, ViewerScopingError) as exc:
-            self._merge_fail_payload = (tenant, lake)
-            self._merge_attempted = True
-            self._sql_log.append({
-                "surface":   "merge",
-                "query":     (
-                    f"auto-build_merge(on={shared_dims}, own={own_value_col!r}, "
-                    f"peer={peer_value_col!r}) → {type(exc).__name__}; dual-frame"
-                ),
-                "row_count": 0,
-            })
-            return
-
-        if len(merged) == 0:
-            self._merge_fail_payload = (tenant, lake)
-            self._merge_attempted = True
-            self._sql_log.append({
-                "surface":   "merge",
-                "query":     (
-                    f"auto-build_merge(on={shared_dims}, own={own_value_col!r}, "
-                    f"peer={peer_value_col!r}) → 0 rows; dual-frame"
-                ),
-                "row_count": 0,
-            })
-            return
-
-        self._merged_frame = merged
-        self._merge_attempted = True
-        self._sql_log.append({
-            "surface":   "merge",
-            "query":     (
-                f"auto-build_merge(on={shared_dims}, own={own_value_col!r}, "
-                f"peer={peer_value_col!r})"
-            ),
-            "row_count": len(merged),
-        })
-
-    @staticmethod
-    def _df_summary(df: pd.DataFrame) -> dict[str, Any]:
-        """Return a model-readable summary of a frame: columns +
-        dtypes + a 50-row preview. Same shape as query_tenant /
-        read_lake_table payloads, so the model can read it the same
-        way."""
-        if df is None or len(df) == 0:
-            return {
-                "rows":      [],
-                "columns":   list(df.columns) if df is not None else [],
-                "dtypes":    {},
-                "row_count": 0,
-                "truncated": False,
-            }
-        head = df.head(50)
-        return {
-            "rows":      head.values.tolist(),
-            "columns":   list(df.columns),
-            "dtypes":    {c: str(df[c].dtype) for c in df.columns},
-            "row_count": len(df),
-            "truncated": len(df) > 50,
-        }
 
     @staticmethod
     def _count_filter_matches(
@@ -826,17 +459,13 @@ class Specialist:
     ) -> pd.DataFrame | None:
         """Pick the captured frame for a given ``frame`` field value.
         Used by the multi-row CellLookup precondition (Fix 9c) and by
-        ``_finalize_from_emit`` to assemble the dual-frame validator
+        ``_finalize_from_emit`` to assemble the two-frame validator
         kwargs."""
         if frame_name == "tenant":
             return self._tenant_frame
         if frame_name == "lake":
             return self._lake_frame
-        if frame_name == "merged":
-            return self._merged_frame
-        # Default: merged frame if present, else tenant, else lake.
-        if self._merged_frame is not None:
-            return self._merged_frame
+        # Default: tenant if present, else lake.
         if self._tenant_frame is not None and len(self._tenant_frame) > 0:
             return self._tenant_frame
         return self._lake_frame
@@ -896,25 +525,6 @@ class Specialist:
                 "sentence stating the finding that answers the question. "
                 "Put supporting numbers in `evidence` and the action in "
                 "`so_what`. Do not emit an empty or question-only headline."
-            )
-
-        # --- Fix 9a: when both frames are populated, build_merge
-        #     must have run (clean merge or merge-fail) before emit. ---
-        if (
-            self.MERGE_REQUIRED
-            and not self._lake_from_sql  # Wave 3.5 two-query flow: no merge gate
-            and tenant_ready and lake_ready
-            and not self._merge_attempted
-        ):
-            raise LakeToolError(
-                "emit_response rejected: both tenant and lake frames "
-                "are populated; call build_merge(on=..., "
-                "own_value_col=..., peer_value_col=..., gap_op=...) "
-                "FIRST. The server returns the real merged frame's "
-                "columns + dtypes so you can author chart_intent and "
-                "claims against actual names, not guesses. Tenant "
-                f"columns: {list(self._tenant_frame.columns)}. Lake "
-                f"columns: {list(self._lake_frame.columns)}."
             )
 
         # --- Fix 9c: multi-row CellLookup without agg ---
@@ -1157,74 +767,24 @@ class Specialist:
         so_what = (args.get("so_what") or "").strip() or None
         caveats = list(args.get("caveats") or [])
 
-        # Pick the result-of-record + the frames dict for the
-        # validator. Three paths:
-        #   1. Clean merge → ``_merged_frame`` is the single result;
-        #      frames dict carries it under "merged" (plus tenant/lake
-        #      for any claims that explicitly named one).
-        #   2. Merge-fail dual-frame → no single result; result
-        #      defaults to whichever frame chart_intent.source names
-        #      (or tenant by default).
-        #   3. Single-source → result is the captured frame.
-        merge_failed = self._merge_fail_payload is not None
+        # Wave 3.5 — result-of-record + frames dict for the validator.
+        # The two-query flow carries own (tenant) and peer (lake) as
+        # SEPARATE frames; each claim resolves against its own ``frame``
+        # field ("tenant" / "lake") via the frames dict, and an untagged
+        # claim walks result → tenant → lake. The display
+        # result-of-record is the tenant frame when present, else lake.
         frames: dict[str, pd.DataFrame] = {}
         if self._tenant_frame is not None and len(self._tenant_frame) > 0:
             frames["tenant"] = self._tenant_frame
         if self._lake_frame is not None and len(self._lake_frame) > 0:
             frames["lake"] = self._lake_frame
-        if self._merged_frame is not None:
-            frames["merged"] = self._merged_frame
 
-        chart_source = chart_intent.get("source")
-        if self._merged_frame is not None and not merge_failed:
-            result = self._merged_frame
-            if chart_source is None:
-                chart_source = "merged"
-        elif merge_failed:
-            # Dual-frame path; pick the chart's source from
-            # chart_intent.source (default "tenant"). Claims resolve
-            # against their own ``source.frame`` via the frames dict.
-            if chart_source not in ("tenant", "lake"):
-                chart_source = "tenant"
-            result = frames.get(chart_source, self._tenant_frame
-                                if self._tenant_frame is not None
-                                else pd.DataFrame())
+        if self._tenant_frame is not None and len(self._tenant_frame) > 0:
+            result = self._tenant_frame
+        elif self._lake_frame is not None and len(self._lake_frame) > 0:
+            result = self._lake_frame
         else:
-            # Wave 3 Stage 6.5 Fix 10b — when both frames are
-            # populated but neither merged nor merge_fail_payload
-            # is set (rare with Fix 10a in place — would only
-            # happen if _auto_invoke_build_merge raised an
-            # unexpected exception, or if MERGE_REQUIRED=False
-            # and the model emitted directly), synthesize the
-            # dual-frame payload on the spot. Never silently drop
-            # the lake frame.
-            both_populated = (
-                self._tenant_frame is not None
-                and len(self._tenant_frame) > 0
-                and self._lake_frame is not None
-                and len(self._lake_frame) > 0
-            )
-            if both_populated:
-                self._merge_fail_payload = (
-                    self._tenant_frame, self._lake_frame,
-                )
-                merge_failed = True
-                if chart_source not in ("tenant", "lake"):
-                    chart_source = "tenant"
-                result = frames.get(
-                    chart_source,
-                    self._tenant_frame,
-                )
-            elif self._tenant_frame is not None and len(self._tenant_frame) > 0:
-                result = self._tenant_frame
-                if chart_source is None:
-                    chart_source = "tenant"
-            elif self._lake_frame is not None and len(self._lake_frame) > 0:
-                result = self._lake_frame
-                if chart_source is None:
-                    chart_source = "lake"
-            else:
-                result = pd.DataFrame()
+            result = pd.DataFrame()
 
         claims = self._parse_claims(claims_raw)
 
@@ -1295,28 +855,6 @@ class Specialist:
                 "(No data was fetched before emit_response — model "
                 "skipped query_tenant / query_lake_sql. Result frame "
                 "is empty.)"
-            )
-        # Side-by-side caveat when own_value and peer_benchmark are
-        # in different units (merge layer nullified the gap; this
-        # surfaces it honestly to the user).
-        if result.attrs.get("gap_is_directional"):
-            diag = result.attrs.get("magnitude_diagnostic", {})
-            own_med = diag.get("own_median_abs", float("nan"))
-            peer_med = diag.get("peer_median_abs", float("nan"))
-            effective_caveats.append(
-                "Side-by-side comparison only: own_value and "
-                f"peer_benchmark are in different units "
-                f"(medians ≈ {own_med:.3g} vs {peer_med:.3g}); "
-                "the gap column is intentionally null. Use the two "
-                "columns directionally rather than subtractively."
-            )
-        if result.attrs.get("merge_incomplete"):
-            reason = result.attrs.get("merge_incomplete_reason", "")
-            effective_caveats.append(
-                f"Merge spec was incomplete ({reason}); own-side "
-                "columns were carried alongside the peer frame as a "
-                "best-effort side-by-side. Use the comparison "
-                "directionally rather than as a precise own−peer gap."
             )
 
         return AgentResponse(
@@ -1409,10 +947,6 @@ class Specialist:
         self._out_tokens = 0
         self._cost_usd = 0.0
         self._answer_started_at = time.monotonic()
-        self._merged_frame = None
-        self._merge_fail_payload = None
-        self._merge_attempted = False
-        self._lake_from_sql = False
 
     @staticmethod
     def _extract_text(content_blocks: list[Any]) -> str:

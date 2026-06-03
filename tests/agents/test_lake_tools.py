@@ -22,7 +22,6 @@ from src.agents.lake_tools import (
     parse_caveats_block,
     parse_render_block,
     query_tenant,
-    read_lake_table,
     strip_render_and_caveats_blocks,
 )
 
@@ -71,107 +70,6 @@ def test_query_tenant_truncates_to_llm_budget() -> None:
     assert len(payload["rows"]) <= 50
     assert payload["truncated"] is True
     assert isinstance(payload["frame"], pd.DataFrame)
-
-
-# ---------------------------------------------------------------------
-# read_lake_table — happy paths
-# ---------------------------------------------------------------------
-
-def test_read_lake_category_metrics_for_kroger() -> None:
-    payload = read_lake_table(
-        "KRG", "lake_category_metrics",
-        filters={"category": "DAIRY"},
-    )
-    assert payload["row_count"] > 0
-    df = payload["frame"]
-    # banner_code stripped; peer_relationship added.
-    assert "banner_code" not in df.columns
-    assert "peer_relationship" in df.columns
-    # Manifest excludes returned so the model knows what isn't published.
-    excludes = payload["manifest"]["excludes"]
-    assert any("peer SKU" in e for e in excludes)
-
-
-def test_read_lake_cohorts_has_no_peer_relationship() -> None:
-    """Cohort table has no banner column by construction; scope is a
-    pass-through and ``peer_relationship`` is NOT added."""
-    payload = read_lake_table(
-        "KRG", "lake_cross_merchant_cohorts",
-    )
-    df = payload["frame"]
-    assert "peer_relationship" not in df.columns
-    # Manifest excludes call out the median-only rule.
-    joined = " ".join(payload["manifest"]["excludes"]).lower()
-    assert "raw mean" in joined or "median" in joined
-
-
-def test_read_lake_filters_multi_dim() -> None:
-    payload = read_lake_table(
-        "KRG", "lake_trade_area",
-        filters={"derived_zone": "Z05", "category": ["DAIRY", "MEAT"]},
-    )
-    df = payload["frame"]
-    assert set(df["derived_zone"].unique()) <= {"Z05"}
-    assert set(df["category"].unique()) <= {"DAIRY", "MEAT"}
-
-
-# ---------------------------------------------------------------------
-# read_lake_table — off-grain filter rejection (decline-gracefully)
-# ---------------------------------------------------------------------
-
-def test_off_grain_filter_rejected_with_excludes() -> None:
-    """Asking for `sku` on `lake_category_metrics` is off-grain. The
-    error message carries the manifest Excludes so the model can
-    decline gracefully."""
-    with pytest.raises(LakeToolError) as exc:
-        read_lake_table(
-            "KRG", "lake_category_metrics",
-            filters={"sku": "MILK_GAL"},
-        )
-    msg = str(exc.value)
-    assert "sku" in msg
-    assert "peer SKU" in msg
-
-
-def test_off_grain_filter_on_segment_mix_rejected() -> None:
-    """Asking for `loyalty_type` on `lake_segment_mix` (the §1 acid
-    test column) is off-grain and rejected."""
-    with pytest.raises(LakeToolError) as exc:
-        read_lake_table(
-            "KRG", "lake_segment_mix",
-            filters={"loyalty_type": "loyalist"},
-        )
-    msg = str(exc.value)
-    assert "loyalty_type" in msg
-
-
-def test_unknown_table_rejected() -> None:
-    with pytest.raises(LakeToolError):
-        read_lake_table("KRG", "lake_fictional_table")
-
-
-# ---------------------------------------------------------------------
-# read_lake_table — viewer scoping
-# ---------------------------------------------------------------------
-
-def test_lake_response_strips_viewer_rows() -> None:
-    """The viewer's own rows are filtered out by ``scope_for_viewer``
-    before the payload returns."""
-    payload = read_lake_table(
-        "KRG", "lake_category_metrics",
-        filters={"category": "DAIRY"},
-    )
-    # The payload should not contain identity columns by construction.
-    assert "banner_code" not in payload["columns"]
-    assert "merchant_id" not in payload["columns"]
-
-
-def test_unknown_viewer_raises() -> None:
-    from src.lake.scope import UnknownViewerError
-    with pytest.raises(UnknownViewerError):
-        read_lake_table(
-            "XXX", "lake_category_metrics", filters={"category": "DAIRY"},
-        )
 
 
 # ---------------------------------------------------------------------

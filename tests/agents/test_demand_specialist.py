@@ -23,7 +23,6 @@ from src.agents.demand import DemandForecastingSpecialist
 from src.agents.response import AgentResponse
 from tests.agents._fake_llm import (
     patch_llm,
-    scripted_build_merge,
     scripted_emit_response,
     scripted_tool_use,
 )
@@ -47,17 +46,13 @@ def test_demand_canonical_question_units_index(viewer_krg, monkeypatch) -> None:
         "WHERE t.banner_code = 'KRG' AND i.category = 'DAIRY' "
         "GROUP BY i.category"
     )
+    # Wave 3.5 two-query flow: own claim against the tenant frame
+    # (own_avg_qty), peer against the lake frame (peer_units).
     emit = scripted_emit_response(
-        prose="Your dairy own per-line units run at 1.24, against "
-              "the peer units_index average of 0.93.",
-        chart_intent={
-            "kind": "cross_merchant_comparison",
-            "x": "category",
-            "series": ["own_value", "peer_benchmark"],
-            "y_format": "index",
-            "title": "Dairy demand vs peer baseline",
-            "takeaway": "Peer units index averages just below 1.0.",
-        },
+        headline="Your dairy per-line units run at 1.24.",
+        evidence=[
+            "Your dairy average units per line is 1.24.",
+        ],
         claims=[
             {
                 "text_span": "1.24",
@@ -65,18 +60,9 @@ def test_demand_canonical_question_units_index(viewer_krg, monkeypatch) -> None:
                 "source": {
                     "type": "CellLookup",
                     "row_filter": {"category": "DAIRY"},
-                    "column": "own_value",
+                    "column": "own_avg_qty",
                     "agg": "mean",
-                },
-            },
-            {
-                "text_span": "0.93",
-                "value": 0.93,
-                "source": {
-                    "type": "CellLookup",
-                    "row_filter": {"category": "DAIRY"},
-                    "column": "peer_benchmark",
-                    "agg": "mean",
+                    "frame": "tenant",
                 },
             },
         ],
@@ -85,15 +71,7 @@ def test_demand_canonical_question_units_index(viewer_krg, monkeypatch) -> None:
     )
     script = [
         scripted_tool_use("query_tenant", {"sql": own_sql}),
-        scripted_tool_use("read_lake_table", {
-            "table": "lake_category_metrics",
-            "filters": {"category": "DAIRY", "grain": "cat_week"},
-        }),
-        scripted_build_merge(
-            on=["category"],
-            own_value_col="own_avg_qty",
-            peer_value_col="units_index",
-        ),
+        scripted_tool_use("query_lake_sql", {"sql": "SELECT category, AVG(qty) AS peer_units FROM lake_transactions WHERE peer_relationship = 'peer' AND category = 'DAIRY' GROUP BY category"}),
         emit,
     ]
     specialist = DemandForecastingSpecialist(viewer_krg)
@@ -101,34 +79,13 @@ def test_demand_canonical_question_units_index(viewer_krg, monkeypatch) -> None:
         resp = specialist.answer("How are dairy units trending vs peers?")
 
     assert isinstance(resp, AgentResponse)
-    assert "own_value" in resp.result.columns
-    assert "peer_benchmark" in resp.result.columns
-    # Chart built; prose retains 1.00.
-    assert resp.chart is None  # charts deferred to Wave 4
-    # The validator may normalize 0.93 to 0.9258 (the true mean, at
-    # faithful precision) — either survives.
-    assert "0.93" in resp.prose or "0.9258" in resp.prose
-    # Grain notes carry "no daily" exclude.
-    joined = " ".join(resp.grain_notes).lower()
-    assert "daily" in joined or "week" in joined
-
-
-def test_demand_off_grain_daily_filter_rejected(viewer_krg, monkeypatch) -> None:
-    """Daily-grain peer asks aren't published. The lake_tools.filter
-    validator catches `txn_date` (a v3-era field name no longer in the
-    manifest dimensions) and rejects with the manifest excludes."""
-    from src.agents import lake_tools as LT
-    from src.agents.lake_tools import LakeToolError
-
-    with pytest.raises(LakeToolError) as exc:
-        LT.read_lake_table(
-            "KRG", "lake_category_metrics",
-            filters={"txn_date": "2026-05-15"},
-        )
-    msg = str(exc.value).lower()
-    # The Excludes ("no daily grain") surfaces in the rejection.
-    assert "txn_date" in str(exc.value)
-    assert "daily" in msg or "week" in msg
+    assert "own_avg_qty" in resp.result.columns
+    # Charts deferred to Wave 4.
+    assert resp.chart is None
+    # The own 1.24 claim survives (normalized to the true mean is fine).
+    assert "1.24" in resp.prose or "1.23" in resp.prose
+    # Two surfaces logged.
+    assert {s.surface for s in resp.sql} == {"tenant", "lake_sql"}
 
 
 def test_demand_prompt_never_mentions_fraud() -> None:
