@@ -18,17 +18,16 @@ for placeholder responses.
 """
 from __future__ import annotations
 
-import sqlite3
 from datetime import date
 from pathlib import Path
 
+import duckdb
 import pandas as pd
 import streamlit as st
 
-from src.lake import get_lake_stores, get_lake_transactions  # noqa: F401
-
 ROOT = Path(__file__).resolve().parents[2]
-DB_PATH = ROOT / "data" / "payments.db"
+DATA_RAW = ROOT / "data" / "raw"
+DATA_LAKE_ITEMS = ROOT / "data" / "lake" / "items"
 
 PANEL_START = date(2026, 3, 1)
 PANEL_END   = date(2026, 5, 29)
@@ -51,10 +50,83 @@ MERCHANT_COLOR = {
 # Connection
 # ---------------------------------------------------------------------------
 
-def _conn() -> sqlite3.Connection:
-    c = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
-    c.execute("PRAGMA foreign_keys = ON")
-    return c
+# Wave 4: the dashboard reads the v4 Parquet via DuckDB (the same engine
+# the agents use), not the retired v3 SQLite. Tenant tables are exposed
+# as ALIASING VIEWS that bridge the v3 query vocabulary (merchant_id,
+# txn_total, customer_id, txn_date) onto the v4 Parquet column names
+# (banner_code, subtotal, card_id/customer_token, txn_ts). Views are
+# metadata-only (read_parquet is lazy) so creating them per connection
+# is cheap.
+_TENANT_VIEWS: dict[str, str] = {
+    "tenant_transactions": f"""
+        SELECT txn_id,
+               banner_code        AS merchant_id,
+               store_id,
+               txn_ts,
+               CAST(txn_ts AS DATE) AS txn_date,
+               subtotal           AS txn_total,
+               discount_total,
+               n_lines,
+               customer_token     AS customer_id,
+               tender, network, entry_mode, wallet_at_tap,
+               wallet_provider, segment
+        FROM read_parquet('{DATA_RAW / "transactions.parquet"}')
+    """,
+    "tenant_transaction_items": f"""
+        SELECT txn_id, line_id, sku, canonical_id, category, subcategory,
+               qty, unit_price, discount, line_total, promo_id
+        FROM read_parquet('{DATA_RAW / "transaction_items.parquet"}')
+    """,
+    "tenant_stores": f"""
+        SELECT store_id, banner_code, merchant_id, neighborhood,
+               metro_region, latitude, longitude, open_date, zone_id
+        FROM read_parquet('{DATA_RAW / "stores.parquet"}')
+    """,
+    "tenant_products": f"""
+        SELECT sku,
+               sku                AS name,
+               banner_code, merchant_id, category, subcategory,
+               base_price, private_label, segment, canonical_id
+        FROM read_parquet('{DATA_RAW / "products.parquet"}')
+    """,
+    "tenant_customers": f"""
+        SELECT card_id            AS customer_id,
+               affluence, loyalty_type, home_zone, network,
+               primary_banner, tender, wallet_enrolled, wallet_provider
+        FROM read_parquet('{DATA_RAW / "customers.parquet"}')
+    """,
+}
+
+
+def _conn() -> duckdb.DuckDBPyConnection:
+    """In-memory DuckDB connection with the tenant aliasing views
+    registered. Cheap to recreate per query (views are lazy over
+    Parquet); query-result caching is handled by the @st.cache_data
+    wrappers (viewer-keyed)."""
+    con = duckdb.connect(database=":memory:")
+    for name, sql in _TENANT_VIEWS.items():
+        con.execute(f"CREATE VIEW {name} AS {sql}")
+    return con
+
+
+def _register_lake_views(con: duckdb.DuckDBPyConnection, viewer: str) -> bool:
+    """Register the viewer's Wave 3.5 line-item peer lake as DuckDB views
+    ``lake_transactions`` / ``lake_stores`` (own rows already excluded at
+    build time; peers labeled ``peer_relationship``). Returns False when
+    the viewer has no materialized lake. Called by the peer-aware cards
+    just before they query peers."""
+    vdir = DATA_LAKE_ITEMS / viewer
+    if not (vdir / "lake_transactions.parquet").exists():
+        return False
+    con.execute(
+        "CREATE OR REPLACE VIEW lake_transactions AS "
+        f"SELECT * FROM read_parquet('{vdir / 'lake_transactions.parquet'}')"
+    )
+    con.execute(
+        "CREATE OR REPLACE VIEW lake_stores AS "
+        f"SELECT * FROM read_parquet('{vdir / 'lake_stores.parquet'}')"
+    )
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -167,7 +239,7 @@ def stores_for(merchant_id: str) -> pd.DataFrame:
     ORDER BY s.store_id
     """
     with _conn() as c:
-        return pd.read_sql_query(sql, c, params=(merchant_id,))
+        return c.execute(sql, [merchant_id]).df()
 
 
 @st.cache_data(ttl=3600)
@@ -177,7 +249,7 @@ def categories_for(merchant_id: str) -> list[str]:
     WHERE merchant_id = ? ORDER BY category
     """
     with _conn() as c:
-        df = pd.read_sql_query(sql, c, params=(merchant_id,))
+        df = c.execute(sql, [merchant_id]).df()
     return df["category"].tolist()
 
 
@@ -236,7 +308,7 @@ def hour_dow_heatmap(merchant_id: str, filters_key: tuple) -> pd.DataFrame:
     if has_cat:
         sql = """
         SELECT CAST(strftime('%w', t.txn_ts) AS INTEGER) AS dow,
-               CAST(SUBSTR(t.txn_ts, 12, 2) AS INTEGER) AS hr,
+               EXTRACT(hour FROM t.txn_ts) AS hr,
                COUNT(DISTINCT t.txn_id) AS n
         FROM tenant_transaction_items i
         JOIN tenant_transactions t ON t.txn_id = i.txn_id
@@ -246,7 +318,7 @@ def hour_dow_heatmap(merchant_id: str, filters_key: tuple) -> pd.DataFrame:
         q_params = [merchant_id]
     else:
         sql = """SELECT CAST(strftime('%w', t.txn_ts) AS INTEGER) AS dow,
-                        CAST(SUBSTR(t.txn_ts, 12, 2) AS INTEGER) AS hr,
+                        EXTRACT(hour FROM t.txn_ts) AS hr,
                         COUNT(*) AS n
                  FROM tenant_transactions t WHERE t.merchant_id = ?"""
         q_params = [merchant_id]
@@ -258,7 +330,7 @@ def hour_dow_heatmap(merchant_id: str, filters_key: tuple) -> pd.DataFrame:
         q_params.extend(cat_params)
     sql += " GROUP BY dow, hr"
     with _conn() as c:
-        long = pd.read_sql_query(sql, c, params=q_params)
+        long = c.execute(sql, q_params).df()
     # Pivot to a 7×24 grid; fill missing cells with 0.
     if long.empty:
         return pd.DataFrame(0, index=range(7), columns=range(24))
@@ -269,15 +341,6 @@ def hour_dow_heatmap(merchant_id: str, filters_key: tuple) -> pd.DataFrame:
     return pivot
 
 
-# ---------------------------------------------------------------------------
-# Lake helpers (still used by placeholder handlers; kept for back-compat)
-# ---------------------------------------------------------------------------
-
-@st.cache_data(ttl=3600)
-def lake_txns_filtered(merchant_id: str, sql_filter: str | None) -> pd.DataFrame:
-    """Cached wrapper around `get_lake_transactions`. Used by placeholder
-    handlers for cross-merchant pricing comparisons."""
-    return get_lake_transactions(merchant_id, sql_filter=sql_filter)
 
 
 # ---------------------------------------------------------------------------
@@ -294,7 +357,7 @@ def lake_txns_filtered(merchant_id: str, sql_filter: str | None) -> pd.DataFrame
 # have no same-segment peer with UC presence.
 
 # The 90-day panel spans Sun Mar 1 2026 → Fri May 29 2026. SQLite's
-# `DATE(ts, 'weekday 0', '-6 days')` bins each timestamp to the Monday
+# `CAST(date_trunc('week', ts) AS VARCHAR)` bins each timestamp to the Monday
 # that starts its containing Mon-Sun week (the convention v2.5 reports
 # already use). The first such week (Feb 23) and the last (May 25) are
 # partial; we filter to the 12 fully-covered weeks Mar 2 → May 18 so the
@@ -366,13 +429,13 @@ def _uc_decline_trajectory_cached(merchant_id: str, key: tuple) -> dict:
     with _conn() as c:
         own_rows = c.execute(
             f"""
-            SELECT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+            SELECT CAST(date_trunc('week', t.txn_ts) AS VARCHAR) AS week,
                    COUNT(DISTINCT t.txn_id) AS n
             FROM tenant_transactions t
             JOIN tenant_stores s ON s.store_id = t.store_id
             WHERE t.merchant_id = ?{own_extra_where}
               AND s.neighborhood = 'University City'
-              AND DATE(t.txn_ts, 'weekday 0', '-6 days') BETWEEN ? AND ?
+              AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR) BETWEEN ? AND ?
             GROUP BY week
             ORDER BY week
             """,
@@ -383,14 +446,14 @@ def _uc_decline_trajectory_cached(merchant_id: str, key: tuple) -> dict:
         peer_rows = c.execute(
             f"""
             SELECT t.peer_id,
-                   DATE(t.txn_date, 'weekday 0', '-6 days') AS week,
+                   CAST(date_trunc('week', t.txn_date) AS VARCHAR) AS week,
                    COUNT(DISTINCT t.lake_txn_id) AS n
             FROM {lake_t} t
             JOIN {lake_s} s ON s.lake_store_id = t.lake_store_id
             WHERE s.neighborhood = 'University City'
               AND t.peer_segment = 'grocery'
               AND t.peer_id IN ('peer_a', 'peer_b')
-              AND DATE(t.txn_date, 'weekday 0', '-6 days') BETWEEN ? AND ?
+              AND CAST(date_trunc('week', t.txn_date) AS VARCHAR) BETWEEN ? AND ?
             GROUP BY t.peer_id, week
             HAVING COUNT(DISTINCT t.lake_txn_id) >= 5
             ORDER BY t.peer_id, week
@@ -1412,9 +1475,6 @@ def _neighborhood_performance_cached(merchant_id: str, key: tuple) -> dict:
     filters = _unpack_filters_key(key)
     extra_where, extra_params = _own_filters_sql(filters)
 
-    lake_t = f"lake_transactions_{merchant_id}"
-    lake_s = f"lake_stores_{merchant_id}"
-
     own_stores_df = stores_for(merchant_id)
 
     with _conn() as c:
@@ -1432,29 +1492,27 @@ def _neighborhood_performance_cached(merchant_id: str, key: tuple) -> dict:
             (*extra_params, merchant_id),
         ).fetchall()
 
-        # Peer per-neighborhood txn count (line_id=1 trick recovers
-        # true txn count from the per-line lake table — see
-        # chart_patterns.md "Implementation gotchas for lake queries").
+        # Peer per-neighborhood txn count — Wave 4: aggregate
+        # same-segment peers (peer_relationship='peer'), transactions via
+        # COUNT(DISTINCT lake_txn_id), k=5 floor per neighborhood cell.
         peer_txn_rows = []
         peer_store_rows = []
-        if has_same_segment_peers(merchant_id):
+        if _register_lake_views(c, merchant_id):
             peer_txn_rows = c.execute(
-                f"""
-                SELECT ls.neighborhood, COUNT(*) AS n_txns
-                FROM {lake_t} lt
-                JOIN {lake_s} ls ON ls.lake_store_id = lt.lake_store_id
-                WHERE lt.peer_segment = 'grocery'
-                  AND lt.peer_id IN ('peer_a', 'peer_b')
-                  AND lt.line_id = 1
+                """
+                SELECT ls.neighborhood, COUNT(DISTINCT lt.lake_txn_id) AS n_txns
+                FROM lake_transactions lt
+                JOIN lake_stores ls ON ls.lake_store_id = lt.lake_store_id
+                WHERE lt.peer_relationship = 'peer'
                 GROUP BY ls.neighborhood
+                HAVING COUNT(DISTINCT lt.lake_txn_id) >= 5
                 """,
             ).fetchall()
             peer_store_rows = c.execute(
-                f"""
+                """
                 SELECT neighborhood, COUNT(*) AS n_stores
-                FROM {lake_s}
-                WHERE peer_segment = 'grocery'
-                  AND peer_id IN ('peer_a', 'peer_b')
+                FROM lake_stores
+                WHERE peer_relationship = 'peer'
                 GROUP BY neighborhood
                 """,
             ).fetchall()
@@ -1569,83 +1627,65 @@ def _customer_home_density_cached(merchant_id: str, key: tuple) -> dict:
     filters = _unpack_filters_key(key)
     # Stores filter narrows the customer set to "customers who shopped
     # at the selected stores" — date filter narrows to that window.
+    # Wave 4 redesign — "where customers shop". The v4 data has no home
+    # address (no ZIP; the old home_zip5→neighborhood rollup is gone), so
+    # we count distinct customers by the neighborhood of the stores they
+    # transact at. The v3 "under-served neighborhood" sub-insight needed a
+    # home location and is intentionally dropped (a customer counts in the
+    # neighborhood they shop in, which already has an own store).
     f = filters
     extra_where = ""
     extra_params: list = []
     if f.get("date_start"):
-        extra_where += " AND DATE(txn_ts) >= ?"
+        extra_where += " AND DATE(t.txn_ts) >= ?"
         extra_params.append(f["date_start"].isoformat())
     if f.get("date_end"):
-        extra_where += " AND DATE(txn_ts) <= ?"
+        extra_where += " AND DATE(t.txn_ts) <= ?"
         extra_params.append(f["date_end"].isoformat())
     if f.get("stores"):
         ph = ",".join("?" for _ in f["stores"])
-        extra_where += f" AND store_id IN ({ph})"
+        extra_where += f" AND t.store_id IN ({ph})"
         extra_params.extend(f["stores"])
-
-    store_extra_where = ""
-    store_extra_params: list = []
-    if f.get("stores"):
-        ph = ",".join("?" for _ in f["stores"])
-        store_extra_where = f" AND store_id IN ({ph})"
-        store_extra_params = list(f["stores"])
 
     with _conn() as c:
         rows = c.execute(
             f"""
-            SELECT c.home_zip5, COUNT(DISTINCT c.customer_id) AS n
-            FROM tenant_customers c
-            WHERE c.customer_id IN (
-                SELECT DISTINCT customer_id FROM tenant_transactions
-                WHERE merchant_id = ?{extra_where}
-            )
-            GROUP BY c.home_zip5
+            SELECT s.neighborhood, COUNT(DISTINCT t.customer_id) AS n
+            FROM tenant_transactions t
+            JOIN tenant_stores s ON s.store_id = t.store_id
+            WHERE t.merchant_id = ?{extra_where}
+            GROUP BY s.neighborhood
             """,
             (merchant_id, *extra_params),
         ).fetchall()
         own_store_rows = c.execute(
-            f"""
+            """
             SELECT neighborhood, COUNT(*) AS n
             FROM tenant_stores
-            WHERE merchant_id = ?{store_extra_where}
+            WHERE merchant_id = ?
             GROUP BY neighborhood
             """,
-            (merchant_id, *store_extra_params),
+            (merchant_id,),
         ).fetchall()
 
-    # Roll zip5 counts up to neighborhoods.
-    counts: dict[str, int] = {}
-    for z, n in rows:
-        nb = _ZIP_TO_NEIGHBORHOOD.get(z)
-        if not nb:
-            continue
-        counts[nb] = counts.get(nb, 0) + int(n)
+    counts: dict[str, int] = {nb: int(n) for nb, n in rows if nb}
     own_store_by_nb = {n: int(s) for n, s in own_store_rows}
 
     total = sum(counts.values()) or 1
-    underserved_count = 0
     out: list[dict] = []
     for nb, n in counts.items():
-        own_s = own_store_by_nb.get(nb, 0)
-        is_under = own_s == 0
-        if is_under:
-            underserved_count += n
         out.append({
             "name":         nb,
             "n_customers":  n,
-            "own_n_stores": own_s,
-            "is_underserved": is_under,
+            "own_n_stores": own_store_by_nb.get(nb, 0),
+            "is_underserved": False,
         })
+    out.sort(key=lambda r: r["n_customers"], reverse=True)
 
-    pct_underserved = round(underserved_count / total * 100, 1)
-
-    # Densest under-served = neighborhood with most customers and no own store.
-    underserved = sorted(
-        [r for r in out if r["is_underserved"]],
-        key=lambda r: r["n_customers"],
-        reverse=True,
-    )
-    densest = underserved[0] if underserved else None
+    # Under-served insight dropped (no home geography in v4).
+    pct_underserved = 0.0
+    underserved: list[dict] = []
+    densest = None
 
     own_stores_df = stores_for(merchant_id)
     own_markers = [
@@ -1830,7 +1870,7 @@ def _expansion_opportunity_cached(merchant_id: str, key: tuple) -> dict:
 # aggregate peer-category column.
 #
 # Recent-week and baseline-window bounds match the A1 trajectory chart's
-# week binning (``DATE(t.txn_ts, 'weekday 0', '-6 days')`` rounds each
+# week binning (``CAST(date_trunc('week', t.txn_ts) AS VARCHAR)`` rounds each
 # timestamp to its containing Mon-Sun week's Monday).
 
 _A_RECENT_WEEK_START   = "2026-05-18"
@@ -1851,31 +1891,30 @@ def _peer_neighborhood_recent_vs_baseline(
     rather than line items (see chart_patterns.md "Implementation
     gotchas for lake queries").
     """
-    if not has_same_segment_peers(merchant_id):
+    if not _register_lake_views(conn, merchant_id):
         return {}
-    lake_t = f"lake_transactions_{merchant_id}"
-    lake_s = f"lake_stores_{merchant_id}"
 
+    # Wave 4: aggregate same-segment peers (peer_relationship='peer';
+    # no per-competitor identity). Count transactions via
+    # COUNT(DISTINCT lake_txn_id); k=5 floor on each published week×nbhd cell.
     rows = conn.execute(
-        f"""
+        """
         WITH peer_weekly AS (
             SELECT ls.neighborhood,
-                   DATE(lt.txn_date, 'weekday 0', '-6 days') AS week,
-                   COUNT(*) AS n_txns
-            FROM {lake_t} lt
-            JOIN {lake_s} ls ON ls.lake_store_id = lt.lake_store_id
-            WHERE lt.peer_segment = 'grocery'
-              AND lt.peer_id IN ('peer_a', 'peer_b')
-              AND lt.line_id = 1
-              AND DATE(lt.txn_date, 'weekday 0', '-6 days')
+                   CAST(date_trunc('week', lt.txn_date) AS VARCHAR) AS week,
+                   COUNT(DISTINCT lt.lake_txn_id) AS n_txns
+            FROM lake_transactions lt
+            JOIN lake_stores ls ON ls.lake_store_id = lt.lake_store_id
+            WHERE lt.peer_relationship = 'peer'
+              AND CAST(date_trunc('week', lt.txn_date) AS VARCHAR)
                   BETWEEN ? AND ?
             GROUP BY ls.neighborhood, week
+            HAVING COUNT(DISTINCT lt.lake_txn_id) >= 5
         ),
         peer_store_counts AS (
             SELECT neighborhood, COUNT(*) AS n_stores
-            FROM {lake_s}
-            WHERE peer_segment = 'grocery'
-              AND peer_id IN ('peer_a', 'peer_b')
+            FROM lake_stores
+            WHERE peer_relationship = 'peer'
             GROUP BY neighborhood
         )
         SELECT pw.neighborhood,
@@ -1955,11 +1994,11 @@ def _store_anomalies_cached(merchant_id: str, key: tuple) -> dict:
             f"""
             WITH weekly AS (
                 SELECT t.store_id,
-                       DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+                       CAST(date_trunc('week', t.txn_ts) AS VARCHAR) AS week,
                        COUNT(DISTINCT t.txn_id) AS n_txns
                 FROM tenant_transactions t
                 WHERE t.merchant_id = ?{txn_extra_where}
-                  AND DATE(t.txn_ts, 'weekday 0', '-6 days')
+                  AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR)
                       BETWEEN ? AND ?
                 GROUP BY t.store_id, week
             )
@@ -2079,20 +2118,18 @@ def _category_anomalies_cached(merchant_id: str, key: tuple) -> dict:
     filters = _unpack_filters_key(key)
     extra_where, extra_params = _own_filters_sql(filters)
 
-    lake_t = f"lake_transactions_{merchant_id}"
-
     with _conn() as c:
         own_rows = c.execute(
             f"""
             WITH weekly AS (
                 SELECT p.category,
-                       DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+                       CAST(date_trunc('week', t.txn_ts) AS VARCHAR) AS week,
                        COUNT(*) AS n_lines
                 FROM tenant_transaction_items i
                 JOIN tenant_products p     ON p.sku    = i.sku
                 JOIN tenant_transactions t ON t.txn_id = i.txn_id
                 WHERE t.merchant_id = ?{extra_where}
-                  AND DATE(t.txn_ts, 'weekday 0', '-6 days')
+                  AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR)
                       BETWEEN ? AND ?
                 GROUP BY p.category, week
             )
@@ -2112,19 +2149,19 @@ def _category_anomalies_cached(merchant_id: str, key: tuple) -> dict:
         ).fetchall()
 
         peer_rows = []
-        if has_same_segment_peers(merchant_id):
+        if _register_lake_views(c, merchant_id):
             peer_rows = c.execute(
-                f"""
+                """
                 WITH weekly AS (
                     SELECT category,
-                           DATE(txn_date, 'weekday 0', '-6 days') AS week,
+                           CAST(date_trunc('week', txn_date) AS VARCHAR) AS week,
                            COUNT(*) AS n_lines
-                    FROM {lake_t}
-                    WHERE peer_segment = 'grocery'
-                      AND peer_id IN ('peer_a', 'peer_b')
-                      AND DATE(txn_date, 'weekday 0', '-6 days')
+                    FROM lake_transactions
+                    WHERE peer_relationship = 'peer'
+                      AND CAST(date_trunc('week', txn_date) AS VARCHAR)
                           BETWEEN ? AND ?
                     GROUP BY category, week
+                    HAVING COUNT(*) >= 5
                 )
                 SELECT category,
                        SUM(CASE WHEN week = ? THEN n_lines ELSE 0 END) AS recent,
@@ -2239,11 +2276,11 @@ def _new_pct_for_week(
             SELECT DISTINCT customer_id
             FROM tenant_transactions
             WHERE merchant_id = ?{extra_where}
-              AND DATE(txn_ts, 'weekday 0', '-6 days') = ?
+              AND CAST(date_trunc('week', txn_ts) AS VARCHAR) = ?
         ),
         first_week AS (
             SELECT customer_id,
-                   MIN(DATE(txn_ts, 'weekday 0', '-6 days')) AS first_wk
+                   MIN(CAST(date_trunc('week', txn_ts) AS VARCHAR)) AS first_wk
             FROM tenant_transactions
             WHERE merchant_id = ?{extra_where}
             GROUP BY customer_id
@@ -2307,11 +2344,11 @@ def _new_vs_returning_cached(merchant_id: str, week_start: str, key: tuple) -> d
                 SELECT DISTINCT customer_id
                 FROM tenant_transactions
                 WHERE merchant_id = ?{extra_where}
-                  AND DATE(txn_ts, 'weekday 0', '-6 days') = ?
+                  AND CAST(date_trunc('week', txn_ts) AS VARCHAR) = ?
             ),
             first_week AS (
                 SELECT customer_id,
-                       MIN(DATE(txn_ts, 'weekday 0', '-6 days')) AS first_wk
+                       MIN(CAST(date_trunc('week', txn_ts) AS VARCHAR)) AS first_wk
                 FROM tenant_transactions
                 WHERE merchant_id = ?{extra_where}
                 GROUP BY customer_id
@@ -2456,16 +2493,16 @@ def _sku_performance_cached(merchant_id: str, key: tuple) -> dict:
             f"""
             WITH weekly AS (
                 SELECT p.sku, p.name AS sku_name, p.category,
-                       DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+                       CAST(date_trunc('week', t.txn_ts) AS VARCHAR) AS week,
                        COUNT(*) AS n_lines,
                        SUM(i.line_total) AS revenue
                 FROM tenant_transaction_items i
                 JOIN tenant_products p     ON p.sku    = i.sku
                 JOIN tenant_transactions t ON t.txn_id = i.txn_id
                 WHERE t.merchant_id = ?{extra_where}
-                  AND DATE(t.txn_ts, 'weekday 0', '-6 days')
+                  AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR)
                       BETWEEN ? AND ?
-                GROUP BY p.sku, week
+                GROUP BY p.sku, p.name, p.category, week
             )
             SELECT sku, sku_name, category,
                    SUM(CASE WHEN week = ? THEN n_lines ELSE 0 END) AS recent_lines,
@@ -2552,12 +2589,12 @@ def _performance_trajectory_cached(merchant_id: str, key: tuple) -> dict:
     with _conn() as c:
         rows = c.execute(
             f"""
-            SELECT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+            SELECT CAST(date_trunc('week', t.txn_ts) AS VARCHAR) AS week,
                    SUM(t.txn_total)         AS revenue,
                    COUNT(DISTINCT t.txn_id) AS n_txns
             FROM tenant_transactions t
             WHERE t.merchant_id = ?{extra_where}
-              AND DATE(t.txn_ts, 'weekday 0', '-6 days') BETWEEN ? AND ?
+              AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR) BETWEEN ? AND ?
             GROUP BY week
             """,
             (merchant_id, *extra_params, week_lo, week_hi),
@@ -2830,7 +2867,7 @@ def _kpi_strip_cached(merchant_id: str, key: tuple) -> dict:
         with _conn() as c:
             week_rows = c.execute(
                 f"""
-                SELECT DISTINCT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week
+                SELECT DISTINCT CAST(date_trunc('week', t.txn_ts) AS VARCHAR) AS week
                 FROM tenant_transactions t
                 WHERE t.merchant_id = ?{extra_where}
                 ORDER BY week
@@ -2866,13 +2903,13 @@ def _kpi_strip_cached(merchant_id: str, key: tuple) -> dict:
         # Per-week aggregates for the sparkline.
         rows = c.execute(
             f"""
-            SELECT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+            SELECT CAST(date_trunc('week', t.txn_ts) AS VARCHAR) AS week,
                    SUM(t.txn_total)              AS revenue,
                    COUNT(DISTINCT t.txn_id)      AS n_txns,
                    COUNT(DISTINCT t.customer_id) AS n_customers
             FROM tenant_transactions t
             WHERE t.merchant_id = ?{extra_where}
-              AND DATE(t.txn_ts, 'weekday 0', '-6 days')
+              AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR)
                   BETWEEN ? AND ?
             GROUP BY week
             """,
@@ -2984,11 +3021,11 @@ def _anomaly_counts_series(
         store_rows = c.execute(
             f"""
             SELECT t.store_id,
-                   DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+                   CAST(date_trunc('week', t.txn_ts) AS VARCHAR) AS week,
                    COUNT(DISTINCT t.txn_id) AS n_txns
             FROM tenant_transactions t
             WHERE t.merchant_id = ?{extra_where}
-              AND DATE(t.txn_ts, 'weekday 0', '-6 days') BETWEEN ? AND ?
+              AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR) BETWEEN ? AND ?
             GROUP BY t.store_id, week
             """,
             (merchant_id, *extra_params, week_lo, week_hi),
@@ -2996,13 +3033,13 @@ def _anomaly_counts_series(
         cat_rows = c.execute(
             f"""
             SELECT p.category,
-                   DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+                   CAST(date_trunc('week', t.txn_ts) AS VARCHAR) AS week,
                    COUNT(*) AS n_lines
             FROM tenant_transaction_items i
             JOIN tenant_products p     ON p.sku    = i.sku
             JOIN tenant_transactions t ON t.txn_id = i.txn_id
             WHERE t.merchant_id = ?{extra_where}
-              AND DATE(t.txn_ts, 'weekday 0', '-6 days') BETWEEN ? AND ?
+              AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR) BETWEEN ? AND ?
             GROUP BY p.category, week
             """,
             (merchant_id, *extra_params, week_lo, week_hi),
@@ -3155,12 +3192,12 @@ def _tbl_daypart_ticket_trends_cached(merchant_id: str, key: tuple) -> dict:
     with _conn() as c:
         rows = c.execute(
             f"""
-            SELECT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
-                   CAST(SUBSTR(t.txn_ts, 12, 2) AS INTEGER) AS hr,
+            SELECT CAST(date_trunc('week', t.txn_ts) AS VARCHAR) AS week,
+                   EXTRACT(hour FROM t.txn_ts) AS hr,
                    AVG(t.txn_total) AS mean_ticket
             FROM tenant_transactions t
             WHERE t.merchant_id = ?{extra_where}
-              AND DATE(t.txn_ts, 'weekday 0', '-6 days')
+              AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR)
                   BETWEEN ? AND ?
             GROUP BY week, hr
             """,
@@ -3252,7 +3289,7 @@ def _category_unit_price_trends_cached(merchant_id: str, top_n: int, key: tuple)
             JOIN tenant_products p     ON p.sku    = i.sku
             JOIN tenant_transactions t ON t.txn_id = i.txn_id
             WHERE t.merchant_id = ?{extra_where}
-              AND DATE(t.txn_ts, 'weekday 0', '-6 days')
+              AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR)
                   BETWEEN ? AND ?
             GROUP BY p.category
             ORDER BY rev DESC
@@ -3269,7 +3306,7 @@ def _category_unit_price_trends_cached(merchant_id: str, top_n: int, key: tuple)
         ph = ",".join("?" for _ in top_cats)
         price_rows = c.execute(
             f"""
-            SELECT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+            SELECT CAST(date_trunc('week', t.txn_ts) AS VARCHAR) AS week,
                    p.category,
                    AVG(i.unit_price) AS mean_price
             FROM tenant_transaction_items i
@@ -3277,7 +3314,7 @@ def _category_unit_price_trends_cached(merchant_id: str, top_n: int, key: tuple)
             JOIN tenant_transactions t ON t.txn_id = i.txn_id
             WHERE t.merchant_id = ?{extra_where}
               AND p.category IN ({ph})
-              AND DATE(t.txn_ts, 'weekday 0', '-6 days') BETWEEN ? AND ?
+              AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR) BETWEEN ? AND ?
             GROUP BY week, p.category
             """,
             [merchant_id, *extra_params, *top_cats, week_lo, week_hi],
@@ -3427,11 +3464,11 @@ def _store_anomalies_own_only_cached(merchant_id: str, key: tuple) -> dict:
             f"""
             WITH weekly AS (
                 SELECT t.store_id,
-                       DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+                       CAST(date_trunc('week', t.txn_ts) AS VARCHAR) AS week,
                        COUNT(DISTINCT t.txn_id) AS n_txns
                 FROM tenant_transactions t
                 WHERE t.merchant_id = ?{txn_extra_where}
-                  AND DATE(t.txn_ts, 'weekday 0', '-6 days')
+                  AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR)
                       BETWEEN ? AND ?
                 GROUP BY t.store_id, week
             )
@@ -3510,15 +3547,15 @@ def _sku_anomalies_cached(merchant_id: str, top_n: int, key: tuple) -> dict:
             f"""
             WITH weekly AS (
                 SELECT p.sku, p.name AS sku_name, p.category,
-                       DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+                       CAST(date_trunc('week', t.txn_ts) AS VARCHAR) AS week,
                        COUNT(*) AS n_lines
                 FROM tenant_transaction_items i
                 JOIN tenant_products p     ON p.sku    = i.sku
                 JOIN tenant_transactions t ON t.txn_id = i.txn_id
                 WHERE t.merchant_id = ?{extra_where}
-                  AND DATE(t.txn_ts, 'weekday 0', '-6 days')
+                  AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR)
                       BETWEEN ? AND ?
-                GROUP BY p.sku, week
+                GROUP BY p.sku, p.name, p.category, week
             )
             SELECT sku, sku_name, category,
                    SUM(CASE WHEN week = ? THEN n_lines ELSE 0 END) AS recent,
@@ -3593,13 +3630,13 @@ def _day_daypart_heatmap_cached(merchant_id: str, key: tuple) -> dict:
     with _conn() as c:
         rows = c.execute(
             f"""
-            SELECT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+            SELECT CAST(date_trunc('week', t.txn_ts) AS VARCHAR) AS week,
                    STRFTIME('%w', t.txn_ts)               AS dow_num,
-                   CAST(SUBSTR(t.txn_ts, 12, 2) AS INTEGER) AS hr,
+                   EXTRACT(hour FROM t.txn_ts) AS hr,
                    COUNT(DISTINCT t.txn_id)               AS n_txns
             FROM tenant_transactions t
             WHERE t.merchant_id = ?{extra_where}
-              AND DATE(t.txn_ts, 'weekday 0', '-6 days')
+              AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR)
                   BETWEEN ? AND ?
             GROUP BY week, dow_num, hr
             """,
@@ -3772,26 +3809,26 @@ def _category_share_trajectory_cached(merchant_id: str, top_n: int, key: tuple) 
         ph = ",".join("?" for _ in top_cats)
         wk_rows = c.execute(
             f"""
-            SELECT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+            SELECT CAST(date_trunc('week', t.txn_ts) AS VARCHAR) AS week,
                    p.category,
                    SUM(i.line_total) AS rev
             FROM tenant_transaction_items i
             JOIN tenant_products p     ON p.sku    = i.sku
             JOIN tenant_transactions t ON t.txn_id = i.txn_id
             WHERE t.merchant_id = ?{extra_where}
-              AND DATE(t.txn_ts, 'weekday 0', '-6 days') BETWEEN ? AND ?
+              AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR) BETWEEN ? AND ?
             GROUP BY week, p.category
             """,
             (merchant_id, *extra_params, week_lo, week_hi),
         ).fetchall()
         wk_total_rows = c.execute(
             f"""
-            SELECT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+            SELECT CAST(date_trunc('week', t.txn_ts) AS VARCHAR) AS week,
                    SUM(i.line_total) AS rev
             FROM tenant_transaction_items i
             JOIN tenant_transactions t ON t.txn_id = i.txn_id
             WHERE t.merchant_id = ?{extra_where}
-              AND DATE(t.txn_ts, 'weekday 0', '-6 days') BETWEEN ? AND ?
+              AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR) BETWEEN ? AND ?
             GROUP BY week
             """,
             (merchant_id, *extra_params, week_lo, week_hi),
@@ -3863,7 +3900,7 @@ def _revenue_change_decomposition_own_cached(merchant_id: str, key: tuple) -> di
             FROM tenant_transactions t
             JOIN tenant_transaction_items i ON i.txn_id = t.txn_id
             WHERE t.merchant_id = ?{extra_where}
-              AND DATE(t.txn_ts, 'weekday 0', '-6 days') = ?
+              AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR) = ?
             """,
             (merchant_id, *extra_params, _A_RECENT_WEEK_START),
         ).fetchone()
@@ -3877,7 +3914,7 @@ def _revenue_change_decomposition_own_cached(merchant_id: str, key: tuple) -> di
             FROM tenant_transactions t
             JOIN tenant_transaction_items i ON i.txn_id = t.txn_id
             WHERE t.merchant_id = ?{extra_where}
-              AND DATE(t.txn_ts, 'weekday 0', '-6 days') BETWEEN ? AND ?
+              AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR) BETWEEN ? AND ?
             """,
             (merchant_id, *extra_params,
              _A_BASELINE_WEEK_START, _A_BASELINE_WEEK_END),
@@ -4126,12 +4163,12 @@ def _day_week_heatmap_cached(merchant_id: str, key: tuple) -> dict:
     with _conn() as c:
         rows = c.execute(
             f"""
-            SELECT DATE(t.txn_ts, 'weekday 0', '-6 days') AS week,
+            SELECT CAST(date_trunc('week', t.txn_ts) AS VARCHAR) AS week,
                    STRFTIME('%w', t.txn_ts) AS dow_num,
                    COUNT(DISTINCT t.txn_id) AS n_txns
             FROM tenant_transactions t
             WHERE t.merchant_id = ?{extra_where}
-              AND DATE(t.txn_ts, 'weekday 0', '-6 days')
+              AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR)
                   BETWEEN ? AND ?
             GROUP BY week, dow_num
             """,
