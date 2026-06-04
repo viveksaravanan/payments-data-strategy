@@ -145,6 +145,37 @@ def _question_text_for(specialist_id: str, question_id: str, merchant_id: str) -
 # for the rationale and the v4 unified-compute plan.
 # ---------------------------------------------------------------------------
 
+def _response_to_dict(resp, agent_label: str) -> dict:
+    """Map the Wave 3.5 structured ``AgentResponse`` onto the dict the
+    chat renderer consumes. The response is structured (headline /
+    evidence / so_what); ``prose`` is the derived joined view (back-compat);
+    ``table`` is the result frame; ``chart`` is always None (charts
+    deferred to Wave 4.1)."""
+    import pandas as pd  # noqa: PLC0415
+
+    result = getattr(resp, "result", None)
+    table = result if isinstance(result, pd.DataFrame) and len(result) > 0 else None
+    tel = getattr(resp, "telemetry", None)
+    return {
+        "agent":    agent_label,
+        "headline": getattr(resp, "headline", "") or "",
+        "evidence": list(getattr(resp, "evidence", []) or []),
+        "so_what":  getattr(resp, "so_what", None),
+        "prose":    getattr(resp, "prose", "") or "",
+        "caveats":  list(getattr(resp, "caveats", []) or []),
+        "table":    table,
+        "chart":    None,
+        "telemetry": {
+            "model":         tel.model,
+            "input_tokens":  tel.input_tokens,
+            "output_tokens": tel.output_tokens,
+            "cost_usd":      tel.cost_usd,
+            "turns":         tel.turns,
+        } if tel is not None else None,
+        "error":    False,
+    }
+
+
 def _run_specialist(
     specialist_id: str,
     question_id: "str | None",
@@ -181,7 +212,8 @@ def _run_specialist(
             f"No specialist wired for specialist_id={specialist_id!r}"
         )
 
-    return spec.answer(question, progress=progress, on_token=on_token).to_dict()
+    resp = spec.answer(question, progress=progress, on_token=on_token)
+    return _response_to_dict(resp, AGENT_LABELS.get(specialist_id, "Agent"))
 
 
 # ---------------------------------------------------------------------------
@@ -247,6 +279,7 @@ def dispatch_orchestrated(
         from src.agents.orchestrator import Orchestrator
         ctx = MerchantContext.for_merchant(merchant_id)
         orch = Orchestrator(ctx)
-        return orch.ask(raw_question, progress=progress, on_token=on_token).to_dict()
+        resp = orch.ask(raw_question, progress=progress, on_token=on_token)
+        return _response_to_dict(resp, "Conversational Advisor")
     except Exception:  # noqa: BLE001
         return _orchestrator_error_response()

@@ -206,6 +206,28 @@ def _render_table(tbl) -> None:
     st.dataframe(tbl, use_container_width=True, hide_index=True)
 
 
+def _render_structured_answer(entry: dict) -> None:
+    """Render the Wave 3.5 structured agent answer: a one-line headline,
+    evidence bullets, and an optional so-what. Falls back to the joined
+    ``prose`` for error / legacy responses that carry no headline."""
+    headline = (entry.get("headline") or "").strip()
+    evidence = [e for e in (entry.get("evidence") or []) if e and e.strip()]
+    so_what = (entry.get("so_what") or "").strip()
+
+    if not headline and not evidence:
+        prose = _strip_caveats_tail(entry.get("prose", ""))
+        if prose:
+            st.markdown(_escape_dollars(prose))
+        return
+
+    if headline:
+        st.markdown(f"**{_escape_dollars(headline)}**")
+    if evidence:
+        st.markdown("\n".join(f"- {_escape_dollars(e)}" for e in evidence))
+    if so_what:
+        st.markdown(f"_{_escape_dollars(so_what)}_")
+
+
 def _render_history_entry(entry: dict, merchant_id: str) -> None:
     """Render a single completed turn as a user + assistant bubble pair.
 
@@ -219,9 +241,7 @@ def _render_history_entry(entry: dict, merchant_id: str) -> None:
         st.markdown(entry.get("question", ""))
     with st.chat_message("assistant"):
         st.caption(entry.get("agent", "Agent"))
-        prose = _strip_caveats_tail(entry.get("prose", ""))
-        if prose:
-            st.markdown(_escape_dollars(prose))
+        _render_structured_answer(entry)
         _render_caveats(entry.get("caveats"))
         _render_chart(entry.get("chart"))
         _render_table(entry.get("table"))
@@ -267,14 +287,12 @@ def _render_live_turn(
             placeholder.markdown(_escape_dollars(visible))
 
         response = runner(on_progress, on_token)
-        clean_prose = _strip_caveats_tail(response.get("prose", ""))
-        # Overwrite the placeholder with the final state (caption + prose)
-        # in one container call rather than emptying + re-adding widgets
-        # — keeps the bubble layout deterministic.
+        # Overwrite the placeholder with the final state (caption +
+        # structured answer) in one container call rather than emptying +
+        # re-adding widgets — keeps the bubble layout deterministic.
         with placeholder.container():
             st.caption(response.get("agent", agent_label))
-            if clean_prose:
-                st.markdown(_escape_dollars(clean_prose))
+            _render_structured_answer(response)
         _render_caveats(response.get("caveats"))
         _render_chart(response.get("chart"))
         _render_table(response.get("table"))
