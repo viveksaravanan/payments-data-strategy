@@ -28,7 +28,7 @@ load_dotenv()  # tolerated even though Phase 1 doesn't call any LLM APIs
 import streamlit as st
 import streamlit.components.v1 as components
 
-from src.dashboard import chat, data as D, styling, views
+from src.dashboard import chart_patterns, chat, data as D, styling, views
 
 ROOT = Path(__file__).resolve().parents[2]
 DB_PATH = ROOT / "data" / "payments.db"
@@ -194,6 +194,10 @@ st.markdown("<hr style='margin: 8px 0 12px;'/>", unsafe_allow_html=True)
 
 # Drive the body-level class that controls drawer width.
 styling.apply_chat_state_class(state.chat_state)
+
+# Reset the per-run chart-key sequence so every st.plotly_chart gets a
+# unique, run-stable key (avoids StreamlitDuplicateElementId).
+chart_patterns.reset_plot_keys()
 
 views.render_kpi_strip(mid, filters)
 views.render_performance_section(mid, filters)

@@ -21,6 +21,8 @@ Phase 4.1 implements Pattern 1 only. Subsequent phases add the rest.
 """
 from __future__ import annotations
 
+import itertools
+
 import folium
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -38,6 +40,32 @@ PEER_A          = "#6B7280"   # medium gray
 PEER_B          = "#9CA3AF"   # lighter gray
 PEER_AGGREGATE  = "#4B5563"   # darker gray (for aggregate peer overlays)
 BASELINE_LINE   = "rgba(128, 128, 128, 0.4)"
+
+
+# ---------------------------------------------------------------------------
+# Unique chart keys
+#
+# Streamlit assigns each element an auto-ID from its type + call parameters
+# (NOT the figure content), so two un-keyed ``st.plotly_chart`` calls with
+# the same params collide with ``StreamlitDuplicateElementId``. Every chart
+# here renders via ``_plot`` which injects a unique ``key``. ``reset_plot_keys``
+# is called once at the top of each dashboard render (app.py) so the sequence
+# starts at 0 every rerun — keys are unique within a run and stable across
+# reruns for a deterministic render order.
+# ---------------------------------------------------------------------------
+
+_PLOT_SEQ = itertools.count()
+
+
+def reset_plot_keys() -> None:
+    """Reset the per-Streamlit-run chart-key sequence."""
+    global _PLOT_SEQ
+    _PLOT_SEQ = itertools.count()
+
+
+def _plot(fig, **kwargs) -> None:
+    """``st.plotly_chart`` with a unique, per-run-stable key."""
+    st.plotly_chart(fig, key=f"cp_plot_{next(_PLOT_SEQ)}", **kwargs)
 GRID_LINE       = "rgba(128, 128, 128, 0.10)"
 
 # Text colors — match the v2.5 ``--text`` / ``--text-2`` / ``--text-muted``
@@ -245,7 +273,7 @@ def render_time_series_vs_peers(
     # Title + takeaway above the chart. The chart helper renders both
     # so callers don't have to coordinate spacing.
     _render_card_header(title, takeaway, ask_about_this=ask_about_this)
-    st.plotly_chart(fig, use_container_width=True)
+    _plot(fig, use_container_width=True)
 
 
 # ---------------------------------------------------------------------------
@@ -342,7 +370,7 @@ def render_time_series_own_multi(
     fig.update_yaxes(showgrid=True, gridcolor=GRID_LINE, zeroline=False,
                      tickfont=dict(size=10))
     _render_card_header(title, takeaway, ask_about_this=ask_about_this)
-    st.plotly_chart(fig, use_container_width=True)
+    _plot(fig, use_container_width=True)
 
 
 # ---------------------------------------------------------------------------
@@ -556,7 +584,7 @@ def _render_two_panel(data: dict, *, title: str, takeaway: str,
                      ticksuffix="%", tickfont=dict(size=10))
     fig.update_yaxes(showgrid=False, tickfont=dict(size=11), automargin=True)
     _render_card_header(title, takeaway, ask_about_this=ask_about_this)
-    st.plotly_chart(fig, use_container_width=True)
+    _plot(fig, use_container_width=True)
 
 
 def _render_diverging(data: dict, *, title: str, takeaway: str,
@@ -589,7 +617,7 @@ def _render_diverging(data: dict, *, title: str, takeaway: str,
     fig.update_yaxes(showgrid=False, tickfont=dict(size=11),
                      automargin=True, autorange="reversed")
     _render_card_header(title, takeaway, ask_about_this=ask_about_this)
-    st.plotly_chart(fig, use_container_width=True)
+    _plot(fig, use_container_width=True)
 
 
 def _render_standard(data: dict, *, title: str, takeaway: str,
@@ -614,7 +642,7 @@ def _render_standard(data: dict, *, title: str, takeaway: str,
     fig.update_yaxes(showgrid=False, tickfont=dict(size=11),
                      automargin=True, autorange="reversed")
     _render_card_header(title, takeaway, ask_about_this=ask_about_this)
-    st.plotly_chart(fig, use_container_width=True)
+    _plot(fig, use_container_width=True)
 
 
 # ---------------------------------------------------------------------------
@@ -744,7 +772,7 @@ def _render_heatmap_cross_merchant_diverging(
                      autorange="reversed")
 
     _render_card_header(title, takeaway, ask_about_this=ask_about_this)
-    st.plotly_chart(fig, use_container_width=True)
+    _plot(fig, use_container_width=True)
     # Cells suppressed by k<5 enter the matrix as ``None``; if any
     # exist, surface the privacy footnote so the merchant knows the
     # blanks aren't missing data.
@@ -820,7 +848,7 @@ def _render_heatmap_own_only_diverging(
     fig.update_yaxes(tickfont=dict(size=11), automargin=True,
                      autorange="reversed")
     _render_card_header(title, takeaway, ask_about_this=ask_about_this)
-    st.plotly_chart(fig, use_container_width=True)
+    _plot(fig, use_container_width=True)
     if data.get("suppressed_count", 0) > 0:
         _render_card_footnote(K5_SUPPRESSION_FOOTNOTE)
 
@@ -873,7 +901,7 @@ def _render_heatmap_own_only_sequential(
     fig.update_yaxes(tickfont=dict(size=11), automargin=True,
                      autorange="reversed")
     _render_card_header(title, takeaway, ask_about_this=ask_about_this)
-    st.plotly_chart(fig, use_container_width=True)
+    _plot(fig, use_container_width=True)
     if data.get("suppressed_count", 0) > 0:
         _render_card_footnote(K5_SUPPRESSION_FOOTNOTE)
 
@@ -963,7 +991,7 @@ def render_horizontal_bars_own(
     fig.update_yaxes(showgrid=False, tickfont=dict(size=10),
                      automargin=True, autorange="reversed")
     _render_card_header(title, takeaway, ask_about_this=ask_about_this)
-    st.plotly_chart(fig, use_container_width=True)
+    _plot(fig, use_container_width=True)
 
 
 def render_horizontal_bars_grouped(
@@ -1032,7 +1060,7 @@ def render_horizontal_bars_grouped(
     fig.update_yaxes(showgrid=False, tickfont=dict(size=10),
                      automargin=True, autorange="reversed")
     _render_card_header(title, takeaway, ask_about_this=ask_about_this)
-    st.plotly_chart(fig, use_container_width=True)
+    _plot(fig, use_container_width=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1149,7 +1177,7 @@ def render_scatter_with_peers(
                      tickfont=dict(size=10))
 
     _render_card_header(title, takeaway, ask_about_this=ask_about_this)
-    st.plotly_chart(fig, use_container_width=True)
+    _plot(fig, use_container_width=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1275,7 +1303,7 @@ def _render_waterfall_cross_merchant(
                      ticksuffix="pp", tickfont=dict(size=10))
 
     _render_card_header(title, takeaway, ask_about_this=ask_about_this)
-    st.plotly_chart(fig, use_container_width=True)
+    _plot(fig, use_container_width=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1694,8 +1722,8 @@ def _render_sparkline(values: list[float], *, color: str = ACCENT) -> None:
         xaxis=dict(visible=False, fixedrange=True),
         yaxis=dict(visible=False, fixedrange=True),
     )
-    st.plotly_chart(fig, use_container_width=True,
-                     config={"displayModeBar": False})
+    _plot(fig, use_container_width=True,
+          config={"displayModeBar": False})
 
 
 def render_ask_about_this(
