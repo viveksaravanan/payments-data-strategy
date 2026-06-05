@@ -21,7 +21,10 @@ import-path updates.
 """
 from __future__ import annotations
 
+import logging
 from typing import Callable
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -249,6 +252,13 @@ def dispatch(
             progress=progress, on_token=on_token,
         )
     except Exception:  # noqa: BLE001 — translated to an honest error
+        # Log the real cause (full traceback) before returning the generic
+        # bubble, so a transient API blip vs a genuine code error is
+        # distinguishable in the dashboard log after the fact.
+        logger.exception(
+            "Specialist dispatch failed (agent=%s, qid=%s, merchant=%s)",
+            agent_id, question_id, merchant_id,
+        )
         return _error_response(agent_id)
 
     _cache_set(key, resp)
@@ -279,7 +289,18 @@ def dispatch_orchestrated(
         from src.agents.orchestrator import Orchestrator
         ctx = MerchantContext.for_merchant(merchant_id)
         orch = Orchestrator(ctx)
-        resp = orch.ask(raw_question, progress=progress, on_token=on_token)
-        return _response_to_dict(resp, "Conversational Advisor")
+        # Orchestrator.ask returns a (RoutingDecision, AgentResponse) tuple —
+        # unpack it. Label the answer with the routed specialist (the router
+        # usually picks one); advisor / unknown falls back to "Conversational
+        # Advisor".
+        decision, resp = orch.ask(raw_question, progress=progress, on_token=on_token)
+        label = AGENT_LABELS.get(decision.primary, "Conversational Advisor")
+        return _response_to_dict(resp, label)
     except Exception:  # noqa: BLE001
+        # Log the real cause (full traceback) before returning the generic
+        # bubble — see the note in dispatch().
+        logger.exception(
+            "Orchestrated dispatch failed (merchant=%s, question=%r)",
+            merchant_id, raw_question,
+        )
         return _orchestrator_error_response()
