@@ -26,9 +26,17 @@ the v4 column names so most query SQL is unchanged:
 DuckDB dialect notes vs the old SQLite: `DATE()` and `strftime` work as-is;
 `SUBSTR(txn_ts,…)` for the hour → `EXTRACT(hour FROM txn_ts)`; the
 `DATE(x,'weekday 0','-6 days')` Monday-of-week idiom → `date_trunc('week', x)`;
-DuckDB returns **native dates** (SQLite returned strings) so week expressions
-are cast `AS VARCHAR` to keep the Python ISO-string assumption; DuckDB has
-**strict GROUP BY** (every selected non-aggregate must be grouped).
+DuckDB has **strict GROUP BY** (every selected non-aggregate must be grouped).
+
+**Week-key bucketing — use `strftime`, not a bare VARCHAR cast.**
+`date_trunc('week', txn_ts)` on a **TIMESTAMP** column returns a **TIMESTAMP**, so
+`CAST(date_trunc('week', txn_ts) AS VARCHAR)` yields `'2026-05-18 00:00:00'` — the
+` 00:00:00` suffix means it never matches the Monday-keyed string constants
+(`_RECENT_WEEK`, `_A_RECENT_WEEK_START`, the 12-week default list), silently zeroing
+every "recent week" lookup (blank KPIs, all-stores −100% deltas). Bin weeks with
+`strftime(date_trunc('week', X), '%Y-%m-%d')`, which returns a date-only
+`'YYYY-MM-DD'` for both TIMESTAMP and DATE inputs (and so keeps own `txn_ts` keys
+aligned with peer-lake `txn_date` keys).
 
 Caching: each `@st.cache_data` query function takes the **viewer** as an explicit
 arg so the cache key varies by merchant (switching the selector must not bleed

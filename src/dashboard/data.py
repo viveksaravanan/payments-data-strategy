@@ -356,9 +356,12 @@ def hour_dow_heatmap(merchant_id: str, filters_key: tuple) -> pd.DataFrame:
 # normalized to a 4-week baseline. Grocer viewers only — TBL and TJX
 # have no same-segment peer with UC presence.
 
-# The 90-day panel spans Sun Mar 1 2026 → Fri May 29 2026. SQLite's
-# `CAST(date_trunc('week', ts) AS VARCHAR)` bins each timestamp to the Monday
-# that starts its containing Mon-Sun week (the convention v2.5 reports
+# The 90-day panel spans Sun Mar 1 2026 → Fri May 29 2026.
+# `strftime(date_trunc('week', ts), '%Y-%m-%d')` bins each timestamp to the
+# Monday that starts its containing Mon-Sun week, as a date-only 'YYYY-MM-DD'
+# string. (NB: date_trunc on a TIMESTAMP returns a TIMESTAMP, so a bare
+# CAST(... AS VARCHAR) leaks a ' 00:00:00' suffix and never matches the
+# Monday-keyed string constants — strftime is the fix.) (the convention v2.5 reports
 # already use). The first such week (Feb 23) and the last (May 25) are
 # partial; we filter to the 12 fully-covered weeks Mar 2 → May 18 so the
 # trough detector doesn't pick a partial-week artifact.
@@ -839,7 +842,7 @@ def _customer_home_density_cached(merchant_id: str, key: tuple) -> dict:
 # aggregate peer-category column.
 #
 # Recent-week and baseline-window bounds match the A1 trajectory chart's
-# week binning (``CAST(date_trunc('week', t.txn_ts) AS VARCHAR)`` rounds each
+# week binning (``strftime(date_trunc('week', t.txn_ts), '%Y-%m-%d')`` rounds each
 # timestamp to its containing Mon-Sun week's Monday).
 
 _A_RECENT_WEEK_START   = "2026-05-18"
@@ -870,12 +873,12 @@ def _peer_neighborhood_recent_vs_baseline(
         """
         WITH peer_weekly AS (
             SELECT ls.neighborhood,
-                   CAST(date_trunc('week', lt.txn_date) AS VARCHAR) AS week,
+                   strftime(date_trunc('week', lt.txn_date), '%Y-%m-%d') AS week,
                    COUNT(DISTINCT lt.lake_txn_id) AS n_txns
             FROM lake_transactions lt
             JOIN lake_stores ls ON ls.lake_store_id = lt.lake_store_id
             WHERE lt.peer_relationship = 'peer'
-              AND CAST(date_trunc('week', lt.txn_date) AS VARCHAR)
+              AND strftime(date_trunc('week', lt.txn_date), '%Y-%m-%d')
                   BETWEEN ? AND ?
             GROUP BY ls.neighborhood, week
             HAVING COUNT(DISTINCT lt.lake_txn_id) >= 5
@@ -963,11 +966,11 @@ def _store_anomalies_cached(merchant_id: str, key: tuple) -> dict:
             f"""
             WITH weekly AS (
                 SELECT t.store_id,
-                       CAST(date_trunc('week', t.txn_ts) AS VARCHAR) AS week,
+                       strftime(date_trunc('week', t.txn_ts), '%Y-%m-%d') AS week,
                        COUNT(DISTINCT t.txn_id) AS n_txns
                 FROM tenant_transactions t
                 WHERE t.merchant_id = ?{txn_extra_where}
-                  AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR)
+                  AND strftime(date_trunc('week', t.txn_ts), '%Y-%m-%d')
                       BETWEEN ? AND ?
                 GROUP BY t.store_id, week
             )
@@ -1092,13 +1095,13 @@ def _category_anomalies_cached(merchant_id: str, key: tuple) -> dict:
             f"""
             WITH weekly AS (
                 SELECT p.category,
-                       CAST(date_trunc('week', t.txn_ts) AS VARCHAR) AS week,
+                       strftime(date_trunc('week', t.txn_ts), '%Y-%m-%d') AS week,
                        COUNT(*) AS n_lines
                 FROM tenant_transaction_items i
                 JOIN tenant_products p     ON p.sku    = i.sku
                 JOIN tenant_transactions t ON t.txn_id = i.txn_id
                 WHERE t.merchant_id = ?{extra_where}
-                  AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR)
+                  AND strftime(date_trunc('week', t.txn_ts), '%Y-%m-%d')
                       BETWEEN ? AND ?
                 GROUP BY p.category, week
             )
@@ -1123,11 +1126,11 @@ def _category_anomalies_cached(merchant_id: str, key: tuple) -> dict:
                 """
                 WITH weekly AS (
                     SELECT category,
-                           CAST(date_trunc('week', txn_date) AS VARCHAR) AS week,
+                           strftime(date_trunc('week', txn_date), '%Y-%m-%d') AS week,
                            COUNT(*) AS n_lines
                     FROM lake_transactions
                     WHERE peer_relationship = 'peer'
-                      AND CAST(date_trunc('week', txn_date) AS VARCHAR)
+                      AND strftime(date_trunc('week', txn_date), '%Y-%m-%d')
                           BETWEEN ? AND ?
                     GROUP BY category, week
                     HAVING COUNT(*) >= 5
@@ -1245,11 +1248,11 @@ def _new_pct_for_week(
             SELECT DISTINCT customer_id
             FROM tenant_transactions
             WHERE merchant_id = ?{extra_where}
-              AND CAST(date_trunc('week', txn_ts) AS VARCHAR) = ?
+              AND strftime(date_trunc('week', txn_ts), '%Y-%m-%d') = ?
         ),
         first_week AS (
             SELECT customer_id,
-                   MIN(CAST(date_trunc('week', txn_ts) AS VARCHAR)) AS first_wk
+                   MIN(strftime(date_trunc('week', txn_ts), '%Y-%m-%d')) AS first_wk
             FROM tenant_transactions
             WHERE merchant_id = ?{extra_where}
             GROUP BY customer_id
@@ -1313,11 +1316,11 @@ def _new_vs_returning_cached(merchant_id: str, week_start: str, key: tuple) -> d
                 SELECT DISTINCT customer_id
                 FROM tenant_transactions
                 WHERE merchant_id = ?{extra_where}
-                  AND CAST(date_trunc('week', txn_ts) AS VARCHAR) = ?
+                  AND strftime(date_trunc('week', txn_ts), '%Y-%m-%d') = ?
             ),
             first_week AS (
                 SELECT customer_id,
-                       MIN(CAST(date_trunc('week', txn_ts) AS VARCHAR)) AS first_wk
+                       MIN(strftime(date_trunc('week', txn_ts), '%Y-%m-%d')) AS first_wk
                 FROM tenant_transactions
                 WHERE merchant_id = ?{extra_where}
                 GROUP BY customer_id
@@ -1462,14 +1465,14 @@ def _sku_performance_cached(merchant_id: str, key: tuple) -> dict:
             f"""
             WITH weekly AS (
                 SELECT p.sku, p.name AS sku_name, p.category,
-                       CAST(date_trunc('week', t.txn_ts) AS VARCHAR) AS week,
+                       strftime(date_trunc('week', t.txn_ts), '%Y-%m-%d') AS week,
                        COUNT(*) AS n_lines,
                        SUM(i.line_total) AS revenue
                 FROM tenant_transaction_items i
                 JOIN tenant_products p     ON p.sku    = i.sku
                 JOIN tenant_transactions t ON t.txn_id = i.txn_id
                 WHERE t.merchant_id = ?{extra_where}
-                  AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR)
+                  AND strftime(date_trunc('week', t.txn_ts), '%Y-%m-%d')
                       BETWEEN ? AND ?
                 GROUP BY p.sku, p.name, p.category, week
             )
@@ -1558,12 +1561,12 @@ def _performance_trajectory_cached(merchant_id: str, key: tuple) -> dict:
     with _conn() as c:
         rows = c.execute(
             f"""
-            SELECT CAST(date_trunc('week', t.txn_ts) AS VARCHAR) AS week,
+            SELECT strftime(date_trunc('week', t.txn_ts), '%Y-%m-%d') AS week,
                    SUM(t.txn_total)         AS revenue,
                    COUNT(DISTINCT t.txn_id) AS n_txns
             FROM tenant_transactions t
             WHERE t.merchant_id = ?{extra_where}
-              AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR) BETWEEN ? AND ?
+              AND strftime(date_trunc('week', t.txn_ts), '%Y-%m-%d') BETWEEN ? AND ?
             GROUP BY week
             """,
             (merchant_id, *extra_params, week_lo, week_hi),
@@ -1836,7 +1839,7 @@ def _kpi_strip_cached(merchant_id: str, key: tuple) -> dict:
         with _conn() as c:
             week_rows = c.execute(
                 f"""
-                SELECT DISTINCT CAST(date_trunc('week', t.txn_ts) AS VARCHAR) AS week
+                SELECT DISTINCT strftime(date_trunc('week', t.txn_ts), '%Y-%m-%d') AS week
                 FROM tenant_transactions t
                 WHERE t.merchant_id = ?{extra_where}
                 ORDER BY week
@@ -1872,13 +1875,13 @@ def _kpi_strip_cached(merchant_id: str, key: tuple) -> dict:
         # Per-week aggregates for the sparkline.
         rows = c.execute(
             f"""
-            SELECT CAST(date_trunc('week', t.txn_ts) AS VARCHAR) AS week,
+            SELECT strftime(date_trunc('week', t.txn_ts), '%Y-%m-%d') AS week,
                    SUM(t.txn_total)              AS revenue,
                    COUNT(DISTINCT t.txn_id)      AS n_txns,
                    COUNT(DISTINCT t.customer_id) AS n_customers
             FROM tenant_transactions t
             WHERE t.merchant_id = ?{extra_where}
-              AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR)
+              AND strftime(date_trunc('week', t.txn_ts), '%Y-%m-%d')
                   BETWEEN ? AND ?
             GROUP BY week
             """,
@@ -1990,11 +1993,11 @@ def _anomaly_counts_series(
         store_rows = c.execute(
             f"""
             SELECT t.store_id,
-                   CAST(date_trunc('week', t.txn_ts) AS VARCHAR) AS week,
+                   strftime(date_trunc('week', t.txn_ts), '%Y-%m-%d') AS week,
                    COUNT(DISTINCT t.txn_id) AS n_txns
             FROM tenant_transactions t
             WHERE t.merchant_id = ?{extra_where}
-              AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR) BETWEEN ? AND ?
+              AND strftime(date_trunc('week', t.txn_ts), '%Y-%m-%d') BETWEEN ? AND ?
             GROUP BY t.store_id, week
             """,
             (merchant_id, *extra_params, week_lo, week_hi),
@@ -2002,13 +2005,13 @@ def _anomaly_counts_series(
         cat_rows = c.execute(
             f"""
             SELECT p.category,
-                   CAST(date_trunc('week', t.txn_ts) AS VARCHAR) AS week,
+                   strftime(date_trunc('week', t.txn_ts), '%Y-%m-%d') AS week,
                    COUNT(*) AS n_lines
             FROM tenant_transaction_items i
             JOIN tenant_products p     ON p.sku    = i.sku
             JOIN tenant_transactions t ON t.txn_id = i.txn_id
             WHERE t.merchant_id = ?{extra_where}
-              AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR) BETWEEN ? AND ?
+              AND strftime(date_trunc('week', t.txn_ts), '%Y-%m-%d') BETWEEN ? AND ?
             GROUP BY p.category, week
             """,
             (merchant_id, *extra_params, week_lo, week_hi),
@@ -2188,11 +2191,11 @@ def _store_anomalies_own_only_cached(merchant_id: str, key: tuple) -> dict:
             f"""
             WITH weekly AS (
                 SELECT t.store_id,
-                       CAST(date_trunc('week', t.txn_ts) AS VARCHAR) AS week,
+                       strftime(date_trunc('week', t.txn_ts), '%Y-%m-%d') AS week,
                        COUNT(DISTINCT t.txn_id) AS n_txns
                 FROM tenant_transactions t
                 WHERE t.merchant_id = ?{txn_extra_where}
-                  AND CAST(date_trunc('week', t.txn_ts) AS VARCHAR)
+                  AND strftime(date_trunc('week', t.txn_ts), '%Y-%m-%d')
                       BETWEEN ? AND ?
                 GROUP BY t.store_id, week
             )
