@@ -591,36 +591,42 @@ def _neighborhood_performance_cached(merchant_id: str, key: tuple) -> dict:
     own_stores_df = stores_for(merchant_id)
 
     with _conn() as c:
-        # Own per-neighborhood txn count + store count.
+        # Own per-neighborhood, TEMPORAL: recent week (_A_RECENT_WEEK_START)
+        # vs the 4-week March baseline (_A_BASELINE_WEEK_*), mirroring the
+        # store-anomaly card so the map and the store table tell the SAME
+        # story. (A full-window cross-sectional per-store average diluted the
+        # A1 decline out of existence and even inverted the weakest-neighborhood
+        # ranking.) own_n_txns stays the full-window volume = neighborhood size.
         own_rows = c.execute(
             f"""
             SELECT s.neighborhood,
-                   COUNT(DISTINCT t.txn_id) AS n_txns,
-                   COUNT(DISTINCT s.store_id) AS n_stores
+                   COUNT(DISTINCT s.store_id) AS n_stores,
+                   COUNT(DISTINCT t.txn_id)   AS total_txns,
+                   COUNT(DISTINCT CASE
+                       WHEN strftime(date_trunc('week', t.txn_ts), '%Y-%m-%d') = ?
+                       THEN t.txn_id END)      AS recent_txns,
+                   COUNT(DISTINCT CASE
+                       WHEN strftime(date_trunc('week', t.txn_ts), '%Y-%m-%d')
+                            BETWEEN ? AND ?
+                       THEN t.txn_id END)      AS baseline_txns
             FROM tenant_stores s
             LEFT JOIN tenant_transactions t ON t.store_id = s.store_id{extra_where}
             WHERE s.merchant_id = ?
             GROUP BY s.neighborhood
             """,
-            (*extra_params, merchant_id),
+            (
+                _A_RECENT_WEEK_START,
+                _A_BASELINE_WEEK_START, _A_BASELINE_WEEK_END,
+                *extra_params, merchant_id,
+            ),
         ).fetchall()
 
-        # Peer per-neighborhood txn count — Wave 4: aggregate
-        # same-segment peers (peer_relationship='peer'), transactions via
-        # COUNT(DISTINCT lake_txn_id), k=5 floor per neighborhood cell.
-        peer_txn_rows = []
+        # Peer per-neighborhood, TEMPORAL: same recent-vs-baseline window via
+        # the shared helper the store table uses (per-store, k=5 floor). Peer
+        # store counts (non-temporal) are kept for the peer_n_stores field.
+        peer_recent_base = _peer_neighborhood_recent_vs_baseline(c, merchant_id)
         peer_store_rows = []
         if _register_lake_views(c, merchant_id):
-            peer_txn_rows = c.execute(
-                """
-                SELECT ls.neighborhood, COUNT(DISTINCT lt.lake_txn_id) AS n_txns
-                FROM lake_transactions lt
-                JOIN lake_stores ls ON ls.lake_store_id = lt.lake_store_id
-                WHERE lt.peer_relationship = 'peer'
-                GROUP BY ls.neighborhood
-                HAVING COUNT(DISTINCT lt.lake_txn_id) >= 5
-                """,
-            ).fetchall()
             peer_store_rows = c.execute(
                 """
                 SELECT neighborhood, COUNT(*) AS n_stores
@@ -630,36 +636,30 @@ def _neighborhood_performance_cached(merchant_id: str, key: tuple) -> dict:
                 """,
             ).fetchall()
 
-    own_by_nb = {n: (int(t or 0), int(s)) for n, t, s in own_rows}
-    peer_txn_by_nb = {n: int(t) for n, t in peer_txn_rows}
     peer_store_by_nb = {n: int(s) for n, s in peer_store_rows}
 
-    total_own_txns = sum(t for t, _ in own_by_nb.values())
-    total_own_stores = sum(s for _, s in own_by_nb.values())
-    own_baseline = (total_own_txns / total_own_stores) if total_own_stores else 0.0
-
-    total_peer_txns = sum(peer_txn_by_nb.values())
-    total_peer_stores = sum(peer_store_by_nb.values())
-    peer_baseline = (
-        (total_peer_txns / total_peer_stores) if total_peer_stores else 0.0
-    )
+    # own_baseline = merchant-wide mean weekly txns-per-store over the March
+    # baseline window (kept for the return contract / reference).
+    _tot_stores = sum(int(r[1]) for r in own_rows)
+    _tot_baseline_wkly = sum(int(r[4] or 0) for r in own_rows) / 4.0
+    own_baseline = (_tot_baseline_wkly / _tot_stores) if _tot_stores else 0.0
 
     neighborhoods = []
-    for nb, (n_txns, n_stores) in own_by_nb.items():
-        if n_stores == 0 or own_baseline == 0:
+    for nb, n_stores, total_txns, recent_txns, baseline_txns in own_rows:
+        n_stores = int(n_stores)
+        baseline_wkly = int(baseline_txns or 0) / 4.0
+        if n_stores == 0 or baseline_wkly <= 0:
             own_delta = None
         else:
-            own_per_store = n_txns / n_stores
-            own_delta = round((own_per_store / own_baseline - 1) * 100, 1)
+            own_delta = round((int(recent_txns or 0) / baseline_wkly - 1) * 100, 1)
 
-        peer_t = peer_txn_by_nb.get(nb, 0)
+        peer = peer_recent_base.get(nb)
         peer_s = peer_store_by_nb.get(nb, 0)
-        if peer_s == 0 or peer_baseline == 0:
+        if not peer or peer[1] <= 0:
             peer_delta = None
         else:
-            peer_delta = round(
-                ((peer_t / peer_s) / peer_baseline - 1) * 100, 1
-            )
+            peer_recent_ps, peer_baseline_ps = peer
+            peer_delta = round((peer_recent_ps / peer_baseline_ps - 1) * 100, 1)
 
         if own_delta is None:
             peer_signal = "limited own footprint"
@@ -681,7 +681,7 @@ def _neighborhood_performance_cached(merchant_id: str, key: tuple) -> dict:
             "own_delta_pct":  own_delta,
             "peer_delta_pct": peer_delta,
             "own_n_stores":   n_stores,
-            "own_n_txns":     n_txns,
+            "own_n_txns":     int(total_txns or 0),
             "peer_n_stores":  peer_s,
             "peer_signal":    peer_signal,
         })
