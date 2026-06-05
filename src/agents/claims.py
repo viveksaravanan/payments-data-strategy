@@ -898,11 +898,34 @@ def validate_structured_response(
             out.has_any_strip = True
         return rep.prose
 
-    out.headline = _run(headline)
-    out.evidence = [cleaned for e in evidence if (cleaned := _run(e))]
-    out.so_what = (_run(so_what) or None) if so_what else None
+    # A clause-strip can leave a grammatically dependent residue (e.g.
+    # "Peers fell only 8% — a smaller relative decline." → "a smaller relative
+    # decline."). _is_fragment drops that residue so it never reaches the user
+    # as a dangling bullet. headline → "" so specialist.py promotes a clean
+    # evidence bullet / business_fallback; so_what → None.
+    cleaned_headline = _run(headline)
+    out.headline = "" if _is_fragment(cleaned_headline) else cleaned_headline
+    out.evidence = [
+        cleaned for e in evidence
+        if (cleaned := _run(e)) and not _is_fragment(cleaned)
+    ]
+    cleaned_so_what = _run(so_what) if so_what else ""
+    out.so_what = cleaned_so_what if (cleaned_so_what and not _is_fragment(cleaned_so_what)) else None
     out.claim_dispositions = list(seen.values())
     return out
+
+
+def _is_fragment(text: str) -> bool:
+    """True when ``text`` reads as a clause-strip residue rather than a
+    complete statement. A well-formed headline / evidence / so_what sentence
+    begins with a capital letter, a digit, or a ``$``/number sigil; a surviving
+    dependent clause begins with a lowercase letter ("a smaller relative
+    decline.", "than peers.", "while peers held steady."). Empty text counts
+    as a fragment so callers drop it uniformly."""
+    t = (text or "").strip()
+    if not t:
+        return True
+    return t[0].isalpha() and t[0].islower()
 
 
 def _spans_overlap(

@@ -518,3 +518,42 @@ def test_structured_so_what_validated(merged_dairy) -> None:
     )
     # The 42% had no claim — its clause is stripped from so_what.
     assert report.so_what is None or "42%" not in report.so_what
+
+
+def test_structured_strip_residue_fragment_dropped(merged_dairy) -> None:
+    """When stripping an ungrounded numeric clause leaves a grammatically
+    dependent residue (em-dash / sep case: "Peers fell only 8% — a smaller
+    relative decline." → "a smaller relative decline."), the residue is a
+    lowercase fragment and must be dropped, not surfaced as a bullet."""
+    from src.agents.claims import validate_structured_response
+    report = validate_structured_response(
+        headline="Your University City store is doing worse than peers.",
+        evidence=[
+            "Peers fell only 8% — a smaller relative decline.",
+            "The peer benchmark sits at 1.0.",  # grounded — must survive
+        ],
+        so_what=None,
+        claims=[
+            Claim(text_span="1.0",
+                  value=1.00,
+                  source=CellLookup({"category": "DAIRY", "derived_zone": "Z05"}, "peer_benchmark")),
+        ],
+        result=merged_dairy,
+    )
+    # The dangling "a smaller relative decline." fragment is gone…
+    assert not any("smaller relative decline" in e for e in report.evidence)
+    assert all(not (e and e[0].isalpha() and e[0].islower()) for e in report.evidence)
+    # …while the grounded bullet survives intact.
+    assert any("1.0" in e for e in report.evidence)
+
+
+def test_is_fragment_classification() -> None:
+    """_is_fragment flags lowercase-initial dependent clauses, but not
+    sentences that begin with a capital, a digit, or a $/number sigil."""
+    from src.agents.claims import _is_fragment
+    assert _is_fragment("a smaller relative decline.")
+    assert _is_fragment("than peers.")
+    assert _is_fragment("")
+    assert not _is_fragment("Your dairy ASP is higher than peers.")
+    assert not _is_fragment("$3.50 per unit beats the peer average.")
+    assert not _is_fragment("35% of baskets included produce.")

@@ -197,6 +197,27 @@ validator checks against, so the claim lands `[passed]` rather than `[normalized
 `query_lake_sql` result; `frame` is `"lake"` (the default). For own-side raw
 figures from your tenant SQL, a literal `CellLookup` with `frame: "tenant"` is fine.
 
+## Rule 8: Plain language — write for a busy store manager, not an analyst
+
+The reader runs stores; they are smart but not a data scientist, and they are
+skimming. Write every field in **short, everyday business English**. State the
+finding directly. **Do NOT use academic, analyst, or statistical jargon.**
+
+Swap the fancy word for the plain one:
+
+- "idiosyncratic" / "store-specific" → **"specific to your stores"**
+- "incremental steepness" / "incrementally steeper" → **"a steeper drop than"**
+- "metro-wide softness" → **"a slowdown across the whole area"**
+- "attributable to" / "a function of" → **"because of"**
+- "exhibits" / "demonstrates" → **"shows"**
+- "elevated" / "depressed" → **"higher" / "lower"**
+- "underperforming relative to" → **"behind" / "doing worse than"**
+
+Test each sentence: *would a store manager say it out loud in a hallway?* If it
+sounds like a research paper, rewrite it. Plain words do not weaken the finding —
+they make it land. Numbers still go through `claims` exactly as before; this rule
+is about the words around them, not the grounding.
+
 ## Common errors to recognize
 
 - **"Peer data not available"** from one suppressed result ← retry coarser (Rule 1).
@@ -207,3 +228,5 @@ figures from your tenant SQL, a literal `CellLookup` with `frame: "tenant"` is f
 - **Refusing or silently substituting** ← Rule 5.
 - **All claims `[stripped]` despite plausible text_spans** ← totals written as
   naked CellLookups (Rule 7), or the wrong `frame`.
+- **Academic jargon** ("idiosyncratic", "incremental steepness", "metro-wide
+  softness") ← Rule 8: say it the plain way.
