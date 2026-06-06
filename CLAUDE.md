@@ -1,4 +1,4 @@
-# Payments Data Strategy Demo (v4 / Waves 1+2+3)
+# Payments Data Strategy Demo (v4 / Waves 1+2+3+3.5+4)
 
 Synthetic cross-merchant transaction demo. Models **Verifone** at the
 intersection of POS data and payment data — observing baskets, payment
@@ -7,8 +7,10 @@ fields, and merchant context across an installed base of merchants.
 The locked source-of-truth for the data layer is `docs/DECISIONS.md`
 (D11-D20). Wave 1's build spec is `docs/SPEC_wave1_data_generation.md`.
 The current dataset's measured magnitudes against the SPEC §6 bands
-are in `docs/DQ_REPORT.md`. Read `docs/BASELINE.md` only for the v3
-"before" snapshot — it predates v4.
+are in `docs/DQ_REPORT.md`. The v2.5/v3 vision, audit, and report
+artifacts (including the v3 `BASELINE.md` "before" snapshot and the
+superseded Wave 2 aggregate-lake spec) were moved to `docs/archive/`
+in the v4 cleanup.
 
 ## The panel
 
@@ -83,8 +85,8 @@ Wave 2 Stage 7. The v3 demo remains at git tag `v3-final` if needed.
 **Output contract (SPEC §5):**
 
 - `data/raw/`: merchants, zones, stores, customers, products,
-  transactions, transaction_items, promotions. The Wave 2 lake will
-  read from here.
+  transactions, transaction_items, promotions. The line-item peer
+  lake reads from here.
 - `data/eval/`: `anomalies_groundtruth` only. Physical separation
   enforces "the answer key never reaches the lake / agents" by
   construction.
@@ -135,26 +137,37 @@ Wave 2 Stage 7. The v3 demo remains at git tag `v3-final` if needed.
 - Known residuals (model-text, mitigated not eliminated): magnitude /
   direction mislabels — see `docs/SPEC_wave3-5_lakelineitem.md §15`.
 
-## Out of scope for Waves 1+2+3
+## Wave 4 dashboard (shipped)
 
-Dashboard refactor to consume Parquet+lake via DuckDB — Wave 4.
-"Ask-AI about this chart" affordance (D9) — Wave 4. Payment
-Optimization + Segmentation as standalone specialists — D26.5 routes
-them through the Advisor in Wave 3 by design. Production / S3 /
-Lambda backends — deferred. Fraud / tampering anomalies (D20.3) —
-explicitly out for v4. l-diversity and differential privacy —
-deferred per D21.3 / D24.3. Golden-test regression infra — D27.2
-deferred to v5.
+The Streamlit dashboard was rebuilt on DuckDB-on-Parquet in Wave 4
+(`src/dashboard/`, entry `src/dashboard/app.py`): five merchant roles,
+five sections (KPIs, performance, geography with an aggregate-peer
+overlay, catalog, customers), plus a chat panel wired to the agents.
+Agent answers are explanation-only (charts deferred). See
+`src/dashboard/CLAUDE.md`.
+
+## Out of scope for v4
+
+Agent-invoked chart helpers + "Ask-AI about this chart" affordance (D9)
+— Wave 4.1. Payment Optimization + Segmentation as standalone
+specialists — D26.5 routes them through the Advisor by design.
+Production / S3 / Lambda backends — deferred. Fraud / tampering
+anomalies (D20.3) — explicitly out for v4. l-diversity and differential
+privacy — deferred per D21.3 / D24.3. Golden-test regression infra —
+D27.2 deferred to v5.
 
 ## File guide
 
-- `docs/DECISIONS.md` — D2-D24 locked source of truth.
-- `docs/SPEC_wave1_data_generation.md` — Wave 1 build spec.
-- `docs/SPEC_wave2_anonymization_lake.md` — Wave 2 build spec.
-- `docs/DQ_REPORT.md` — Wave 1 measured magnitudes vs §6 bands.
-- `docs/LAKE_REPORT.md` — Wave 2 privacy-posture artifact: cell
-  counts, k-distribution, §8 applied-vs-deferred framing.
-- `docs/BASELINE.md` — v3 "before" snapshot (historical).
+- `docs/DECISIONS.md` — D2-D27 locked source of truth.
+- `docs/SPEC_wave1_data_generation.md` — Wave 1 build spec (the
+  still-current generation engine).
+- `docs/SPEC_wave3-5_lakelineitem.md` — Wave 3.5 line-item peer lake
+  (the current lake).
+- `docs/SPEC_wave4_dashboard.md` — Wave 4 dashboard rebuild (current).
+- `docs/DQ_REPORT.md` — measured magnitudes vs §6 bands (regenerable).
+- `docs/archive/` — v2.5/v3 vision, audit, design, and report
+  artifacts, plus superseded specs (Wave 2 aggregate lake, Wave 3
+  agents) and the v3 `BASELINE.md` / `LAKE_REPORT.md`.
 - `src/generate/CLAUDE.md` — generation-specific architecture.
 - `src/generate/config/` — the YAML knobs that drive the engine.
 - `src/generate/engine/` — segment-agnostic 8-layer pipeline.
@@ -168,16 +181,20 @@ deferred to v5.
   the §1 keystone modules (`response.py`, `claims.py`, `lake_tools.py`;
   `chart_build.py` dormant for Wave 4). See `src/agents/CLAUDE.md`.
 - `src/agents/prompts/` — Markdown system prompts per specialist +
-  `_shared_answering_rules.md` (Rules 1–8 + 7b) injected into every
+  `_shared_answering_rules.md` (Rules 1–8 + 7b/7c) injected into every
   specialist prompt at render time.
+- `src/dashboard/` — Wave 4 Streamlit dashboard (DuckDB-on-Parquet).
+  See `src/dashboard/CLAUDE.md`.
 - `tests/data_quality/` — §6 acceptance battery (T1-T18).
 - `tests/lake/` — L01 observable-invariant + L02 tenant-isolation + the
   line-item lake acceptance tests (the Wave 2 aggregate L-battery was
   retired in Stage E).
 - `tests/agents/` — Wave 3 unit tests (no live LLM; mocked via
   `_fake_llm.py`).
-- `scripts/build_dq_report.py` — regenerate the DQ report.
-- `scripts/build_lake.py` — build `data/lake/` from `data/raw/`.
-- `scripts/build_lake_report.py` — regenerate the lake report.
+- `scripts/build_dq_report.py` — regenerate the DQ report (`make dq-report`).
+- `scripts/build_line_items.py` — build the line-item peer lake
+  (`make lake-items`).
 - `scripts/preview_agent.py` — Wave 3 preview harness (D27.2). Output:
-  `docs/AGENT_PREVIEW.html`.
+  `docs/AGENT_PREVIEW.html` (`make agent-preview`).
+- `scripts/hash_parquet.py` — optional Parquet determinism diagnostic.
+- `scripts/archive/` — retired one-off validation + v2.5/v3 report builders.

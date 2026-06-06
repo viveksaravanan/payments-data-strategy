@@ -4,6 +4,8 @@
 **Status:** Aligned in planning. Precedes `SPEC.md`.
 **Scope:** Decisions governing the next iteration of the payments-data-strategy repo, made against `docs/BASELINE.md` (the "before" snapshot). Where a decision changes something the baseline describes, it is noted as **Supersedes baseline**.
 
+> **Note (v4 cleanup):** historical artifacts referenced in entries below — `BASELINE.md`, `LAKE_REPORT.md`, the Wave 2 aggregation spec (`SPEC_wave2_anonymization_lake.md`), the Wave 3 agents spec (`SPEC_wave3_agents.md`), and the v3 demo report — were moved to `docs/archive/`. The current architecture is documented in the `CLAUDE.md` files plus `SPEC_wave1`, `SPEC_wave3-5_lakelineitem`, and `SPEC_wave4_dashboard`.
+
 ## Purpose & bar
 
 This iteration is a **real working prototype** that must withstand scrutiny from a Verifone executive. The standard is tight, concrete, and defensible — every number on screen must trace to data, and claims must hold up to a deeper dive. Handwavy demos do not pass. The code must be thorough and test-driven so the system survives inspection, not just a walkthrough.

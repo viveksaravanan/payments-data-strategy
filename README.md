@@ -13,149 +13,145 @@ license: mit
 
 **Live demo:** https://huggingface.co/spaces/viveks2862/payments-data-strategy
 
-A working demo of the data architecture described in the Core Data Strategy & Solutions document — synthetic cross-merchant transaction data, a privacy-engine that exposes the cross-merchant lake as parameterized views, and an AI agent that answers natural-language questions about both a merchant's own data and privacy-preserved peer aggregates.
+A working demo of the data architecture in the Core Data Strategy & Solutions document:
+synthetic cross-merchant transaction data, a privacy-preserving **peer lake** that lets a
+merchant compare itself to its same-segment competitors without seeing anyone's raw data,
+and an AI agent layer that answers natural-language questions over a merchant's own data
+and the anonymized peer set.
+
+> A payments company sees a join no one else can: the basket, the payment instrument, and
+> the same person across multiple merchants. This demo makes that join concrete.
 
 ## What it shows
 
-> A payments company sees a join no one else can: the basket, the payment instrument, and the same person across multiple merchants. This demo makes that join concrete.
+Five fictional merchants in a single fictional metro modeled on Charlotte, NC:
 
-Five fictional merchants in a single Charlotte, NC metro:
+| Merchant       | Segment    | Stores |
+|----------------|------------|--------|
+| Kroger (KRG)   | grocery    | 5      |
+| Acme (ACM)     | grocery    | 5      |
+| Winn-Dixie (WDX) | grocery  | 5      |
+| Taco Bell (TBL)  | qsr      | 9      |
+| TJ Maxx (TJX)  | off-price  | 5      |
 
-- **Kroger** (grocery, 30 stores)
-- **Acme** (grocery, 25 stores)
-- **Winn-Dixie** (grocery, 20 stores)
-- **Taco Bell** (QSR, 40 stores)
-- **TJ Maxx** (off-price retail, 8 stores)
-
-share a **10,000-customer panel** over a 90-day window (Mar 1 – May 29, 2026). The data flows through a four-stage pipeline:
+29 stores total. ~100,000 cards are shared across the panel with a deliberate ~32%
+multi-merchant overlap (~6% shop all three grocers), over a 90-day window
+(**March 1 – May 29, 2026**). At full scale the panel is ~1.67M transactions and ~10M
+line items; a pilot mode runs at 5k cards (~83k txns) for fast iteration.
 
 ```
-capture (synthetic)  →  store (SQLite, tenant_* tables only)
-        │                        │
-        │                        ▼
-        │              privacy engine (lake-as-views, computed per query)
-        │                        │
-        ▼                        ▼
-  no PII at any stage      Orchestrator + 4 specialists → Streamlit dashboard
+generate (config-driven)        data/raw/*.parquet        (each merchant's own data,
+   8 causal layers, seed 42  ─▶  tenant census            full grain, no PII)
+                                       │
+                                       ├─▶ data/eval/ (anomaly answer key — never reaches the lake)
+                                       │
+                                       ▼
+                          build per-viewer line-item peer lake   data/lake/items/<VIEWER>/
+                          (viewer-excluded, peer_relationship,    (lake_transactions, lake_stores)
+                           hour-bucketed, no consumer linkage, k=5)
+                                       │
+                                       ▼
+                          4 specialists + Advisor  ◀── two-query flow: query_tenant (own)
+                          (structured answers)          + query_lake_sql (peer), compare
+                                       │
+                                       ▼
+                          Streamlit dashboard (DuckDB-on-Parquet, 5 merchant roles)
 ```
-
-The architecture has one physical layer plus one virtual layer:
-
-- **Tenant tables** — each merchant's own data at full granularity. Kroger sees Kroger; queries are gated by `WHERE merchant_id = '<current_merchant>'` at the agent tool layer.
-- **Lake (virtual)** — two logical tables (`lake_transactions`, `lake_stores`) computed at query time from the tenant tables by `src/lake/views.py`. The viewing merchant's own rows are excluded; the other four merchants are pseudonymized as `peer_a..peer_d`. Opaque IDs replace internal keys; ZIP5 → ZIP3; full timestamp → 10-bucket time-of-day; `txn_total` → 10-bin label; **`customer_id` is dropped** ("no consumer linkage" per strategy doc §5.2).
-
-A Streamlit dashboard lets you switch between five merchant roles and ask questions answered by an AI agent layer that decides which layer (tenant, lake, or both) to query. The agent layer is a free-form-to-specialist **orchestrator** routing to four specialists — **pricing, anomaly, demand, trade** — each producing a Headline → Evidence → Therefore → Caveats response with the SQL it ran shown inline.
-
-## How to run
-
-Requires Python 3.11+, [uv](https://github.com/astral-sh/uv), and an Anthropic API key.
-
-```bash
-# Clone
-git clone <repo-url> && cd payments-data-strategy
-
-# API key
-cp .env.example .env
-# Edit .env and paste your ANTHROPIC_API_KEY
-
-# Run
-make demo
-```
-
-`make demo` generates synthetic data, loads SQLite, and launches the dashboard on `http://localhost:8501`. `scripts/demo.sh` is the equivalent shell wrapper. Total cold-start time: ~2 minutes (~80s generation, ~25s SQLite seed, plus Streamlit startup).
-
-## Running on HuggingFace Spaces
-
-The dashboard is deployed as a HuggingFace Space using the **Docker SDK**. The Space metadata at the top of this README configures the SDK + port; the `Dockerfile` at the repo root builds the image; the entry point is [`streamlit_app.py`](./streamlit_app.py) at the repo root.
-
-`data/payments.db` is **not** tracked in git — the v3 Phase 1.5 per-viewer materialized lake brings it to ~2.7 GB, beyond both GitHub free LFS (2 GB per file) and HF Spaces free repo storage (1 GB total). The entry point detects a missing DB on cold boot and regenerates it in-process from the committed catalogs by running `src.generate.run_all` then `src.db.seed` — about a 2-minute one-time setup per container. HF Pro hardware keeps the container warm so visitors after the first don't see the cold start.
-
-- **Entry point:** `streamlit_app.py` — sets the import path, promotes `ANTHROPIC_API_KEY` from `st.secrets` into the environment, regenerates the DB if it's missing, and runs `src/dashboard/app.py` via `runpy.run_path` (Streamlit reruns the entry script on every interaction; `runpy` bypasses Python's import cache so the dashboard re-executes cleanly).
-- **Required secret:** `ANTHROPIC_API_KEY` (configure under *Space settings → Variables and secrets*).
-- **Required tier:** HF Pro (or Spaces hardware with persistent compute). On free-tier Spaces the container restarts frequently and every visitor would pay the 2-minute cold start.
-- **First visitor cold start:** ~2 min (data generation + SQLite load). Subsequent visits served instantly from the same container.
-- **Rebuild after a push:** HF Spaces rebuilds the Docker image with a warm layer cache, typically ~3–5 minutes, then the first visitor triggers the seed.
-
-Generation still reads only from committed JSON catalogs under `data/catalogs/`; the local `make seed` path remains deterministic and reproducible from `RANDOM_SEED` for anyone who needs to rebuild the DB.
-
-## What's in the demo
-
-Each role's canned questions exercise tenant-only, lake-only, and combined-layer paths. A few examples:
-
-**As Kroger** (or Acme, or Winn-Dixie):
-1. Top categories by revenue last week, and which subcategories drove each *(tenant)*
-2. Which products are bought together with whole milk *(tenant)*
-3. Stores with a recent transaction-count drop *(tenant — surfaces the planted **University City decline**)*
-4. How does my basket size compare to peer grocers? *(tenant + lake)*
-5. How does my dairy unit pricing compare to peer grocers? *(tenant + lake)*
-
-**As Taco Bell:** menu-item revenue, basket combinations, store dropouts, ticket-size and entry-mode comparisons against QSR peers.
-
-**As TJ Maxx:** category revenue, multi-category baskets, store dropouts, ticket-size and entry-mode comparisons against retail peers.
-
-Three planted anomalies the agent can find when asked (full spec in [`DATA.md`](./DATA.md) §9):
-
-- **University City decline** — 4-stage traffic ramp on KRG/ACM/WDX University City stores; deepest at Kroger.
-- **Plaza Midwood Kroger avocado spike** — 4-day pattern peaking Apr 22; Kroger only.
-- **Coordinated pasta promos** — KRG lift, Acme failure, Winn-Dixie modest lift in their respective late-April windows.
-
-Each answer shows the SQL the agent ran in an expandable panel — the demo is auditable, not magic. There's also a **MOCK MODE** toggle in the page header for offline demos (skips the LLM API and returns canned responses).
 
 ## Architecture
 
+- **Tenant layer (physical).** Each merchant's own data at full granularity in Parquet
+  under `data/raw/` (merchants, zones, stores, customers, products, transactions,
+  transaction_items, promotions). DuckDB reads it read-only at runtime. Agent queries are
+  gated by `WHERE banner_code = '<viewer>'` at the tool layer (`src/lake/isolation.py`).
+- **Peer lake (line-item).** Five per-viewer `(lake_transactions, lake_stores)` pairs under
+  `data/lake/items/<VIEWER>/`, built by `src/lake/build_line_items.py`. The viewing
+  merchant's own rows are excluded at build time; the rest carry only a `peer_relationship`
+  label (`'peer'` = same segment, `'merchant'` = different segment) — **no per-competitor
+  identity**. IDs are generalized, time is hour-bucketed, neighborhoods are real names, and
+  there is **no consumer linkage** (no `customer_id`). Queried with aggregating SQL via
+  `query_lake_sql` (`src/lake/lake_sql.py`), which enforces a single aggregating `SELECT`
+  on the DuckDB AST and a **k = 5** line-count floor (thin groups are suppressed).
+- **Agents.** A Haiku orchestrator routes a free-form question to one of four specialists —
+  **pricing, anomaly, demand, trade** — or the **Conversational Advisor**. Each runs a
+  bounded tool loop (`schema_info`, `query_tenant`, `query_lake_sql`, `emit_response`) and
+  returns a structured **`headline` / `evidence` / `so_what`** response. Every metric in the
+  text is checked by a claims validator against the actual query result; untraceable numbers
+  are stripped. Charts are deferred (agent answers are explanation-only for now).
+- **Dashboard.** A Streamlit app (`src/dashboard/app.py`) with five merchant roles and five
+  sections — KPIs, performance, geography (own + aggregate-peer overlay), catalog, customers —
+  plus a chat panel wired to the agents. Reads Parquet through an in-memory DuckDB connection.
+
+## How to run
+
+Requires Python 3.11+, [uv](https://github.com/astral-sh/uv), and an Anthropic API key
+(for the chat panel).
+
+```bash
+git clone <repo-url> && cd payments-data-strategy
+
+cp .env.example .env          # paste your ANTHROPIC_API_KEY
+
+make seed-pilot               # generate Parquet at 5k cards (~5 min); or `make seed` for full scale
+make lake-items               # build the per-viewer line-item peer lake
+uv run streamlit run src/dashboard/app.py   # dashboard at http://localhost:8501
 ```
-   ┌──────┐ ┌──────┐ ┌─────────┐ ┌──────────┐ ┌─────────┐
-   │Kroger│ │ Acme │ │WinnDixie│ │ Taco Bell│ │ TJ Maxx │   capture
-   └──┬───┘ └──┬───┘ └────┬────┘ └────┬─────┘ └────┬────┘   (no PII at any stage)
-      └────────┴──────────┴───────────┴────────────┘
-                              │ raw CSVs (customer_id is a SHA-256
-                              │ of a never-persisted synthetic PAN)
-                              ▼
-                  ┌────────────────────────┐
-                  │  SQLite, tenant_*      │   store
-                  │  tables only           │
-                  └────────────┬───────────┘
-                               ▼
-                  ┌────────────────────────┐
-                  │  src/lake/views.py     │   privacy engine
-                  │  - exclude viewer      │   (computed at query time)
-                  │  - peer_a..peer_d      │
-                  │  - opaque IDs, ZIP3,   │
-                  │    hour buckets, bins  │
-                  │  - no customer_id      │
-                  └────────────┬───────────┘
-                               ▼
-                  ┌────────────────────────┐
-                  │  Orchestrator + 4      │   insight
-                  │  specialists (pricing, │
-                  │  anomaly, demand,      │
-                  │  trade) +              │
-                  │  Streamlit dashboard   │
-                  │  (5-merchant roles)    │
-                  └────────────────────────┘
-```
 
-See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the mapping to the parent Core Data Strategy document and the deferred roadmap.
+Other targets: `make test` (full T1–T18 data-quality battery + lake/agent tests),
+`make test-quick` (engine unit tests only), `make dq-report` (regenerate
+`docs/DQ_REPORT.md`), `make agent-preview` (regenerate `docs/AGENT_PREVIEW.html`).
 
-## Important caveats
+## What's in the demo
 
-- **All data is synthetic.** Generated by `src/generate/`. No real customers, real cards, or real merchants are involved. The merchant names are plausible-sounding stand-ins; this demo is not affiliated with Kroger, Acme, Winn-Dixie, Taco Bell, or TJ Maxx.
-- **No PII at any stage.** The generator emits `customer_id` directly as a 16-char SHA-256 of a never-persisted synthetic PAN. There is no separate anonymization stage and no raw PAN, name, email, or demographic band exists on disk or in the DB.
-- **k = 5, not k ≥ 50.** Production-grade aggregate-cell suppression (per the strategy doc §8.2) calls for k ≥ 50. This demo uses k = 5 because the panel is 10,000 customers; with 50 the suppression would eliminate most of the data. The architecture supports any k; only the threshold differs.
-- **Four of seven agents.** The strategy doc specifies seven specialist personas (§10.2). This demo ships an orchestrator that routes free-form questions to four specialists — pricing, anomaly, demand, and trade-area — each over the same tool loop and response contract. The remaining three (demand forecasting, segmentation, payment optimization) follow the same architectural pattern and stay on the v4 roadmap.
-- **Batch, not streaming.** The strategy doc describes a real-time pipeline (Kafka, Flink, sub-second latency). This demo runs in batch.
+Switch roles in the dashboard and ask the chat panel free-form questions, or click a
+suggested pill. Examples exercise own-only, peer-comparison, and combined paths:
 
-## Files
+- Top categories by revenue, and what drove each *(own)*
+- Stores or neighborhoods with a recent transaction drop *(own — surfaces the planted decline)*
+- How does my basket size / dairy unit pricing compare to peer grocers? *(own + peer)*
 
-- [`V3_VISION.md`](./V3_VISION.md) — the rubric for everything v3 (thesis, three rubric tests, agent posture, gold-standard demo beat)
-- [`V3_AUDIT.md`](./V3_AUDIT.md) — Phase 1 audit of the codebase against the v3 rubric, with locked decisions
-- [`PLAN.md`](./PLAN.md) — short pointer to where current v3 plans live
-- [`DATA.md`](./DATA.md) — synthetic data specification (panel, schema, generator, anomalies)
-- [`ARCHITECTURE.md`](./ARCHITECTURE.md) — strategy-doc mapping and deferred items
-- [`V2_5_DATA_DESIGN.md`](./V2_5_DATA_DESIGN.md) — locked source of truth for the data layer
-- [`CLAUDE.md`](./CLAUDE.md) — conventions and commands for working with Claude Code
-- [`docs/archive/`](./docs/archive/) — historical plans (v2 build plan, v2→v2.5 reconciliation, completed phase artifacts)
+Three planted anomalies the agents and dashboard can surface (full spec in
+[`docs/DECISIONS.md`](./docs/DECISIONS.md) D20; measured magnitudes in
+[`docs/DQ_REPORT.md`](./docs/DQ_REPORT.md)):
+
+- **University City / Eastway decline** — a multi-week grocery traffic decline, hardest on
+  Winn-Dixie (~40%), lighter on Kroger (~15%) and Acme (~10%).
+- **Kroger NoDa produce spike** — a short 4-day inclusion boost (Apr 21–24).
+- **Coordinated pasta promos** — Kroger lift, Acme failure, Winn-Dixie modest lift in their
+  respective late-April windows.
+
+## Deployment (HuggingFace Spaces)
+
+The Space runs the **Docker SDK**; the YAML front-matter at the top of this README
+configures the SDK + port, the root `Dockerfile` builds the image, and
+[`streamlit_app.py`](./streamlit_app.py) is the entry point (it promotes
+`ANTHROPIC_API_KEY` from `st.secrets` and runs `src/dashboard/app.py`). The v4 deployment
+expects the Parquet census + line-item lake to be present (`make seed` + `make lake-items`);
+the v3 SQLite cold-boot regeneration path was retired and the v4 auto-provisioning path is a
+follow-up — for the previously-shipped v3 deploy, check out the `v3-final` tag.
+
+## Caveats
+
+- **All data is synthetic.** Generated by `src/generate/`. The merchant names are
+  plausible-sounding stand-ins; this demo is not affiliated with any real company.
+- **No PII at any stage.** `card_id` is emitted directly as a 16-hex-char SHA-256 hash;
+  there are no names, emails, raw PANs, or EBT/cash/declines on disk.
+- **k = 5, not k ≥ 50.** Production-grade suppression calls for k ≥ 50; at this panel size
+  that would erase most cells, so the demo uses k = 5. Only the threshold differs.
+- **Four specialists + Advisor.** The strategy doc specifies seven personas; payment
+  optimization and segmentation ride through the Advisor by design in this version.
+- **Batch, not streaming.** The strategy doc describes a real-time pipeline; this demo runs
+  in batch from a fixed seed (deterministic, content-identical Parquet at seed 42).
+
+## Further reading
+
+- [`docs/DECISIONS.md`](./docs/DECISIONS.md) — the locked design source of truth (D2–D27).
+- [`CLAUDE.md`](./CLAUDE.md) — project conventions, commands, and the file guide.
+- [`docs/SPEC_wave1_data_generation.md`](./docs/SPEC_wave1_data_generation.md) — the data generator,
+  [`docs/SPEC_wave3-5_lakelineitem.md`](./docs/SPEC_wave3-5_lakelineitem.md) — the line-item lake,
+  [`docs/SPEC_wave4_dashboard.md`](./docs/SPEC_wave4_dashboard.md) — the dashboard rebuild.
+- [`docs/archive/`](./docs/archive/) — historical v2.5/v3 vision, audit, design, and report artifacts.
 
 ## License
 
-(Add your license here — MIT or Apache 2.0 are reasonable defaults for a demo.)
+MIT.

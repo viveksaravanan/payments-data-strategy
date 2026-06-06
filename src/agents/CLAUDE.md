@@ -132,13 +132,20 @@ SQL, and there is no merge step):
   (regex predicate check, rejects any other merchant literal) + 
   `wrap_tenant_query` (CTE-shadows tenant tables with viewer-filtered
   reads). Defense in depth. Both live in `src/lake/isolation.py`.
-- **Lake identity strip (D24.1).** `scope_for_viewer` in
-  `src/lake/scope.py` drops viewer rows, adds `peer_relationship`
-  (`segment_peer` | `cross_segment`), drops `banner_code`.
-  `assert_no_identity_leak` is the safety net.
-- **Manifest grain whitelist.** `_validate_filter_keys` in `lake_tools.py`
-  rejects any filter not in `manifest["dimensions"]`. The Excludes list
-  reaches the model on rejection so it can decline gracefully.
+- **Lake identity strip (D24.1) — at build time.** The per-viewer line-item
+  lake is materialized by `src/lake/build_line_items.py`: the viewer's own
+  rows are excluded, every other row carries only a `peer_relationship`
+  label (`'peer'` = same segment, `'merchant'` = different segment) with
+  **no per-competitor identity** (the old `peer_a`/`peer_b` pseudonyms are
+  gone), `banner_code` is dropped, IDs are generalized, time is
+  hour-bucketed, and there is no consumer linkage. There is no query-time
+  scope step (`src/lake/scope.py` was removed in Wave 3.5 Stage E).
+- **Aggregating-only + k=5 floor.** `query_lake_sql` (`src/lake/lake_sql.py`)
+  enforces a **single aggregating `SELECT`** on the DuckDB AST (raw-row
+  selects rejected) and a **k=5 line-count floor** per group, surfacing the
+  dropped-group `suppressed` count. The Wave 2 manifest grain-whitelist
+  (`_validate_filter_keys` / `manifest["dimensions"]`) was removed with the
+  aggregate lake — the peer surface is now raw line items queried with SQL.
 - **All SQL is SELECT-only.** Regex check before any DB connection. Never
   trust the model to self-restrict.
 - **`MAX_TURNS = 6`** (Stage 6.5 follow-up #6 — lowered from 10).
