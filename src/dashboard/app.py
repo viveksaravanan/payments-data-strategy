@@ -31,7 +31,6 @@ import streamlit.components.v1 as components
 from src.dashboard import chart_patterns, chat, data as D, styling, views
 
 ROOT = Path(__file__).resolve().parents[2]
-DB_PATH = ROOT / "data" / "payments.db"
 
 
 # ---------------------------------------------------------------------------
@@ -55,8 +54,9 @@ if st.session_state.pop("scroll_to_top_pending", False):
         height=0,
     )
 
-if not DB_PATH.exists() or DB_PATH.stat().st_size == 0:
-    st.error("Database not found or empty. Run `make seed` first.")
+_data_probe = D.DATA_RAW / "transactions.parquet"
+if not _data_probe.exists() or _data_probe.stat().st_size == 0:
+    st.error("Data not found. Run `make seed` (then `make lake-items`) first.")
     st.stop()
 
 
