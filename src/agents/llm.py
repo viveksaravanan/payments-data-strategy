@@ -123,7 +123,7 @@ class LLMNotConfigured(RuntimeError):
 def is_available() -> bool:
     """True iff an API key is present. The dashboard uses this to
     decide whether to attempt LLM dispatch."""
-    return bool(os.environ.get("ANTHROPIC_API_KEY"))
+    return bool((os.environ.get("ANTHROPIC_API_KEY") or "").strip())
 
 
 _CLIENT = None
@@ -135,7 +135,10 @@ def _client() -> "Any":
     global _CLIENT
     if _CLIENT is not None:
         return _CLIENT
-    key = os.environ.get("ANTHROPIC_API_KEY")
+    # Strip whitespace — HF Space secrets are often pasted with a trailing
+    # newline, which the SDK would send in the x-api-key header and httpx
+    # rejects ("Illegal header value").
+    key = (os.environ.get("ANTHROPIC_API_KEY") or "").strip()
     if not key:
         raise LLMNotConfigured(
             "ANTHROPIC_API_KEY not set. Add it to .env or unset features "
