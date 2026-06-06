@@ -43,6 +43,8 @@ distro==1.9.0
     # via anthropic
 docstring-parser==0.18.0
     # via anthropic
+duckdb==1.5.3
+    # via payments-data-strategy (pyproject.toml)
 faker==40.15.0
     # via payments-data-strategy (pyproject.toml)
 folium==0.20.0
@@ -140,6 +142,8 @@ python-dotenv==1.2.2
     # via payments-data-strategy (pyproject.toml)
 python-multipart==0.0.28
     # via streamlit
+pyyaml==6.0.3
+    # via payments-data-strategy (pyproject.toml)
 referencing==0.37.0
     # via
     #   jsonschema
