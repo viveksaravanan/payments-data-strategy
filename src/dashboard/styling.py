@@ -386,8 +386,8 @@ _CSS = """
     top: 56px;
     right: 0;
     bottom: 0;
-    width: 40vw;
-    max-width: 720px;
+    width: clamp(360px, 40vw, 480px);
+    max-width: 480px;
     background: #FFFFFF;
     border-left: 1px solid var(--border);
     box-shadow: -8px 0 24px rgba(15, 31, 46, 0.10);
@@ -411,6 +411,13 @@ _CSS = """
     flex-direction: column !important;
     height: 100% !important;
     gap: 6px !important;
+    /* Cap + center the inner content column so pills, bubbles, and the
+       result table don't stretch edge-to-edge when the panel is wide
+       (esp. in expanded/90vw mode). In side mode the panel is already
+       <= 480px, so this is a no-op there. */
+    max-width: 720px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
   }
   /* The chat-history container fills whatever room remains after
      the fixed-size rows (header / selectbox / description / pills)
@@ -460,9 +467,12 @@ _CSS = """
      opens the drawer in side mode. */
   div[class*="st-key-chat_edge_tab"] {
     position: fixed !important;
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
+    right: 8px;
+    /* Pinned top-right, sitting just below Streamlit's top toolbar (the
+       kebab menu at top:0) so the two never overlap. Was top:50% (mid-
+       height of the right edge, easy to miss). */
+    top: 64px;
+    transform: none;
     z-index: 997;
     width: 56px !important;
   }
@@ -653,6 +663,11 @@ _CSS = """
      ``flex: 1 1 60%`` and absorbs all the space above. */
   div[class*="st-key-chat_input_row"] {
     margin-top: 6px !important;
+    flex-shrink: 0 !important;
+  }
+  /* Pin the cost/telemetry footer at the bottom next to the input row so the
+     cost line is never squeezed or clipped on short viewports. */
+  div[class*="st-key-chat_telemetry"] {
     flex-shrink: 0 !important;
   }
   div[class*="st-key-chat_input_row"] div[data-testid="stHorizontalBlock"] {

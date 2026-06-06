@@ -467,7 +467,7 @@ def render_chat_panel(merchant_id: str) -> None:
     # cascade. With the flex override active the container fills
     # whatever room the panel allocates; without it, 380 still
     # gives the history a substantial vertical share. --
-    chat_box = st.container(height=442, border=True, key="chat_history")
+    chat_box = st.container(height=260, border=True, key="chat_history")
 
     # -- Free-form input — simple text area + Send button to the
     # right. The whole row is pinned to the bottom of the chat
@@ -566,5 +566,7 @@ def render_chat_panel(merchant_id: str) -> None:
     # participates in the panel's flex layout (was previously in
     # app.py, adding height below the panel). Compact 8 px single
     # line; only renders when at least one LLM call has been
-    # made. --
-    _render_telemetry_inline()
+    # made. Wrapped in a keyed container so the panel CSS can pin it
+    # (``flex-shrink: 0``) at the bottom alongside the input row. --
+    with st.container(key="chat_telemetry"):
+        _render_telemetry_inline()

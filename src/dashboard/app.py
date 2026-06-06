@@ -124,7 +124,7 @@ with header_col1:
     st.markdown(
         '<h1 style="margin-top: -4px;">Merchant dashboard</h1>'
         '<div style="font-size:13px;color:var(--text-muted);margin-top:-4px;">'
-        'Cross-merchant analytics on a synthetic 10,000-customer Charlotte panel.'
+        'Cross-merchant analytics on a synthetic 100,000-customer Charlotte panel.'
         '</div>',
         unsafe_allow_html=True,
     )
