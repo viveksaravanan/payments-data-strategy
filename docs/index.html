@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Payments Data Strategy — How the v4 Demonstrator Works</title>
+<style>
+  :root{
+    --accent:#0F4C81; --accent2:#4A7BA6; --accent3:#9BB8D3;
+    --surface:#F7F8FA; --text:#1A1F2E; --muted:#5B6472; --line:#E3E7EC;
+    --shade:#FBE9E4; --good:#1F7A4D;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:#fff; color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.62; font-size:17px;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:0 28px 96px}
+  header.top{padding:64px 0 28px; border-bottom:1px solid var(--line); margin-bottom:8px}
+  .eyebrow{font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); font-weight:600; margin:0 0 14px}
+  h1{font-size:34px; line-height:1.2; margin:0 0 16px; font-weight:700; letter-spacing:-.01em}
+  .lede{font-size:19px; color:var(--muted); margin:0; max-width:46em}
+  .disclaimer{margin:22px 0 0; font-size:14px; color:var(--muted); background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:12px 16px}
+  /* stat band */
+  .stats{display:flex; flex-wrap:wrap; gap:0; margin:34px 0 8px; border:1px solid var(--line); border-radius:10px; overflow:hidden}
+  .stat{flex:1 1 33%; min-width:150px; padding:16px 18px; border-right:1px solid var(--line); border-bottom:1px solid var(--line)}
+  .stat .n{font-size:22px; font-weight:700; color:var(--accent)}
+  .stat .l{font-size:13px; color:var(--muted); margin-top:2px}
+  section{padding:46px 0 8px; border-top:1px solid var(--line); margin-top:40px}
+  .secnum{display:inline-block; font-size:13px; font-weight:700; color:#fff; background:var(--accent); border-radius:6px; padding:3px 9px; letter-spacing:.04em}
+  h2{font-size:26px; margin:14px 0 6px; font-weight:700; letter-spacing:-.01em}
+  h3{font-size:18px; margin:34px 0 8px; font-weight:650}
+  .sublede{font-size:18px; color:var(--muted); margin:0 0 18px; max-width:46em}
+  p{margin:0 0 16px}
+  ul{margin:0 0 16px; padding-left:0; list-style:none}
+  li{margin:0 0 12px; padding-left:20px; position:relative}
+  li::before{content:""; position:absolute; left:2px; top:11px; width:6px; height:6px; border-radius:50%; background:var(--accent3)}
+  li strong{color:var(--text)}
+  .callout{background:var(--surface); border-left:3px solid var(--accent); border-radius:0 8px 8px 0; padding:14px 18px; margin:22px 0; color:#2c3344}
+  .callout b{color:var(--accent)}
+  figure{margin:30px 0; padding:18px; border:1px solid var(--line); border-radius:12px; background:#fff}
+  figure svg{display:block; width:100%; height:auto}
+  figcaption{font-size:13.5px; color:var(--muted); margin-top:12px; text-align:center}
+  .spec{display:grid; grid-template-columns:auto 1fr; gap:6px 16px; margin:10px 0 18px}
+  .spec dt{font-weight:650; color:var(--accent)}
+  .spec dd{margin:0; color:#2c3344}
+  footer{margin-top:56px; padding-top:22px; border-top:1px solid var(--line); font-size:13.5px; color:var(--muted)}
+  /* svg helpers */
+  .b-lbl{font:600 12.5px -apple-system,Segoe UI,sans-serif; fill:var(--text)}
+  .b-val{font:600 12.5px -apple-system,Segoe UI,sans-serif; fill:var(--muted)}
+  .b-grp{font:700 13px -apple-system,Segoe UI,sans-serif; fill:var(--text)}
+  .ax{font:500 11px -apple-system,Segoe UI,sans-serif; fill:var(--muted)}
+  .node{font:600 13px -apple-system,Segoe UI,sans-serif; fill:var(--text)}
+  .nsub{font:500 11.5px -apple-system,Segoe UI,sans-serif; fill:var(--muted)}
+  .wall{font:600 11px -apple-system,Segoe UI,sans-serif; fill:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Payments Data Strategy · v4 Demonstrator</p>
+  <h1>A merchant network sees a join no one else can — and this shows how to use it safely.</h1>
+  <p class="lede">A working prototype of cross-merchant payments intelligence: each merchant can compare itself to its competitors on real, like-for-like numbers, while never seeing another merchant's raw data. This page explains how the system is built, and the key assumptions behind it.</p>
+  <p class="disclaimer"><b>All data is synthetic.</b> The five merchants are plausible stand-ins generated from scratch — no real customers, cards, or companies are involved. The point is to demonstrate the architecture, not to report on any real business.</p>
+</header>
+
+<div class="stats">
+  <div class="stat"><div class="n">5 merchants</div><div class="l">3 segments · 29 stores · one metro</div></div>
+  <div class="stat"><div class="n">100,000</div><div class="l">shared customer cards</div></div>
+  <div class="stat"><div class="n">1.66M</div><div class="l">transactions · 10.76M line items</div></div>
+  <div class="stat"><div class="n">90 days</div><div class="l">Mar 1 – May 29, 2026</div></div>
+  <div class="stat"><div class="n">5 AI agents</div><div class="l">4 specialists + an advisor</div></div>
+  <div class="stat"><div class="n">k = 5</div><div class="l">peer-privacy suppression floor</div></div>
+</div>
+
+<!-- ================= SECTION 1 ================= -->
+<section>
+  <span class="secnum">SECTION 1</span>
+  <h2>The data: built to be realistic, not convenient</h2>
+  <p class="sublede">Everything in the demo runs on synthetic data. The credibility of the whole system rests on one question — is the simulated data realistic enough to trust? Here is how it was built, and why.</p>
+
+  <p>The panel is five real-brand stand-ins across three genuinely different retail segments, all in a single metro modeled on Charlotte, North Carolina:</p>
+  <ul>
+    <li><strong>Grocery</strong> — Kroger, Acme, and Winn-Dixie (5 stores each).</li>
+    <li><strong>Quick-service restaurant</strong> — Taco Bell (9 stores).</li>
+    <li><strong>Off-price retail</strong> — TJ Maxx (5 stores).</li>
+  </ul>
+  <p>Across 90 days, 100,000 cards generate 1.66&nbsp;million transactions and 10.76&nbsp;million line items. The distinction matters: a transaction is one visit; a line item is one product within it. Real peer comparisons (basket size, category mix, unit pricing) live at the line-item level, so the data is generated and stored at that grain.</p>
+  <p>The scale is deliberate. A small dataset can't support stable aggregate patterns or statistically meaningful peer comparisons — with 100,000 cards and ten million lines, a "your dairy price vs. the peer average" comparison rests on thousands of observations, not a handful.</p>
+
+  <h3>The assumptions that make it realistic</h3>
+  <p>The data isn't random noise. A sequence of deliberate generation decisions gives it the structure a real network would have:</p>
+  <ul>
+    <li><strong>Merchants aren't clones.</strong> Each merchant is generated with its own pricing, volume, and mix biases — premium (Acme, ~$58 average basket), mainstream (Kroger, ~$52), and value (Winn-Dixie, ~$50). That spread is what makes a peer comparison non-trivial instead of everyone landing on the same number.</li>
+    <li><strong>Segments behave like their real-world counterparts.</strong> Grocery is frequent visits with large, mixed baskets; QSR is high-frequency, small, simple tickets; off-price is infrequent and variable. The chart below shows the three segments separating cleanly on exactly these axes.</li>
+    <li><strong>A realistic payment mix.</strong> 54% credit / 46% debit; contactless 53.5%, chip 36.4%, swipe 8.7%; 16.7% of taps via mobile wallet; card networks led by Visa (55%) and Mastercard (31%) — set to plausible present-day shares.</li>
+    <li><strong>Plausible geography and timing.</strong> Stores sit in eight real Charlotte neighborhoods with coordinates; purchase volume follows day-of-week and time-of-day rhythms.</li>
+    <li><strong>Reproducible by construction.</strong> Generation flows from a single fixed seed through eight causal layers (geography → population → customers → trips → baskets → payment → pricing → events). The same seed produces byte-for-byte identical data every run.</li>
+    <li><strong>Planted, discoverable patterns.</strong> Real signals are deliberately seeded so the analytics have something true to surface — most notably a multi-week traffic decline in the University City and Eastway neighborhoods (hardest on Winn-Dixie), shown below.</li>
+    <li><strong>Privacy designed in from the start.</strong> Sensitive attributes (a customer's affluence and loyalty profile) are generated to drive behavior but are structurally prevented from ever reaching the peer-sharing layer — covered in Section 2.</li>
+  </ul>
+
+  <figure>
+    <svg viewBox="0 0 660 300" role="img" aria-label="Three retail segments separating on basket size, items per basket, and visit frequency">
+      <!-- Group 1 -->
+      <text class="b-grp" x="0" y="16">Average basket per visit</text>
+      <rect x="190" y="24" width="410"  height="16" rx="3" fill="#0F4C81"/><text class="b-lbl" x="182" y="36" text-anchor="end">Grocery</text><text class="b-val" x="606" y="36">$53.59</text>
+      <rect x="190" y="46" width="85.6" height="16" rx="3" fill="#4A7BA6"/><text class="b-lbl" x="182" y="58" text-anchor="end">QSR</text><text class="b-val" x="282" y="58">$11.19</text>
+      <rect x="190" y="68" width="315.6" height="16" rx="3" fill="#9BB8D3"/><text class="b-lbl" x="182" y="80" text-anchor="end">Off-price</text><text class="b-val" x="512" y="80">$41.25</text>
+      <!-- Group 2 -->
+      <text class="b-grp" x="0" y="116">Items per basket</text>
+      <rect x="190" y="124" width="410"   height="16" rx="3" fill="#0F4C81"/><text class="b-lbl" x="182" y="136" text-anchor="end">Grocery</text><text class="b-val" x="606" y="136">8.5</text>
+      <rect x="190" y="146" width="115.8" height="16" rx="3" fill="#4A7BA6"/><text class="b-lbl" x="182" y="158" text-anchor="end">QSR</text><text class="b-val" x="312" y="158">2.4</text>
+      <rect x="190" y="168" width="168.8" height="16" rx="3" fill="#9BB8D3"/><text class="b-lbl" x="182" y="180" text-anchor="end">Off-price</text><text class="b-val" x="365" y="180">3.5</text>
+      <!-- Group 3 -->
+      <text class="b-grp" x="0" y="216">Visits per customer (90 days)</text>
+      <rect x="190" y="224" width="410"   height="16" rx="3" fill="#0F4C81"/><text class="b-lbl" x="182" y="236" text-anchor="end">Grocery</text><text class="b-val" x="606" y="236">16.4</text>
+      <rect x="190" y="246" width="267.5" height="16" rx="3" fill="#4A7BA6"/><text class="b-lbl" x="182" y="258" text-anchor="end">QSR</text><text class="b-val" x="464" y="258">10.7</text>
+      <rect x="190" y="268" width="142.5" height="16" rx="3" fill="#9BB8D3"/><text class="b-lbl" x="182" y="280" text-anchor="end">Off-price</text><text class="b-val" x="339" y="280">5.7</text>
+    </svg>
+    <figcaption>The three segments behave distinctly — grocery fills large frequent baskets, QSR runs small frequent tickets, off-price is large but infrequent. That separation is what makes same-segment peer comparison meaningful.</figcaption>
+  </figure>
+
+  <figure>
+    <svg viewBox="0 0 640 270" role="img" aria-label="Winn-Dixie University City weekly transactions, showing a planted decline from late April">
+      <!-- gridlines -->
+      <line x1="64" y1="28"  x2="604" y2="28"  stroke="#E3E7EC"/>
+      <line x1="64" y1="96"  x2="604" y2="96"  stroke="#E3E7EC"/>
+      <line x1="64" y1="164" x2="604" y2="164" stroke="#E3E7EC"/>
+      <line x1="64" y1="232" x2="604" y2="232" stroke="#C9D0D8"/>
+      <text class="ax" x="58" y="32"  text-anchor="end">6k</text>
+      <text class="ax" x="58" y="100" text-anchor="end">4k</text>
+      <text class="ax" x="58" y="168" text-anchor="end">2k</text>
+      <!-- decline shade -->
+      <rect x="407.6" y="28" width="196.4" height="204" fill="#FBE9E4"/>
+      <text class="ax" x="412" y="44" fill="#B4543B">Apr 20 — decline begins</text>
+      <!-- line -->
+      <polyline fill="none" stroke="#0F4C81" stroke-width="2.5"
+        points="64,44.3 113.1,57.1 162.2,69.9 211.3,77.4 260.4,61.4 309.5,60.8 358.5,79.7 407.6,137.3 456.7,125.9 505.8,108.6 554.9,112.7 604,119.5"/>
+      <g fill="#0F4C81">
+        <circle cx="64"    cy="44.3"  r="3"/><circle cx="113.1" cy="57.1"  r="3"/><circle cx="162.2" cy="69.9" r="3"/>
+        <circle cx="211.3" cy="77.4"  r="3"/><circle cx="260.4" cy="61.4"  r="3"/><circle cx="309.5" cy="60.8" r="3"/>
+        <circle cx="358.5" cy="79.7"  r="3"/><circle cx="407.6" cy="137.3" r="3.5" fill="#B4543B"/>
+        <circle cx="456.7" cy="125.9" r="3"/><circle cx="505.8" cy="108.6" r="3"/><circle cx="554.9" cy="112.7" r="3"/><circle cx="604" cy="119.5" r="3"/>
+      </g>
+      <!-- x labels -->
+      <text class="ax" x="64"    y="250" text-anchor="middle">Mar 2</text>
+      <text class="ax" x="211.3" y="250" text-anchor="middle">Mar 23</text>
+      <text class="ax" x="358.5" y="250" text-anchor="middle">Apr 13</text>
+      <text class="ax" x="505.8" y="250" text-anchor="middle">May 4</text>
+      <text class="ax" x="604"   y="250" text-anchor="middle">May 18</text>
+    </svg>
+    <figcaption>Weekly transactions at Winn-Dixie's University City store. A planted ~40% traffic decline begins the week of April 20 — a real, discoverable signal for the agents to find, not uniform noise.</figcaption>
+  </figure>
+</section>
+
+<!-- ================= SECTION 2 ================= -->
+<section>
+  <span class="secnum">SECTION 2</span>
+  <h2>Sharing safely: two separate paths for your data and your peers'</h2>
+  <p class="sublede">The value is cross-merchant comparison; the constraint is that no merchant may see another's raw data. The architecture solves this with two strictly separated paths.</p>
+
+  <p>A merchant sees its <strong>own</strong> data in full, identifiable detail — every store, product, and transaction. It sees its <strong>peers'</strong> data only through a separate, anonymized <em>peer lake</em>. The two never co-mingle: raw competitor rows are physically incapable of reaching the merchant or its agents.</p>
+
+  <figure>
+    <svg viewBox="0 0 680 430" role="img" aria-label="The dual-path architecture: own data flows in full detail; peer data flows only through anonymization and a k=5 lake">
+      <defs>
+        <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+          <path d="M0,0 L7,3 L0,6 Z" fill="#5B6472"/>
+        </marker>
+      </defs>
+      <!-- privacy wall -->
+      <line x1="340" y1="20" x2="340" y2="346" stroke="#9BB8D3" stroke-width="1.5" stroke-dasharray="4 5"/>
+      <text class="wall" x="340" y="14" text-anchor="middle">privacy wall — no raw peer rows cross</text>
+
+      <!-- OWN column -->
+      <rect x="40" y="30" width="260" height="50" rx="8" fill="#0F4C81"/>
+      <text class="node" x="170" y="52" text-anchor="middle" fill="#fff">Your own data</text>
+      <text class="nsub" x="170" y="69" text-anchor="middle" fill="#D8E2EE">every transaction, full detail</text>
+
+      <rect x="40" y="150" width="260" height="66" rx="8" fill="#F7F8FA" stroke="#E3E7EC"/>
+      <text class="node" x="170" y="178" text-anchor="middle">Tenant path</text>
+      <text class="nsub" x="170" y="197" text-anchor="middle">scoped to you · full granularity · real IDs</text>
+
+      <!-- PEER column -->
+      <rect x="380" y="30" width="260" height="50" rx="8" fill="#5B6472"/>
+      <text class="node" x="510" y="52" text-anchor="middle" fill="#fff">Other merchants' data</text>
+      <text class="nsub" x="510" y="69" text-anchor="middle" fill="#D7DBE1">the rest of the network</text>
+
+      <rect x="380" y="118" width="260" height="120" rx="8" fill="#fff" stroke="#0F4C81" stroke-width="1.4"/>
+      <text class="node" x="510" y="138" text-anchor="middle">Anonymized at build time</text>
+      <text class="nsub" x="396" y="160">• your own rows excluded</text>
+      <text class="nsub" x="396" y="178">• IDs tokenized · customer link dropped</text>
+      <text class="nsub" x="396" y="196">• date + coarse time-of-day only</text>
+      <text class="nsub" x="396" y="214">• identity reduced to "peer / merchant"</text>
+
+      <rect x="380" y="272" width="260" height="56" rx="8" fill="#0F4C81"/>
+      <text class="node" x="510" y="296" text-anchor="middle" fill="#fff">Peer lake</text>
+      <text class="nsub" x="510" y="314" text-anchor="middle" fill="#D8E2EE">aggregates only · k = 5 floor</text>
+
+      <!-- converge -->
+      <rect x="210" y="370" width="260" height="48" rx="8" fill="#1A1F2E"/>
+      <text class="node" x="340" y="398" text-anchor="middle" fill="#fff">AI agent &amp; dashboard</text>
+
+      <!-- arrows -->
+      <line x1="170" y1="80"  x2="170" y2="150" stroke="#5B6472" stroke-width="1.5" marker-end="url(#ar)"/>
+      <line x1="510" y1="80"  x2="510" y2="118" stroke="#5B6472" stroke-width="1.5" marker-end="url(#ar)"/>
+      <line x1="510" y1="238" x2="510" y2="272" stroke="#5B6472" stroke-width="1.5" marker-end="url(#ar)"/>
+      <path d="M170,216 L170,394 L208,394" fill="none" stroke="#5B6472" stroke-width="1.5" marker-end="url(#ar)"/>
+      <path d="M510,328 L510,394 L472,394" fill="none" stroke="#5B6472" stroke-width="1.5" marker-end="url(#ar)"/>
+    </svg>
+    <figcaption>Your own data reaches you in full detail. A peer's data only ever reaches you after exclusion, tokenization, generalization, and aggregation — and only in groups of at least five.</figcaption>
+  </figure>
+
+  <h3>The four privacy mechanisms</h3>
+  <ul>
+    <li><strong>Identity is hidden.</strong> A peer is labeled only <em>peer</em> (same segment as you) or <em>merchant</em> (a different segment) — never a name or even a stable pseudonym.</li>
+    <li><strong>k = 5 suppression at query time.</strong> Any result group backed by fewer than five underlying records is dropped before the agent sees it, and the agent is told that coverage was thin rather than shown a sparse number.</li>
+    <li><strong>Aggregates only.</strong> A query against the peer lake can only return sums, averages, and counts over groups — never an individual transaction line. This is enforced on the parsed SQL itself, not by trust.</li>
+    <li><strong>You are absent from your own peer view.</strong> Each merchant gets its own copy of the lake with its rows structurally removed, so a merchant can never recover itself from "the peers."</li>
+  </ul>
+
+  <p class="callout"><b>An honest note on posture.</b> This is a deliberately minimal privacy posture for a demonstrator running on synthetic data, where there is no real merchant to re-identify. A production deployment would raise the suppression floor (k ≥ 50) and add differential-privacy noise to published aggregates. We state this plainly — the demo shows the architecture; the stronger guarantees are a configuration change, not a redesign.</p>
+</section>
+
+<!-- ================= SECTION 3 ================= -->
+<section>
+  <span class="secnum">SECTION 3</span>
+  <h2>The agents: every number is checked before you see it</h2>
+  <p class="sublede">A question in plain English becomes a grounded answer. The system routes the question, runs real queries, and validates every figure against the data before displaying it.</p>
+
+  <p>A free-form question is classified by a lightweight router to the specialist best suited to answer it; a clicked suggested question skips the router and goes straight to its specialist. Anything that doesn't fit a specialist falls to a conversational advisor.</p>
+
+  <figure>
+    <svg viewBox="0 0 680 470" role="img" aria-label="How a question becomes a validated answer: route, query own and peer, validate every number, then answer">
+      <defs>
+        <marker id="ar2" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+          <path d="M0,0 L7,3 L0,6 Z" fill="#5B6472"/>
+        </marker>
+      </defs>
+      <rect x="250" y="18" width="180" height="40" rx="8" fill="#0F4C81"/>
+      <text class="node" x="340" y="43" text-anchor="middle" fill="#fff">A question</text>
+
+      <rect x="170" y="92" width="340" height="48" rx="8" fill="#F7F8FA" stroke="#E3E7EC"/>
+      <text class="node" x="340" y="113" text-anchor="middle">Router</text>
+      <text class="nsub" x="340" y="131" text-anchor="middle">pricing · demand · trade · anomaly · advisor</text>
+
+      <rect x="220" y="172" width="240" height="44" rx="8" fill="#fff" stroke="#E3E7EC"/>
+      <text class="node" x="340" y="194" text-anchor="middle">Specialist</text>
+      <text class="nsub" x="340" y="210" text-anchor="middle">runs a bounded tool loop</text>
+
+      <rect x="120" y="248" width="200" height="50" rx="8" fill="#F7F8FA" stroke="#E3E7EC"/>
+      <text class="node" x="220" y="270" text-anchor="middle">query your data</text>
+      <text class="nsub" x="220" y="287" text-anchor="middle">own · full detail</text>
+
+      <rect x="360" y="248" width="200" height="50" rx="8" fill="#F7F8FA" stroke="#E3E7EC"/>
+      <text class="node" x="460" y="270" text-anchor="middle">query the peer lake</text>
+      <text class="nsub" x="460" y="287" text-anchor="middle">aggregates · k = 5</text>
+
+      <rect x="170" y="334" width="340" height="60" rx="8" fill="#fff" stroke="#0F4C81" stroke-width="1.6"/>
+      <text class="node" x="340" y="358" text-anchor="middle" fill="#0F4C81">Validate every number</text>
+      <text class="nsub" x="340" y="378" text-anchor="middle">does it trace to a real result cell?  keep it — or strip it</text>
+
+      <rect x="220" y="418" width="240" height="44" rx="8" fill="#1A1F2E"/>
+      <text class="node" x="340" y="440" text-anchor="middle" fill="#fff">Grounded answer</text>
+      <text class="nsub" x="340" y="455" text-anchor="middle" fill="#C9D0D8">headline · evidence · so-what</text>
+
+      <line x1="340" y1="58"  x2="340" y2="92"  stroke="#5B6472" stroke-width="1.5" marker-end="url(#ar2)"/>
+      <line x1="340" y1="140" x2="340" y2="172" stroke="#5B6472" stroke-width="1.5" marker-end="url(#ar2)"/>
+      <path d="M300,216 L220,248" fill="none" stroke="#5B6472" stroke-width="1.5" marker-end="url(#ar2)"/>
+      <path d="M380,216 L460,248" fill="none" stroke="#5B6472" stroke-width="1.5" marker-end="url(#ar2)"/>
+      <path d="M220,298 L220,364 L168,364" fill="none" stroke="#5B6472" stroke-width="1.5" marker-end="url(#ar2)"/>
+      <path d="M460,298 L460,364 L512,364" fill="none" stroke="#5B6472" stroke-width="1.5" marker-end="url(#ar2)"/>
+      <line x1="340" y1="394" x2="340" y2="418" stroke="#5B6472" stroke-width="1.5" marker-end="url(#ar2)"/>
+    </svg>
+    <figcaption>Pills go straight to a specialist; free-form questions are routed. Either way the specialist queries your own data and the peer lake, then every stated number is checked against a real result cell before the answer is shown.</figcaption>
+  </figure>
+
+  <h3>What each agent is for</h3>
+  <ul>
+    <li><strong>Pricing</strong> — how your prices compare to peers, category by category, in real dollars, and where you have room to move.</li>
+    <li><strong>Demand</strong> — category and basket performance, and where you over- or under-perform your peer set.</li>
+    <li><strong>Trade area</strong> — neighborhood and store-level performance, and expansion opportunity.</li>
+    <li><strong>Anomaly</strong> — unusual spikes and drops, including the planted University City decline, set against peer baselines.</li>
+    <li><strong>Conversational advisor</strong> — free-form questions, and anything that spans more than one specialist.</li>
+  </ul>
+
+  <p>Peer comparison is only offered when it's honest. The three grocers each have two same-segment peers; Taco Bell and TJ Maxx have none in this panel, so a pricing-style peer comparison correctly declines for them rather than inventing one — while trend and trade-area views still work on their own data.</p>
+
+  <p class="callout"><b>The trust guarantee.</b> The agent reasons over real query results, not its own memory. Before any answer is shown, <b>every number in it is checked against an actual cell in the query result</b> — within tolerance — and any figure that can't be traced is removed, not displayed. The model cannot surface a fabricated number. This grounding check is the credibility core of the whole system. <span style="color:var(--muted)">(Today an answer is prose, grounded numbers, and a result table; charts inside answers are a planned fast-follow.)</span></p>
+</section>
+
+<footer>
+  Synthetic demonstrator · all figures trace to the generated v4 dataset (seed 42, deterministic). Merchant names are stand-ins and imply no affiliation. Built as a static page — no data leaves your browser.
+</footer>
+
+</div>
+</body>
+</html>
