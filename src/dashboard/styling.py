@@ -381,13 +381,24 @@ _CSS = """
      reruns interrupt JS bridges. Use the explicit X button in the
      panel header.
   ----------------------------------------------------------------- */
+  /* Shared panel width — drives the panel, the backdrop's right edge, and
+     the collapse handle so all three align to ONE vertical line. */
+  body { --chat-w: clamp(360px, 40vw, 480px); }
+  body.chat-expanded { --chat-w: 90vw; }
+
   div[class*="st-key-chat_panel_overlay"] {
     position: fixed !important;
+    /* The keyed container IS the stVerticalBlock — make it the flex column
+       directly (current Streamlit wraps each widget in a stLayoutWrapper,
+       so the old ``> stVerticalBlock`` selector no longer matched). */
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
     top: 56px;
     right: 0;
     bottom: 0;
-    width: clamp(360px, 40vw, 480px);
-    max-width: 480px;
+    width: var(--chat-w);
+    max-width: none;
     background: #FFFFFF;
     border-left: 1px solid var(--border);
     box-shadow: -8px 0 24px rgba(15, 31, 46, 0.10);
@@ -403,47 +414,25 @@ _CSS = """
     padding: 4px 20px 12px 20px;
     transition: width 0.3s ease, max-width 0.3s ease;
   }
-  /* Make the panel's inner Streamlit ``stVerticalBlock`` a flex
-     column at full height so each top-level widget (the
-     ``element-container`` rows) participates in flex layout. */
-  div[class*="st-key-chat_panel_overlay"] > div[data-testid="stVerticalBlock"] {
-    display: flex !important;
-    flex-direction: column !important;
-    height: 100% !important;
-    gap: 6px !important;
-    /* Cap + center the inner content column so pills, bubbles, and the
-       result table don't stretch edge-to-edge when the panel is wide
-       (esp. in expanded/90vw mode). In side mode the panel is already
-       <= 480px, so this is a no-op there. */
-    max-width: 720px !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
+  /* The panel's direct children (current Streamlit) are stLayoutWrapper /
+     stElementContainer rows. Pin them all at natural height EXCEPT the
+     chat-history wrapper, which grows to fill the remaining space — so the
+     header + input + cost footer stay visible and only history scrolls. */
+  div[class*="st-key-chat_panel_overlay"] > div[data-testid="stLayoutWrapper"],
+  div[class*="st-key-chat_panel_overlay"] > div[data-testid="stElementContainer"] {
+    flex: 0 0 auto !important;
+    min-height: 0 !important;
   }
-  /* The chat-history container fills whatever room remains after
-     the fixed-size rows (header / selectbox / description / pills)
-     take what they need, and the input row at the bottom keeps
-     its locked height. ``min-height: 0`` is essential — without
-     it, flex children default to min-content sizing and the
-     panel overflows when content exceeds 100 vh, pushing the
-     input row below the visible viewport. */
-  div[class*="st-key-chat_panel_overlay"] > div[data-testid="stVerticalBlock"] >
-    div[data-testid="element-container"]:has(> div[class*="st-key-chat_history"]) {
+  /* The chat-history wrapper grows + becomes the only scroll zone.
+     ``height: auto`` overrides the inline ``st.container(height=…)`` px so
+     flex controls its size. */
+  div[class*="st-key-chat_panel_overlay"] >
+    div[data-testid="stLayoutWrapper"]:has(> div[class*="st-key-chat_history"]) {
     flex: 1 1 auto !important;
     min-height: 0 !important;
+    height: auto !important;
     overflow: hidden !important;
   }
-  /* Apply ``min-height: 0`` to ALL element-containers in the
-     panel — without this, individual rows refuse to shrink
-     below their content size and the panel overflows when one
-     specialist has longer pill text than another. The
-     ``flex-shrink: 0`` on the input row (below) keeps it from
-     being squeezed despite this rule. */
-  div[class*="st-key-chat_panel_overlay"] > div[data-testid="stVerticalBlock"] >
-    div[data-testid="element-container"] {
-    min-height: 0 !important;
-  }
-  /* The history container itself fills its now-flex-grown
-     element-container parent and provides the internal scroll. */
   div[class*="st-key-chat_history"] {
     height: 100% !important;
     max-height: none !important;
@@ -517,7 +506,7 @@ _CSS = """
      visible regardless of the panel's overflow-y scrolling. */
   div[class*="st-key-chat_expand_edge"] {
     position: fixed !important;
-    right: calc(40vw - 22px);  /* center on the panel's left edge */
+    right: calc(var(--chat-w) - 22px);  /* center on the panel's left edge */
     top: 50% !important;
     transform: translateY(-50%) !important;
     width: 44px !important;
@@ -637,22 +626,34 @@ _CSS = """
 
      Implemented as a markdown div with ``position: fixed`` that
      sits between the dashboard (z-index: 0) and the panel
-     (z-index: 998). Purely decorative — click-to-close isn't
-     wired (Streamlit's iframe sandbox blocks the JS bridge). */
-  .chat-backdrop {
-    position: fixed;
+     (z-index: 998). Click-to-dismiss: it's a real st.button (key
+     ``chat_backdrop``) overlaid as a full-area scrim; its right edge tracks
+     ``--chat-w`` so it ends exactly at the panel's left border. */
+  div[class*="st-key-chat_backdrop"] {
+    position: fixed !important;
     top: 56px;
-    right: 40vw;
+    right: var(--chat-w);
     bottom: 0;
     left: 0;
     background: rgba(241, 239, 232, 0.55);
     z-index: 997;
-    pointer-events: none;
     transition: right 0.3s ease, background-color 0.3s ease;
   }
-  body.chat-expanded .chat-backdrop {
-    right: 90vw;
+  body.chat-expanded div[class*="st-key-chat_backdrop"] {
     background: rgba(241, 239, 232, 0.75);
+  }
+  /* The button fills the scrim and is fully transparent — the whole dim
+     area is the click target. */
+  div[class*="st-key-chat_backdrop"] button {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: transparent !important;
+    cursor: pointer !important;
   }
 
   /* Simple chat input row — plain text area + Send button at
@@ -748,6 +749,7 @@ _CSS = """
   /* Mobile responsiveness — drawer becomes a bottom sheet at narrow
      viewports. */
   @media (max-width: 768px) {
+    body { --chat-w: 100vw; }
     div[class*="st-key-chat_panel_overlay"] {
       top: auto !important;
       bottom: 0 !important;
@@ -755,13 +757,13 @@ _CSS = """
       right: 0 !important;
       width: 100vw !important;
       max-width: none !important;
-      height: 75vh !important;
+      height: 75dvh !important;
       border-left: none !important;
       border-top: 1px solid var(--border) !important;
       box-shadow: 0 -8px 24px rgba(15, 31, 46, 0.10) !important;
     }
     body.chat-expanded div[class*="st-key-chat_panel_overlay"] {
-      height: 95vh !important;
+      height: 95dvh !important;
     }
     div[class*="st-key-chat_edge_tab"] {
       right: 16px !important;

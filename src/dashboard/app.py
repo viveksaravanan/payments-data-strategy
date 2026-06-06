@@ -205,14 +205,16 @@ views.render_geography_section(mid, filters)
 views.render_catalog_section(mid, filters)
 views.render_customers_section(mid, filters)
 
-# Backdrop renders in both side and expanded modes — a light gray
-# scrim covers the dashboard area to the left of the panel so the
-# panel reads as the primary focus. The scrim is purely decorative
-# since Streamlit's iframe sandbox blocks click-outside JS from
-# updating session_state reliably; use the X / collapse buttons
-# to dismiss.
+# Backdrop renders in both side and expanded modes — a light gray scrim
+# covering the dashboard to the left of the panel. It's a real (keyed)
+# st.button styled as a full-area transparent overlay so clicking it
+# dismisses the panel (Streamlit-native; no JS bridge). Its right edge
+# tracks --chat-w so it ends exactly at the panel's left border.
 if state.chat_state in ("side", "expanded"):
-    st.markdown('<div class="chat-backdrop"></div>', unsafe_allow_html=True)
+    with st.container(key="chat_backdrop"):
+        if st.button(" ", key="chat_backdrop_btn", help="Close chat panel"):
+            state.chat_state = "closed"
+            st.rerun()
 
 # Edge tab: a small floating button on the right edge, only shown
 # when the panel is closed. Clicking opens the side-mode drawer.
