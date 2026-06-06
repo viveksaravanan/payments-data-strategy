@@ -122,9 +122,14 @@ def _on_merchant_change() -> None:
 header_col1, header_col2 = st.columns([5, 2])
 with header_col1:
     st.markdown(
-        '<h1 style="margin-top: -4px;">Merchant dashboard</h1>'
+        '<h1 style="margin-top: 0;">Merchant dashboard</h1>'
         '<div style="font-size:13px;color:var(--text-muted);margin-top:-4px;">'
         'Cross-merchant analytics on a synthetic 100,000-customer Charlotte panel.'
+        '</div>'
+        '<div style="font-size:13px;margin:2px 0 14px;">'
+        '<a href="https://viveksaravanan.github.io/payments-data-strategy/" target="_blank" '
+        'style="color:var(--accent);text-decoration:none;font-weight:600;">'
+        'Methodology used to create this →</a>'
         '</div>',
         unsafe_allow_html=True,
     )
@@ -220,7 +225,7 @@ if state.chat_state in ("side", "expanded"):
 # when the panel is closed. Clicking opens the side-mode drawer.
 if state.chat_state == "closed":
     with st.container(key="chat_edge_tab"):
-        if st.button("✦", key="chat_edge_open", help="Open the chat panel"):
+        if st.button("AI agents", key="chat_edge_open", help="Open the AI agents chat"):
             state.chat_state = "side"
             st.rerun()
 

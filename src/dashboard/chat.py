@@ -349,7 +349,7 @@ def render_chat_panel(merchant_id: str) -> None:
     # the right edge of the header regardless of how the outer
     # column proportionally resizes when the panel transitions
     # 40 vw → 90 vw. --
-    h1, h_actions = st.columns([1, 0.30], gap="small")
+    h1, h_actions = st.columns([1, 0.5], gap="small")
     with h1:
         # Avatar (purple circle) + title — canonical sparkles SVG in
         # #534AB7 on #EEEDFE soft fill. The subtitle line below the

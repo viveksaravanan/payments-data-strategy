@@ -41,7 +41,7 @@ _CSS = """
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif !important;
     color: var(--text);
   }
-  .block-container { padding-top: 1.6rem; padding-bottom: 2rem; max-width: 1500px; }
+  .block-container { padding-top: 2.2rem; padding-bottom: 2rem; max-width: 1500px; }
   h1, h2, h3 { letter-spacing: -0.01em; color: var(--text); }
   h1 { font-size: 26px !important; font-weight: 600 !important; margin: 0 0 4px !important; }
   h2 { font-size: 18px !important; font-weight: 600 !important; }
@@ -463,27 +463,32 @@ _CSS = """
     top: 64px;
     transform: none;
     z-index: 997;
-    width: 56px !important;
+    width: 70px !important;
   }
   div[class*="st-key-chat_edge_tab"] button {
     /* Same canonical sparkles SVG as the affordance buttons +
        panel-header avatar — unified visual identity. Phase 4.5
        final: SVG bumped 24 → 28 px for better visibility. */
-    width: 52px !important;
-    height: 80px !important;
-    padding: 0 !important;
+    width: 64px !important;
+    height: 88px !important;
+    padding: 46px 2px 8px 2px !important;
     border-radius: 8px 0 0 8px !important;
     background-color: #FFFFFF !important;
     background-image: url("data:image/svg+xml;utf8,%3Csvg width='28' height='28' viewBox='0 0 24 24' fill='%23534AB7' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 0 L13.5 8.5 L22 10 L13.5 11.5 L12 20 L10.5 11.5 L2 10 L10.5 8.5 Z'/%3E%3Cpath d='M19 14 L19.7 16.3 L22 17 L19.7 17.7 L19 20 L18.3 17.7 L16 17 L18.3 16.3 Z'/%3E%3C/svg%3E") !important;
     background-repeat: no-repeat !important;
-    background-position: center !important;
-    background-size: 28px 28px !important;
+    background-position: center 14px !important;   /* sparkle near the top */
+    background-size: 26px 26px !important;
     border: 1px solid var(--border) !important;
     border-right: none !important;
     box-shadow: -3px 0 8px rgba(15, 31, 46, 0.10) !important;
-    font-size: 0 !important;
-    line-height: 1 !important;
-    color: transparent !important;
+    /* "AI agents" label shown beneath the sparkle (padding-top pushes it
+       below the SVG; was font-size:0 to hide the ✦ glyph). */
+    font-size: 6px !important;
+    font-weight: 600 !important;
+    line-height: 1.1 !important;
+    color: #534AB7 !important;
+    white-space: nowrap !important;
+    text-align: center !important;
     transition: background-color 0.15s ease;
   }
   div[class*="st-key-chat_edge_tab"] button:hover {
@@ -566,9 +571,14 @@ _CSS = """
      but the cluster stays right-anchored with a fixed total
      width). */
   div[class*="st-key-chat_header_actions"] {
-    width: 124px !important;          /* 88 Clear + 4 gap + 28 ✕ + 4 slack */
-    max-width: 124px !important;
+    width: 120px !important;          /* 88 Clear + 4 gap + 28 ✕ — no slack, so ✕ is flush right */
+    max-width: 120px !important;
     margin-left: auto !important;
+  }
+  /* Breathing room between the "Ask the data" header and the agent
+     selector (was crowding the title). */
+  div[class*="st-key-agent_select"] {
+    margin-top: 12px !important;
   }
   div[class*="st-key-chat_header_actions"] div[data-testid="stHorizontalBlock"] {
     gap: 4px !important;
@@ -612,6 +622,13 @@ _CSS = """
     box-shadow: none !important;
     transition: background 0.15s ease, color 0.15s ease;
   }
+  div[class*="st-key-chat_edge_tab"] button p {
+    font-size: 13.5px !important;
+    line-height: 1.1 !important;
+    margin: 0 !important;
+    text-align: center !important;
+    color: #534AB7 !important;
+}
   div[class*="st-key-close_btn_"] button:hover {
     background: #EEEDFE !important;
     color: #534AB7 !important;
