@@ -119,6 +119,34 @@ def _on_merchant_change() -> None:
 
 
 # ---------------------------------------------------------------------------
+# First-launch onboarding (once per session) — rendered above the title.
+# The body-level ``onboarding-active`` class drives the pulse highlights on
+# the AI-agents tab, the per-chart ✦ affordances, and the methodology link;
+# the card below names the three features. Dismissing removes the class
+# (pulses + arrow stop) and the card for the rest of the session.
+# ---------------------------------------------------------------------------
+
+styling.apply_onboarding_class(not state.onboarding_seen)
+if not state.onboarding_seen:
+    with st.container(key="onboarding_card"):
+        st.markdown(
+            "<p style='font-weight:700;font-size:15px;margin-bottom:6px;'>"
+            "👋 Welcome — three quick ways to explore this dashboard</p>"
+            "<p style='font-size:13.5px;line-height:1.75;'>"
+            "<b>✦ AI agents</b> — ask questions about the data in plain English. "
+            "Open the panel from the <b>AI agents</b> tab on the right edge.<br>"
+            "<b>✦ Ask about this</b> — every chart has a ✦ button; click it to send "
+            "that chart straight to an agent.<br>"
+            "<b>✦ Methodology</b> — see how this synthetic dataset and analysis were "
+            "built, via the link under the title.</p>",
+            unsafe_allow_html=True,
+        )
+        if st.button("Got it", key="onboarding_dismiss"):
+            state.onboarding_seen = True
+            st.rerun()
+
+
+# ---------------------------------------------------------------------------
 # Header — title + merchant selectbox + filter row
 # ---------------------------------------------------------------------------
 
@@ -207,30 +235,6 @@ styling.apply_chat_state_class(state.chat_state)
 # Reset the per-run chart-key sequence so every st.plotly_chart gets a
 # unique, run-stable key (avoids StreamlitDuplicateElementId).
 chart_patterns.reset_plot_keys()
-
-# First-launch onboarding (once per session). The body-level
-# ``onboarding-active`` class drives the pulse highlights on the
-# AI-agents tab, the per-chart ✦ affordances, and the methodology link;
-# the card below names the three features. Dismissing removes the class
-# (pulses stop) and the card for the rest of the session.
-styling.apply_onboarding_class(not state.onboarding_seen)
-if not state.onboarding_seen:
-    with st.container(key="onboarding_card"):
-        st.markdown(
-            "<p style='font-weight:700;font-size:15px;margin-bottom:6px;'>"
-            "👋 Welcome — three quick ways to explore this dashboard</p>"
-            "<p style='font-size:13.5px;line-height:1.75;'>"
-            "<b>✦ AI agents</b> — ask questions about the data in plain English. "
-            "Open the panel from the <b>AI agents</b> tab on the right edge.<br>"
-            "<b>✦ Ask about this</b> — every chart has a ✦ button; click it to send "
-            "that chart straight to an agent.<br>"
-            "<b>✦ Methodology</b> — see how this synthetic dataset and analysis were "
-            "built, via the link under the title.</p>",
-            unsafe_allow_html=True,
-        )
-        if st.button("Got it", key="onboarding_dismiss"):
-            state.onboarding_seen = True
-            st.rerun()
 
 views.render_kpi_strip(mid, filters)
 views.render_performance_section(mid, filters)

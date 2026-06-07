@@ -839,7 +839,6 @@ _CSS = """
     70%  { box-shadow: 0 0 0 9px rgba(83, 74, 183, 0.0); }
     100% { box-shadow: 0 0 0 0   rgba(83, 74, 183, 0.0); }
   }
-  body.onboarding-active div[class*="st-key-chat_edge_tab"] button,
   body.onboarding-active div[class*="st-key-ask_about_"] button {
     animation: onboard-pulse 1.8s ease-in-out 4;
   }
@@ -848,6 +847,34 @@ _CSS = """
     border-radius: 4px;
     padding: 1px 5px;
     animation: onboard-pulse 1.8s ease-in-out 4;
+  }
+  /* AI-agents edge tab: the button's own ``box-shadow: … !important``
+     (above) beats animation declarations in the cascade, so the pulse
+     has to ride the CONTAINER (no locked box-shadow there). The halo
+     follows the tab's left-rounded shape. */
+  body.onboarding-active div[class*="st-key-chat_edge_tab"] {
+    border-radius: 8px 0 0 8px;
+    animation: onboard-pulse 1.8s ease-in-out 4;
+  }
+  /* Brief arrow pointing at the tab — a ``::before`` on the fixed edge-tab
+     container, sitting just to its left. Per-cycle fade-in/bob/fade-out;
+     ``forwards`` leaves it hidden after 4 cycles, and dismissing the card
+     drops ``onboarding-active`` so the rule stops matching (arrow gone). */
+  body.onboarding-active div[class*="st-key-chat_edge_tab"]::before {
+    content: "Ask AI ➜";
+    position: absolute;
+    right: calc(100% + 12px);
+    top: 30px;
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 700;
+    color: #534AB7;
+    pointer-events: none;
+    animation: onboard-arrow 1.8s ease-in-out 4 forwards;
+  }
+  @keyframes onboard-arrow {
+    0%, 100% { opacity: 0; transform: translateX(8px); }
+    50%      { opacity: 1; transform: translateX(0);   }
   }
 </style>
 """
