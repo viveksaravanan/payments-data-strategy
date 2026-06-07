@@ -796,6 +796,59 @@ _CSS = """
       box-shadow: 0 4px 12px rgba(15, 31, 46, 0.15) !important;
     }
   }
+
+  /* ---- First-launch onboarding: intro card + element pulses ----
+     Once-per-session (gated in app.py on ``onboarding_seen``). The card
+     is a real keyed container; the pulses are gated on
+     ``body.onboarding-active`` (toggled by apply_onboarding_class) so
+     they stop the instant the card is dismissed. */
+  div[class*="st-key-onboarding_card"] {
+    background: linear-gradient(180deg, rgba(83, 74, 183, 0.06), rgba(83, 74, 183, 0.02));
+    border: 1px solid var(--border);
+    border-left: 4px solid #534AB7;
+    border-radius: 10px;
+    padding: 14px 18px 8px 18px;
+    margin: 0 0 14px 0;
+  }
+  div[class*="st-key-onboarding_card"] p { margin: 0; }
+  /* Dismiss button: small, subtle, right-aligned. */
+  div[class*="st-key-onboarding_dismiss"] {
+    display: flex;
+    justify-content: flex-end;
+  }
+  div[class*="st-key-onboarding_dismiss"] button {
+    width: auto !important;
+    padding: 2px 16px !important;
+    min-height: 0 !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #534AB7 !important;
+    background: transparent !important;
+    border: 1px solid #534AB7 !important;
+    border-radius: 6px !important;
+  }
+  div[class*="st-key-onboarding_dismiss"] button:hover {
+    background: rgba(83, 74, 183, 0.08) !important;
+  }
+
+  /* Pulse halo — finite (4 cycles), draws the eye then settles. The
+     halo follows each target's existing border-radius; we don't touch
+     the edge-tab/affordance shapes. */
+  @keyframes onboard-pulse {
+    0%   { box-shadow: 0 0 0 0   rgba(83, 74, 183, 0.45); }
+    70%  { box-shadow: 0 0 0 9px rgba(83, 74, 183, 0.0); }
+    100% { box-shadow: 0 0 0 0   rgba(83, 74, 183, 0.0); }
+  }
+  body.onboarding-active div[class*="st-key-chat_edge_tab"] button,
+  body.onboarding-active div[class*="st-key-ask_about_"] button {
+    animation: onboard-pulse 1.8s ease-in-out 4;
+  }
+  body.onboarding-active #methodology-link {
+    display: inline-block;
+    border-radius: 4px;
+    padding: 1px 5px;
+    animation: onboard-pulse 1.8s ease-in-out 4;
+  }
 </style>
 """
 
@@ -827,6 +880,27 @@ def apply_chat_state_class(chat_state: str) -> None:
           const doc = window.parent.document;
           doc.body.classList.remove('chat-closed', 'chat-side', 'chat-expanded');
           doc.body.classList.add({cls!r});
+        </script>
+        """,
+        height=0,
+    )
+
+
+def apply_onboarding_class(active: bool) -> None:
+    """Toggle ``body.onboarding-active`` to drive the first-launch pulse
+    highlights (AI-agents tab, per-chart ✦ affordances, methodology link).
+
+    Mirrors :func:`apply_chat_state_class` — a zero-height component iframe
+    whose script reaches ``window.parent.document`` and adds/removes the
+    class. The pulse CSS is gated on ``body.onboarding-active``, so removing
+    the class (when the card is dismissed) stops the animation immediately.
+    """
+    import streamlit.components.v1 as _components
+    op = "add" if active else "remove"
+    _components.html(
+        f"""
+        <script>
+          window.parent.document.body.classList.{op}('onboarding-active');
         </script>
         """,
         height=0,
