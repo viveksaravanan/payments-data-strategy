@@ -559,7 +559,7 @@ def scan_numerics(prose: str) -> list[NumericToken]:
 @dataclass
 class ClaimDisposition:
     claim: Claim
-    status: Literal["passed", "normalized", "stripped"]
+    status: Literal["passed", "normalized", "stripped", "stripped_semantic"]
     true_value: float | None = None
     reason: str | None = None
 
@@ -692,6 +692,116 @@ def _strip_clause(prose: str, span: tuple[int, int]) -> str:
     return (before or after).strip()
 
 
+# ---------------------------------------------------------------------
+# Semantic label checks (Wave 4 — §15 residual hardening)
+# ---------------------------------------------------------------------
+#
+# The value checks above prove a number *traces* to a cell. They do NOT
+# check the words around it. Two residual mislabels slipped through:
+#   - magnitude: "$6.4B" written for a cell that resolves to $6.4M (the
+#     number 6.4 traces, the scale word is wrong);
+#   - direction: "sales declined" written for a positive pct_change.
+# These checks close those at the validator, CONSERVATIVELY — they fire
+# only on an unambiguous contradiction and never touch correct prose.
+# Gated so they can be disabled wholesale.
+
+SEMANTIC_CHECKS_ENABLED = True
+
+# Scale words → multiplier, for the magnitude check.
+_SCALE_FACTORS = {
+    "k": 1e3, "thousand": 1e3,
+    "m": 1e6, "mn": 1e6, "million": 1e6,
+    "b": 1e9, "bn": 1e9, "billion": 1e9,
+}
+_MAGNITUDE_RE = re.compile(
+    r"(\d[\d,]*(?:\.\d+)?)\s*(k|m|mn|b|bn|thousand|million|billion)\b",
+    re.IGNORECASE,
+)
+
+# Metric-MOVEMENT words for the direction check. These describe the
+# metric itself going up / down, so their polarity is subject-independent.
+# Peer-comparison adjectives (ahead/behind/leads/trails) are deliberately
+# EXCLUDED — their polarity depends on grammatical subject ("we're ahead"
+# vs "peers are ahead"), which we don't parse, so checking them would risk
+# stripping correct prose. That narrower residual stays documented.
+_DIRECTION_UP = frozenset({
+    "increase", "increased", "increases", "increasing",
+    "rose", "rise", "rises", "rising", "grew", "grow", "grows", "growing",
+    "growth", "gained", "gain", "gains", "up", "higher", "climbed",
+    "jumped", "surged", "rallied",
+})
+_DIRECTION_DOWN = frozenset({
+    "decrease", "decreased", "decreases", "decreasing",
+    "fell", "fall", "falls", "falling", "declined", "decline", "declines",
+    "declining", "dropped", "drop", "drops", "dropping", "down", "lower",
+    "lost", "shrank", "shrink", "shrinking", "slipped", "sank", "plunged",
+})
+
+
+def _check_magnitude_semantics(text_span: str, true_value: float) -> str | None:
+    """Return a reason if a scale word (B/M/K) in ``text_span`` implies a
+    magnitude off by >=2 orders from ``true_value``, else None.
+
+    Only fires when a scale word is present. A correct label renders the
+    cell's human-readable form (``$6.4M`` for 6.4e6 → ratio ~1); a
+    one-step mislabel (``$6.4B``) is 1000x off, comfortably past the
+    100x threshold while ordinary rounding stays at ratio ~1.
+    """
+    if true_value == 0:
+        return None
+    m = _MAGNITUDE_RE.search(text_span)
+    if m is None:
+        return None
+    num = float(m.group(1).replace(",", ""))
+    displayed = num * _SCALE_FACTORS[m.group(2).lower()]
+    if displayed == 0:
+        return None
+    ratio = abs(displayed) / abs(true_value)
+    if ratio >= 100 or ratio <= 0.01:
+        return (
+            f"magnitude label {m.group(0)!r} implies ~{displayed:.3g} but "
+            f"the cell resolves to ~{true_value:.3g}"
+        )
+    return None
+
+
+def _check_direction_semantics(
+    claim: Claim, true_value: float, prose: str,
+) -> str | None:
+    """Return a reason if a metric-movement word in the claim's clause
+    contradicts the sign of ``true_value``, else None.
+
+    Scoped to SIGNED derivations (``difference`` / ``pct_change``) — a
+    ratio or a raw level has no meaningful sign to contradict. Mixed
+    signals in the window (both an up- and a down-word) yield no verdict,
+    keeping the check silent whenever the intent is ambiguous.
+    """
+    src = claim.source
+    if not isinstance(src, Derivation) or src.op not in ("difference", "pct_change"):
+        return None
+    if true_value == 0:
+        return None
+    span = _find_span_in_prose(prose, claim.text_span)
+    if span is None:
+        return None
+    s, e = span
+    window = prose[max(0, s - 70):min(len(prose), e + 20)].lower()
+    words = set(re.findall(r"[a-z]+", window))
+    up = bool(words & _DIRECTION_UP)
+    down = bool(words & _DIRECTION_DOWN)
+    if up and not down and true_value < 0:
+        return (
+            f"direction word implies an increase but the resolved value "
+            f"is {true_value:.3g}"
+        )
+    if down and not up and true_value > 0:
+        return (
+            f"direction word implies a decrease but the resolved value "
+            f"is {true_value:.3g}"
+        )
+    return None
+
+
 def validate_claims(
     prose: str,
     claims: list[Claim],
@@ -766,6 +876,25 @@ def validate_claims(
         # the model wrote the exact value.
         if isinstance(claim.source, ValueRef):
             claim.value = true_value
+
+        # Semantic label checks: the number may trace correctly while the
+        # surrounding scale word / direction word contradicts it. Fire only
+        # on an unambiguous contradiction; strip the clause like any other
+        # failed claim. (Pass B won't re-flag it — its span is in
+        # ``declared_spans``.)
+        if SEMANTIC_CHECKS_ENABLED:
+            semantic_reason = (
+                _check_magnitude_semantics(claim.text_span, true_value)
+                or _check_direction_semantics(claim, true_value, cleaned)
+            )
+            if semantic_reason is not None:
+                if span := _find_span_in_prose(cleaned, claim.text_span):
+                    spans_to_strip.append((span, semantic_reason))
+                report.claim_dispositions.append(ClaimDisposition(
+                    claim=claim, status="stripped_semantic",
+                    true_value=true_value, reason=semantic_reason,
+                ))
+                continue
 
         if _approximately_equal(claim.value, true_value, tolerance):
             if math.isclose(claim.value, true_value, rel_tol=1e-9):

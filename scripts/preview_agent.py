@@ -154,9 +154,10 @@ def _render_claims(resp: AgentResponse) -> str:
         else:
             status = dispo["status"]
             status_color = {
-                "passed":      "#0F4C81",
-                "normalized":  "#4B5563",
-                "stripped":    "#C44536",
+                "passed":            "#0F4C81",
+                "normalized":        "#4B5563",
+                "stripped":          "#C44536",
+                "stripped_semantic": "#B45309",
             }.get(status, "#9CA3AF")
         rows.append(
             f"<li><code>{html_escape.escape(c.text_span)}</code> "

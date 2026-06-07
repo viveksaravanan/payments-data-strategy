@@ -557,3 +557,114 @@ def test_is_fragment_classification() -> None:
     assert not _is_fragment("Your dairy ASP is higher than peers.")
     assert not _is_fragment("$3.50 per unit beats the peer average.")
     assert not _is_fragment("35% of baskets included produce.")
+
+
+# ---------------------------------------------------------------------
+# Semantic label checks (Wave 4 — §15 residual hardening)
+# ---------------------------------------------------------------------
+
+@pytest.fixture
+def semantic_frame() -> pd.DataFrame:
+    """One row: a revenue level (for magnitude), a recent/baseline pair
+    (pct_change = +0.10, an INCREASE), and own/peer prices (difference
+    own-peer = -0.30, i.e. own is LOWER)."""
+    return pd.DataFrame([
+        {"merchant": "KRG", "revenue": 6_400_000.0,
+         "recent": 110.0, "baseline": 100.0,
+         "own_price": 3.20, "peer_price": 3.50},
+    ])
+
+
+def _pct_change_claim(text_span: str, value: float) -> Claim:
+    return Claim(
+        text_span=text_span, value=value,
+        source=Derivation(op="pct_change", operands=[
+            CellLookup({"merchant": "KRG"}, "recent"),
+            CellLookup({"merchant": "KRG"}, "baseline"),
+        ]),
+    )
+
+
+def test_magnitude_mislabel_strips(semantic_frame) -> None:
+    """Number traces (6.4M) but the scale word says billions → strip."""
+    prose = "Revenue reached $6.4B this quarter."
+    claim = Claim(text_span="$6.4B", value=6_400_000.0,
+                  source=CellLookup({"merchant": "KRG"}, "revenue"))
+    rep = validate_claims(prose, [claim], semantic_frame)
+    assert rep.claim_dispositions[0].status == "stripped_semantic"
+    assert "6.4B" not in rep.prose
+    assert rep.has_any_strip
+
+
+def test_correct_magnitude_passes_untouched(semantic_frame) -> None:
+    prose = "Revenue reached $6.4M this quarter."
+    claim = Claim(text_span="$6.4M", value=6_400_000.0,
+                  source=CellLookup({"merchant": "KRG"}, "revenue"))
+    rep = validate_claims(prose, [claim], semantic_frame)
+    assert rep.claim_dispositions[0].status == "passed"
+    assert rep.prose == prose
+    assert not rep.has_any_strip
+
+
+def test_direction_down_word_contradicts_increase_strips(semantic_frame) -> None:
+    """pct_change is +0.10 (up) but the prose says 'fell' → strip."""
+    prose = "Sales fell 10% versus the prior week."
+    rep = validate_claims(prose, [_pct_change_claim("10%", 0.10)], semantic_frame)
+    assert rep.claim_dispositions[0].status == "stripped_semantic"
+    assert rep.has_any_strip
+
+
+def test_correct_direction_passes_untouched(semantic_frame) -> None:
+    prose = "Sales rose 10% versus the prior week."
+    rep = validate_claims(prose, [_pct_change_claim("10%", 0.10)], semantic_frame)
+    assert rep.claim_dispositions[0].status == "passed"
+    assert not rep.has_any_strip
+
+
+def test_direction_mixed_signals_no_strip(semantic_frame) -> None:
+    """Both an up- and a down-word in the window → ambiguous → silent
+    (false-positive guard: never strip when intent is unclear)."""
+    prose = "Revenue rose even as visits fell, up 10% overall."
+    rep = validate_claims(prose, [_pct_change_claim("10%", 0.10)], semantic_frame)
+    assert rep.claim_dispositions[0].status == "passed"
+    assert not rep.has_any_strip
+
+
+def test_direction_only_checks_signed_derivations(semantic_frame) -> None:
+    """A ratio has no meaningful sign — 'lower' nearby must NOT strip it."""
+    prose = "The recent-to-baseline ratio is 1.10, lower than rivals."
+    claim = Claim(text_span="1.10", value=1.10,
+                  source=Derivation(op="ratio", operands=[
+                      CellLookup({"merchant": "KRG"}, "recent"),
+                      CellLookup({"merchant": "KRG"}, "baseline"),
+                  ]))
+    rep = validate_claims(prose, [claim], semantic_frame)
+    assert rep.claim_dispositions[0].status == "passed"
+    assert not rep.has_any_strip
+
+
+def test_peer_comparison_adjective_not_stripped(semantic_frame) -> None:
+    """'above'/'below' are intentionally NOT checked (peer-subject
+    ambiguity) — confirm we don't over-reach and strip such prose."""
+    prose = "Our price sits above peers by $0.30."
+    claim = Claim(text_span="$0.30", value=-0.30,
+                  source=Derivation(op="difference", operands=[
+                      CellLookup({"merchant": "KRG"}, "own_price"),
+                      CellLookup({"merchant": "KRG"}, "peer_price"),
+                  ]))
+    rep = validate_claims(prose, [claim], semantic_frame)
+    assert rep.claim_dispositions[0].status == "passed"
+    assert not rep.has_any_strip
+
+
+def test_semantic_checks_can_be_disabled(semantic_frame, monkeypatch) -> None:
+    """Toggling SEMANTIC_CHECKS_ENABLED off reverts to value-only behavior:
+    the magnitude label is no longer caught (the number still traces)."""
+    import src.agents.claims as _claims
+    monkeypatch.setattr(_claims, "SEMANTIC_CHECKS_ENABLED", False)
+    prose = "Revenue reached $6.4B this quarter."
+    claim = Claim(text_span="$6.4B", value=6_400_000.0,
+                  source=CellLookup({"merchant": "KRG"}, "revenue"))
+    rep = validate_claims(prose, [claim], semantic_frame)
+    assert rep.claim_dispositions[0].status == "passed"
+    assert "6.4B" in rep.prose
