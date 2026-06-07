@@ -124,8 +124,10 @@ plotly==6.7.0
     # via payments-data-strategy (pyproject.toml)
 protobuf==7.34.1
     # via streamlit
-pyarrow==24.0.0
-    # via streamlit
+pyarrow==17.0.0
+    # via
+    #   payments-data-strategy (pyproject.toml)
+    #   streamlit
 pydantic==2.13.4
     # via anthropic
 pydantic-core==2.46.4

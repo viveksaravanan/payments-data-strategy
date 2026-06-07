@@ -1,0 +1,33 @@
+# Docker build-context exclusions for the HuggingFace Space image.
+#
+# The Dockerfile does `COPY . .`, so anything in the build context lands
+# in the image. The deployed dashboard NEEDS the runtime data
+# (`data/raw/`, `data/lake/`) — those are intentionally NOT excluded.
+#
+# What we DO exclude:
+#   - data/eval/  — the anomalies answer key. It must NEVER reach the
+#     Space/agents (it's the eval ground truth). Belt-and-suspenders on
+#     top of .gitignore so it can't ride in regardless of how the Space
+#     repo was populated.
+#   - build/test cruft that bloats the image and is never needed at runtime.
+
+data/eval/
+
+# Python / build cruft
+**/__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+.venv/
+*.egg-info/
+
+# VCS + local
+.git/
+.gitignore
+.DS_Store
+**/.DS_Store
+.env
+
+# Plans / scratch
+*.log

@@ -1,0 +1,36 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel an in-progress run when a new commit is pushed to the same ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-quick:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.11
+        run: uv python install 3.11
+
+      # --frozen installs exactly what uv.lock pins (fails if the lock is
+      # stale) — keeps CI reproducible and catches lockfile drift.
+      - name: Sync dependencies
+        run: uv sync --frozen
+
+      # Engine + lake + agent unit tests. Skips tests/data_quality (the
+      # T1-T18 battery needs a freshly seeded census, too slow for a PR
+      # gate); those run locally via `make test`.
+      - name: Run quick test suite
+        run: uv run pytest --ignore=tests/data_quality
