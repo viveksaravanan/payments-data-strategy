@@ -138,3 +138,36 @@ def _validate(cfg: Config) -> None:
         raise ConfigInvariantError(
             f"D5: per-segment volume targets sum to {summed} but total is {targets['total']}"
         )
+
+    # 7. D17.2: each segment's affinity_matrix (if present) is a list of
+    #    [anchor, partner, boost] with non-empty string subcats and a
+    #    positive boost. Subcategory existence is checked at basket-build
+    #    time (the catalog isn't available here). A malformed entry would
+    #    otherwise crash deep in the basket layer or silently no-op.
+    for seg_name, seg in cfg.segments.items():
+        matrix = seg.get("affinity_matrix")
+        if matrix is None:
+            continue
+        if not isinstance(matrix, list):
+            raise ConfigInvariantError(
+                f"D17.2: segment {seg_name!r} affinity_matrix must be a list"
+            )
+        for entry in matrix:
+            if not isinstance(entry, (list, tuple)) or len(entry) != 3:
+                raise ConfigInvariantError(
+                    f"D17.2: segment {seg_name!r} affinity_matrix entry "
+                    f"{entry!r} must be [anchor, partner, boost]"
+                )
+            anchor, partner, boost = entry
+            if not (isinstance(anchor, str) and anchor
+                    and isinstance(partner, str) and partner):
+                raise ConfigInvariantError(
+                    f"D17.2: segment {seg_name!r} affinity_matrix entry "
+                    f"{entry!r} has an empty/non-string subcategory"
+                )
+            if not isinstance(boost, (int, float)) or isinstance(boost, bool) \
+                    or boost <= 0:
+                raise ConfigInvariantError(
+                    f"D17.2: segment {seg_name!r} affinity_matrix entry "
+                    f"{entry!r} must have a positive numeric boost"
+                )

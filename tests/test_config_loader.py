@@ -144,6 +144,22 @@ def test_load_fails_on_unknown_zone_in_placement(tmp_path: Path) -> None:
         load_config(tmp_path)
 
 
+# ----- D17.2 affinity_matrix validation -----------------------------
+
+def test_load_fails_on_negative_affinity_boost(tmp_path: Path) -> None:
+    """An affinity_matrix entry with a non-positive boost raises."""
+    _clone_config_with_affinity_override(tmp_path, "  - [BREAD, BUTTER, -2.0]")
+    with pytest.raises(ConfigInvariantError, match="affinity_matrix"):
+        load_config(tmp_path)
+
+
+def test_load_fails_on_malformed_affinity_entry(tmp_path: Path) -> None:
+    """An affinity_matrix entry that isn't [anchor, partner, boost] raises."""
+    _clone_config_with_affinity_override(tmp_path, "  - [BREAD, BUTTER]")
+    with pytest.raises(ConfigInvariantError, match="affinity_matrix"):
+        load_config(tmp_path)
+
+
 # ----- D12 forward consideration: dummy extra QSR merchant ----------
 
 def test_dummy_extra_qsr_merchant_loads(tmp_path: Path) -> None:
@@ -209,3 +225,13 @@ def _clone_config_with_merchant_zone_override(dest: Path, zone: str) -> None:
     text = kroger_path.read_text()
     text = text.replace("center_city: 1", f"{zone}: 1", 1)
     kroger_path.write_text(text)
+
+
+def _clone_config_with_affinity_override(dest: Path, replacement: str) -> None:
+    """Clone the config and replace the last grocery affinity entry with
+    a (typically malformed) ``replacement`` line."""
+    _clone_config(dest)
+    grocery_path = dest / "segments" / "grocery.yaml"
+    text = grocery_path.read_text()
+    text = text.replace("  - [BREAD, BUTTER, 2.0]", replacement, 1)
+    grocery_path.write_text(text)

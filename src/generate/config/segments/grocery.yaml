@@ -15,3 +15,29 @@ distance_decay:
 # D12 / D19.5: fixed catalog (versus ephemeral / rotating).
 catalog:
   model: fixed
+
+# D17.2: complementary-affinity matrix — [anchor_subcat, partner_subcat, boost].
+# When the anchor subcategory is already in a basket, the partner
+# subcategory's draw probability is multiplied by the boost factor.
+# Strong boosts (>=2.0) make T11 lift unambiguously detectable; weaker
+# pairs ride mission-driven co-occurrence.
+#
+# Boosts are tuned to keep P(partner|anchor) realistic (~0.45-0.55), NOT
+# to hit a target lift. PASTA<->SAUCE and MILK<->CEREAL sit at 5.0/4.0 so
+# the conditional lands in the mid-50s (lower read as "weak/mushy"; 60%+
+# reads as "planted"). DIAPERS/CHIPS/BREAD/FORMULA stay lower because
+# their rarer items compound boost better off a low base rate.
+#
+# Order is load-bearing for determinism: the engine walks segments in
+# sorted name order then this list in order, so keep entries stable.
+affinity_matrix:
+  - [PASTA, SAUCE, 5.0]
+  - [SAUCE, PASTA, 5.0]
+  - [CHIPS, SALSA, 3.0]
+  - [SALSA, CHIPS, 3.0]
+  - [DIAPERS, WIPES, 3.0]
+  - [WIPES, DIAPERS, 3.0]
+  - [DIAPERS, FORMULA, 2.2]
+  - [MILK, CEREAL, 4.0]
+  - [CEREAL, MILK, 4.0]
+  - [BREAD, BUTTER, 2.0]

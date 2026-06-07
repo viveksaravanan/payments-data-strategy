@@ -25,7 +25,7 @@ import hashlib
 import numpy as np
 import pandas as pd
 
-from src.generate.config.loader import Config
+from src.generate.config.loader import Config, ConfigInvariantError
 
 
 # ----- D17.1 missions: per-segment mission menu --------------------
@@ -183,36 +183,9 @@ _SEGMENT_ARCHETYPES = {
 }
 
 
-# ----- D17.2 designed affinity pairs --------------------------------
-# Subcategory-level (subcat_A → subcat_B, boost_factor).
-# When subcat_A is already in the basket, subcat_B's draw probability
-# is multiplied by boost_factor. Strong boosts (≥2.0) make T11 lift
-# unambiguously detectable; weaker pairs ride the mission-driven
-# co-occurrence.
-
-# Boost factors tuned to keep P(B|A) realistic (~0.45-0.55) rather
-# than to hit a target lift. At the 3.5× boost first set, PASTA→SAUCE
-# and MILK→CEREAL landed at conditional ~0.43 (lift ~3.2x and ~2.9x)
-# — defensible but in the "weak, mushy" zone for the demo cross-sell
-# story. Bumped to 5.0× and 4.0× respectively so the conditional
-# lands in the realistic mid-50s without crossing into "60%+ of
-# pasta baskets contain sauce" territory (which reads as planted).
-#
-# Other pairs untouched — DIAPERS / CHIPS / BREAD / FORMULA each
-# already land in vivid+realistic territory because their items are
-# rarer (boost compounds better with low base rate).
-_AFFINITY_PAIRS: list[tuple[str, str, float]] = [
-    ("PASTA",   "SAUCE",   5.0),
-    ("SAUCE",   "PASTA",   5.0),
-    ("CHIPS",   "SALSA",   3.0),
-    ("SALSA",   "CHIPS",   3.0),
-    ("DIAPERS", "WIPES",   3.0),
-    ("WIPES",   "DIAPERS", 3.0),
-    ("DIAPERS", "FORMULA", 2.2),
-    ("MILK",    "CEREAL",  4.0),
-    ("CEREAL",  "MILK",    4.0),
-    ("BREAD",   "BUTTER",  2.0),
-]
+# D17.2 designed affinity pairs are now config-driven — each segment's
+# ``affinity_matrix`` in ``config/segments/{segment}.yaml`` lists
+# [anchor_subcat, partner_subcat, boost]. See ``_build_affinity_lookup``.
 
 
 # Default staple count by segment (D16.2 / D17.3).
@@ -336,12 +309,40 @@ def _build_sku_pool(catalog: pd.DataFrame) -> dict[tuple[str, str], pd.DataFrame
     return out
 
 
-def _build_affinity_lookup() -> dict[str, list[tuple[str, float]]]:
-    """{anchor_subcat: [(partner_subcat, boost), ...]}."""
+def _build_affinity_lookup(cfg: Config) -> dict[str, list[tuple[str, float]]]:
+    """{anchor_subcat: [(partner_subcat, boost), ...]} sourced from each
+    segment's ``affinity_matrix`` (D17.2, config-driven).
+
+    Segments are walked in sorted name order and entries in declared list
+    order, so the lookup — and therefore the basket draw sequence — is
+    deterministic. The loader (``ConfigInvariantError``) has already
+    checked each entry is well-formed with a positive boost.
+    """
     out: dict[str, list[tuple[str, float]]] = {}
-    for anchor, partner, boost in _AFFINITY_PAIRS:
-        out.setdefault(anchor, []).append((partner, boost))
+    for seg_name in sorted(cfg.segments):
+        for anchor, partner, boost in cfg.segments[seg_name].get("affinity_matrix") or []:
+            out.setdefault(str(anchor), []).append((str(partner), float(boost)))
     return out
+
+
+def _assert_affinity_subcats_exist(
+    affinity: dict[str, list[tuple[str, float]]],
+    catalog: pd.DataFrame,
+) -> None:
+    """Fail loudly if an ``affinity_matrix`` entry names a subcategory the
+    catalog doesn't contain. A typo'd subcat would otherwise silently
+    no-op — the boost would never fire — and quietly erode the T11
+    cross-sell lift the matrix exists to plant."""
+    valid = set(catalog["subcategory"].unique())
+    referenced = set(affinity) | {
+        partner for partners in affinity.values() for partner, _ in partners
+    }
+    missing = sorted(referenced - valid)
+    if missing:
+        raise ConfigInvariantError(
+            f"D17.2: affinity_matrix references subcategories absent from "
+            f"the catalog: {missing}"
+        )
 
 
 # ----- mission + archetype + size -----------------------------------
@@ -409,7 +410,8 @@ def build_basket_items(
     a2_boost_lookup = a2_boost_lookup or {}
     a3_basket_mult_lookup = a3_basket_mult_lookup or {}
     sku_pool = _build_sku_pool(catalog)
-    affinity = _build_affinity_lookup()
+    affinity = _build_affinity_lookup(cfg)
+    _assert_affinity_subcats_exist(affinity, catalog)
     cust_idx = customers.set_index("card_id")
 
     # Build per-card staples per segment (deterministic, independent

@@ -19,8 +19,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.generate.config.loader import load_config
-from src.generate.engine.baskets import build_basket_items
+from src.generate.config.loader import ConfigInvariantError, load_config
+from src.generate.engine.baskets import (
+    _assert_affinity_subcats_exist,
+    _build_affinity_lookup,
+    build_basket_items,
+)
 from src.generate.engine.catalog import build_catalog
 from src.generate.engine.customers import build_customers
 from src.generate.engine.geography import build_stores, build_zones
@@ -107,6 +111,48 @@ def test_canonical_ids_shared_across_grocers(catalog) -> None:
     # (Wave 1 Stage 4.5 ships full assortment; D19.4 differentiation
     # lands at 4.7).
     assert (by_canon == 3).mean() > 0.95
+
+
+def test_canonical_id_maps_to_single_product(catalog) -> None:
+    """Each canonical_id resolves to exactly one (category, subcategory).
+    Complements ``test_canonical_ids_shared_across_grocers``: that one
+    checks the same id reaches all 3 grocers; this one checks the id is
+    an unambiguous product key (no id reused for two different products),
+    which is what T11/T17 cross-merchant analysis silently depends on."""
+    pairs = catalog.groupby("canonical_id")[["category", "subcategory"]].nunique()
+    bad = pairs[(pairs["category"] > 1) | (pairs["subcategory"] > 1)]
+    assert bad.empty, f"canonical_ids mapping to >1 product: {bad.index.tolist()[:5]}"
+
+
+# ----- D17.2 affinity matrix (config-driven) ------------------------
+
+def test_affinity_matrix_is_config_driven(cfg) -> None:
+    """The affinity lookup is built from each segment's YAML
+    affinity_matrix (no hard-coded module constant), walked in sorted
+    segment order then declared list order for determinism."""
+    lookup = _build_affinity_lookup(cfg)
+    assert lookup == {
+        "PASTA":   [("SAUCE", 5.0)],
+        "SAUCE":   [("PASTA", 5.0)],
+        "CHIPS":   [("SALSA", 3.0)],
+        "SALSA":   [("CHIPS", 3.0)],
+        "DIAPERS": [("WIPES", 3.0), ("FORMULA", 2.2)],
+        "WIPES":   [("DIAPERS", 3.0)],
+        "MILK":    [("CEREAL", 4.0)],
+        "CEREAL":  [("MILK", 4.0)],
+        "BREAD":   [("BUTTER", 2.0)],
+    }
+
+
+def test_affinity_subcat_guard_raises_on_typo(catalog) -> None:
+    """A typo'd affinity subcategory (absent from the catalog) is caught
+    loudly at build time instead of silently no-op'ing the boost."""
+    with pytest.raises(ConfigInvariantError, match="absent from"):
+        _assert_affinity_subcats_exist(
+            {"NOTASUBCAT": [("ALSOBOGUS", 2.0)]}, catalog
+        )
+    # The real configured matrix must pass cleanly.
+    _assert_affinity_subcats_exist(_build_affinity_lookup(load_config(CONFIG_ROOT)), catalog)
 
 
 # ----- basket structure ---------------------------------------------
