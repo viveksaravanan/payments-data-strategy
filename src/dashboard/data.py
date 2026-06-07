@@ -242,17 +242,6 @@ def stores_for(merchant_id: str) -> pd.DataFrame:
         return c.execute(sql, [merchant_id]).df()
 
 
-@st.cache_data(ttl=3600)
-def categories_for(merchant_id: str) -> list[str]:
-    sql = """
-    SELECT DISTINCT category FROM tenant_products
-    WHERE merchant_id = ? ORDER BY category
-    """
-    with _conn() as c:
-        df = c.execute(sql, [merchant_id]).df()
-    return df["category"].tolist()
-
-
 # Phase 4.4e removed ``kpi_block`` — replaced by ``kpi_strip`` (Phase
 # 4.4a). The v2.5 ``render_kpi_row`` shim now delegates directly to
 # ``render_kpi_strip``.
@@ -2117,48 +2106,6 @@ _QSR_HOUR_TO_DAYPART: dict[int, str] = {
 }
 _QSR_DAYPART_ORDER = [dp for dp, _ in _QSR_DAYPARTS]
 
-_DAY_OF_WEEK_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-_DOW_FROM_SQLITE = {
-    "1": "Mon", "2": "Tue", "3": "Wed", "4": "Thu",
-    "5": "Fri", "6": "Sat", "0": "Sun",
-}
-
-
-def _full_weeks(merchant_id: str, filters: dict | None = None) -> list[str]:
-    """Return the 12 full Mon-Sun week-start ISO dates that the
-    A1/A2/A3 anomaly questions also use."""
-    # Filter accepted but not applicable to this helper.
-    _ = filters
-    return [
-        "2026-03-02", "2026-03-09", "2026-03-16", "2026-03-23",
-        "2026-03-30", "2026-04-06", "2026-04-13", "2026-04-20",
-        "2026-04-27", "2026-05-04", "2026-05-11", "2026-05-18",
-    ]
-
-
-# ---------------------------------------------------------------------------
-# T-P1 — Daypart × week mean ticket trends
-# ---------------------------------------------------------------------------
-
-
-
-
-
-# ---------------------------------------------------------------------------
-# T-P2 — Per-category weekly mean unit price
-# ---------------------------------------------------------------------------
-
-
-
-
-
-# ---------------------------------------------------------------------------
-# T-P3 — Per-store mean ticket distribution
-# ---------------------------------------------------------------------------
-
-
-
-
 
 # ---------------------------------------------------------------------------
 # T-A1 / R-A1 — Per-store recent-vs-baseline (no peer column)
@@ -2324,53 +2271,6 @@ def _category_share_own_cached(merchant_id: str, top_n: int, key: tuple) -> dict
         "top3_names": top3_names,
         "top3_pct":   top3_pct,
     }
-
-
-# ---------------------------------------------------------------------------
-# T-D2 / R-D2 — Category share trajectory
-# ---------------------------------------------------------------------------
-
-
-
-
-
-# ---------------------------------------------------------------------------
-# T-D3 / R-D3 — Recent-week revenue change decomposition
-# ---------------------------------------------------------------------------
-
-_D_TIE_PP = 2.0  # same threshold as D7 cross_merchant
-
-
-
-
-
-
-# ---------------------------------------------------------------------------
-# Phase 4.3b — TJX-specific helpers
-# ---------------------------------------------------------------------------
-
-# Ticket bands for R-P3. Ordered ascending so the bar chart reads
-# "smallest band → largest band" top-to-bottom (autorange="reversed"
-# in the helper flips this so smallest sits at the top).
-_TJX_TICKET_BANDS: list[tuple[str, float, float | None]] = [
-    ("$0-50",     0.0,    50.0),
-    ("$50-100",   50.0,   100.0),
-    ("$100-200",  100.0,  200.0),
-    ("$200-500",  200.0,  500.0),
-    ("$500+",     500.0,  None),
-]
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # ---------------------------------------------------------------------------

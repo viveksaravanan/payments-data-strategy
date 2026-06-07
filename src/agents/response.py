@@ -149,15 +149,6 @@ class MergeGrainError(ValueError):
     category column to roll up on)."""
 
 
-class MergeUnitMismatchError(ValueError):
-    """Raised when ``own_value`` and ``peer_benchmark`` are in
-    incompatible units / orders of magnitude after a merge — e.g.
-    raw dollar revenue subtracted from a unitless index. The contract
-    assumed the model would self-police column-unit comparability and
-    it doesn't reliably. Catching it here lets the specialist surface
-    a structured tool error back to the model on the next turn."""
-
-
 def _maybe_coerce_dates(
     own_df: pd.DataFrame,
     peer_df: pd.DataFrame,

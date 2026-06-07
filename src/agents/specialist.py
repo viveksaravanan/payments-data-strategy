@@ -56,7 +56,6 @@ from src.agents.context import MerchantContext
 from src.agents.response import (
     AgentResponse,
     MergeGrainError,
-    MergeUnitMismatchError,
     SqlSurface,
     Telemetry,
     ViewerScopingError,

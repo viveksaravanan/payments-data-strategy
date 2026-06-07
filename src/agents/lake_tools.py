@@ -642,12 +642,6 @@ def business_fallback() -> str:
     return _BUSINESS_FALLBACK
 
 
-# Backwards-compat alias for the prior fallback name. Removing the
-# duplicate symbol later is fine; the canonical name is
-# ``business_fallback()``.
-_NARRATION_FALLBACK = _BUSINESS_FALLBACK
-
-
 def sanitize_prose(prose: str) -> str:
     """Strip stray Anthropic XML-style tool-use markup (and any
     trailing chart-intent / parameter blob) from the model's prose

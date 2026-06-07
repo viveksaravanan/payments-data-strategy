@@ -82,12 +82,20 @@ chart layer was removed.
 
 ## Known follow-ups
 
-- **Dead-code sweep:** ~19 `data.py` functions (+ their `_cached` helpers) that
-  fed the removed per-pill charts are now unreferenced (verified) — e.g.
-  `uc_decline_trajectory`, `category_peer_pricing_gaps`, `revenue_gap_decomposition`,
-  `expansion_opportunity`, the TBL/TJX `*_trends`/`*_heatmap`/`ticket_band_*`
-  helpers. Harmless (uncalled) but should be deleted in a focused cleanup.
-- **Streaming:** `specialist.answer`'s `on_token` is unwired; the chat panel's
-  streaming placeholder accumulates tokens that never arrive. Optional Wave 4 polish.
+- **Dead-code sweep — DONE.** The per-pill-chart helpers were removed in two passes:
+  the bulk (`uc_decline_trajectory`, `category_peer_pricing_gaps`,
+  `revenue_gap_decomposition`, `expansion_opportunity`, the TBL/TJX trends/heatmap/
+  ticket-band helpers) in an earlier cleanup, and the stragglers (`categories_for`,
+  `_full_weeks`, the `_TJX_TICKET_BANDS` / `_D_TIE_PP` / SQLite-DOW constants, plus the
+  empty T-P/T-D section headers) in the holistic-improvements sweep. Each was verified
+  zero-reference before deletion.
+- **Streaming — DECIDED, deferred to Wave 4.1.** `specialist.answer`'s `on_token` is an
+  *intentional* wire-up point, not dead code: the parameter is threaded (Optional,
+  defaulted to `None`) through `dispatch.py` → `orchestrator.py` → `specialist.py:251`
+  (documented `# noqa: ARG002` "intentionally unwired pending Wave 4"), and the chat
+  panel's `_render_live_turn` already carries the client-side display logic
+  (`_streaming_cut_index`). Final-answer token streaming lights up when `specialist.answer`
+  emits tokens in Wave 4.1; until then the live **progress-message** path is what renders.
+  Kept as scaffolding by design — do not remove.
 - **Improvement (deferred):** surface the map's computed `peer_signal`
   (market-wide vs operational) in the Card 3.1 tooltip.

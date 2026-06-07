@@ -29,10 +29,7 @@ import pytest
 from src.agents.context import MerchantContext
 from src.agents.lake_tools import LakeToolError, sanitize_prose
 from src.agents.pricing import PricingSpecialist
-from src.agents.response import (
-    MergeUnitMismatchError,
-    merge_own_and_peer,
-)
+from src.agents.response import merge_own_and_peer
 
 
 # ---------------------------------------------------------------------
