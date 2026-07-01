@@ -44,7 +44,7 @@ seasonality:
     - name: easter
       start_date: 2026-03-30
       end_date:   2026-04-05
-      trip_mult: 1.08
+      trip_mult: 1.16
       category_boost: 1.25
       categories: [BAKING, MEAT, DAIRY, SNACKS]   # ham/eggs/baking/candy
     - name: memorial_day
