@@ -1,0 +1,739 @@
+# Grocery controlled vocabulary (datamodel-v2, curated-combinatorial).
+# Source of truth for targets: docs/MERCHANT_PROFILES.md §A4/§A5/§A6/§A12.
+#
+# The authoring script (scripts/build_catalog.py) deterministically
+# expands each subcategory into `count` canonical product concepts by
+# cycling (type x size x brand), marks `pl_share` of them as private
+# label (distinct SKUs), assigns a carriage role, then per banner:
+#   - core / mainstream roles: carried by all three grocers
+#   - premium role: ACM-heavy (affluent tail), KRG partial, WDX light
+#   - value  role: WDX-heavy (deep-value tail), KRG partial, ACM light
+# so per-banner assortments land at KRG ~1350 / ACM ~1250 / WDX ~1050
+# (§A8) — the fullest-to-leanest ordering, not uniform.
+#
+# DUAL TAXONOMY (§A12): every row carries a shared `functional_*`
+# triple (the normalized comparison key) AND per-banner `merchant_*`
+# labels that diverge (each chain's own item master). Functional is
+# shared; merchant labels differ at department/category level here.
+#
+# PRICING (§A7/§C7): shelf_price is baked = anchor x banner-positioning
+# x PL-factor x KVI-tight/specialty-wide x per-SKU competitive index.
+# No transaction-time modifiers (flat pricing).
+
+pl_brands:
+  KRG: "Kroger"
+  ACM: "Signature SELECT"
+  WDX: "SE Grocers"
+
+# Real national brands drawn per category (cycled deterministically).
+brand_pools:
+  DAIRY:      ["Horizon", "Fairlife", "Organic Valley", "Land O'Lakes", "Chobani", "Yoplait", "Sargento", "Tillamook", "Prairie Farms"]
+  BAKERY:     ["Nature's Own", "Sara Lee", "Pepperidge Farm", "Thomas'", "Wonder", "Dave's Killer Bread", "Martin's"]
+  PRODUCE:    ["Dole", "Driscoll's", "Fresh Express", "Earthbound Farm", "Cuties", "Bolthouse"]
+  MEAT:       ["Tyson", "Perdue", "Oscar Mayer", "Hillshire Farm", "Applegate", "Butterball", "Johnsonville"]
+  FROZEN:     ["Stouffer's", "DiGiorno", "Ben & Jerry's", "Häagen-Dazs", "Birds Eye", "Totino's", "Amy's", "Talenti"]
+  PANTRY:     ["Barilla", "Prego", "Progresso", "Campbell's", "Ragu", "Quaker", "Kellogg's", "Folgers", "Rao's", "Bush's"]
+  SNACKS:     ["Lay's", "Doritos", "Tostitos", "Oreo", "Ritz", "Cheez-It", "Pringles", "Nabisco", "Frito-Lay", "Hershey's"]
+  BEVERAGES:  ["Coca-Cola", "Pepsi", "Gatorade", "Tropicana", "Lipton", "Red Bull", "Simply", "Dasani", "Minute Maid"]
+  HOUSEHOLD:  ["Tide", "Bounty", "Charmin", "Clorox", "Dawn", "Glad", "Lysol", "Ziploc"]
+  PERSONAL:   ["Colgate", "Dove", "Pantene", "Old Spice", "Crest", "Gillette", "Secret"]
+  BABY:       ["Pampers", "Huggies", "Gerber", "Enfamil", "Similac"]
+  PET:        ["Purina", "Blue Buffalo", "Pedigree", "Friskies", "Meow Mix"]
+
+# functional_department -> merchant_department label per banner, then
+# categories -> subcategories. `count` = canonical concepts to mint.
+# role: core|mainstream|premium|value.  kvi/specialty: pricing spread.
+departments:
+
+  - functional_department: "Dairy & Eggs"
+    merchant_department: { KRG: "Dairy", ACM: "Dairy & Eggs", WDX: "Refrigerated" }
+    brand_key: DAIRY
+    categories:
+      - functional_category: "Milk"
+        merchant_category: { KRG: "Milk", ACM: "White Milk", WDX: "Milk" }
+        subcategories:
+          - name: "2% Reduced-Fat Milk"
+            anchor: 3.79
+            kvi: true
+            role: core
+            pl_share: 0.5
+            noun: "Milk"
+            types: ["2% Reduced Fat"]
+            sizes: ["Half Gallon", "1 Gallon"]
+            count: 6
+          - name: "Whole Milk"
+            anchor: 3.89
+            kvi: true
+            role: core
+            pl_share: 0.5
+            noun: "Milk"
+            types: ["Whole", "Vitamin D Whole"]
+            sizes: ["Half Gallon", "1 Gallon"]
+            count: 6
+          - name: "Skim & Low-Fat Milk"
+            anchor: 3.69
+            kvi: true
+            role: mainstream
+            pl_share: 0.5
+            noun: "Milk"
+            types: ["Fat Free Skim", "1% Lowfat"]
+            sizes: ["Half Gallon", "1 Gallon"]
+            count: 5
+          - name: "Plant-Based Milk"
+            anchor: 4.49
+            specialty: true
+            role: premium
+            pl_share: 0.3
+            noun: "Milk"
+            types: ["Almond", "Oat", "Soy", "Lactose-Free"]
+            sizes: ["Half Gallon"]
+            count: 10
+      - functional_category: "Cheese"
+        merchant_category: { KRG: "Cheese", ACM: "Cheese & Deli", WDX: "Dairy Cheese" }
+        subcategories:
+          - name: "Shredded Cheese"
+            anchor: 4.29
+            role: mainstream
+            pl_share: 0.4
+            noun: "Shredded Cheese"
+            types: ["Cheddar", "Mozzarella", "Mexican Blend", "Italian Blend"]
+            sizes: ["8 oz", "16 oz"]
+            count: 12
+          - name: "Sliced Cheese"
+            anchor: 3.99
+            role: mainstream
+            pl_share: 0.4
+            noun: "Sliced Cheese"
+            types: ["American", "Provolone", "Swiss"]
+            sizes: ["8 oz", "12 oz"]
+            count: 9
+          - name: "Specialty Cheese"
+            anchor: 6.49
+            specialty: true
+            role: premium
+            pl_share: 0.15
+            noun: "Cheese"
+            types: ["Brie", "Gouda", "Feta", "Goat", "Parmesan Wedge"]
+            sizes: ["6 oz", "8 oz"]
+            count: 12
+      - functional_category: "Yogurt"
+        merchant_category: { KRG: "Yogurt", ACM: "Yogurt & Cultured", WDX: "Yogurt" }
+        subcategories:
+          - name: "Greek Yogurt"
+            anchor: 1.29
+            role: mainstream
+            pl_share: 0.35
+            noun: "Greek Yogurt"
+            types: ["Plain", "Vanilla", "Strawberry", "Blueberry", "Mixed Berry"]
+            sizes: ["5.3 oz", "32 oz"]
+            count: 12
+          - name: "Regular Yogurt"
+            anchor: 0.89
+            role: mainstream
+            pl_share: 0.4
+            noun: "Yogurt"
+            types: ["Strawberry", "Peach", "Vanilla"]
+            sizes: ["6 oz", "32 oz"]
+            count: 8
+      - functional_category: "Eggs"
+        merchant_category: { KRG: "Eggs", ACM: "Eggs", WDX: "Eggs" }
+        subcategories:
+          - name: "Grade A Eggs"
+            anchor: 3.49
+            kvi: true
+            role: core
+            pl_share: 0.55
+            noun: "Eggs"
+            types: ["Large Grade A", "Extra Large Grade A", "Cage-Free Large"]
+            sizes: ["Dozen", "18 ct"]
+            count: 7
+          - name: "Specialty Eggs"
+            anchor: 5.49
+            specialty: true
+            role: premium
+            pl_share: 0.25
+            noun: "Eggs"
+            types: ["Organic", "Pasture-Raised", "Omega-3"]
+            sizes: ["Dozen"]
+            count: 5
+      - functional_category: "Butter & Margarine"
+        merchant_category: { KRG: "Butter", ACM: "Butter & Spreads", WDX: "Butter" }
+        subcategories:
+          - name: "Butter"
+            anchor: 4.49
+            kvi: true
+            role: core
+            pl_share: 0.45
+            noun: "Butter"
+            types: ["Salted", "Unsalted"]
+            sizes: ["16 oz"]
+            count: 6
+          - name: "Margarine & Spreads"
+            anchor: 3.29
+            role: value
+            pl_share: 0.45
+            noun: "Spread"
+            types: ["Original", "Light", "Olive Oil"]
+            sizes: ["15 oz", "45 oz"]
+            count: 6
+
+  - functional_department: "Produce"
+    merchant_department: { KRG: "Produce", ACM: "Fresh Produce", WDX: "Produce" }
+    brand_key: PRODUCE
+    categories:
+      - functional_category: "Fresh Fruit"
+        merchant_category: { KRG: "Fruit", ACM: "Fresh Fruit", WDX: "Fruit" }
+        subcategories:
+          - name: "Bananas & Everyday Fruit"
+            anchor: 2.49
+            kvi: true
+            role: core
+            pl_share: 0.1
+            noun: "Fruit"
+            types: ["Bananas", "Apples Gala", "Navel Oranges", "Grapes"]
+            sizes: ["per lb", "3 lb bag"]
+            count: 10
+          - name: "Berries"
+            anchor: 3.99
+            role: mainstream
+            pl_share: 0.1
+            noun: "Berries"
+            types: ["Strawberries", "Blueberries", "Raspberries", "Blackberries"]
+            sizes: ["1 pint", "2 lb"]
+            count: 8
+          - name: "Organic & Specialty Fruit"
+            anchor: 4.99
+            specialty: true
+            role: premium
+            pl_share: 0.15
+            noun: "Fruit"
+            types: ["Organic Apples", "Avocado", "Mango", "Pineapple"]
+            sizes: ["each", "per lb"]
+            count: 10
+      - functional_category: "Fresh Vegetables"
+        merchant_category: { KRG: "Vegetables", ACM: "Fresh Vegetables", WDX: "Vegetables" }
+        subcategories:
+          - name: "Everyday Vegetables"
+            anchor: 2.29
+            kvi: true
+            role: core
+            pl_share: 0.1
+            noun: "Vegetables"
+            types: ["Roma Tomatoes", "Yellow Onions", "Russet Potatoes", "Carrots", "Celery"]
+            sizes: ["per lb", "2 lb bag"]
+            count: 12
+          - name: "Salad & Greens"
+            anchor: 3.49
+            role: mainstream
+            pl_share: 0.2
+            noun: "Salad"
+            types: ["Romaine", "Spring Mix", "Caesar Kit", "Spinach"]
+            sizes: ["5 oz", "12 oz"]
+            count: 9
+          - name: "Organic Vegetables"
+            anchor: 3.99
+            specialty: true
+            role: premium
+            pl_share: 0.2
+            noun: "Vegetables"
+            types: ["Organic Kale", "Organic Broccoli", "Organic Peppers"]
+            sizes: ["per lb", "bunch"]
+            count: 8
+
+  - functional_department: "Meat & Seafood"
+    merchant_department: { KRG: "Meat & Seafood", ACM: "Meat & Seafood", WDX: "Meat" }
+    brand_key: MEAT
+    categories:
+      - functional_category: "Beef"
+        merchant_category: { KRG: "Beef", ACM: "Beef", WDX: "Fresh Beef" }
+        subcategories:
+          - name: "Ground Beef"
+            anchor: 5.99
+            kvi: true
+            role: core
+            pl_share: 0.3
+            noun: "Ground Beef"
+            types: ["80/20 Ground", "93/7 Lean Ground"]
+            sizes: ["1 lb", "3 lb"]
+            count: 6
+          - name: "Beef Steaks"
+            anchor: 11.99
+            specialty: true
+            role: premium
+            pl_share: 0.1
+            noun: "Steak"
+            types: ["Ribeye", "NY Strip", "Sirloin", "Filet Mignon"]
+            sizes: ["per lb"]
+            count: 9
+      - functional_category: "Poultry"
+        merchant_category: { KRG: "Chicken", ACM: "Poultry", WDX: "Chicken" }
+        subcategories:
+          - name: "Chicken"
+            anchor: 4.99
+            kvi: true
+            role: core
+            pl_share: 0.25
+            noun: "Chicken"
+            types: ["Boneless Skinless Breast", "Thighs", "Drumsticks", "Whole Chicken"]
+            sizes: ["per lb", "family pack"]
+            count: 9
+      - functional_category: "Pork"
+        merchant_category: { KRG: "Pork", ACM: "Pork", WDX: "Pork" }
+        subcategories:
+          - name: "Pork Cuts"
+            anchor: 4.49
+            role: mainstream
+            pl_share: 0.2
+            noun: "Pork"
+            types: ["Chops", "Tenderloin", "Ribs"]
+            sizes: ["per lb"]
+            count: 6
+          - name: "Bacon & Sausage"
+            anchor: 5.99
+            role: mainstream
+            pl_share: 0.3
+            noun: "Bacon"
+            types: ["Bacon", "Breakfast Sausage", "Italian Sausage"]
+            sizes: ["12 oz", "16 oz"]
+            count: 8
+      - functional_category: "Seafood"
+        merchant_category: { KRG: "Seafood", ACM: "Fresh Seafood", WDX: "Seafood" }
+        subcategories:
+          - name: "Fish & Shellfish"
+            anchor: 9.99
+            specialty: true
+            role: premium
+            pl_share: 0.15
+            noun: "Seafood"
+            types: ["Salmon Fillet", "Shrimp", "Tilapia", "Cod"]
+            sizes: ["per lb", "12 oz"]
+            count: 9
+      - functional_category: "Deli"
+        merchant_category: { KRG: "Deli", ACM: "Deli", WDX: "Deli" }
+        subcategories:
+          - name: "Lunch Meat"
+            anchor: 5.49
+            role: mainstream
+            pl_share: 0.3
+            noun: "Lunch Meat"
+            types: ["Turkey", "Ham", "Roast Beef", "Salami"]
+            sizes: ["9 oz", "16 oz"]
+            count: 8
+
+  - functional_department: "Dry Grocery"
+    merchant_department: { KRG: "Grocery", ACM: "Center Store", WDX: "Grocery" }
+    brand_key: PANTRY
+    categories:
+      - functional_category: "Pasta & Sauce"
+        merchant_category: { KRG: "Pasta", ACM: "Pasta & Italian", WDX: "Pasta" }
+        subcategories:
+          - name: "Pasta"
+            anchor: 1.99
+            kvi: true
+            role: core
+            pl_share: 0.45
+            noun: "Pasta"
+            types: ["Spaghetti", "Penne", "Rotini", "Elbow Macaroni", "Lasagna"]
+            sizes: ["16 oz"]
+            count: 10
+          - name: "Pasta Sauce"
+            anchor: 3.49
+            role: core
+            pl_share: 0.35
+            noun: "Sauce"
+            types: ["Marinara", "Tomato Basil", "Alfredo", "Meat Sauce"]
+            sizes: ["24 oz"]
+            count: 12
+      - functional_category: "Canned & Packaged"
+        merchant_category: { KRG: "Canned Goods", ACM: "Canned & Jarred", WDX: "Canned Goods" }
+        subcategories:
+          - name: "Canned Vegetables & Beans"
+            anchor: 1.29
+            role: value
+            pl_share: 0.5
+            noun: "Canned"
+            types: ["Black Beans", "Corn", "Green Beans", "Diced Tomatoes", "Chickpeas"]
+            sizes: ["15 oz"]
+            count: 14
+          - name: "Canned Soup"
+            anchor: 2.29
+            role: mainstream
+            pl_share: 0.35
+            noun: "Soup"
+            types: ["Chicken Noodle", "Tomato", "Vegetable", "Cream of Mushroom"]
+            sizes: ["10.5 oz", "18 oz"]
+            count: 11
+      - functional_category: "Rice & Grains"
+        merchant_category: { KRG: "Rice & Grains", ACM: "Rice & Grains", WDX: "Rice & Beans" }
+        subcategories:
+          - name: "Rice & Grains"
+            anchor: 3.49
+            role: mainstream
+            pl_share: 0.4
+            noun: "Rice"
+            types: ["White Rice", "Brown Rice", "Jasmine Rice", "Quinoa"]
+            sizes: ["2 lb", "5 lb"]
+            count: 9
+      - functional_category: "Breakfast & Cereal"
+        merchant_category: { KRG: "Cereal", ACM: "Breakfast", WDX: "Cereal" }
+        subcategories:
+          - name: "Cereal"
+            anchor: 4.29
+            role: mainstream
+            pl_share: 0.35
+            noun: "Cereal"
+            types: ["Toasted Oats", "Corn Flakes", "Raisin Bran", "Frosted Flakes", "Granola"]
+            sizes: ["12 oz", "18 oz"]
+            count: 14
+          - name: "Oatmeal & Hot Cereal"
+            anchor: 4.49
+            role: mainstream
+            pl_share: 0.4
+            noun: "Oatmeal"
+            types: ["Old Fashioned Oats", "Quick Oats", "Instant Oatmeal"]
+            sizes: ["18 oz", "42 oz"]
+            count: 7
+      - functional_category: "Coffee & Tea"
+        merchant_category: { KRG: "Coffee", ACM: "Coffee & Tea", WDX: "Coffee" }
+        subcategories:
+          - name: "Coffee"
+            anchor: 8.99
+            specialty: true
+            role: premium
+            pl_share: 0.3
+            noun: "Coffee"
+            types: ["Ground Medium Roast", "Dark Roast", "K-Cups", "Whole Bean"]
+            sizes: ["12 oz", "24 oz"]
+            count: 11
+      - functional_category: "Baking"
+        merchant_category: { KRG: "Baking", ACM: "Baking Needs", WDX: "Baking" }
+        subcategories:
+          - name: "Baking Staples"
+            anchor: 3.29
+            role: value
+            pl_share: 0.5
+            noun: "Baking"
+            types: ["All-Purpose Flour", "Granulated Sugar", "Brown Sugar", "Baking Soda", "Cake Mix"]
+            sizes: ["4 lb", "2 lb", "1 lb"]
+            count: 12
+      - functional_category: "Condiments"
+        merchant_category: { KRG: "Condiments", ACM: "Condiments & Dressings", WDX: "Condiments" }
+        subcategories:
+          - name: "Condiments & Dressings"
+            anchor: 3.49
+            role: mainstream
+            pl_share: 0.4
+            noun: "Condiment"
+            types: ["Ketchup", "Mayonnaise", "Mustard", "Ranch Dressing", "BBQ Sauce", "Italian Dressing"]
+            sizes: ["16 oz", "20 oz"]
+            count: 13
+
+  - functional_department: "Snacks & Candy"
+    merchant_department: { KRG: "Snacks", ACM: "Snacks & Candy", WDX: "Snacks" }
+    brand_key: SNACKS
+    categories:
+      - functional_category: "Salty Snacks"
+        merchant_category: { KRG: "Chips & Snacks", ACM: "Salty Snacks", WDX: "Chips" }
+        subcategories:
+          - name: "Potato & Tortilla Chips"
+            anchor: 4.49
+            kvi: true
+            role: core
+            pl_share: 0.25
+            noun: "Chips"
+            types: ["Potato Chips", "Tortilla Chips", "Kettle Chips", "Ruffles"]
+            sizes: ["8 oz", "13 oz"]
+            count: 12
+          - name: "Crackers"
+            anchor: 3.49
+            role: mainstream
+            pl_share: 0.35
+            noun: "Crackers"
+            types: ["Saltines", "Butter Crackers", "Cheese Crackers", "Graham"]
+            sizes: ["12 oz", "16 oz"]
+            count: 9
+          - name: "Salsa & Dips"
+            anchor: 3.99
+            role: mainstream
+            pl_share: 0.3
+            noun: "Salsa"
+            types: ["Mild Salsa", "Medium Salsa", "Queso", "Guacamole"]
+            sizes: ["16 oz"]
+            count: 8
+          - name: "Nuts & Trail Mix"
+            anchor: 6.99
+            specialty: true
+            role: premium
+            pl_share: 0.3
+            noun: "Nuts"
+            types: ["Mixed Nuts", "Almonds", "Cashews", "Trail Mix"]
+            sizes: ["10 oz", "16 oz"]
+            count: 8
+      - functional_category: "Cookies & Candy"
+        merchant_category: { KRG: "Cookies & Candy", ACM: "Sweets", WDX: "Candy" }
+        subcategories:
+          - name: "Cookies"
+            anchor: 3.99
+            role: mainstream
+            pl_share: 0.35
+            noun: "Cookies"
+            types: ["Chocolate Chip", "Sandwich Cookies", "Vanilla Wafers"]
+            sizes: ["13 oz", "18 oz"]
+            count: 9
+          - name: "Candy & Chocolate"
+            anchor: 3.49
+            role: mainstream
+            pl_share: 0.15
+            noun: "Candy"
+            types: ["Chocolate Bars", "Gummy Candy", "Fun Size Mix", "Hard Candy"]
+            sizes: ["10 oz", "18 oz"]
+            count: 10
+
+  - functional_department: "Beverages"
+    merchant_department: { KRG: "Beverages", ACM: "Beverages", WDX: "Beverages" }
+    brand_key: BEVERAGES
+    categories:
+      - functional_category: "Soft Drinks"
+        merchant_category: { KRG: "Soda", ACM: "Soft Drinks", WDX: "Soda" }
+        subcategories:
+          - name: "Soda"
+            anchor: 5.99
+            kvi: true
+            role: core
+            pl_share: 0.2
+            noun: "Soda"
+            types: ["Cola", "Diet Cola", "Lemon-Lime", "Root Beer", "Ginger Ale"]
+            sizes: ["12-pack cans", "2 Liter"]
+            count: 14
+      - functional_category: "Water & Sports"
+        merchant_category: { KRG: "Water", ACM: "Water & Sports Drinks", WDX: "Water" }
+        subcategories:
+          - name: "Water"
+            anchor: 4.99
+            role: value
+            pl_share: 0.4
+            noun: "Water"
+            types: ["Spring Water", "Purified Water", "Sparkling Water"]
+            sizes: ["24-pack", "35-pack"]
+            count: 8
+          - name: "Sports & Energy Drinks"
+            anchor: 6.49
+            role: mainstream
+            pl_share: 0.2
+            noun: "Sports Drink"
+            types: ["Sports Drink Variety", "Energy Drink", "Electrolyte"]
+            sizes: ["8-pack", "12-pack"]
+            count: 7
+      - functional_category: "Juice & Tea"
+        merchant_category: { KRG: "Juice", ACM: "Juice & Tea", WDX: "Juice" }
+        subcategories:
+          - name: "Juice"
+            anchor: 4.49
+            role: mainstream
+            pl_share: 0.35
+            noun: "Juice"
+            types: ["Orange Juice", "Apple Juice", "Cranberry", "Fruit Punch"]
+            sizes: ["52 oz", "64 oz"]
+            count: 10
+          - name: "Tea & Mixers"
+            anchor: 3.99
+            role: mainstream
+            pl_share: 0.3
+            noun: "Tea"
+            types: ["Iced Tea", "Green Tea", "Lemonade"]
+            sizes: ["59 oz", "gallon"]
+            count: 6
+
+  - functional_department: "Frozen"
+    merchant_department: { KRG: "Frozen", ACM: "Frozen Foods", WDX: "Frozen" }
+    brand_key: FROZEN
+    categories:
+      - functional_category: "Frozen Meals"
+        merchant_category: { KRG: "Frozen Meals", ACM: "Frozen Entrees", WDX: "Frozen Dinners" }
+        subcategories:
+          - name: "Frozen Entrees"
+            anchor: 4.49
+            role: mainstream
+            pl_share: 0.3
+            noun: "Frozen Meal"
+            types: ["Lasagna", "Chicken Alfredo", "Bowls", "Pot Pie"]
+            sizes: ["10 oz", "family size"]
+            count: 12
+          - name: "Frozen Pizza"
+            anchor: 6.49
+            role: mainstream
+            pl_share: 0.25
+            noun: "Pizza"
+            types: ["Pepperoni", "Cheese", "Supreme", "Thin Crust"]
+            sizes: ["single", "2-pack"]
+            count: 9
+      - functional_category: "Ice Cream & Novelties"
+        merchant_category: { KRG: "Ice Cream", ACM: "Frozen Desserts", WDX: "Ice Cream" }
+        subcategories:
+          - name: "Ice Cream"
+            anchor: 5.49
+            specialty: true
+            role: premium
+            pl_share: 0.3
+            noun: "Ice Cream"
+            types: ["Vanilla", "Chocolate", "Cookies & Cream", "Mint Chip"]
+            sizes: ["48 oz", "1 pint"]
+            count: 11
+      - functional_category: "Frozen Vegetables & Fruit"
+        merchant_category: { KRG: "Frozen Veg", ACM: "Frozen Produce", WDX: "Frozen Veg" }
+        subcategories:
+          - name: "Frozen Vegetables"
+            anchor: 2.49
+            role: value
+            pl_share: 0.5
+            noun: "Frozen Vegetables"
+            types: ["Broccoli", "Mixed Vegetables", "Corn", "Peas", "Stir Fry Blend"]
+            sizes: ["12 oz", "16 oz"]
+            count: 10
+
+  - functional_department: "Bakery"
+    merchant_department: { KRG: "Bakery", ACM: "In-Store Bakery", WDX: "Bakery" }
+    brand_key: BAKERY
+    categories:
+      - functional_category: "Bread"
+        merchant_category: { KRG: "Bread", ACM: "Sliced Bread", WDX: "Bread" }
+        subcategories:
+          - name: "Sandwich Bread"
+            anchor: 2.99
+            kvi: true
+            role: core
+            pl_share: 0.4
+            noun: "Bread"
+            types: ["White", "Wheat", "Multigrain", "Honey Wheat"]
+            sizes: ["20 oz loaf"]
+            count: 9
+          - name: "Buns & Rolls"
+            anchor: 3.29
+            role: mainstream
+            pl_share: 0.4
+            noun: "Rolls"
+            types: ["Hamburger Buns", "Hot Dog Buns", "Dinner Rolls"]
+            sizes: ["8 ct"]
+            count: 7
+      - functional_category: "Bakery Sweets"
+        merchant_category: { KRG: "Bakery Sweets", ACM: "Pastries", WDX: "Bakery Treats" }
+        subcategories:
+          - name: "Pastries & Bagels"
+            anchor: 4.49
+            role: mainstream
+            pl_share: 0.35
+            noun: "Bakery"
+            types: ["Bagels", "Muffins", "Donuts", "Croissants"]
+            sizes: ["6 ct", "4 ct"]
+            count: 10
+
+  - functional_department: "Health & Household"
+    merchant_department: { KRG: "Household", ACM: "Home & Health", WDX: "Household" }
+    brand_key: HOUSEHOLD
+    categories:
+      - functional_category: "Cleaning & Paper"
+        merchant_category: { KRG: "Cleaning", ACM: "Household Cleaning", WDX: "Cleaning" }
+        subcategories:
+          - name: "Paper Products"
+            anchor: 11.99
+            role: value
+            pl_share: 0.4
+            noun: "Paper"
+            types: ["Paper Towels", "Bath Tissue", "Napkins", "Facial Tissue"]
+            sizes: ["6 roll", "12 roll", "double roll"]
+            count: 10
+          - name: "Cleaning Supplies"
+            anchor: 4.99
+            role: mainstream
+            pl_share: 0.35
+            noun: "Cleaner"
+            types: ["All-Purpose Cleaner", "Dish Soap", "Disinfecting Wipes", "Bleach"]
+            sizes: ["24 oz", "32 oz"]
+            count: 11
+          - name: "Laundry"
+            anchor: 12.99
+            role: mainstream
+            pl_share: 0.3
+            noun: "Laundry"
+            types: ["Liquid Detergent", "Pods", "Fabric Softener"]
+            sizes: ["50 oz", "92 oz"]
+            count: 8
+          - name: "Food Storage"
+            anchor: 5.99
+            role: value
+            pl_share: 0.45
+            noun: "Storage"
+            types: ["Storage Bags", "Trash Bags", "Foil", "Plastic Wrap"]
+            sizes: ["gallon", "13 gal", "50 ct"]
+            count: 8
+      - functional_category: "Personal Care"
+        merchant_category: { KRG: "Health & Beauty", ACM: "Personal Care", WDX: "Health & Beauty" }
+        subcategories:
+          - name: "Oral & Body Care"
+            anchor: 4.49
+            role: mainstream
+            pl_share: 0.25
+            noun: "Personal Care"
+            types: ["Toothpaste", "Body Wash", "Bar Soap", "Deodorant", "Mouthwash"]
+            sizes: ["single", "2-pack"]
+            count: 12
+          - name: "Hair Care"
+            anchor: 6.49
+            role: mainstream
+            pl_share: 0.2
+            noun: "Hair Care"
+            types: ["Shampoo", "Conditioner", "2-in-1"]
+            sizes: ["12 oz", "20 oz"]
+            count: 8
+          - name: "Vitamins & Wellness"
+            anchor: 9.99
+            specialty: true
+            role: premium
+            pl_share: 0.35
+            noun: "Vitamins"
+            types: ["Multivitamin", "Vitamin D", "Probiotic", "Pain Relief"]
+            sizes: ["60 ct", "100 ct"]
+            count: 9
+
+  - functional_department: "Baby & Pet"
+    merchant_department: { KRG: "Baby & Pet", ACM: "Baby & Pet", WDX: "Baby & Pet" }
+    brand_key: BABY
+    categories:
+      - functional_category: "Baby"
+        merchant_category: { KRG: "Baby", ACM: "Baby Care", WDX: "Baby" }
+        subcategories:
+          - name: "Diapers & Wipes"
+            anchor: 24.99
+            role: mainstream
+            pl_share: 0.3
+            noun: "Baby"
+            types: ["Diapers Size 1", "Diapers Size 3", "Diapers Size 5", "Baby Wipes"]
+            sizes: ["jumbo pack", "box"]
+            count: 9
+          - name: "Formula & Baby Food"
+            anchor: 14.99
+            role: mainstream
+            pl_share: 0.2
+            noun: "Baby Food"
+            types: ["Infant Formula", "Baby Food Pouch", "Baby Cereal"]
+            sizes: ["12 oz", "4-pack"]
+            count: 7
+      - functional_category: "Pet"
+        merchant_category: { KRG: "Pet", ACM: "Pet Care", WDX: "Pet" }
+        subcategories:
+          - name: "Pet Food"
+            anchor: 17.99
+            role: value
+            pl_share: 0.35
+            noun: "Pet Food"
+            types: ["Dry Dog Food", "Wet Dog Food", "Dry Cat Food", "Wet Cat Food"]
+            sizes: ["16 lb", "12-pack", "3.5 lb"]
+            count: 11
+          - name: "Pet Treats & Supplies"
+            anchor: 6.99
+            role: mainstream
+            pl_share: 0.3
+            noun: "Pet"
+            types: ["Dog Treats", "Cat Treats", "Cat Litter"]
+            sizes: ["16 oz", "20 lb"]
+            count: 7

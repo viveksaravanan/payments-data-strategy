@@ -19,10 +19,58 @@ canonical_id). Format: ``<SEG>-<CATEGORY>-<SUBCATEGORY>-<NNN>``.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
 from src.generate.config.loader import Config
+
+# ----- datamodel-v2: static committed catalog reader -----------------
+# The catalog is now authored once by ``scripts/build_catalog.py`` and
+# committed as ``data/catalog/products.csv`` (observable) + the hidden
+# ``data/eval/canonical_map.csv``. The engine READS it (never rebuilds
+# it) — strengthens determinism and makes the item master reviewable.
+# ``build_catalog`` below is the retired v1 in-pipeline generator, kept
+# until Phase 7 rewires ``run_all`` onto ``load_products``.
+
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+PRODUCTS_CSV = _REPO_ROOT / "data" / "catalog" / "products.csv"
+CANONICAL_MAP_CSV = _REPO_ROOT / "data" / "eval" / "canonical_map.csv"
+
+
+def load_products(path: str | Path | None = None) -> pd.DataFrame:
+    """Load the committed observable catalog into a DataFrame.
+
+    Columns (dual taxonomy, no canonical_id): ``segment, banner_code,
+    merchant_id, sku, product_name, description, brand, private_label,
+    size, merchant_department, merchant_category, merchant_subcategory,
+    functional_department, functional_category, functional_subcategory,
+    shelf_price``. Sorted (segment, banner_code, sku) for determinism.
+    """
+    csv_path = Path(path) if path is not None else PRODUCTS_CSV
+    if not csv_path.exists():
+        raise FileNotFoundError(
+            f"catalog not found at {csv_path}. Run `make catalog` "
+            f"(python scripts/build_catalog.py) to author it."
+        )
+    df = pd.read_csv(csv_path, dtype={"size": str})
+    df["private_label"] = df["private_label"].astype(bool)
+    df["shelf_price"] = df["shelf_price"].astype(float)
+    return df.sort_values(
+        ["segment", "banner_code", "sku"], kind="mergesort"
+    ).reset_index(drop=True)
+
+
+def load_canonical_map(path: str | Path | None = None) -> pd.DataFrame:
+    """Load the HIDDEN canonical map (answer key). ``banner_code, sku,
+    canonical_id``. Lives in the eval area; never read by lake/agents."""
+    csv_path = Path(path) if path is not None else CANONICAL_MAP_CSV
+    if not csv_path.exists():
+        raise FileNotFoundError(
+            f"canonical map not found at {csv_path}. Run `make catalog`."
+        )
+    return pd.read_csv(csv_path)
 
 
 # ----- Taxonomies ---------------------------------------------------

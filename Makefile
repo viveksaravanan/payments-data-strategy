@@ -1,4 +1,11 @@
-.PHONY: seed seed-pilot demo test test-quick clean dq-report lake-items agent-preview
+.PHONY: seed seed-pilot demo test test-quick clean dq-report lake-items agent-preview catalog
+
+# datamodel-v2: author the static committed catalog. Emits the
+# observable data/catalog/products.csv (committed) + the hidden
+# data/eval/canonical_map.csv (answer key). Deterministic; re-run and
+# re-commit to change the item master.
+catalog:
+	uv run python scripts/build_catalog.py
 
 # v4: generate the tenant census Parquet at full scale.
 seed:
