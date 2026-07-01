@@ -13,7 +13,7 @@ store_count: 6
 # Starting points per Appendix D (A_s 1.30, sku_target 1350); A_s is
 # refined in the Phase-4 calibration loop so Kroger carries ~52% of
 # grocery dollars (MERCHANT_PROFILES Decision D / §A11 calibration).
-attractiveness: 1.30
+attractiveness: 1.73        # calibrated (Phase 4 loop; up from 1.30 → carries ~51% of grocery $)
 sku_target: 1350
 
 # Per-zone store placement, per §A11 grocery grid. Sums to store_count.

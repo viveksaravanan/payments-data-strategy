@@ -11,7 +11,7 @@ positioning_tier: value
 store_count: 8
 
 # A_s starting point per Appendix D (0.90); menu depth ~80 items (§B3).
-attractiveness: 0.90
+attractiveness: 0.37        # calibrated (Phase 4 loop)
 sku_target: 80
 
 # Per §B1 QSR grid. Sums to store_count.

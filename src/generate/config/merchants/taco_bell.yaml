@@ -11,7 +11,7 @@ positioning_tier: mainstream    # value menu lives in pricing config
 store_count: 9
 
 # A_s starting point per Appendix D (1.00); menu depth ~80 items (§B3).
-attractiveness: 1.00
+attractiveness: 0.74        # calibrated (Phase 4 loop)
 sku_target: 80
 
 # Per §B1 QSR grid. Sums to store_count.

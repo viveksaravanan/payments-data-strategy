@@ -1,5 +1,4 @@
 # QSR (quick-service restaurant) segment archetype.
-# Stage 3 structural minimum; Stage 4 sub-stages extend.
 
 name: qsr
 
@@ -9,3 +8,17 @@ distance_decay:
 
 catalog:
   model: fixed
+
+# §B5 combo-attach affinity — [anchor_category, partner_category, boost].
+# Unlike grocery's subcategory affinity, QSR attach rides the shared
+# FUNCTIONAL_CATEGORY (entrée → side → drink): when the anchor category
+# is already in the basket, the partner category's draw weight is boosted
+# at category-selection time. Makes beverage/side attach a comparable
+# peer metric across chains.
+combo_attach:
+  - ["Entrée", "Sides", 2.5]
+  - ["Entrée", "Beverages", 2.8]
+  - ["Sides", "Beverages", 2.0]
+  - ["Combos", "Beverages", 1.8]
+  - ["Chicken", "Sides", 2.0]
+  - ["Breakfast", "Beverages", 2.2]

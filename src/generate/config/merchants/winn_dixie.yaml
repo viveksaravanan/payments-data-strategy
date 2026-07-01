@@ -10,7 +10,7 @@ positioning_tier: value
 store_count: 4
 
 # A_s starting point per Appendix D (0.80); leanest assortment 1050 (§A8).
-attractiveness: 0.80
+attractiveness: 0.63        # calibrated (Phase 4 loop)
 sku_target: 1050
 
 # Per §A11 grocery grid. Sums to store_count.

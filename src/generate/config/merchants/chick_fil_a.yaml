@@ -13,7 +13,7 @@ store_count: 6
 
 # A_s starting point per Appendix D (1.40 — highest QSR pull);
 # menu depth ~60 items (§B3).
-attractiveness: 1.40
+attractiveness: 2.21        # calibrated (Phase 4 loop; up from 1.40 → 6 units out-earn the other 17)
 sku_target: 60
 
 # Per §B1 QSR grid. Sums to store_count.

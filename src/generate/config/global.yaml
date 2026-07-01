@@ -40,28 +40,30 @@ expected_store_count: 38
 # must match the Phase-2 catalog's functional_category vocabulary).
 seasonality:
   spring_drift_pct: 4                     # +~4% linear end-to-end
+  # `categories` are functional_department names (grocery); the basket
+  # layer boosts these departments' mission weight during the window.
   events:
     - name: easter
       start_date: 2026-03-30
       end_date:   2026-04-05
       trip_mult: 1.16
       category_boost: 1.25
-      categories: [BAKING, MEAT, DAIRY, SNACKS]   # ham/eggs/baking/candy
+      categories: ["Bakery", "Meat & Seafood", "Dairy & Eggs", "Snacks & Candy"]
     - name: memorial_day
       start_date: 2026-05-19
       end_date:   2026-05-25
       trip_mult: 1.10
       category_boost: 1.30
-      categories: [MEAT, SNACKS, BEVERAGES]        # grilling/snacks/bev
+      categories: ["Meat & Seafood", "Snacks & Candy", "Beverages"]
     - name: cinco_de_mayo
       start_date: 2026-05-03
       end_date:   2026-05-05
       trip_mult: 1.03
       category_boost: 1.10
-      categories: [SNACKS, BEVERAGES]
+      categories: ["Snacks & Candy", "Beverages"]
     - name: mothers_day
       start_date: 2026-05-08
       end_date:   2026-05-10
       trip_mult: 1.03
       category_boost: 1.08
-      categories: [BAKERY, PRODUCE]                # flowers/bakery/brunch
+      categories: ["Bakery", "Produce"]

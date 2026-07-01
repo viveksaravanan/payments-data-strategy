@@ -1,22 +1,28 @@
-"""Layer 5 — Baskets & affinity (D17).
+"""Layer 5 — Baskets & affinity (D17 / datamodel-v2 §C5).
 
-Per trip: pick a mission (D17.1), pick an archetype (mission-bound +
-pay-cycle nudged per D17.4 + D15.3), sample basket size (triangular
-per archetype), then fill the basket from a mission category
-distribution intersected with customer preference (staples / D17.3)
-and modulated by the complementary-affinity matrix (D17.2).
+Per trip: pick a mission → archetype → triangular basket size, then
+fill the basket from a mission group-distribution modulated by:
 
-T11 (the "discoverable via lift" test) is the design gate for this
-layer: the designed affinity pairs (pasta↔sauce, chips↔salsa,
-diapers↔wipes, milk↔cereal, etc.) plus mission-driven category
-co-occurrence must produce SKU-level lift detectable by an analyst,
-without the analyst being told the rules. T12 (basket heavy-tail)
-falls out of the archetype size distribution × pay-cycle weighting.
+* **Complementary affinity** — grocery subcategory pairs (Pasta↔Sauce,
+  Chips↔Salsa, Cereal↔Milk, Bread↔Butter, Diapers↔Formula), config-
+  driven (``affinity_matrix`` in segments/grocery.yaml).
+* **QSR combo-attach (§B5, new)** — functional-category attach (entrée →
+  side → drink), config-driven (``combo_attach`` in segments/qsr.yaml),
+  applied at category-selection so beverage/side attach materializes as
+  a comparable peer metric.
+* **National-vs-PL selection by affluence (§C5)** — within a grocery
+  department, private-label SKUs are up/down-weighted by the card's
+  affluence (value shoppers pick PL, affluent pick national). The
+  realized PL share is therefore an EMERGENT purchasing outcome measured
+  from what lands in baskets — not a flag read off the catalog.
+* **Seasonality category boost (§C3)** — during event weeks the boosted
+  functional departments (baking/meat/etc.) get extra mission weight.
 
-Catalog SKU list (per merchant, with category/subcategory/PL flag/
-canonical_id) lives in ``engine/catalog.py`` because baskets need
-to know what SKUs exist before placing them; pricing of those SKUs
-(D19) stays at Stage 4.7.
+Reads the static committed catalog (dual taxonomy + private_label +
+shelf_price). The grouping column is functional_department for grocery
+and functional_category for QSR. Output is minimal — ``[trip_id,
+line_id, sku, qty]``; category / taxonomy / price resolve via a join to
+the products table (the normalization boundary stays at the catalog).
 """
 from __future__ import annotations
 
@@ -28,192 +34,148 @@ import pandas as pd
 from src.generate.config.loader import Config, ConfigInvariantError
 
 
-# ----- D17.1 missions: per-segment mission menu --------------------
-# Each mission has a category distribution (weights summing to ~1.0)
-# and a bound archetype that determines basket size.
+# ----- Missions: per-segment mission menu ---------------------------
+# Grocery mission group keys are functional_department names; QSR keys
+# are functional_category names. Weights approximate the §A4 department
+# sales mix once velocity/price/qty are applied.
 
 _GROCERY_MISSIONS: dict[str, dict] = {
     "weekly_stockup": {
         "categories": {
-            "DAIRY": 0.14, "PRODUCE": 0.14, "MEAT": 0.10, "PANTRY": 0.13,
-            "BAKERY": 0.08, "FROZEN": 0.10, "BEVERAGES": 0.08, "SNACKS": 0.08,
-            "HOUSEHOLD": 0.06, "PERSONAL": 0.03, "BABY": 0.03, "PET": 0.03,
+            "Dry Grocery": 0.25, "Snacks & Candy": 0.10, "Beverages": 0.09,
+            "Meat & Seafood": 0.09, "Produce": 0.13, "Dairy & Eggs": 0.11,
+            "Frozen": 0.07, "Bakery": 0.06, "Health & Household": 0.08,
+            "Baby & Pet": 0.01,
         },
-        "archetype": "stockup",
-        "base_share": 0.15,
+        "archetype": "stockup", "base_share": 0.24,
     },
     "meal_tonight": {
         "categories": {
-            "MEAT": 0.30, "PRODUCE": 0.22, "PANTRY": 0.20, "DAIRY": 0.10,
-            "BAKERY": 0.08, "FROZEN": 0.05, "BEVERAGES": 0.05,
+            "Meat & Seafood": 0.17, "Produce": 0.26, "Dry Grocery": 0.25,
+            "Dairy & Eggs": 0.12, "Bakery": 0.08, "Frozen": 0.06,
+            "Beverages": 0.06,
         },
-        "archetype": "fill_in",
-        "base_share": 0.25,
+        "archetype": "fill_in", "base_share": 0.20,
     },
     "breakfast_staples": {
         "categories": {
-            "DAIRY": 0.32, "BAKERY": 0.18, "PANTRY": 0.25,  # cereal/coffee
-            "FROZEN": 0.05, "PRODUCE": 0.10, "BEVERAGES": 0.10,
+            "Dairy & Eggs": 0.26, "Bakery": 0.16, "Dry Grocery": 0.30,
+            "Produce": 0.10, "Beverages": 0.12, "Frozen": 0.06,
         },
-        "archetype": "fill_in",
-        "base_share": 0.15,
+        "archetype": "fill_in", "base_share": 0.15,
     },
     "snacks_beverages": {
         "categories": {
-            "SNACKS": 0.45, "BEVERAGES": 0.35, "FROZEN": 0.10, "PANTRY": 0.10,
+            "Snacks & Candy": 0.42, "Beverages": 0.38, "Frozen": 0.10,
+            "Dry Grocery": 0.10,
         },
-        "archetype": "quick",
-        "base_share": 0.15,
+        "archetype": "quick", "base_share": 0.18,
     },
     "household_cleaning": {
         "categories": {
-            "HOUSEHOLD": 0.55, "PERSONAL": 0.25, "PANTRY": 0.10,
-            "BABY": 0.05, "PET": 0.05,
+            "Health & Household": 0.72, "Dry Grocery": 0.16, "Beverages": 0.06,
+            "Snacks & Candy": 0.06,
         },
-        "archetype": "fill_in",
-        "base_share": 0.10,
+        "archetype": "fill_in", "base_share": 0.08,
     },
     "baby_pet": {
         "categories": {
-            "BABY": 0.40, "PET": 0.30, "HOUSEHOLD": 0.10, "DAIRY": 0.10,
-            "PANTRY": 0.10,
+            "Baby & Pet": 0.72, "Health & Household": 0.12, "Dairy & Eggs": 0.09,
+            "Dry Grocery": 0.07,
         },
-        "archetype": "fill_in",
-        "base_share": 0.10,
+        # Rare: only a minority of cards buy baby/pet; expensive items
+        # (diapers/formula/pet food) inflate $ share fast, so keep the
+        # mission scarce to hold Baby & Pet near its ~3% §A4 sales share.
+        "archetype": "fill_in", "base_share": 0.012,
     },
     "occasion_bbq": {
         "categories": {
-            "MEAT": 0.28, "SNACKS": 0.20, "BEVERAGES": 0.20, "PRODUCE": 0.15,
-            "BAKERY": 0.10, "PANTRY": 0.07,
+            "Meat & Seafood": 0.24, "Snacks & Candy": 0.24, "Beverages": 0.22,
+            "Produce": 0.14, "Bakery": 0.09, "Dry Grocery": 0.07,
         },
-        "archetype": "stockup",
-        "base_share": 0.10,
+        "archetype": "stockup", "base_share": 0.06,
     },
 }
 
 _QSR_MISSIONS: dict[str, dict] = {
     "combo_meal": {
-        "categories": {"COMBO": 0.45, "TACO": 0.15, "BURR": 0.15,
-                       "DRINK": 0.15, "SIDE": 0.10},
-        "archetype": "combo",
-        "base_share": 0.40,
+        "categories": {"Entrée": 0.35, "Combos": 0.10, "Sides": 0.25,
+                       "Beverages": 0.25, "Chicken": 0.05},
+        "archetype": "combo", "base_share": 0.34,
     },
     "snack_run": {
-        "categories": {"SIDE": 0.45, "DRINK": 0.30, "TACO": 0.25},
-        "archetype": "quick",
-        "base_share": 0.30,
+        "categories": {"Sides": 0.40, "Beverages": 0.35, "Chicken": 0.15,
+                       "Desserts": 0.10},
+        "archetype": "quick", "base_share": 0.40,
     },
     "group_order": {
-        "categories": {"TACO": 0.25, "BURR": 0.22, "COMBO": 0.20,
-                       "SIDE": 0.18, "DRINK": 0.15},
-        "archetype": "stockup",
-        "base_share": 0.10,
+        "categories": {"Entrée": 0.25, "Chicken": 0.20, "Combos": 0.15,
+                       "Sides": 0.22, "Beverages": 0.18},
+        "archetype": "group", "base_share": 0.08,
     },
     "breakfast": {
-        "categories": {"BFAST": 0.55, "DRINK": 0.30, "SIDE": 0.15},
-        "archetype": "fill_in",
-        "base_share": 0.20,
+        "categories": {"Breakfast": 0.55, "Beverages": 0.30, "Sides": 0.15},
+        "archetype": "fill_in", "base_share": 0.18,
     },
 }
 
-_OFF_PRICE_MISSIONS: dict[str, dict] = {
-    "apparel_refresh": {
-        "categories": {"WOM": 0.40, "MEN": 0.20, "KID": 0.15, "SHO": 0.10, "ACC": 0.15},
-        "archetype": "browse",
-        "base_share": 0.50,
-    },
-    "home_goods": {
-        "categories": {"HOM": 0.70, "ACC": 0.15, "BTY": 0.15},
-        "archetype": "focused",
-        "base_share": 0.30,
-    },
-    "gifting": {
-        "categories": {"ACC": 0.30, "BTY": 0.25, "HOM": 0.20, "WOM": 0.15, "KID": 0.10},
-        "archetype": "focused",
-        "base_share": 0.20,
-    },
+_SEGMENT_MISSIONS = {"grocery": _GROCERY_MISSIONS, "qsr": _QSR_MISSIONS}
+
+# Per-banner QSR mission tilt — Chick-fil-A skews to full combo meals
+# (bigger checks), Taco Bell to snack runs (smaller/value), Burger King
+# balanced. Produces the §B2 check ordering CFA > BK > TB from behavior,
+# not a per-chain price dial.
+_QSR_BANNER_MISSION_TILT = {
+    "CFA": {"combo_meal": 1.6, "snack_run": 0.7, "breakfast": 1.1},
+    "TBL": {"combo_meal": 0.7, "snack_run": 1.5},
+    "BKG": {"combo_meal": 1.0, "snack_run": 1.0, "breakfast": 1.2},
 }
 
-_SEGMENT_MISSIONS = {
-    "grocery":   _GROCERY_MISSIONS,
-    "qsr":       _QSR_MISSIONS,
-    "off_price": _OFF_PRICE_MISSIONS,
+# The catalog column each segment's mission distribution groups on.
+_GROUP_COL = {
+    "grocery": "functional_department",
+    "qsr":     "functional_category",
 }
 
 
-# ----- D17.4 archetype size distributions ---------------------------
-
-# Archetype sizes tuned at Stage 4.7 for AOV reconciliation. D17.4
-# ratified grocery ranges: stockup 15-30, fill_in 5-8, quick 2-3.
-# Stockup tightened to (15,17,22) at the low end of its range to
-# land its AOV on the $110 D17.4 anchor (measured: $115.82).
-# Fill_in tightened to (4,5,7) at the low end of its range —
-# blended AOV diagnostic showed fill_in running 70% over its
-# D17.4 $28 anchor because the mission mix includes baby_pet +
-# household_cleaning trips (high-anchor BABY/PET/HOUSEHOLD items
-# at real-world prices). D17.4's $28 implicitly assumed a narrower
-# mission mix; tightening fill_in size compensates without
-# perturbing real-world per-line prices. Lo=4 sits 1 below D17.4's
-# stated 5; flagged for a future D17 clarification but stays close
-# to spirit ("small fill-in trip with a couple of items").
-# QSR combo archetype dropped from (3,4,5) → (1,2,3): a single
-# "COMBO" SKU in the catalog represents the whole bundled meal
-# (entree + side + drink), not a constituent line, so a combo trip
-# is usually 1 combo + maybe a drink upgrade — basket size 1-3.
+# ----- Archetype size distributions (triangular lo, μ, hi) ----------
 _GROCERY_ARCHETYPES = {
-    "stockup": (15, 17, 22),
+    "stockup": (15, 18, 22),
     "fill_in": (4, 5, 7),
     "quick":   (2, 2, 3),
 }
 _QSR_ARCHETYPES = {
-    "combo":   (1, 2, 3),
-    "quick":   (1, 2, 3),
-    "fill_in": (1, 2, 3),
-    "stockup": (4, 6, 9),
+    "combo":   (2, 3, 4),      # entrée + side + drink
+    "quick":   (1, 1, 2),      # a snack / single item
+    "group":   (3, 4, 6),
+    "fill_in": (2, 2, 3),
 }
-_OFF_PRICE_ARCHETYPES = {
-    "browse":  (2, 4, 8),
-    "focused": (1, 2, 4),
-}
-
-_SEGMENT_ARCHETYPES = {
-    "grocery":   _GROCERY_ARCHETYPES,
-    "qsr":       _QSR_ARCHETYPES,
-    "off_price": _OFF_PRICE_ARCHETYPES,
-}
+_SEGMENT_ARCHETYPES = {"grocery": _GROCERY_ARCHETYPES, "qsr": _QSR_ARCHETYPES}
 
 
-# D17.2 designed affinity pairs are now config-driven — each segment's
-# ``affinity_matrix`` in ``config/segments/{segment}.yaml`` lists
-# [anchor_subcat, partner_subcat, boost]. See ``_build_affinity_lookup``.
+# ----- Private-label selection by affluence (§C5) -------------------
+# PL SKUs get a weight multiplier exp(slope × (1 − affluence)): value
+# shoppers up-weight PL, affluent shoppers down-weight it. On top of
+# that, each chain has a real PL-PROGRAM strength (Numerator: Kroger's
+# private-label program is the largest at ~27%, Acme's smallest ~19%,
+# Winn-Dixie ~25%) — a banner-level propensity so the realized (measured)
+# per-banner PL share lands ~27/19/25. The share is still an emergent
+# purchasing outcome (counted from baskets), not a catalog flag read.
+_PL_AFFLUENCE_SLOPE = 2.2
+_BANNER_PL_PROPENSITY = {"KRG": 1.25, "ACM": 0.42, "WDX": 1.05}
 
 
-# Default staple count by segment (D16.2 / D17.3).
-_STAPLES_PER_CARD = {
-    "grocery":   5,
-    "qsr":       2,
-    "off_price": 0,    # treasure-hunt; no staples
-}
-# Per-trip per-staple inclusion probability.
+# Default staple count / inclusion probability.
+_STAPLES_PER_CARD = {"grocery": 5, "qsr": 2}
 _STAPLE_INCLUDE_PROB = 0.45
 
 
-# Pay-cycle mission re-weighting (D17.4 × D15.3).
+# Pay-cycle mission re-weighting (grocery).
 _PAY_CYCLE_MISSION_WEIGHTS = {
-    "early": {     # days 1-10
-        "weekly_stockup": 2.0,
-        "occasion_bbq":   1.5,
-        "baby_pet":       1.2,
-    },
-    "mid": {       # days 15-17
-        "weekly_stockup": 1.3,
-        "meal_tonight":   1.2,
-    },
-    "late": {      # other days
-        "meal_tonight":     1.15,
-        "snacks_beverages": 1.1,
-        "breakfast_staples": 1.05,
-    },
+    "early": {"weekly_stockup": 2.0, "occasion_bbq": 1.5, "baby_pet": 1.2},
+    "mid":   {"weekly_stockup": 1.3, "meal_tonight": 1.2},
+    "late":  {"meal_tonight": 1.15, "snacks_beverages": 1.1,
+              "breakfast_staples": 1.05},
 }
 
 
@@ -225,65 +187,44 @@ def _pay_cycle_bucket(day_of_month: int) -> str:
     return "late"
 
 
-# Per-line quantity by category. Tightened at Stage 4.7 — initial
-# distributions inherited from v3 baseline had means ~1.6 per line,
-# inflating AOV by ~60% across all segments (mostly an artifact —
-# real basket lines are predominantly qty=1; multi-buy is the
-# exception). Tuned to mean ~1.15-1.25 for typical items, qty=1
-# strongly dominant for clothing and QSR fast food.
+# Per-line quantity by functional_department (grocery) /
+# functional_category (QSR). qty=1 dominant; some multi-buy on
+# produce/beverages/tacos.
 _QTY_DISTRIBUTION_DEFAULT = {1: 0.85, 2: 0.12, 3: 0.025, 4: 0.005}
-_QTY_DISTRIBUTION_BY_CATEGORY = {
-    # Grocery — produce + beverages have *some* multi-buy (a bag of
-    # apples + a bunch of bananas + a head of lettuce per produce
-    # category; a 12-pack of soda + a case of water per beverages),
-    # but mean qty for these used to run 1.78 / 1.55 in v3 baseline
-    # which inflated AOV well above D17.4's $55 anchor. Tightened
-    # at Stage 4.7 to means ~1.40 / 1.29.
-    "PRODUCE":   {1: 0.70, 2: 0.20, 3: 0.07, 4: 0.025, 5: 0.005},
-    "DAIRY":     {1: 0.80, 2: 0.16, 3: 0.04},
-    "BEVERAGES": {1: 0.78, 2: 0.16, 3: 0.05, 4: 0.01},
-    "BAKERY":    {1: 0.80, 2: 0.15, 3: 0.05},
-    "PANTRY":    {1: 0.78, 2: 0.18, 3: 0.04},
-    "SNACKS":    {1: 0.75, 2: 0.18, 3: 0.05, 4: 0.02},
-    "MEAT":      {1: 0.78, 2: 0.18, 3: 0.04},
-    "FROZEN":    {1: 0.80, 2: 0.15, 3: 0.05},
-    # QSR — almost always one of each item; tacos can stack
-    "TACO":      {1: 0.55, 2: 0.25, 3: 0.15, 4: 0.05},
-    "BURR":      {1: 0.80, 2: 0.15, 3: 0.05},
-    "DRINK":     {1: 0.88, 2: 0.10, 3: 0.02},
-    "COMBO":     {1: 0.92, 2: 0.07, 3: 0.01},
-    "SIDE":      {1: 0.78, 2: 0.18, 3: 0.04},
-    "BFAST":     {1: 0.85, 2: 0.12, 3: 0.03},
-    # Off-price — clothing / home items overwhelmingly qty=1
-    "WOM":       {1: 0.90, 2: 0.08, 3: 0.02},
-    "MEN":       {1: 0.92, 2: 0.06, 3: 0.02},
-    "KID":       {1: 0.85, 2: 0.12, 3: 0.03},
-    "HOM":       {1: 0.88, 2: 0.10, 3: 0.02},
-    "ACC":       {1: 0.92, 2: 0.07, 3: 0.01},
-    "SHO":       {1: 0.95, 2: 0.04, 3: 0.01},
-    "BTY":       {1: 0.85, 2: 0.12, 3: 0.03},
+_QTY_DISTRIBUTION_BY_GROUP = {
+    "Produce":         {1: 0.70, 2: 0.20, 3: 0.07, 4: 0.025, 5: 0.005},
+    "Dairy & Eggs":    {1: 0.80, 2: 0.16, 3: 0.04},
+    "Beverages":       {1: 0.78, 2: 0.16, 3: 0.05, 4: 0.01},
+    "Bakery":          {1: 0.80, 2: 0.15, 3: 0.05},
+    "Dry Grocery":     {1: 0.78, 2: 0.18, 3: 0.04},
+    "Snacks & Candy":  {1: 0.75, 2: 0.18, 3: 0.05, 4: 0.02},
+    "Meat & Seafood":  {1: 0.78, 2: 0.18, 3: 0.04},
+    "Frozen":          {1: 0.80, 2: 0.15, 3: 0.05},
+    # QSR
+    "Entrée":     {1: 0.70, 2: 0.20, 3: 0.08, 4: 0.02},
+    "Chicken":    {1: 0.80, 2: 0.15, 3: 0.05},
+    "Beverages_qsr": {1: 0.85, 2: 0.12, 3: 0.03},
+    "Combos":     {1: 0.90, 2: 0.09, 3: 0.01},
+    "Sides":      {1: 0.78, 2: 0.18, 3: 0.04},
+    "Breakfast":  {1: 0.82, 2: 0.14, 3: 0.04},
+    "Desserts":   {1: 0.85, 2: 0.12, 3: 0.03},
 }
 
 
-def _sample_qty(rng: np.random.Generator, category: str) -> int:
-    table = _QTY_DISTRIBUTION_BY_CATEGORY.get(category, _QTY_DISTRIBUTION_DEFAULT)
-    qty_vals = list(table.keys())
-    qty_probs = np.array(list(table.values()), dtype=float)
-    qty_probs = qty_probs / qty_probs.sum()
-    return int(rng.choice(qty_vals, p=qty_probs))
+def _sample_qty(rng: np.random.Generator, group: str) -> int:
+    table = _QTY_DISTRIBUTION_BY_GROUP.get(group, _QTY_DISTRIBUTION_DEFAULT)
+    vals = list(table.keys())
+    probs = np.array(list(table.values()), dtype=float)
+    probs = probs / probs.sum()
+    return int(rng.choice(vals, p=probs))
 
 
 # ----- Staples ------------------------------------------------------
 
-def _derive_staples_for_card(
-    card_id: str,
-    segment: str,
-    catalog: pd.DataFrame,
-) -> list[str]:
-    """Pick a stable set of staple SKUs for a card from the segment's
-    catalog. Deterministic from ``(card_id, segment)`` via a SHA-256
-    hash → seed → numpy choice. Independent of the main RNG stream so
-    staple draws don't perturb trip placement reproducibility."""
+def _derive_staples_for_card(card_id: str, segment: str, catalog: pd.DataFrame) -> list[str]:
+    """Stable staple SKU set for a card. Deterministic from (card_id,
+    segment) via an independent hashed RNG so staples don't perturb the
+    main draw order."""
     k = _STAPLES_PER_CARD[segment]
     if k == 0:
         return []
@@ -291,33 +232,31 @@ def _derive_staples_for_card(
     if len(pool) == 0:
         return []
     h = hashlib.sha256(f"staples|{card_id}|{segment}".encode()).digest()
-    seed = int.from_bytes(h[:8], "big")
-    local = np.random.default_rng(seed)
+    local = np.random.default_rng(int.from_bytes(h[:8], "big"))
     return local.choice(pool, size=min(k, len(pool)), replace=False).tolist()
 
 
-# ----- Per-segment per-merchant SKU pool -----------------------------
+# ----- SKU pool + affinity ------------------------------------------
 
-def _build_sku_pool(catalog: pd.DataFrame) -> dict[tuple[str, str], pd.DataFrame]:
-    """Index catalog by (banner_code, category) for fast within-category
-    SKU sampling. Returned mapping points each (banner, category) to a
-    DataFrame with columns sku + subcategory + canonical_id."""
-    out: dict[tuple[str, str], pd.DataFrame] = {}
-    cols = ["sku", "subcategory", "canonical_id"]
-    for (banner, cat), grp in catalog.groupby(["banner_code", "category"]):
-        out[(banner, cat)] = grp[cols].reset_index(drop=True)
+def _build_sku_pool(catalog: pd.DataFrame) -> dict[tuple[str, str], dict]:
+    """Index catalog by (banner_code, group value) → arrays of sku,
+    functional_subcategory, private_label. group = functional_department
+    for grocery, functional_category for QSR."""
+    out: dict[tuple[str, str], dict] = {}
+    for segment, group_col in _GROUP_COL.items():
+        seg = catalog[catalog["segment"] == segment]
+        for (banner, grp), g in seg.groupby(["banner_code", group_col]):
+            out[(banner, grp)] = {
+                "sku": g["sku"].to_numpy(),
+                "subcat": g["functional_subcategory"].to_numpy(),
+                "pl": g["private_label"].to_numpy().astype(bool),
+            }
     return out
 
 
 def _build_affinity_lookup(cfg: Config) -> dict[str, list[tuple[str, float]]]:
-    """{anchor_subcat: [(partner_subcat, boost), ...]} sourced from each
-    segment's ``affinity_matrix`` (D17.2, config-driven).
-
-    Segments are walked in sorted name order and entries in declared list
-    order, so the lookup — and therefore the basket draw sequence — is
-    deterministic. The loader (``ConfigInvariantError``) has already
-    checked each entry is well-formed with a positive boost.
-    """
+    """{anchor_subcat: [(partner_subcat, boost)]} from grocery's
+    affinity_matrix (subcategory level, config-driven, deterministic)."""
     out: dict[str, list[tuple[str, float]]] = {}
     for seg_name in sorted(cfg.segments):
         for anchor, partner, boost in cfg.segments[seg_name].get("affinity_matrix") or []:
@@ -325,56 +264,65 @@ def _build_affinity_lookup(cfg: Config) -> dict[str, list[tuple[str, float]]]:
     return out
 
 
+def _build_combo_attach(cfg: Config) -> dict[str, list[tuple[str, float]]]:
+    """{anchor_category: [(partner_category, boost)]} from QSR's
+    combo_attach (functional_category level) — the §B5 attach mechanism."""
+    out: dict[str, list[tuple[str, float]]] = {}
+    for anchor, partner, boost in cfg.segments.get("qsr", {}).get("combo_attach") or []:
+        out.setdefault(str(anchor), []).append((str(partner), float(boost)))
+    return out
+
+
 def _assert_affinity_subcats_exist(
-    affinity: dict[str, list[tuple[str, float]]],
-    catalog: pd.DataFrame,
+    affinity: dict[str, list[tuple[str, float]]], catalog: pd.DataFrame,
 ) -> None:
-    """Fail loudly if an ``affinity_matrix`` entry names a subcategory the
-    catalog doesn't contain. A typo'd subcat would otherwise silently
-    no-op — the boost would never fire — and quietly erode the T11
-    cross-sell lift the matrix exists to plant."""
-    valid = set(catalog["subcategory"].unique())
+    """Fail loudly if an affinity entry names a functional_subcategory the
+    catalog doesn't contain (a typo would silently kill the T11 lift)."""
+    valid = set(catalog["functional_subcategory"].unique())
     referenced = set(affinity) | {
-        partner for partners in affinity.values() for partner, _ in partners
+        p for parts in affinity.values() for p, _ in parts
     }
     missing = sorted(referenced - valid)
     if missing:
         raise ConfigInvariantError(
-            f"D17.2: affinity_matrix references subcategories absent from "
-            f"the catalog: {missing}"
+            f"D17.2: affinity_matrix references functional_subcategories "
+            f"absent from the catalog: {missing}"
         )
 
 
-# ----- mission + archetype + size -----------------------------------
+# ----- mission + archetype ------------------------------------------
 
-def _pick_mission(
-    rng: np.random.Generator,
-    segment: str,
-    pay_cycle_bucket: str,
-) -> str:
+def _pick_mission(rng: np.random.Generator, segment: str, bucket: str,
+                  banner: str | None = None) -> str:
     missions = _SEGMENT_MISSIONS[segment]
     names = list(missions.keys())
     base = np.array([missions[m]["base_share"] for m in names], dtype=float)
     if segment == "grocery":
-        adj = _PAY_CYCLE_MISSION_WEIGHTS.get(pay_cycle_bucket, {})
-        weights = np.array(
-            [base[i] * adj.get(names[i], 1.0) for i in range(len(names))],
-            dtype=float,
-        )
-    else:
-        weights = base
-    weights = weights / weights.sum()
-    return str(rng.choice(names, p=weights))
+        adj = _PAY_CYCLE_MISSION_WEIGHTS.get(bucket, {})
+        base = np.array([base[i] * adj.get(names[i], 1.0) for i in range(len(names))])
+    elif segment == "qsr" and banner in _QSR_BANNER_MISSION_TILT:
+        tilt = _QSR_BANNER_MISSION_TILT[banner]
+        base = np.array([base[i] * tilt.get(names[i], 1.0) for i in range(len(names))])
+    base = base / base.sum()
+    return str(rng.choice(names, p=base))
 
 
-def _sample_basket_size(
-    rng: np.random.Generator,
-    segment: str,
-    archetype: str,
-) -> int:
+def _sample_basket_size(rng: np.random.Generator, segment: str, archetype: str) -> int:
     lo, mu, hi = _SEGMENT_ARCHETYPES[segment][archetype]
-    draw = rng.triangular(lo, mu, hi)
-    return int(np.clip(round(draw), lo, hi))
+    return int(np.clip(round(rng.triangular(lo, mu, hi)), lo, hi))
+
+
+def _seasonality_boosts(cfg: Config) -> list[tuple[object, object, float, set[str]]]:
+    """Return [(start_date, end_date, category_boost, {departments})]."""
+    out = []
+    for ev in (cfg.global_.get("seasonality") or {}).get("events", []):
+        out.append((
+            pd.Timestamp(ev["start_date"]).date(),
+            pd.Timestamp(ev["end_date"]).date(),
+            float(ev.get("category_boost", 1.0)),
+            set(ev.get("categories", [])),
+        ))
+    return out
 
 
 # ----- main builder -------------------------------------------------
@@ -387,165 +335,131 @@ def build_basket_items(
     rng: np.random.Generator,
     *,
     promo_depth_lookup: dict | None = None,
-    a2_boost_lookup: dict | None = None,
-    a3_basket_mult_lookup: dict | None = None,
     lift_coefficient: float = 6.0,
 ) -> pd.DataFrame:
-    """Per-trip basket items.
+    """Per-trip basket items → ``[trip_id, line_id, sku, qty]``.
 
-    Returns one row per line item with columns:
-    ``[trip_id, line_id, sku, canonical_id, category, subcategory,
-       qty]``.
-
-    Event hooks (Stage 4.8 — D20):
-    - ``promo_depth_lookup`` {(date, sku) → depth}: boost SKU draw
-      weight by (1 + lift_coefficient × depth) when on promo. Drives
-      T15 demand lift.
-    - ``a2_boost_lookup`` {(date, store_id, category) → mult}: boost
-      category weight at one store during the window (A2 spike).
-    - ``a3_basket_mult_lookup`` {(date, banner) → mult}: multiplier
-      on PASTA subcategory weight during A3 pasta-promo windows.
+    ``promo_depth_lookup`` {(date, sku) → depth} is the DORMANT promo
+    demand-lift hook (empty in datamodel-v2; promotions disabled).
     """
     promo_depth_lookup = promo_depth_lookup or {}
-    a2_boost_lookup = a2_boost_lookup or {}
-    a3_basket_mult_lookup = a3_basket_mult_lookup or {}
+    have_promo = bool(promo_depth_lookup)
     sku_pool = _build_sku_pool(catalog)
     affinity = _build_affinity_lookup(cfg)
     _assert_affinity_subcats_exist(affinity, catalog)
-    cust_idx = customers.set_index("card_id")
+    combo_attach = _build_combo_attach(cfg)
+    seasonality = _seasonality_boosts(cfg)
 
-    # Build per-card staples per segment (deterministic, independent
-    # RNG stream so staples don't perturb main draw order).
+    # Precompute lookups as plain dicts — per-trip pandas .loc scalar
+    # lookups are far too slow at scale (same values, no behavior change).
+    aff_by_card = dict(zip(customers["card_id"], customers["affluence"].astype(float)))
+    sku_sub = dict(zip(catalog["sku"], catalog["functional_subcategory"]))
+    sku_group_g = dict(zip(catalog["sku"], catalog["functional_department"]))
+    sku_group_q = dict(zip(catalog["sku"], catalog["functional_category"]))
+    # sku→banner: the v2 SKU codes diverge per banner and don't embed the
+    # banner string, so staple↔trip-banner matching needs an explicit map.
+    sku_banner = dict(zip(catalog["sku"], catalog["banner_code"]))
+
     staple_cache: dict[tuple[str, str], list[str]] = {}
-
-    # SKU → metadata for quick lookup when expanding staples.
-    sku_meta = catalog.set_index("sku")[["category", "subcategory", "canonical_id"]]
-
     records: list[tuple] = []
 
-    # Iterate trips in trip_id order (already sorted by build_trips).
-    have_events = bool(
-        promo_depth_lookup or a2_boost_lookup or a3_basket_mult_lookup
-    )
-    trips_iter = trips.itertuples(index=False)
-    for tr in trips_iter:
-        trip_id = tr.trip_id
-        card_id = tr.card_id
-        segment = tr.segment
-        banner  = tr.banner_code
-        store_id = str(tr.store_id)
-        txn_ts  = tr.txn_ts
-
-        # Pay-cycle bucket from trip date.
-        ts = pd.Timestamp(txn_ts)
-        dom = ts.day
+    for tr in trips.itertuples(index=False):
+        trip_id, card_id, segment = tr.trip_id, tr.card_id, tr.segment
+        banner, store_id = tr.banner_code, str(tr.store_id)
+        ts = pd.Timestamp(tr.txn_ts)
         trip_date = ts.date()
-        bucket = _pay_cycle_bucket(dom)
-        mission_name = _pick_mission(rng, segment, bucket)
+        bucket = _pay_cycle_bucket(ts.day)
+        affluence = aff_by_card[card_id]
+
+        mission_name = _pick_mission(rng, segment, bucket, banner)
         mission = _SEGMENT_MISSIONS[segment][mission_name]
-        archetype = mission["archetype"]
-        size = _sample_basket_size(rng, segment, archetype)
+        size = _sample_basket_size(rng, segment, mission["archetype"])
+        group_col = _GROUP_COL[segment]
+        sku_group = sku_group_g if segment == "grocery" else sku_group_q
 
-        # Per-trip A3 pasta basket multiplier (1.0 = neutral).
-        a3_pasta_mult = (
-            float(a3_basket_mult_lookup.get((trip_date, banner), 1.0))
-            if a3_basket_mult_lookup else 1.0
-        )
+        # Mission group distribution (+ seasonality dept boost for grocery).
+        groups = list(mission["categories"].keys())
+        gw = np.array(list(mission["categories"].values()), dtype=float)
+        if segment == "grocery":
+            for (s, e, boost, depts) in seasonality:
+                if s <= trip_date <= e:
+                    for i, gname in enumerate(groups):
+                        if gname in depts:
+                            gw[i] *= boost
 
-        # Resolve staples for this card+segment.
-        staple_key = (card_id, segment)
-        if staple_key not in staple_cache:
-            staple_cache[staple_key] = _derive_staples_for_card(
-                card_id, segment, catalog,
-            )
-        staples = staple_cache[staple_key]
+        # Staples for this card+segment.
+        skey = (card_id, segment)
+        if skey not in staple_cache:
+            staple_cache[skey] = _derive_staples_for_card(card_id, segment, catalog)
+        staples = staple_cache[skey]
 
-        # Build basket: track subcategories already in basket for affinity.
         chosen_skus: set[str] = set()
         chosen_subcats: set[str] = set()
-        basket_lines: list[tuple[str, str, str, str]] = []
-        # tuple: (sku, category, subcategory, canonical_id)
+        chosen_groups: set[str] = set()
+        basket: list[tuple[str, str]] = []       # (sku, group)
 
-        # 1) Include each staple with probability — if its banner is this
-        # trip's banner (we keep staples banner-specific because cards
-        # shop across multiple banners in grocery).
+        # 1) Staples (banner-specific) with inclusion probability.
         for sku in staples:
-            if not sku.startswith(banner + "-"):
+            if len(basket) >= size:
+                break
+            if sku_banner.get(sku) != banner:
                 continue
-            if rng.uniform() < _STAPLE_INCLUDE_PROB and len(basket_lines) < size:
-                meta = sku_meta.loc[sku]
-                if sku not in chosen_skus:
-                    chosen_skus.add(sku)
-                    chosen_subcats.add(str(meta["subcategory"]))
-                    basket_lines.append((
-                        sku, str(meta["category"]), str(meta["subcategory"]),
-                        str(meta["canonical_id"]),
-                    ))
+            if sku in chosen_skus or sku not in sku_sub:
+                continue
+            if rng.uniform() < _STAPLE_INCLUDE_PROB:
+                sub = str(sku_sub[sku]); grp = str(sku_group[sku])
+                chosen_skus.add(sku); chosen_subcats.add(sub); chosen_groups.add(grp)
+                basket.append((sku, grp))
 
-        # 2) Fill remaining slots from mission categories.
-        cat_names = list(mission["categories"].keys())
-        cat_probs_raw = list(mission["categories"].values())
-        # A2 category boost — if a category-spike anomaly is active
-        # at this store today, multiply the category's weight.
-        if a2_boost_lookup:
-            cat_probs_raw = [
-                cp * float(a2_boost_lookup.get((trip_date, store_id, cn), 1.0))
-                for cn, cp in zip(cat_names, cat_probs_raw)
-            ]
-        cat_probs = np.array(cat_probs_raw, dtype=float)
-        cat_probs = cat_probs / cat_probs.sum()
-
-        attempts = 0
-        max_attempts = size * 6   # avoid pathological infinite loops
-        while len(basket_lines) < size and attempts < max_attempts:
+        # 2) Fill remaining slots.
+        attempts, max_attempts = 0, size * 8
+        while len(basket) < size and attempts < max_attempts:
             attempts += 1
-            category = str(rng.choice(cat_names, p=cat_probs))
-            pool = sku_pool.get((banner, category))
-            if pool is None or len(pool) == 0:
+            # Category weights (+ QSR combo-attach boost given chosen cats).
+            w = gw.copy()
+            if segment == "qsr" and combo_attach:
+                for i, gname in enumerate(groups):
+                    for anchor in chosen_groups:
+                        for partner, boost in combo_attach.get(anchor, []):
+                            if partner == gname:
+                                w[i] *= boost
+            w = w / w.sum()
+            group = str(rng.choice(groups, p=w))
+            pool = sku_pool.get((banner, group))
+            if pool is None or len(pool["sku"]) == 0:
                 continue
-            # Within category, sample a SKU. Apply affinity boost: any
-            # SKU whose subcategory is the partner of a subcategory
-            # already in the basket gets a multiplicative weight.
-            weights = np.ones(len(pool), dtype=float)
-            for anchor_sub in chosen_subcats:
-                for partner, boost in affinity.get(anchor_sub, []):
-                    mask = pool["subcategory"].to_numpy() == partner
-                    weights[mask] *= boost
-            # Event-driven weight adjustments (Stage 4.8):
-            if have_events:
-                pool_skus = pool["sku"].to_numpy()
-                pool_subcats = pool["subcategory"].to_numpy()
-                # Promo demand lift: SKUs on promo today get boost.
-                if promo_depth_lookup:
-                    for j, s in enumerate(pool_skus):
-                        depth = promo_depth_lookup.get((trip_date, str(s)))
-                        if depth is not None:
-                            weights[j] *= (1.0 + lift_coefficient * depth)
-                # A3 pasta basket multiplier (per banner + date).
-                if a3_pasta_mult != 1.0 and category == "PANTRY":
-                    pasta_mask = pool_subcats == "PASTA"
-                    weights[pasta_mask] *= a3_pasta_mult
+            skus, subs, pls = pool["sku"], pool["subcat"], pool["pl"]
+            weights = np.ones(len(skus), dtype=float)
+            # Grocery complementary affinity (subcategory).
+            if segment == "grocery":
+                for anchor_sub in chosen_subcats:
+                    for partner, boost in affinity.get(anchor_sub, []):
+                        weights[subs == partner] *= boost
+                # National-vs-PL selection: affluence × chain PL-program
+                # strength (§C5 / §A13). Realized share is measured, emergent.
+                pl_mult = np.exp(_PL_AFFLUENCE_SLOPE * (1.0 - affluence))
+                pl_mult *= _BANNER_PL_PROPENSITY.get(banner, 1.0)
+                weights[pls] *= pl_mult
+            # Dormant promo demand lift.
+            if have_promo:
+                for j, s in enumerate(skus):
+                    depth = promo_depth_lookup.get((trip_date, str(s)))
+                    if depth is not None:
+                        weights[j] *= (1.0 + lift_coefficient * depth)
             weights = weights / weights.sum()
-            idx = int(rng.choice(len(pool), p=weights))
-            sku = str(pool.iloc[idx]["sku"])
+            idx = int(rng.choice(len(skus), p=weights))
+            sku = str(skus[idx])
             if sku in chosen_skus:
                 continue
-            subcat = str(pool.iloc[idx]["subcategory"])
-            canon  = str(pool.iloc[idx]["canonical_id"])
             chosen_skus.add(sku)
-            chosen_subcats.add(subcat)
-            basket_lines.append((sku, category, subcat, canon))
+            chosen_subcats.add(str(subs[idx]))
+            chosen_groups.add(group)
+            basket.append((sku, group))
 
-        # 3) Emit one record per line.
-        for line_id, (sku, cat, subcat, canon) in enumerate(basket_lines, start=1):
-            qty = _sample_qty(rng, cat)
-            records.append((
-                trip_id, line_id, sku, canon, cat, subcat, qty,
-            ))
+        # 3) Emit lines.
+        for line_id, (sku, grp) in enumerate(basket, start=1):
+            qty_group = grp if grp != "Beverages" or segment == "grocery" else "Beverages_qsr"
+            records.append((trip_id, line_id, sku, _sample_qty(rng, qty_group)))
 
-    df = pd.DataFrame(
-        records,
-        columns=["trip_id", "line_id", "sku", "canonical_id",
-                 "category", "subcategory", "qty"],
-    )
+    df = pd.DataFrame(records, columns=["trip_id", "line_id", "sku", "qty"])
     return df.sort_values(["trip_id", "line_id"], kind="mergesort").reset_index(drop=True)

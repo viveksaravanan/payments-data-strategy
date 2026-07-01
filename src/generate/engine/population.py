@@ -60,9 +60,9 @@ class TierSpec:
 # starting values — the Phase-4/5 calibration nudges these if total
 # window volume drifts from the §C9 target.
 _GROCERY_TIERS = [
-    TierSpec("core",       0.20, 32, 40.0, 48),   # ~3.1/wk
-    TierSpec("regular",    0.45, 15, 20.0, 25),   # ~1.56/wk
-    TierSpec("occasional", 0.35,  3,  8.0, 13),   # ~0.62/wk
+    TierSpec("core",       0.20, 30, 38.0, 46),   # ~3.0/wk
+    TierSpec("regular",    0.45, 14, 19.0, 24),   # ~1.48/wk
+    TierSpec("occasional", 0.35,  3,  7.0, 12),   # ~0.57/wk
 ]
 
 # QSR blended ~1.38/wk (~17.8 visits/90d) so 99k active tracks the
