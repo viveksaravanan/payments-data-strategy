@@ -18,17 +18,20 @@ engine-code change. The engine is **segment-agnostic**.
   target_cards.
 - **`metro.yaml`** — the 8 zones (D13.1) with residential weights,
   affluence, density, household/age skew, centroid lat/long.
-- **`segments/{grocery,qsr,off_price}.yaml`** — per-segment
-  archetype (distance-decay β per D13.4, catalog model).
-- **`merchants/{kroger,acme,winn_dixie,taco_bell,tj_maxx}.yaml`** —
-  banner name, banner_code, segment ref, positioning_tier,
-  store_count, zone_placement_bias (matches D13.2 matrix).
+- **`segments/{grocery,qsr}.yaml`** — per-segment archetype
+  (distance-decay β per D13.4, catalog model, affinity matrix).
+  Off-price was dropped in datamodel-v2.
+- **`merchants/{kroger,acme,winn_dixie,taco_bell,burger_king,chick_fil_a}.yaml`**
+  — banner name, banner_code, segment ref, positioning_tier,
+  store_count, `attractiveness` (A_s gravity pull), `sku_target`
+  (assortment breadth), zone_placement_bias (§A11/§B1 placement grids).
 
 D12 invariants enforced by `config/loader.py::load_config`:
 residential weights sum to 1.0; every merchant segment resolves;
 every zone_placement_bias references a real zone; store_count
-equals sum(placement); total stores match global expected count;
-volume targets exist and reconcile.
+equals sum(placement); total stores match global expected count (38);
+volume targets (grocery + qsr) exist and reconcile; every merchant
+has a positive attractiveness + sku_target.
 
 ### Engine (`engine/`)
 
@@ -38,8 +41,8 @@ and writes Parquet at the end.
 
 ```
 engine/
-  geography.py    Layer 1 (D13): 29 stores in 8 zones + centroids
-  population.py   Layer 2 (D14): ~100k cards w/ intensity tiers + cohort
+  geography.py    Layer 1 (D13): 38 stores in 8 zones + centroids
+  population.py   Layer 2 (D14): ~155k cards w/ intensity tiers + cohort
   customers.py    Layer 3 (D16): home zone, affluence, loyalty, card
   trips.py        Layer 4 (D15+D15b): temporal placement + gravity store
   baskets.py      Layer 5 (D17): mission + affinity + staples + size
@@ -74,5 +77,5 @@ engine/
 ## Pilot mode
 
 `engine/run_all.py --scale N` runs at N cards instead of the full
-100k. Used for fast iteration during development and by the
+155k. Used for fast iteration during development and by the
 `tests/data_quality/` battery (5k cards, ~5 min build).

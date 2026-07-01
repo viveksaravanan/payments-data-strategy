@@ -1,33 +1,67 @@
-# Wave 1 global config. Cross-cutting knobs read by every engine layer.
-# Values trace back to docs/DECISIONS.md as noted; the loader validates
-# them against the D12 invariants.
+# Global config (datamodel-v2). Cross-cutting knobs read by every
+# engine layer. Targets trace to docs/MERCHANT_PROFILES.md (Parts
+# A–C + Appendix D); the loader validates them against the D12
+# invariants.
 
-seed: 42                                 # D11 reproducibility (T18)
+seed: 42                                 # reproducibility (T18)
 
-window:                                  # D5 window
+window:                                  # 90-day window (unchanged)
   start_date: 2026-03-01
   end_date:   2026-05-29
   days: 90
 
-# Per-segment transaction targets (D5). T1 in the realism battery
-# (SPEC §6) gates the run against these with the tolerance below.
+# Per-segment transaction targets (window). Off-price dropped in
+# datamodel-v2. Grocery ~2.67M (§A8) + QSR ~1.76M (§B2) ≈ 4.43M
+# window transactions (§C9). T1 gates the run against these with the
+# tolerance below.
 volume_targets:
-  grocery:   1080000                     # ~1.08M
-  qsr:        365000                     # ~365k
-  off_price:  225000                     # ~225k
-  total:     1670000
-  tolerance_pct: 10                      # ±10% per D5/T1
+  grocery:  2670000                      # ~2.67M (§A8)
+  qsr:      1760000                      # ~1.76M (§B2)
+  total:    4430000
+  tolerance_pct: 10                      # ±10%
 
-# D14.2 population total: ~100k cards solved from per-segment
-# (active cards × mean trips per active card = segment volume).
+# Population total: ~155k cards, one shared universe (§C1 / App D).
 population:
-  target_cards: 100000
+  target_cards: 155000
 
-# D13.4 gravity model constant — small offset so a same-zone store
-# doesn't divide by zero.
+# Gravity model constant — small offset so a same-zone store doesn't
+# divide by zero. A_s is now per-merchant (config-driven) in the
+# merchant YAMLs; β is per-segment in the segment YAMLs.
 distance_decay_d0: 0.5
 
-# Store-count expectation. D5's "Total: 24" line is an arithmetic
-# typo (15 + 9 + 5 = 29). The D13.2 placement matrix sums to 29
-# and is authoritative; per-segment row totals match it.
-expected_store_count: 29
+# Store-count expectation. §A11 grocery grid (KRG 6 / ACM 5 / WDX 4
+# = 15) + §B1 QSR grid (TB 9 / BK 8 / CFA 6 = 23) = 38.
+expected_store_count: 38
+
+# Seasonality (§C3 / App D) — read by the trips layer (Phase 4).
+# spring_drift_pct: gradual linear topline lift across the window.
+# events: concentrated windows with a trip-rate bump + a category
+# weight boost applied to the listed functional categories (which
+# must match the Phase-2 catalog's functional_category vocabulary).
+seasonality:
+  spring_drift_pct: 4                     # +~4% linear end-to-end
+  events:
+    - name: easter
+      start_date: 2026-03-30
+      end_date:   2026-04-05
+      trip_mult: 1.08
+      category_boost: 1.25
+      categories: [BAKING, MEAT, DAIRY, SNACKS]   # ham/eggs/baking/candy
+    - name: memorial_day
+      start_date: 2026-05-19
+      end_date:   2026-05-25
+      trip_mult: 1.10
+      category_boost: 1.30
+      categories: [MEAT, SNACKS, BEVERAGES]        # grilling/snacks/bev
+    - name: cinco_de_mayo
+      start_date: 2026-05-03
+      end_date:   2026-05-05
+      trip_mult: 1.03
+      category_boost: 1.10
+      categories: [SNACKS, BEVERAGES]
+    - name: mothers_day
+      start_date: 2026-05-08
+      end_date:   2026-05-10
+      trip_mult: 1.03
+      category_boost: 1.08
+      categories: [BAKERY, PRODUCE]                # flowers/bakery/brunch

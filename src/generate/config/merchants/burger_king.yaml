@@ -1,0 +1,25 @@
+# Burger King — QSR, broad value/roadside, breakfast daypart.
+# Real-chain anchor: ~$1.6M/unit AUV, Croissan'wich breakfast
+# (MERCHANT_PROFILES §B2). Everywhere but the most affluent zone
+# (Dilworth).
+
+name: "Burger King"
+banner_code: BKG
+segment: qsr
+positioning_tier: value
+
+store_count: 8
+
+# A_s starting point per Appendix D (0.90); menu depth ~80 items (§B3).
+attractiveness: 0.90
+sku_target: 80
+
+# Per §B1 QSR grid. Sums to store_count.
+zone_placement_bias:
+  ballantyne: 1
+  center_city: 1
+  noda: 1
+  matthews: 2
+  cabarrus_edge: 1
+  university_city: 1
+  eastway: 1

@@ -9,9 +9,13 @@ Invariants enforced (SPEC §3):
 - Every merchant ``segment`` resolves to a defined archetype.
 - Every ``zone_placement_bias`` entry references a valid zone id.
 - Per-merchant ``store_count`` equals the sum of its placement bias.
-- Per-segment volume targets sum to the global total and each is
-  non-zero (the ±tolerance check itself lives in T1 at run time,
-  since the realism battery measures against generated data).
+- Per-segment volume targets (grocery + qsr; off-price dropped in
+  datamodel-v2) sum to the global total and each is non-zero (the
+  ±tolerance check itself lives in T1 at run time, since the realism
+  battery measures against generated data).
+- Every merchant carries a positive ``attractiveness`` (A_s) and a
+  positive integer ``sku_target`` (datamodel-v2 config-driven gravity
+  + assortment).
 
 The forward consideration (SPEC §3): a new merchant config dropped
 into ``merchants/`` is picked up by the next ``load_config`` call
@@ -127,13 +131,14 @@ def _validate(cfg: Config) -> None:
             f"D5/D13.2: total store count {total_stores} != expected {expected}"
         )
 
-    # 6. Volume targets exist and reconcile.
+    # 6. Volume targets exist and reconcile. Off-price was dropped in
+    #    datamodel-v2, so the panel is grocery + qsr only.
     targets = cfg.global_.get("volume_targets") or {}
-    needed = {"grocery", "qsr", "off_price", "total", "tolerance_pct"}
+    needed = {"grocery", "qsr", "total", "tolerance_pct"}
     missing = needed - set(targets.keys())
     if missing:
         raise ConfigInvariantError(f"D5: volume_targets missing keys {sorted(missing)}")
-    summed = targets["grocery"] + targets["qsr"] + targets["off_price"]
+    summed = targets["grocery"] + targets["qsr"]
     if summed != targets["total"]:
         raise ConfigInvariantError(
             f"D5: per-segment volume targets sum to {summed} but total is {targets['total']}"
@@ -171,3 +176,22 @@ def _validate(cfg: Config) -> None:
                     f"D17.2: segment {seg_name!r} affinity_matrix entry "
                     f"{entry!r} must have a positive numeric boost"
                 )
+
+    # 8. datamodel-v2: every merchant carries a positive attractiveness
+    #    (A_s gravity pull, consumed by trips L4) and a positive integer
+    #    sku_target (assortment breadth, consumed by the catalog authoring
+    #    script). These are config-driven — the engine reads them, never
+    #    hardcodes A_s (contrast the v1 uniform-A_s trips layer).
+    for name, m in cfg.merchants.items():
+        a_s = m.get("attractiveness")
+        if not isinstance(a_s, (int, float)) or isinstance(a_s, bool) or a_s <= 0:
+            raise ConfigInvariantError(
+                f"datamodel-v2: merchant {name!r} must have a positive numeric "
+                f"attractiveness (A_s); got {a_s!r}"
+            )
+        skt = m.get("sku_target")
+        if not isinstance(skt, int) or isinstance(skt, bool) or skt <= 0:
+            raise ConfigInvariantError(
+                f"datamodel-v2: merchant {name!r} must have a positive integer "
+                f"sku_target; got {skt!r}"
+            )

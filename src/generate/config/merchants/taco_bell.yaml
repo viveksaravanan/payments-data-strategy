@@ -1,5 +1,7 @@
-# Taco Bell — QSR. Follows commercial corridors and the university
-# (late-night daypart, D15.4) per D13.2.
+# Taco Bell — QSR, most units, value/late-night. Real-chain anchor:
+# ~$2.1M/unit AUV, late-night ~18% post-9pm (MERCHANT_PROFILES §B2).
+# Student/young/value/high-traffic corridors; skips affluent
+# low-density (Dilworth).
 
 name: "Taco Bell"
 banner_code: TBL
@@ -8,11 +10,15 @@ positioning_tier: mainstream    # value menu lives in pricing config
 
 store_count: 9
 
+# A_s starting point per Appendix D (1.00); menu depth ~80 items (§B3).
+attractiveness: 1.00
+sku_target: 80
+
+# Per §B1 QSR grid. Sums to store_count.
 zone_placement_bias:
   center_city: 1
-  ballantyne: 1
   noda: 1
-  university_city: 2
-  eastway: 1
   matthews: 2
   cabarrus_edge: 1
+  university_city: 2
+  eastway: 2

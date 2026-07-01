@@ -1,21 +1,28 @@
-# Kroger — mainstream grocery, broadly spread across zones.
-# Stage 3 structural minimum; pricing strategy (D19.2-3), promo
-# timing (D20), payment overrides (optional, D16.3 keeps tender
-# emergent) extend in Stage 4 sub-stages.
+# Kroger — mainstream grocery, largest banner, broadest assortment.
+# Real-chain anchor: #1 US grocer, large-format, ~$45M/store AUV
+# (MERCHANT_PROFILES §A8). Spans all but the two poorest zones.
 
 name: "Kroger"
 banner_code: KRG          # short code for store_id prefix (KRG-NC-NNNN)
 segment: grocery
 positioning_tier: mainstream
 
-store_count: 5
+store_count: 6
 
-# Per-zone store placement, per D13.2. Sums to store_count.
-# Mainstream grocery skews broadly: urban core, affluent, gentrifying,
-# university, mid suburb.
+# Store attractiveness A_s (gravity pull) and assortment breadth.
+# Starting points per Appendix D (A_s 1.30, sku_target 1350); A_s is
+# refined in the Phase-4 calibration loop so Kroger carries ~52% of
+# grocery dollars (MERCHANT_PROFILES Decision D / §A11 calibration).
+attractiveness: 1.30
+sku_target: 1350
+
+# Per-zone store placement, per §A11 grocery grid. Sums to store_count.
+# Mainstream breadth: 4 affluent zones + Matthews + University City,
+# skipping only the two poorest (Cabarrus Edge, Eastway).
 zone_placement_bias:
-  center_city: 1
+  dilworth: 1
   ballantyne: 1
+  center_city: 1
   noda: 1
-  university_city: 1
   matthews: 1
+  university_city: 1

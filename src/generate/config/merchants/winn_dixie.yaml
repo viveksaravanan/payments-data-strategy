@@ -1,15 +1,21 @@
-# Winn-Dixie — value grocery. Skews value corridor + university +
-# exurban per D13.2; never enters Dilworth.
+# Winn-Dixie — value grocery, smallest banner. Real-chain anchor:
+# Southeastern Grocers, ~$22M/store AUV (MERCHANT_PROFILES §A8).
+# Value stronghold — the 3 poorest zones + a Matthews hedge.
 
 name: "Winn-Dixie"
 banner_code: WDX
 segment: grocery
 positioning_tier: value
 
-store_count: 5
+store_count: 4
 
+# A_s starting point per Appendix D (0.80); leanest assortment 1050 (§A8).
+attractiveness: 0.80
+sku_target: 1050
+
+# Per §A11 grocery grid. Sums to store_count.
 zone_placement_bias:
   university_city: 1
-  eastway: 2
+  eastway: 1
   matthews: 1
   cabarrus_edge: 1

@@ -1,5 +1,7 @@
-# Acme — premium grocery. Skews affluent/trendy; never enters the
-# value corridor or exurban fringe per D13.2.
+# Acme — premium (relative) grocery, mid-size banner. Real-chain
+# anchor: Albertsons banner, ~$32M/store AUV (MERCHANT_PROFILES §A8).
+# Pure premium clustering — the 5 most affluent zones, skips the
+# 3 poorest.
 
 name: "Acme"
 banner_code: ACM
@@ -8,9 +10,14 @@ positioning_tier: premium
 
 store_count: 5
 
+# A_s starting point per Appendix D (1.00); assortment 1250 (§A8).
+attractiveness: 1.00
+sku_target: 1250
+
+# Per §A11 grocery grid. Sums to store_count.
 zone_placement_bias:
-  center_city: 1
   dilworth: 1
   ballantyne: 1
+  center_city: 1
   noda: 1
   matthews: 1

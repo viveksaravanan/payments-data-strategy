@@ -1,0 +1,25 @@
+# Chick-fil-A — QSR, fewest units but highest AUV, affluent/family.
+# Real-chain anchor: ~$8.0M/unit AUV, closed Sundays (hard-zero),
+# no late-night (MERCHANT_PROFILES §B2). CFA's 6 units out-earn the
+# other 17 QSR units combined (§B7). Affluent/suburban-family +
+# campus; skips dense-working/exurb.
+
+name: "Chick-fil-A"
+banner_code: CFA
+segment: qsr
+positioning_tier: premium
+
+store_count: 6
+
+# A_s starting point per Appendix D (1.40 — highest QSR pull);
+# menu depth ~60 items (§B3).
+attractiveness: 1.40
+sku_target: 60
+
+# Per §B1 QSR grid. Sums to store_count.
+zone_placement_bias:
+  dilworth: 1
+  ballantyne: 1
+  noda: 1
+  matthews: 2
+  university_city: 1
