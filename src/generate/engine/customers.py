@@ -50,6 +50,16 @@ _GROCER_BANNERS = ("KRG", "ACM", "WDX")
 # Stage 4.4 (D15b).
 _PRIMARY_BANNER_SHARES = {"KRG": 0.40, "ACM": 0.33, "WDX": 0.27}
 
+# ----- QSR brand preference (§C2 / §B1) -----------------------------
+# Each QSR-active card gets a preferred chain, affluence-tilted:
+# Chick-fil-A skews affluent/family, Taco Bell young/value, Burger
+# King broad. The primary is composed with gravity × loyalty at the
+# trips layer (mirrors grocery's primary_banner). Base pulls + an
+# affluence tilt (exp of the affluence delta) shape the draw; the
+# realized QSR brand split emerges downstream from A_s + placement.
+_QSR_BASE_PULL   = {"CFA": 1.00, "TBL": 1.05, "BKG": 0.95}
+_QSR_AFFL_TILT   = {"CFA": 1.20, "TBL": -1.20, "BKG": 0.0}   # sign = lean
+
 
 # ----- Card identity (D16.3) ----------------------------------------
 
@@ -132,6 +142,37 @@ def _draw_primary_banner(
     return out
 
 
+def _draw_qsr_preference(
+    rng: np.random.Generator,
+    qsr_active_mask: np.ndarray,
+    affluence: np.ndarray,
+) -> np.ndarray:
+    """Preferred QSR chain per QSR-active card (None otherwise).
+
+    Per-card weights = base pull × exp(tilt × (affluence − 1)), so
+    affluent cards lean Chick-fil-A and value cards lean Taco Bell,
+    with Burger King broad. Drawn per card from the normalized
+    weights (vectorized via Gumbel-max so it stays deterministic
+    under the shared RNG)."""
+    n = len(qsr_active_mask)
+    out = np.full(n, None, dtype=object)
+    idx = np.where(qsr_active_mask)[0]
+    if len(idx) == 0:
+        return out
+    banners = ["CFA", "TBL", "BKG"]
+    aff = affluence[idx] - 1.0
+    # weights[i, b] = base_b * exp(tilt_b * aff_i)
+    logw = np.stack([
+        np.log(_QSR_BASE_PULL[b]) + _QSR_AFFL_TILT[b] * aff
+        for b in banners
+    ], axis=1)                                    # (len(idx), 3)
+    # Gumbel-max categorical sampling: argmax(logw + Gumbel noise).
+    g = -np.log(-np.log(rng.uniform(size=logw.shape)))
+    pick = np.argmax(logw + g, axis=1)
+    out[idx] = np.array(banners, dtype=object)[pick]
+    return out
+
+
 def _draw_tender(rng: np.random.Generator, affluence: np.ndarray) -> np.ndarray:
     """Affluence → credit propensity. Logistic on (affluence - 1.0).
 
@@ -199,6 +240,9 @@ def build_customers(
     affluence = _draw_affluence(rng, cfg, home_zone)
     loyalty_type = _draw_loyalty_type(rng, n)
     primary_banner = _draw_primary_banner(rng, pop_sorted["active_grocery"].to_numpy())
+    qsr_primary = _draw_qsr_preference(
+        rng, pop_sorted["active_qsr"].to_numpy(), affluence,
+    )
     tender = _draw_tender(rng, affluence)
     network = _draw_network(rng, tender)
     wallet_enrolled, wallet_provider = _draw_wallet(rng, n)
@@ -209,6 +253,7 @@ def build_customers(
         "affluence":        affluence,
         "loyalty_type":     loyalty_type,
         "primary_banner":   primary_banner,
+        "qsr_primary":      qsr_primary,
         "tender":           tender,
         "network":          network,
         "wallet_enrolled":  wallet_enrolled,
