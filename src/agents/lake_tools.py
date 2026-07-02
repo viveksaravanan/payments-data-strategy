@@ -72,22 +72,19 @@ _TENANT_TABLE_DESCRIPTIONS: dict[str, dict[str, Any]] = {
     },
     "transaction_items": {
         "description": (
-            "Line items — one row per (txn_id, line_id). Carries "
-            "category, subcategory, sku, canonical_id, qty, unit_price, "
-            "discount, line_total, promo_id. NOTE: NO banner_code on "
-            "this table — scope by joining to transactions and using "
-            "transactions.banner_code = '<viewer>'."
+            "Line items — one row per (txn_id, line_id). Carries ONLY "
+            "sku, qty, unit_price, discount, line_total, promo_id. "
+            "Product NAME + category/subcategory + functional taxonomy "
+            "are NOT on the line — JOIN to products on sku to resolve "
+            "them. NOTE: NO banner_code on this table — scope by joining "
+            "to transactions and using transactions.banner_code = '<viewer>'."
         ),
         "primary_key": ["txn_id", "line_id"],
         "join_keys": {
-            "txn_id":       "→ transactions.txn_id",
-            "sku":          "→ products.sku (your SKU's product row)",
-            "canonical_id": (
-                "→ products.canonical_id (cross-merchant canonical "
-                "product key — same canonical_id maps to the same "
-                "product at every banner)"
-            ),
-            "promo_id":     "→ promotions.promo_id (when not null)",
+            "txn_id":   "→ transactions.txn_id",
+            "sku":      "→ products.sku (resolve product_name, "
+                        "functional_category/subcategory, private_label, shelf_price)",
+            "promo_id": "→ promotions.promo_id (when not null; promotions dormant)",
         },
     },
     "stores": {
@@ -99,17 +96,16 @@ _TENANT_TABLE_DESCRIPTIONS: dict[str, dict[str, Any]] = {
     },
     "products": {
         "description": (
-            "One row per SKU. Has banner_code; scope by "
-            "banner_code = '<viewer>' for own catalogue."
+            "One row per SKU (the item master). Dual taxonomy: "
+            "functional_department/category/subcategory (the SHARED, "
+            "normalized comparison key — use these to compare across "
+            "banners) plus merchant_department/category/subcategory (each "
+            "banner's own labels). Also product_name, brand, size, "
+            "private_label, shelf_price. Has banner_code; scope by "
+            "banner_code = '<viewer>' for own catalogue. Peer comparison "
+            "rides functional_subcategory — there is NO cross-merchant id."
         ),
         "primary_key": ["sku"],
-        "join_keys": {
-            "canonical_id": (
-                "shared cross-merchant key — the same canonical_id "
-                "is in every grocer's catalogue at the same "
-                "(category, subcategory)"
-            ),
-        },
     },
     "promotions": {
         "description": "One row per promo. Has merchant_id; scope it.",
@@ -117,8 +113,9 @@ _TENANT_TABLE_DESCRIPTIONS: dict[str, dict[str, Any]] = {
     },
     "merchants": {
         "description": (
-            "Reference table of the 5 merchants. merchant_id is the "
-            "banner code. Available for joining but rarely needed."
+            "Reference table of the 6 merchants (grocery KRG/ACM/WDX; "
+            "QSR TBL/BKG/CFA). merchant_id is the banner code. Available "
+            "for joining but rarely needed."
         ),
         "primary_key": ["merchant_id"],
     },
@@ -202,7 +199,7 @@ def schema_info() -> dict[str, Any]:
     tips = [
         "Always call schema_info first; it tells you the real column names so you don't burn turns guessing.",
         "transaction_items has NO banner_code — scope it by joining to transactions and filtering transactions.banner_code = '<viewer>'.",
-        "Join transaction_items → products via sku for product detail; via canonical_id for cross-merchant.",
+        "Join transaction_items → products on sku to resolve product_name, functional_category/subcategory, private_label, shelf_price (the line carries only sku). Compare across banners on functional_subcategory — there is no cross-merchant product id.",
         "Peer data: query lake_transactions / lake_stores with aggregating SQL via query_lake_sql. It resolves to YOUR peer set; your own rows are absent. peer_relationship = 'peer' (same segment) | 'merchant' (different segment).",
         "neighborhood lives on lake_stores, not lake_transactions — JOIN lake_stores USING (lake_store_id) to group by neighborhood.",
         "k=5 floor: groups backed by fewer than 5 lines are dropped and counted in `suppressed`. For transaction-level shares use COUNT(DISTINCT lake_txn_id); the line-count floor is the suppression gate only.",
@@ -445,7 +442,7 @@ EMIT_RESPONSE_TOOL = {
                     "operand cells).\n"
                     "  * ValueRef (PREFERRED for peer metric "
                     "aggregates) — the address shape: `{type: "
-                    "\"ValueRef\", by: \"category\", value: \"MEAT\", "
+                    "\"ValueRef\", by: \"subcategory\", value: \"Ground Beef\", "
                     "metric: \"units_index\"}` resolves to the EXACT "
                     "mean from the same aggregates block "
                     "read_lake_table surfaced. Use this for any peer "
@@ -509,7 +506,7 @@ EMIT_RESPONSE_TOOL = {
                                 "value": {
                                     "description": (
                                         "ValueRef only: the dimension "
-                                        "value (e.g. 'MEAT', 'Z02')."
+                                        "value (e.g. 'Ground Beef', a neighborhood)."
                                     ),
                                 },
                                 "metric": {

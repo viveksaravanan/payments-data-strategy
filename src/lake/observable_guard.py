@@ -56,9 +56,11 @@ ALLOWED_COLUMNS: dict[str, set[str]] = {
         "subtotal", "discount_total", "n_lines",
         "segment", "banner_code",
     },
+    # datamodel-v2: the line carries ONLY the sku key (+ qty/price/dormant
+    # promo). canonical_id / category / subcategory are NOT on the line —
+    # they resolve via a join to `products` on sku.
     "transaction_items": {
-        "txn_id", "line_id", "sku", "canonical_id",
-        "category", "subcategory", "qty", "unit_price",
+        "txn_id", "line_id", "sku", "qty", "unit_price",
         "discount", "promo_id", "line_total",
     },
     # Promo / catalog reference — observable to the merchant who ran them.
@@ -66,10 +68,15 @@ ALLOWED_COLUMNS: dict[str, set[str]] = {
         "promo_id", "sku", "merchant_id", "promo_type",
         "start_date", "end_date", "depth_pct",
     },
+    # datamodel-v2 dual-taxonomy catalog. merchant_* labels + functional_*
+    # comparison key + baked shelf_price. canonical_id is HIDDEN (lives in
+    # data/eval/canonical_map.csv) and is NOT observable here.
     "products": {
         "sku", "merchant_id", "banner_code", "segment",
-        "category", "subcategory", "canonical_id",
-        "private_label", "base_price",
+        "product_name", "description", "brand", "size", "private_label",
+        "merchant_department", "merchant_category", "merchant_subcategory",
+        "functional_department", "functional_category", "functional_subcategory",
+        "shelf_price",
     },
     "merchants": {
         "merchant_id", "name", "segment", "positioning_tier",

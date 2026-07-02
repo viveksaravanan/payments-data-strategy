@@ -39,23 +39,30 @@ import pandas as pd
 
 from src.generate.config.loader import load_config
 from src.generate.engine.baskets import build_basket_items
-from src.generate.engine.catalog import build_catalog
+from src.generate.engine.catalog import load_products
 from src.generate.engine.customers import build_customers
-from src.generate.engine.events import (
-    apply_anomaly_filter,
-    build_a2_boost_lookup,
-    build_a3_basket_mult_lookup,
-    build_anomaly_schedule,
-    build_promo_id_lookup,
-    build_promo_lookup,
-    build_promo_schedule,
-)
 from src.generate.engine.geography import build_stores, build_zones
 from src.generate.engine.payment import build_payment
 from src.generate.engine.population import build_population
 from src.generate.engine.pricing import build_priced_items
 from src.generate.engine.trips import build_trips
 from src.storage.duckdb_io import write_parquet
+
+# datamodel-v2: promotions + planted anomalies are DISABLED but dormant
+# (Decision B). The event framework in engine/events.py is intact and
+# uninvoked; empty `promotions` / `anomalies_groundtruth` tables are still
+# emitted so the observable-guard allowlist + answer-key separation hold.
+PROMOS_ENABLED = False
+ANOMALIES_ENABLED = False
+
+_PROMO_COLUMNS = [
+    "promo_id", "sku", "merchant_id", "promo_type",
+    "start_date", "end_date", "depth_pct",
+]
+_ANOMALY_COLUMNS = [
+    "anomaly_id", "anomaly_type", "banner_code", "store_id",
+    "zone_id", "category", "start_date", "end_date", "magnitude",
+]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 CONFIG_ROOT = REPO_ROOT / "src" / "generate" / "config"
@@ -84,19 +91,10 @@ def build_all(scale: int | None = None) -> dict[str, pd.DataFrame]:
     # ----- Static reference tables -----
     zones_df = build_zones(cfg)
     stores_df = build_stores(cfg, np.random.default_rng(seed))
-    catalog_df = build_catalog(cfg, np.random.default_rng(seed + 10))
-    _step("zones / stores / catalog", t0)
-
-    # ----- Event schedules (D20) -----
-    promo_schedule = build_promo_schedule(
-        cfg, catalog_df, np.random.default_rng(seed + 20),
-    )
-    anomaly_schedule = build_anomaly_schedule(cfg, stores_df)
-    promo_depth_lookup = build_promo_lookup(promo_schedule)
-    promo_id_lookup = build_promo_id_lookup(promo_schedule)
-    a2_boost_lookup = build_a2_boost_lookup(anomaly_schedule)
-    a3_basket_mult_lookup = build_a3_basket_mult_lookup(anomaly_schedule)
-    _step("event schedules", t0)
+    # Catalog is a static committed artifact — READ it (data/catalog/
+    # products.csv), never rebuilt in-pipeline (datamodel-v2 Phase 2/7).
+    catalog_df = load_products()
+    _step("zones / stores / catalog(read)", t0)
 
     # ----- Layers 2-4 (population → customers → trips) -----
     population = build_population(
@@ -109,19 +107,14 @@ def build_all(scale: int | None = None) -> dict[str, pd.DataFrame]:
         cfg, population, customers, stores_df, zones_df,
         np.random.default_rng(seed + 2),
     )
-    trips = apply_anomaly_filter(
-        trips, anomaly_schedule, stores_df,
-        np.random.default_rng(seed + 4),
-    )
-    _step(f"population/customers/trips ({len(trips):,} trips after A1)", t0)
+    # Anomaly planting is dormant (ANOMALIES_ENABLED = False) — no filter.
+    _step(f"population/customers/trips ({len(trips):,} trips)", t0)
 
     # ----- Layers 5-7 (baskets → payment → pricing) -----
+    # Promotions dormant → no promo demand-lift lookup passed.
     basket_items = build_basket_items(
         cfg, trips, customers, catalog_df,
         np.random.default_rng(seed + 3),
-        promo_depth_lookup=promo_depth_lookup,
-        a2_boost_lookup=a2_boost_lookup,
-        a3_basket_mult_lookup=a3_basket_mult_lookup,
     )
     _step(f"basket items ({len(basket_items):,} lines)", t0)
 
@@ -130,12 +123,10 @@ def build_all(scale: int | None = None) -> dict[str, pd.DataFrame]:
         np.random.default_rng(seed + 6),
     )
     priced_items = build_priced_items(
-        cfg, basket_items, catalog_df, trips, stores_df, zones_df,
+        cfg, basket_items, catalog_df, trips,
         np.random.default_rng(seed + 5),
-        promo_depth_lookup=promo_depth_lookup,
-        promo_id_lookup=promo_id_lookup,
     )
-    _step("payment + priced items", t0)
+    _step("payment + priced items (flat shelf-price)", t0)
 
     # ----- Assemble §5 contract tables -----
     merchants_df = pd.DataFrame([
@@ -172,7 +163,15 @@ def build_all(scale: int | None = None) -> dict[str, pd.DataFrame]:
         )
         .rename(columns={"trip_id": "txn_id", "card_id": "customer_token"})
     )
+    # Line items carry ONLY the sku key (+ qty/price/dormant promo) — no
+    # canonical_id / category / subcategory / name. Those resolve via a join
+    # to `products` on `sku` (§A12 normalization boundary at the catalog).
     transaction_items_df = priced_items.rename(columns={"trip_id": "txn_id"})
+
+    # Dormant promotions + anomalies (Decision B) — emit empty tables so the
+    # observable-guard allowlist + answer-key separation stay valid.
+    promotions_df = pd.DataFrame(columns=_PROMO_COLUMNS)
+    anomalies_df = pd.DataFrame(columns=_ANOMALY_COLUMNS)
 
     _step("contract tables assembled", t0)
 
@@ -184,8 +183,8 @@ def build_all(scale: int | None = None) -> dict[str, pd.DataFrame]:
         "products":               catalog_df,
         "transactions":           transactions_df,
         "transaction_items":      transaction_items_df,
-        "promotions":             promo_schedule,
-        "anomalies_groundtruth":  anomaly_schedule,
+        "promotions":             promotions_df,
+        "anomalies_groundtruth":  anomalies_df,
     }
 
 

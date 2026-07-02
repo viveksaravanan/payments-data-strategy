@@ -49,8 +49,15 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_ROOT = REPO_ROOT / "src" / "generate" / "config"
 DATA_LAKE_ITEMS = REPO_ROOT / "data" / "lake" / "items"
 
-# Merchant panel — single source of truth (mirrors scope.py / isolation.py).
-VALID_MERCHANTS: tuple[str, ...] = ("ACM", "KRG", "TBL", "TJX", "WDX")
+# Merchant panel — derived from config (datamodel-v2: KRG/ACM/WDX grocery +
+# TBL/BKG/CFA qsr; off-price/TJX dropped). Config-driven so a panel change
+# doesn't need a code edit here.
+def _valid_merchants() -> tuple[str, ...]:
+    cfg = load_config(CONFIG_ROOT)
+    return tuple(sorted(m["banner_code"] for m in cfg.merchants.values()))
+
+
+VALID_MERCHANTS: tuple[str, ...] = _valid_merchants()
 
 # Coarse time-of-day buckets per day (§3.3): hour 0-23 → 0..HOUR_BUCKETS-1.
 HOUR_BUCKETS = 10
@@ -111,10 +118,17 @@ def build_global_lines() -> pd.DataFrame:
     The 3-table join runs in DuckDB over the registered pandas frames
     (columnar, low peak memory).
     """
+    # datamodel-v2: the line carries only `sku` — category/subcategory now
+    # resolve via a join to `products` on sku (the functional taxonomy, the
+    # shared comparison key). No taxonomy is denormalized onto the line.
     items = load_table(
         "transaction_items",
-        ["txn_id", "line_id", "category", "subcategory",
+        ["txn_id", "line_id", "sku",
          "qty", "unit_price", "discount", "line_total"],
+    )
+    products = load_table(
+        "products",
+        ["sku", "functional_category", "functional_subcategory"],
     )
     txns = load_table(
         "transactions",
@@ -125,10 +139,13 @@ def build_global_lines() -> pd.DataFrame:
 
     con = duckdb.connect()
     con.register("items", items)
+    con.register("products", products)
     con.register("txns", txns)
     con.register("stores", stores)
     # txn_date = date only; hour_bucket = coarse 10-bucket time of day.
     # Payment columns renamed to the stable lake names (§3.1 mapping).
+    # The published lake `category`/`subcategory` are sourced from the
+    # products join (functional taxonomy) — the peer comparison key.
     enriched = con.execute(
         """
         SELECT
@@ -139,8 +156,8 @@ def build_global_lines() -> pd.DataFrame:
           CAST(t.txn_ts AS DATE)                      AS txn_date,
           CAST(EXTRACT(hour FROM t.txn_ts) AS INTEGER) * 10 / 24
                                                       AS hour_bucket,
-          i.category                                  AS category,
-          i.subcategory                               AS subcategory,
+          p.functional_category                       AS category,
+          p.functional_subcategory                    AS subcategory,
           i.unit_price                                AS unit_price,
           i.qty                                       AS qty,
           i.discount                                  AS discount,
@@ -153,12 +170,13 @@ def build_global_lines() -> pd.DataFrame:
                ELSE 'none' END                        AS wallet_type,
           s.neighborhood                              AS neighborhood
         FROM items i
+        JOIN products p ON i.sku = p.sku
         JOIN txns   t USING (txn_id)
         JOIN stores s ON t.store_id = s.store_id
         """
     ).df()
     con.close()
-    del items, txns, stores
+    del items, products, txns, stores
 
     enriched["hour_bucket"] = enriched["hour_bucket"].astype("int8")
     # Store date-only (date32), not a midnight timestamp — the spec

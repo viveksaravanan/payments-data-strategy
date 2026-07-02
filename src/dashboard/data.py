@@ -73,7 +73,7 @@ _TENANT_VIEWS: dict[str, str] = {
         FROM read_parquet('{DATA_RAW / "transactions.parquet"}')
     """,
     "tenant_transaction_items": f"""
-        SELECT txn_id, line_id, sku, canonical_id, category, subcategory,
+        SELECT txn_id, line_id, sku,
                qty, unit_price, discount, line_total, promo_id
         FROM read_parquet('{DATA_RAW / "transaction_items.parquet"}')
     """,
@@ -84,9 +84,14 @@ _TENANT_VIEWS: dict[str, str] = {
     """,
     "tenant_products": f"""
         SELECT sku,
-               sku                AS name,
-               banner_code, merchant_id, category, subcategory,
-               base_price, private_label, segment, canonical_id
+               product_name       AS name,
+               banner_code, merchant_id,
+               functional_category    AS category,
+               functional_subcategory AS subcategory,
+               merchant_department, merchant_category, merchant_subcategory,
+               functional_department,
+               shelf_price        AS base_price,
+               private_label, segment
         FROM read_parquet('{DATA_RAW / "products.parquet"}')
     """,
     "tenant_customers": f"""
