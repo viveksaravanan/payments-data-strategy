@@ -1,16 +1,19 @@
-"""Generate the Wave 1 §6 data-quality report.
+"""Generate the datamodel-v2 §6 data-quality report.
 
 Reads ``data/raw/`` + ``data/eval/`` (produced by
-``python -m src.generate.engine.run_all``) and emits a human-readable
-Markdown report with T1-T18 measured numbers alongside their bands.
-This is the artifact an exec/reviewer reads to trust the dataset.
+``python -m src.generate.engine.run_all``) and emits a Markdown report
+with the v2 acceptance measurements alongside their bands. This is the
+artifact an exec/reviewer reads to trust the dataset.
+
+Line items carry only ``sku`` + qty + price; taxonomy / PL resolve via a
+join to ``products`` on ``sku`` (the normalization boundary). Bands trace
+to docs/MERCHANT_PROFILES.md (§A9 / §B7 / §C9 / Appendix D).
 
 Run: ``uv run python scripts/build_dq_report.py [--out docs/DQ_REPORT.md]``
 """
 from __future__ import annotations
 
 import argparse
-from datetime import date
 from pathlib import Path
 
 import numpy as np
@@ -25,18 +28,19 @@ DATA_EVAL = REPO_ROOT / "data" / "eval"
 CONFIG_ROOT = REPO_ROOT / "src" / "generate" / "config"
 DEFAULT_OUT = REPO_ROOT / "docs" / "DQ_REPORT.md"
 
+GROCERS = ("KRG", "ACM", "WDX")
+QSR = ("TBL", "BKG", "CFA")
+FRESH = {"Meat & Seafood", "Produce", "Bakery", "Dairy & Eggs"}
+CENTER = {"Dry Grocery", "Snacks & Candy", "Beverages"}
+
 
 def _load(name: str, eval_: bool = False) -> pd.DataFrame:
     base = DATA_EVAL if eval_ else DATA_RAW
     return read_parquet(str(base / f"{name}.parquet")).df()
 
 
-def _band(measured: float, lo: float, hi: float) -> str:
-    if measured < lo:
-        return "⚠ below band"
-    if measured > hi:
-        return "⚠ above band"
-    return "✓ in band"
+def _band(v: float, lo: float, hi: float) -> str:
+    return "⚠ below band" if v < lo else ("⚠ above band" if v > hi else "✓ in band")
 
 
 def main() -> None:
@@ -45,241 +49,221 @@ def main() -> None:
     args = parser.parse_args()
 
     cfg = load_config(CONFIG_ROOT)
-    transactions = _load("transactions")
+    txn = _load("transactions")
     items = _load("transaction_items")
     customers = _load("customers")
     products = _load("products")
-    stores = _load("stores")
     promotions = _load("promotions")
     anomalies = _load("anomalies_groundtruth", eval_=True)
 
-    n_cards = len(customers)
-    n_txns = len(transactions)
-    n_lines = len(items)
+    # Resolve taxonomy/PL via the products join (line carries only sku).
+    px = products[["sku", "banner_code", "functional_department",
+                   "functional_category", "functional_subcategory",
+                   "private_label", "shelf_price"]].rename(columns={
+        "functional_category": "category", "functional_subcategory": "subcategory"})
+    ix = items.merge(px, on="sku", how="left")
+
+    n_cards, n_txns, n_lines = len(customers), len(txn), len(items)
     target_cards = cfg.global_["population"]["target_cards"]
-    scale_frac = n_cards / target_cards
-    scale_label = "FULL" if scale_frac >= 0.95 else f"{scale_frac*100:.1f}% pilot"
+    sf = n_cards / target_cards
+    scale_label = "FULL" if sf >= 0.95 else f"{sf*100:.1f}% pilot"
+    up = (1 / sf) * (365 / 90)   # pilot→full-year full-pop scale
 
-    lines: list[str] = []
-    lines.append("# Wave 1 Data-Quality Report")
-    lines.append("")
-    lines.append(f"**Generated at scale:** {n_cards:,} cards ({scale_label} — target {target_cards:,})")
-    lines.append(f"**Transactions:** {n_txns:,}  |  **Line items:** {n_lines:,}")
-    lines.append(f"**Window:** {cfg.global_['window']['start_date']} → {cfg.global_['window']['end_date']}")
-    lines.append("")
-    lines.append("Each acceptance invariant below shows the measured value next to its target band.")
-    lines.append("Bands match SPEC §6 unless noted as pilot-adjusted.")
-    lines.append("")
+    L: list[str] = []
+    def w(s=""): L.append(s)
 
-    # ----- T1 volume
-    expected_total = cfg.global_["volume_targets"]["total"] * scale_frac
-    lines.append("## T1 — Volume")
-    lines.append(f"- **Total txns:** {n_txns:,} (target ~{int(expected_total):,}, ±10%) — {_band(n_txns, 0.85*expected_total, 1.15*expected_total)}")
-    for seg, key in (("grocery","grocery"),("qsr","qsr"),("off_price","off_price")):
-        expected = cfg.global_["volume_targets"][key] * scale_frac
-        actual = int((transactions["segment"] == seg).sum())
-        lines.append(f"- **{seg}:** {actual:,} (target ~{int(expected):,}) — {_band(actual, 0.85*expected, 1.15*expected)}")
-    lines.append("")
+    w("# Data-Quality Report — datamodel-v2")
+    w()
+    w(f"**Scale:** {n_cards:,} cards ({scale_label} — target {target_cards:,})")
+    w(f"**Transactions:** {n_txns:,}  |  **Line items:** {n_lines:,}")
+    w(f"**Window:** {cfg.global_['window']['start_date']} → {cfg.global_['window']['end_date']}")
+    w()
+    w("Grocery (KRG/ACM/WDX) + QSR (TBL/BKG/CFA); 38 stores; flat shelf-price; "
+      "promotions + anomalies dormant. Measured value shown next to each band; "
+      "targets trace to §A9/§B7/§C9/Appendix D.")
+    w()
 
-    # ----- T2 AOV
-    lines.append("## T2 — Per-segment AOV")
-    aov_g = transactions[transactions["segment"]=="grocery"]["subtotal"].mean()
-    aov_q = transactions[transactions["segment"]=="qsr"]["subtotal"].mean()
-    aov_o = transactions[transactions["segment"]=="off_price"]["subtotal"].mean()
-    lines.append(f"- **Grocery:** ${aov_g:.2f} (band $48-62, D17.4 anchor ~$55) — {_band(aov_g, 48, 62)}")
-    lines.append(f"- **QSR:** ${aov_q:.2f} (band $9-12) — {_band(aov_q, 9, 12)}")
-    lines.append(f"- **Off-price:** ${aov_o:.2f} (band $30-50) — {_band(aov_o, 30, 50)}")
-    lines.append("")
+    # T1 volume
+    w("## T1 — Volume")
+    exp_tot = cfg.global_["volume_targets"]["total"] * sf
+    w(f"- **Total txns:** {n_txns:,} (target ~{int(exp_tot):,}) — {_band(n_txns, 0.80*exp_tot, 1.15*exp_tot)}")
+    for seg in ("grocery", "qsr"):
+        exp = cfg.global_["volume_targets"][seg] * sf
+        act = int((txn["segment"] == seg).sum())
+        w(f"- **{seg}:** {act:,} (target ~{int(exp):,}) — {_band(act, 0.80*exp, 1.20*exp)}")
+    w()
 
-    # ----- T3 AUV
-    lines.append("## T3 — Grocery store AUV (annualized)")
-    g_revenue = transactions[transactions["segment"]=="grocery"].groupby("store_id")["subtotal"].sum()
-    auv_eq = g_revenue.mean() * (365 / 90) / scale_frac
-    auv_native = g_revenue.mean() * (365 / 90)
-    if scale_frac >= 0.95:
-        lines.append(f"- **AUV:** ${auv_native/1e6:.2f}M/yr (band $14-18M, full-scale direct) — {_band(auv_native, 14e6, 18e6)}")
-    else:
-        lines.append(f"- **AUV-equivalent (scaled 1/{scale_frac:.3f}):** ${auv_eq/1e6:.2f}M/yr (band $14-18M) — {_band(auv_eq, 14e6, 18e6)}")
-    lines.append("")
+    # T2 AOV
+    w("## T2 — Basket / check")
+    aov_g = txn[txn.segment == "grocery"]["subtotal"].mean()
+    aov_q = txn[txn.segment == "qsr"]["subtotal"].mean()
+    w(f"- **Grocery AOV:** ${aov_g:.2f} (band $45-60, §A9.5) — {_band(aov_g, 45, 60)}")
+    w(f"- **QSR check (blended):** ${aov_q:.2f} (band $8-14) — {_band(aov_q, 8, 14)}")
+    chk = {b: txn[txn.banner_code == b]["subtotal"].mean() for b in QSR}
+    w(f"- **QSR check ordering:** CFA ${chk['CFA']:.2f} > BK ${chk['BKG']:.2f} > TB ${chk['TBL']:.2f} "
+      f"(§B2) — {'✓' if chk['CFA']>chk['BKG']>chk['TBL'] else '⚠'}")
+    w()
 
-    # ----- T4 DoW
-    g_txn = transactions[transactions["segment"]=="grocery"].copy()
-    g_txn["dow"] = pd.to_datetime(g_txn["txn_ts"]).dt.dayofweek
-    weekend = ((g_txn["dow"]==5)|(g_txn["dow"]==6)).sum()/2
-    weekday = (g_txn["dow"]<=4).sum()/5
-    ratio = weekend / weekday
-    lines.append("## T4 — Grocery day-of-week")
-    lines.append(f"- **Weekend/weekday ratio:** {ratio:.3f} (band 1.20-1.35) — {_band(ratio, 1.20, 1.35)}")
-    lines.append("")
+    # T3 AUV + splits
+    w("## T3 — Per-store AUV (annualized, scale-adjusted) & merchant split")
+    auv_targets = {"KRG": 45, "ACM": 32, "WDX": 22, "CFA": 8.0, "TBL": 2.1, "BKG": 1.6}
+    for b in ("KRG", "ACM", "WDX", "CFA", "TBL", "BKG"):
+        s = txn[txn.banner_code == b].groupby("store_id")["subtotal"].sum().mean() * up
+        t = auv_targets[b]
+        w(f"- **{b} AUV:** ${s/1e6:.1f}M/yr (target ~${t}M) — {_band(s/1e6, t*0.85, t*1.20)}")
+    gd = txn[txn.segment == "grocery"].groupby("banner_code")["subtotal"].sum()
+    gd = gd / gd.sum()
+    w(f"- **Grocery $ split:** KRG {gd['KRG']*100:.1f} / ACM {gd['ACM']*100:.1f} / WDX {gd['WDX']*100:.1f} "
+      f"(target 52/31/17) — {'✓' if 0.47<=gd['KRG']<=0.57 else '⚠'}")
+    qd = txn[txn.segment == "qsr"].groupby("banner_code")["subtotal"].sum()
+    w(f"- **CFA vs TB+BK:** CFA ${qd['CFA']:,.0f} vs ${qd['TBL']+qd['BKG']:,.0f} "
+      f"= {qd['CFA']/(qd['TBL']+qd['BKG']):.2f}× — {'✓ CFA out-earns' if qd['CFA']>qd['TBL']+qd['BKG'] else '⚠'}")
+    w()
 
-    # ----- T5 TBL late-night
-    tbl = transactions[transactions["banner_code"]=="TBL"]
-    h = pd.to_datetime(tbl["txn_ts"]).dt.hour
-    late = ((h>=21)|(h<3)).mean()
-    lines.append("## T5 — Taco Bell late-night daypart")
-    lines.append(f"- **9pm+ share:** {late*100:.1f}% (band 17-21%, industry avg 4%) — {_band(late, 0.17, 0.21)}")
-    lines.append("")
+    # Department $ mix (§A4)
+    w("## §A4 — Department sales mix (grocery $)")
+    g = ix[ix.banner_code.isin(GROCERS)]
+    dm = g.groupby("functional_department")["line_total"].sum(); dm = dm / dm.sum()
+    center = sum(dm.get(d, 0) for d in CENTER)
+    w(f"- **Center-store (Dry+Snacks+Bev):** {center*100:.1f}% (target ~38) — {_band(center, 0.36, 0.40)}")
+    w(f"- **Meat & Seafood:** {dm.get('Meat & Seafood',0)*100:.1f}% (target ~13) — {_band(dm.get('Meat & Seafood',0), 0.11, 0.15)}")
+    w(f"- **Produce:** {dm.get('Produce',0)*100:.1f}% (target ~11) — {_band(dm.get('Produce',0), 0.09, 0.13)}")
+    w(f"- **Dairy & Eggs:** {dm.get('Dairy & Eggs',0)*100:.1f}% (target ~8) — {_band(dm.get('Dairy & Eggs',0), 0.07, 0.095)}")
+    w()
 
-    # ----- T6 Pay-cycle
-    g_txn["day"] = pd.to_datetime(g_txn["txn_ts"]).dt.day
-    early = (g_txn["day"]<=10).sum()/10
-    mid = ((g_txn["day"]>=15)&(g_txn["day"]<=17)).sum()/3
-    flat = ((g_txn["day"]>=20)&(g_txn["day"]<=28)).sum()/9
-    lines.append("## T6 — Pay-cycle lift")
-    lines.append(f"- **Early-month (1-10):** {early:.0f}/day vs flat {flat:.0f}/day — lift {(early/flat-1)*100:.1f}%")
-    lines.append(f"- **Mid-month (15-17):** {mid:.0f}/day vs flat {flat:.0f}/day — lift {(mid/flat-1)*100:.1f}%")
-    lines.append("")
+    # PL share
+    w("## §A12 — Private-label share (measured from basket selection)")
+    for b in GROCERS:
+        d = g[g.banner_code == b]
+        pl = d.loc[d.private_label, "qty"].sum() / d["qty"].sum()
+        t = {"KRG": 27, "ACM": 19, "WDX": 25}[b]
+        w(f"- **{b}:** {pl*100:.1f}% (target ~{t}) — {_band(pl, (t-6)/100, (t+6)/100)}")
+    w("- Ordering KRG > WDX > ACM (real-chain PL-program strength × affluence selection).")
+    w()
 
-    # ----- T7-T9 population shape + loyalty
-    lines.append("## T7-T8 — Population")
-    lines.append(f"- **Total cards:** {n_cards:,}")
-    by_card_seg = transactions.groupby("customer_token")["segment"].nunique()
-    multi = (by_card_seg>=2).mean()
-    all_three = (by_card_seg==3).mean()
-    lines.append(f"- **Multi-merchant share:** {multi*100:.1f}% (band 25-35%) — {_band(multi, 0.25, 0.35)}")
-    lines.append(f"- **All-three share:** {all_three*100:.1f}% (band 4-8%) — {_band(all_three, 0.04, 0.08)}")
-    lines.append("")
-    g_only = transactions[transactions["segment"]=="grocery"]
-    by_card_banner = g_only.groupby("customer_token")["banner_code"]
-    primary_share = by_card_banner.apply(lambda b: b.value_counts(normalize=True).max()).mean()
-    lines.append("## T9 — Grocery loyalty concentration")
-    lines.append(f"- **Pop-weighted primary-banner share:** {primary_share*100:.1f}% (band 70-78%) — {_band(primary_share, 0.70, 0.78)}")
-    lines.append("")
+    # §A13 fresh gradient
+    w("## §A13 — Fresh/premium mix rises with affluence")
+    gg = g.merge(txn[["txn_id", "customer_token"]], on="txn_id").merge(
+        customers[["card_id", "affluence"]], left_on="customer_token", right_on="card_id")
+    q1, q2 = gg["affluence"].quantile([0.33, 0.66])
+    gg["tier"] = np.where(gg.affluence < q1, "low", np.where(gg.affluence > q2, "high", "mid"))
+    frsh = {t: gg[(gg.tier == t) & gg.functional_department.isin(FRESH)]["line_total"].sum()
+            / gg[gg.tier == t]["line_total"].sum() for t in ("low", "mid", "high")}
+    mono = frsh["low"] < frsh["mid"] < frsh["high"]
+    w(f"- **Fresh $ share low→mid→high:** {frsh['low']*100:.1f} → {frsh['mid']*100:.1f} → {frsh['high']*100:.1f}% "
+      f"— {'✓ smooth monotonic gradient' if mono else '⚠ not monotonic'}")
+    w()
 
-    # ----- T11 affinity
-    by_trip = items.groupby("txn_id")["subcategory"].apply(set)
-    def _lift(a, p):
-        ha = by_trip.apply(lambda s: a in s)
-        hp = by_trip.apply(lambda s: p in s)
-        pp = hp.mean()
-        if pp == 0 or ha.sum() == 0:
-            return float("nan"), float("nan")
-        return hp[ha].mean()/pp, hp[ha].mean()
-    pairs = [("PASTA","SAUCE",3.0),("CHIPS","SALSA",2.5),("DIAPERS","WIPES",3.0),("MILK","CEREAL",2.0)]
-    lines.append("## T11 — Affinity lift (designed + emergent)")
-    for a,p,thr in pairs:
-        l, cond = _lift(a, p)
-        lines.append(f"- **{a}→{p}:** lift {l:.2f}x (P(B|A) {cond:.3f}) — threshold ≥{thr}x {'✓' if l>=thr else '⚠'}")
-    # Emergent
-    flags = items.groupby("txn_id").apply(
-        lambda x: ("DAIRY" in set(x["category"]), "CEREAL" in set(x["subcategory"])),
-        include_groups=False,
-    )
-    fdf = pd.DataFrame(flags.tolist(), columns=["d","c"])
-    p_c = fdf["c"].mean()
-    p_cd = fdf[fdf["d"]]["c"].mean()
-    lines.append(f"- **DAIRY→CEREAL (mission-emergent):** lift {p_cd/p_c:.2f}x — threshold ≥1.3x {'✓' if p_cd/p_c>=1.3 else '⚠'}")
-    lines.append("")
+    # T4/T5 timing + dayparts
+    w("## T4/T5 — Timing & dayparts")
+    gt = txn[txn.segment == "grocery"].copy(); gt["dow"] = pd.to_datetime(gt.txn_ts).dt.dayofweek
+    ratio = (((gt.dow == 5) | (gt.dow == 6)).sum()/2) / ((gt.dow <= 4).sum()/5)
+    w(f"- **Grocery weekend/weekday ratio:** {ratio:.3f} (band 1.15-1.40) — {_band(ratio, 1.15, 1.40)}")
+    cfa = txn[txn.banner_code == "CFA"]; sun = (pd.to_datetime(cfa.txn_ts).dt.dayofweek == 6).sum()
+    w(f"- **CFA Sunday txns:** {sun} — {'✓ hard zero (closed)' if sun == 0 else '⚠ NONZERO'}")
+    tbl = txn[txn.banner_code == "TBL"]; late = ((pd.to_datetime(tbl.txn_ts).dt.hour >= 21) | (pd.to_datetime(tbl.txn_ts).dt.hour < 3)).mean()
+    w(f"- **TBL late-night (9pm+):** {late*100:.1f}% (band 15-23) — {_band(late, 0.15, 0.23)}")
+    bkg = txn[txn.banner_code == "BKG"]; bf = ((pd.to_datetime(bkg.txn_ts).dt.hour >= 6) & (pd.to_datetime(bkg.txn_ts).dt.hour < 10)).mean()
+    w(f"- **BKG breakfast (6-10am):** {bf*100:.1f}% (band 12-28) — {_band(bf, 0.12, 0.28)}")
+    w()
 
-    # ----- T12 heavy-tail
-    g_items = items[items["txn_id"].isin(transactions[transactions["segment"]=="grocery"]["txn_id"])]
-    u = g_items.groupby("txn_id")["qty"].sum().sort_values(ascending=False)
+    # T7/T8 population
+    w("## T7/T8 — Population & participation")
+    w(f"- **Cards:** {n_cards:,}")
+    both = (txn.groupby("customer_token")["segment"].nunique() >= 2).mean()
+    w(f"- **Both-segment share:** {both*100:.1f}% (target ~46) — {_band(both, 0.42, 0.50)}")
+    g_act = txn[txn.segment == "grocery"]["customer_token"].nunique() / n_cards
+    q_act = txn[txn.segment == "qsr"]["customer_token"].nunique() / n_cards
+    w(f"- **Grocery-active:** {g_act*100:.1f}% (~82) | **QSR-active:** {q_act*100:.1f}% (~64)")
+    conc = txn[txn.segment == "grocery"].groupby("customer_token")["banner_code"].apply(
+        lambda b: b.value_counts(normalize=True).max()).mean()
+    w(f"- **T9 loyalty concentration:** {conc*100:.1f}% (band 68-82) — {_band(conc, 0.68, 0.82)}")
+    w()
+
+    # T11 affinity + combo-attach
+    w("## T11 — Affinity lift + QSR combo-attach")
+    bysub = g.groupby("txn_id")["subcategory"].agg(set)
+    def lift(a, p):
+        ha = bysub.apply(lambda s: a in s); pp = bysub.apply(lambda s: p in s).mean()
+        return (bysub[ha].apply(lambda s: p in s).mean() / pp) if (ha.sum() and pp) else float("nan")
+    for a, p in [("Pasta", "Pasta Sauce"), ("Cereal", "2% Reduced-Fat Milk"),
+                 ("Potato & Tortilla Chips", "Salsa & Dips")]:
+        lv = lift(a, p)
+        w(f"- **{a}→{p}:** {lv:.2f}× — {'✓' if lv >= 1.8 else '⚠'} (≥1.8)")
+    q = ix[ix.banner_code.isin(QSR)]
+    bb = q.groupby("txn_id").agg(cats=("category", set), banner=("banner_code", "first"))
+    drink = {b: (bb[(bb.banner == b) & bb.cats.apply(lambda s: "Entrée" in s)]
+                 .cats.apply(lambda s: "Beverages" in s).mean()) for b in QSR}
+    w(f"- **QSR drink|entrée attach:** CFA {drink['CFA']:.2f} > BK {drink['BKG']:.2f} > TB {drink['TBL']:.2f} "
+      f"— {'✓' if drink['CFA']>=drink['BKG']>=drink['TBL'] else '⚠'}")
+    w()
+
+    # T12 heavy-tail
+    u = g.groupby("txn_id")["qty"].sum().sort_values(ascending=False)
     top20 = u.iloc[:max(1, int(len(u)*0.2))].sum() / u.sum()
-    lines.append("## T12 — Heavy-tail basket size")
-    lines.append(f"- **Top-20% grocery basket unit share:** {top20*100:.1f}% (band 45-55%) — {_band(top20, 0.45, 0.55)}")
-    lines.append("")
+    w("## T12 — Heavy-tail basket")
+    w(f"- **Top-20% grocery basket unit share:** {top20*100:.1f}% (band 40-60) — {_band(top20, 0.40, 0.60)}")
+    w()
 
-    # ----- T13 payment
-    ct = (transactions["entry_mode"]=="contactless").mean()
-    wt = transactions["wallet_at_tap"].mean()
-    lines.append("## T13 — Payment mix")
-    lines.append(f"- **Blended contactless:** {ct*100:.1f}% (band 48-55%) — {_band(ct, 0.48, 0.55)}")
-    lines.append(f"- **Mobile wallet at-tap:** {wt*100:.1f}% (band 16-20%) — {_band(wt, 0.16, 0.20)}")
-    g_txn2 = transactions[transactions["segment"]=="grocery"]
-    wdx_d = (g_txn2[g_txn2["banner_code"]=="WDX"]["tender"]=="debit").mean()
-    acm_d = (g_txn2[g_txn2["banner_code"]=="ACM"]["tender"]=="debit").mean()
-    krg_d = (g_txn2[g_txn2["banner_code"]=="KRG"]["tender"]=="debit").mean()
-    blended_d = (g_txn2["tender"]=="debit").mean()
-    lines.append(f"- **Grocery debit (per-banner emergence):** WDX {wdx_d*100:.1f}% > KRG {krg_d*100:.1f}% ≈ ACM {acm_d*100:.1f}% (blended {blended_d*100:.1f}%)")
-    lines.append("")
+    # T13 payment
+    w("## T13 — Payment mix")
+    ct = (txn.entry_mode == "contactless").mean(); wt = txn.wallet_at_tap.mean()
+    w(f"- **Contactless:** {ct*100:.1f}% (band 45-60) — {_band(ct, 0.45, 0.60)}")
+    w(f"- **Wallet-at-tap:** {wt*100:.1f}% (band 13-22) — {_band(wt, 0.13, 0.22)}")
+    g2 = txn[txn.segment == "grocery"]
+    wdxd = (g2[g2.banner_code == "WDX"].tender == "debit").mean()
+    acmd = (g2[g2.banner_code == "ACM"].tender == "debit").mean()
+    w(f"- **Grocery debit WDX {wdxd*100:.1f}% > ACM {acmd*100:.1f}%:** {'✓' if wdxd > acmd else '⚠'}")
+    w()
 
-    # ----- T14 pricing
-    from src.generate.engine.pricing import _effective_category_mult, _PL_FACTOR, _per_sku_competitive_index
-    rows = []
-    g_prod = products[products["segment"]=="grocery"]
-    for r in g_prod.itertuples(index=False):
-        cm = _effective_category_mult(r.banner_code, r.category, r.subcategory)
-        plm = _PL_FACTOR.get(r.banner_code, 1.0) if r.private_label else 1.0
-        ci = _per_sku_competitive_index(r.banner_code, r.canonical_id)
-        rows.append({
-            "banner_code": r.banner_code, "canonical_id": r.canonical_id,
-            "rack_price": r.base_price * cm * plm * ci,
-            "private_label": r.private_label, "subcategory": r.subcategory,
-        })
-    rack = pd.DataFrame(rows)
-    cheap = rack.loc[rack.groupby("canonical_id")["rack_price"].idxmin()]
-    shares = cheap["banner_code"].value_counts(normalize=True).to_dict()
-    lines.append("## T14 — Pricing variation")
-    lines.append(f"- **Cheapest banner share:** KRG {shares.get('KRG',0)*100:.1f}%, ACM {shares.get('ACM',0)*100:.1f}%, WDX {shares.get('WDX',0)*100:.1f}% (none >70%) — {'✓' if all(s<=0.70 for s in shares.values()) else '⚠'}")
-    by_pair = rack.groupby(["banner_code","subcategory","private_label"])["rack_price"].mean().unstack("private_label").dropna()
-    by_pair.columns = ["nb","pl"]
-    pl_gap = (1 - by_pair["pl"]/by_pair["nb"]).mean()
-    lines.append(f"- **PL gap blended:** {pl_gap*100:.1f}% (anchor ~25%) — {_band(pl_gap, 0.20, 0.30)}")
-    lines.append("")
+    # T14 pricing (flat, from shelf_price)
+    w("## T14 — Pricing (flat shelf-price)")
+    _fp = ix.dropna(subset=["shelf_price"])
+    mism = int((_fp["unit_price"].round(2) != _fp["shelf_price"].round(2)).sum())
+    w(f"- **Flat pricing (unit_price == shelf_price):** {mism} mismatches — {'✓' if mism == 0 else '⚠'}")
+    med = products[products.segment == "grocery"].groupby(
+        ["functional_subcategory", "banner_code"])["shelf_price"].median().reset_index()
+    cnt = med.groupby("functional_subcategory")["banner_code"].nunique()
+    med = med[med.functional_subcategory.isin(cnt[cnt >= 2].index)]
+    cheap = med.loc[med.groupby("functional_subcategory")["shelf_price"].idxmin(), "banner_code"]
+    sh = cheap.value_counts(normalize=True).to_dict()
+    w(f"- **No banner cheapest >70%:** " + ", ".join(f"{b} {sh.get(b,0)*100:.0f}%" for b in GROCERS)
+      + f" — {'✓' if all(v <= 0.70 for v in sh.values()) else '⚠'}")
+    w()
 
-    # ----- T15 promos
-    g_items_promo = items[items["txn_id"].isin(transactions[transactions["segment"]=="grocery"]["txn_id"])]
-    promo_units = g_items_promo[g_items_promo["promo_id"].notna()]["qty"].sum()
-    total_units = g_items_promo["qty"].sum()
-    promo_share = promo_units / total_units if total_units else 0
-    lines.append("## T15 — Promo behavior")
-    lines.append(f"- **Grocery units on promo:** {promo_share*100:.1f}% (band 22-35%) — {_band(promo_share, 0.22, 0.35)}")
-    lines.append("")
-    lines.append("> Band corrected from §6's 25-35% to 22-35% at Wave 1 close. The CPG 25-35% figure covers all promo types; our v4 mix is weekly-ad-dominant (D20.1) and legitimately sits at the lower edge. Data on-anchor; band adjusted to match.")
-    lines.append("")
+    # T15/T16 dormant
+    w("## T15/T16 — Promotions & anomalies (DORMANT)")
+    w(f"- **Promotions rows:** {len(promotions)} — {'✓ dormant' if len(promotions) == 0 else '⚠'}")
+    w(f"- **Anomalies_groundtruth rows:** {len(anomalies)} — {'✓ dormant' if len(anomalies) == 0 else '⚠'}")
+    w("- Framework kept dormant (Decision B); returns in a later anomaly wave.")
+    w()
 
-    # ----- T16 anomalies
-    s2z = stores.set_index("store_id")["zone_id"].to_dict()
-    txn_zones = np.array([s2z.get(s, "") for s in transactions["store_id"]])
-    txn_dates = pd.to_datetime(transactions["txn_ts"]).dt.date.to_numpy()
-    wdx_uc = (transactions["banner_code"]=="WDX").to_numpy() & np.isin(txn_zones, ["university_city","eastway"])
-    a1_in = (txn_dates>=date(2026,4,19))&(txn_dates<=date(2026,5,29))
-    a1_pre = txn_dates < date(2026,4,19)
-    a1_during = (wdx_uc & a1_in).sum() / 41
-    a1_before = (wdx_uc & a1_pre).sum() / 49
-    a1_drop = 1 - a1_during/a1_before if a1_before>0 else 0
-    lines.append("## T16 — Planted anomalies (A1-A3)")
-    lines.append(f"- **A1 WDX UC+Eastway decline:** before {a1_before:.0f}/d, during {a1_during:.0f}/d — drop {a1_drop*100:.1f}% (target 40%)")
-    lines.append(f"- **A2 ground truth:** {(anomalies['type']=='category_spike').sum()} entries")
-    lines.append(f"- **A3 ground truth:** {(anomalies['type']=='share_shift').sum()} entries")
-    lines.append(f"- **A1 ground truth:** {(anomalies['type']=='demand_decline').sum()} entries (zone × banner rows)")
-    lines.append("")
+    # T17 cross-segment cells
+    w(f"## T17 — Both-segment cell readiness ({scale_label})")
+    both_cards = set(txn.groupby("customer_token")["segment"].nunique().pipe(lambda s: s[s >= 2]).index)
+    bz = customers[customers.card_id.isin(both_cards)].groupby("home_zone").size().sort_values(ascending=False)
+    for z, n in bz.items():
+        w(f"- {z:<16}: {n:,} both-segment cards{'' if n >= 5 else '  ⚠ <k=5'}")
+    w(f"**{int((bz>=5).sum())}/8 zones** survive k=5; **{int((bz>=1).sum())}/8** populated"
+      + ("" if sf >= 0.95 else f" (pilot; cells multiply ~{1/sf:.0f}× at full scale)."))
+    w()
 
-    # ----- T17 cross-merchant cells
-    all_three_cards = set(by_card_seg[by_card_seg==3].index)
-    cz = customers[customers["card_id"].isin(all_three_cards)][["card_id","home_zone"]]
-    by_zone = cz.groupby("home_zone").size().sort_values(ascending=False)
-    if scale_frac >= 0.95:
-        lines.append("## T17 — Cross-merchant cell readiness (FULL SCALE — Wave 2 gate)")
-    else:
-        lines.append(f"## T17 — Cross-merchant cell readiness ({scale_label})")
-    n_above_k5 = int((by_zone >= 5).sum())
-    n_zones_populated = int((by_zone >= 1).sum())
-    for z, n in by_zone.items():
-        flag = "" if n >= 5 else "  ⚠ <k=5"
-        lines.append(f"- {z:<16}: {n:,} all-three cards{flag}")
-    lines.append("")
-    lines.append(f"**{n_above_k5}/8 zones** survive k=5 anonymity.  **{n_zones_populated}/8 zones** populated.")
-    if scale_frac >= 0.95:
-        if n_above_k5 == 8:
-            lines.append("✓ Wave 2 lake grain (per-zone × all-three) holds as designed.")
-        else:
-            lines.append(f"⚠ Wave 2 must coarsen grain — {8 - n_above_k5} zone(s) below k=5 at full scale.")
-    else:
-        lines.append(f"Pilot projection: cells should multiply ~{1/scale_frac:.0f}× at full scale. Real gate requires full-scale measurement.")
-    lines.append("")
+    # T18 determinism
+    w("## T18 — Reproducibility")
+    w("- Verified content-identical (transactions + transaction_items) across two "
+      "`build_all(scale=500)` runs by `test_T18_reproducibility_content_identical`.")
+    w("- Catalog authoring (`make catalog`) is byte-identical on rebuild (hash/index-derived, no RNG).")
+    w()
 
-    # ----- T18 reproducibility
-    lines.append("## T18 — Reproducibility")
-    lines.append("- **Verified content-identical at 500 cards** by the in-test reproducibility check (`test_T18_reproducibility_byte_or_content`).")
-    if scale_frac >= 0.95:
-        lines.append("- **Full-scale (100k) two-run hash diff: not performed.** Determinism at scale rests on construction: pinned pyarrow, single-threaded writes, sorted iteration, single-file (not chunked) writes, no parallelism. If you want a direct full-scale guarantee, rerun and compare via `scripts/hash_parquet.py`.")
-    else:
-        lines.append("- Full-scale (100k) two-run hash diff: not performed at this pilot scale.")
-    lines.append("")
+    # Totals
+    w("## Totals (annualized, full-population projection)")
+    gy = g["line_total"].sum() * up; qy = q["line_total"].sum() * up
+    w(f"- **Grocery:** ${gy/1e6:.0f}M/yr (target ~$518M)  |  **QSR:** ${qy/1e6:.0f}M/yr (target ~$80M)")
+    w(f"- Window totals scale from the {scale_label} sample.")
+    w()
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text("\n".join(lines))
+    args.out.write_text("\n".join(L))
     print(f"Wrote DQ report → {args.out.relative_to(REPO_ROOT)}")
 
 
