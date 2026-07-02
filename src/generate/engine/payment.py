@@ -98,7 +98,7 @@ def build_payment(
 
     # ----- entry_mode by (segment × wallet_enrolled) group -----
     entry_mode = np.empty(n, dtype=object)
-    for segment in ("grocery", "qsr", "off_price"):
+    for segment in ("grocery", "qsr"):        # off-price dropped (datamodel-v2)
         for wallet in (False, True):
             mask = (
                 (joined["segment"].to_numpy() == segment)
@@ -123,7 +123,7 @@ def build_payment(
 
     # ----- connectivity by segment -----
     connectivity = np.empty(n, dtype=object)
-    for segment in ("grocery", "qsr", "off_price"):
+    for segment in ("grocery", "qsr"):        # off-price dropped (datamodel-v2)
         mask = joined["segment"].to_numpy() == segment
         count = int(mask.sum())
         if count == 0:
