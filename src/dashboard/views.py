@@ -312,14 +312,16 @@ def render_catalog_section(merchant_id: str, filters: dict) -> None:
                 )
             else:
                 ask_specialist = "anomaly"
-                # Pre-fill matches the segment's anomaly-SKU question.
+                # Pre-fill frames the "bottom movers" view as WoW performance
+                # movement (not anomaly detection — planted anomalies dormant).
                 ask_prefill = {
-                    "KRG": "Which SKUs or categories are spiking or dropping unusually?",
-                    "ACM": "Which SKUs or categories are spiking or dropping unusually?",
-                    "WDX": "Which SKUs or categories are spiking or dropping unusually?",
-                    "TBL": "Are any menu items spiking or dropping unusually?",
-                    "TJX": "Are any categories spiking or dropping unusually?",
-                }.get(merchant_id, "Which SKUs are spiking or dropping unusually?")
+                    "KRG": "Which SKUs or categories moved down the most week-over-week?",
+                    "ACM": "Which SKUs or categories moved down the most week-over-week?",
+                    "WDX": "Which SKUs or categories moved down the most week-over-week?",
+                    "TBL": "Which menu items moved down the most week-over-week?",
+                    "BKG": "Which menu items moved down the most week-over-week?",
+                    "CFA": "Which menu items moved down the most week-over-week?",
+                }.get(merchant_id, "Which SKUs moved down the most week-over-week?")
             ask_4_2 = {
                 "key":        f"ask_about_sku_{merchant_id}",
                 "specialist": ask_specialist,
@@ -488,7 +490,7 @@ def render_geography_section(merchant_id: str, filters: dict) -> None:
                 "key":        f"ask_about_store_perf_{merchant_id}",
                 "specialist": "anomaly",
                 "prefill":    (
-                    "Which stores are showing unusual traffic this week?"
+                    "Which stores had the biggest traffic change this week?"
                 ),
             }
             # Grocers carry the peer-neighborhood column via the A2
@@ -642,10 +644,17 @@ def render_performance_section(merchant_id: str, filters: dict) -> None:
 
 
 def render_kpi_strip(merchant_id: str, filters: dict) -> None:
-    """Phase 4.4 KPI strip: 5 Pattern 8 callouts in a row — Revenue,
-    Transactions, Avg basket, Unique customers, Anomaly count. Each
-    card carries an "Ask about this" affordance routing per
+    """Phase 4.4 KPI strip: 4 Pattern 8 callouts in a row — Revenue,
+    Transactions, Avg basket, Unique customers. Each card carries an
+    "Ask about this" affordance routing per
     docs/archive/V3_DASHBOARD_DESIGN.md Section 5.5.
+
+    (The former 5th "Anomaly count" callout was removed in datamodel-v2:
+    planted anomalies are dormant, so a manufactured "N anomalies
+    detected" count would assert detection we can't yet back. The
+    underlying store-performance-variation queries are untouched — see
+    the "Store performance distribution" card. The anomaly framing +
+    count return when planted anomalies + groundtruth-tied detection do.)
     """
     from . import chart_patterns as CP
 
@@ -661,7 +670,7 @@ def render_kpi_strip(merchant_id: str, filters: dict) -> None:
             return "— (window too narrow)"
         return f"{pct:+.1f}% vs prior 4w"
 
-    cols = st.columns(5, gap="small")
+    cols = st.columns(4, gap="small")
 
     # Card 1.1 — Revenue
     with cols[0]:
@@ -723,40 +732,10 @@ def render_kpi_strip(merchant_id: str, filters: dict) -> None:
             },
         )
 
-    # Card 1.5 — Anomaly count (NEW). Direction-aware:
-    # concerning = below baseline by ≥ 15 % (alert / red);
-    # notable    = above baseline by ≥ 15 % (informational, no alert).
-    # Growth-mode merchants whose stores all run above baseline read
-    # "All clear" + a notable count, rather than a red number.
-    with cols[4]:
-        a = k["anomaly"]
-        concerning = a["concerning"]
-        notable    = a["notable"]
-        flag = "alert" if concerning > 0 else "clear"
-        if concerning > 0:
-            value = str(concerning)
-            hint  = f"{concerning} concerning, {notable} notable"
-        else:
-            value = "0"
-            hint  = (
-                f"All clear, {notable} notable" if notable > 0
-                else "All clear"
-            )
-        # Sparkline = trailing-12-week total flag count. Shows
-        # overall anomaly volatility regardless of direction split;
-        # the headline number + hint carry the direction story.
-        CP.render_kpi_callout(
-            label="Anomaly count",
-            value=value,
-            flag=flag,
-            hint=hint,
-            sparkline=[float(v) for v in a["trailing_total"]],
-            ask_about_this={
-                "key":        f"ask_about_anomaly_{merchant_id}",
-                "specialist": "anomaly",
-                "prefill":    "What's flagged this week?",
-            },
-        )
+    # (Card 1.5 "Anomaly count" removed — datamodel-v2: planted anomalies
+    # dormant, so no manufactured detection count. `D.kpi_strip` still
+    # computes k["anomaly"] store-variation counts; simply not surfaced as
+    # an "anomalies detected" KPI here.)
 
 
 
