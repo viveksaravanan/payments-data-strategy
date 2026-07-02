@@ -119,13 +119,7 @@ def test_qsr_entry_mode_distribution(trips, payments) -> None:
     assert 0.20 <= shares.get("chip", 0) <= 0.35
 
 
-def test_off_price_entry_mode_distribution(trips, payments) -> None:
-    """D18.1 off-price: contactless ~48, chip ~44, swipe ~7, manual ~1."""
-    p = payments.merge(trips[["trip_id", "segment"]], on="trip_id")
-    op = p[p["segment"] == "off_price"]
-    shares = op["entry_mode"].value_counts(normalize=True).to_dict()
-    assert shares.get("contactless", 0) == pytest.approx(0.50, abs=0.06)
-    assert 0.35 <= shares.get("chip", 0) <= 0.50
+# (off-price entry-mode test removed — segment dropped in datamodel-v2.)
 
 
 # ----- entry mode emerges from wallet enrollment (D18.1 keystone) ---

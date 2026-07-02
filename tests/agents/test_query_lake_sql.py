@@ -113,19 +113,21 @@ def test_grouped_query_executes_real_dollars() -> None:
     assert "_k" not in p["columns"]
     assert p["row_count"] > 0
     asp = {r[0]: r[1] for r in p["rows"]}
-    assert 2.0 < asp["DAIRY"] < 6.0  # real dollars, not an index near 1.0
+    assert 2.0 < asp["Milk"] < 6.0  # real dollars, not an index near 1.0
 
 
 @needs_lake
 def test_scoping_switches_on_viewer() -> None:
+    """datamodel-v2: both grocery and QSR viewers have 2 same-segment
+    peers, and the peer sets differ by viewer — the lake resolves to the
+    viewer's own materialized pair."""
     sql = "SELECT COUNT(*) AS n FROM lake_transactions WHERE peer_relationship='peer'"
-    krg = query_lake_sql("KRG", sql)
-    tbl = query_lake_sql("TBL", sql)
-    # KRG has 2 grocery peers; TBL has none → its single count=0 row is
-    # itself thin and suppressed.
+    krg = query_lake_sql("KRG", sql)   # grocery peers (ACM, WDX)
+    tbl = query_lake_sql("TBL", sql)   # qsr peers (BKG, CFA)
     assert krg["rows"][0][0] > 0
-    assert tbl["row_count"] == 0
-    assert tbl["suppressed"] >= 1
+    assert tbl["rows"][0][0] > 0
+    # Different segments → different peer-line volumes.
+    assert krg["rows"][0][0] != tbl["rows"][0][0]
 
 
 @needs_lake
@@ -135,7 +137,7 @@ def test_count_injection_nested_join_neighborhood() -> None:
     p = query_lake_sql(
         "KRG",
         "WITH base AS (SELECT lake_store_id, unit_price FROM lake_transactions "
-        "WHERE peer_relationship='peer' AND category='PRODUCE') "
+        "WHERE peer_relationship='peer' AND category='Milk') "
         "SELECT s.neighborhood, AVG(b.unit_price) AS asp FROM base b "
         "JOIN lake_stores s USING (lake_store_id) GROUP BY s.neighborhood",
     )

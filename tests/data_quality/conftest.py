@@ -99,3 +99,23 @@ def items(pilot_tables):        return pilot_tables["transaction_items"]
 def promotions(pilot_tables):   return pilot_tables["promotions"]
 @pytest.fixture(scope="session")
 def anomalies(pilot_tables):    return pilot_tables["anomalies_groundtruth"]
+
+
+@pytest.fixture(scope="session")
+def items_x(pilot_tables) -> pd.DataFrame:
+    """datamodel-v2: line items joined to products on ``sku`` to resolve
+    the taxonomy/PL/price that the line no longer carries. Exposes
+    ``category`` (= functional_category), ``subcategory`` (=
+    functional_subcategory), ``functional_department``, ``private_label``,
+    ``shelf_price``, and ``banner_code`` alongside the line fields — the
+    §A12 normalization boundary (everything resolves via the products join)."""
+    items = pilot_tables["transaction_items"]
+    prods = pilot_tables["products"][[
+        "sku", "banner_code", "functional_department",
+        "functional_category", "functional_subcategory",
+        "private_label", "shelf_price",
+    ]].rename(columns={
+        "functional_category": "category",
+        "functional_subcategory": "subcategory",
+    })
+    return items.merge(prods, on="sku", how="left")

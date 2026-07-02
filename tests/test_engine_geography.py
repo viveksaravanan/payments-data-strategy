@@ -54,29 +54,29 @@ def test_build_zones_residential_weights_sum_to_one(cfg) -> None:
 
 # ----- stores -------------------------------------------------------
 
-def test_build_stores_total_count_29(cfg, rng) -> None:
+def test_build_stores_total_count_38(cfg, rng) -> None:
     s = build_stores(cfg, rng)
-    assert len(s) == 29
+    assert len(s) == 38
 
 
 def test_build_stores_per_merchant_counts(cfg, rng) -> None:
     s = build_stores(cfg, rng)
     counts = s.groupby("banner_code").size().to_dict()
-    assert counts == {"KRG": 5, "ACM": 5, "WDX": 5, "TBL": 9, "TJX": 5}
+    assert counts == {"KRG": 6, "ACM": 5, "WDX": 4, "TBL": 9, "BKG": 8, "CFA": 6}
 
 
-def test_build_stores_per_zone_counts_match_d13_2(cfg, rng) -> None:
-    """D13.2 matrix row sums (per-zone totals across all merchants)."""
+def test_build_stores_per_zone_counts_match_placement(cfg, rng) -> None:
+    """§A11/§B1 placement grids — per-zone totals across all merchants."""
     s = build_stores(cfg, rng)
     expected = {
-        "center_city": 3,       # KRG 1, ACM 1, TBL 1
-        "dilworth": 1,          # ACM 1
-        "ballantyne": 4,        # KRG 1, ACM 1, TBL 1, TJX 1
-        "noda": 3,              # KRG 1, ACM 1, TBL 1
-        "university_city": 5,   # KRG 1, WDX 1, TBL 2, TJX 1
-        "eastway": 3,           # WDX 2, TBL 1
-        "matthews": 7,          # KRG 1, ACM 1, WDX 1, TBL 2, TJX 2
-        "cabarrus_edge": 3,     # WDX 1, TBL 1, TJX 1
+        "center_city": 4,       # KRG ACM TBL BKG
+        "dilworth": 3,          # KRG ACM CFA
+        "ballantyne": 4,        # KRG ACM BKG CFA
+        "noda": 5,              # KRG ACM TBL BKG CFA
+        "university_city": 6,   # KRG WDX TBL2 BKG CFA
+        "eastway": 4,           # WDX TBL2 BKG
+        "matthews": 9,          # KRG ACM WDX TBL2 BKG2 CFA2
+        "cabarrus_edge": 3,     # WDX TBL BKG
     }
     got = s.groupby("zone_id").size().to_dict()
     assert got == expected
@@ -96,7 +96,7 @@ def test_store_id_format(cfg, rng) -> None:
     """`<banner>-NC-<NNNN>` zero-padded 4 digits."""
     s = build_stores(cfg, rng)
     import re
-    pattern = re.compile(r"^(KRG|ACM|WDX|TBL|TJX)-NC-\d{4}$")
+    pattern = re.compile(r"^(KRG|ACM|WDX|TBL|BKG|CFA)-NC-\d{4}$")
     assert all(pattern.match(sid) for sid in s["store_id"]), \
         f"bad store_id formats: {[sid for sid in s['store_id'] if not pattern.match(sid)]}"
 

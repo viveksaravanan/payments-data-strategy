@@ -24,7 +24,6 @@ from src.agents.context import MerchantContext
 from src.agents.response import AgentResponse
 from tests.agents._fake_llm import (
     patch_llm,
-    scripted_build_merge,
     scripted_emit_response,
     scripted_tool_use,
 )
@@ -36,34 +35,28 @@ def viewer_krg() -> MerchantContext:
 
 
 def test_anomaly_canonical_operational_question(viewer_krg, monkeypatch) -> None:
-    # AVG(qty) per line (~1.2) keeps the merge magnitude check
-    # honest against wow_delta (small ratio). The Fix-2 guard
-    # would reject SUM(qty) ~435k vs wow_delta ~0.14.
+    """datamodel-v2 two-query flow: own milk units (tenant) vs peer milk
+    units (lake). No fraud vocabulary in the delivered prose (D20.3)."""
     own_sql = (
-        "SELECT i.category, AVG(i.qty) AS own_avg_qty "
+        "SELECT p.functional_category AS category, AVG(i.qty) AS own_avg_qty "
         "FROM transaction_items i JOIN transactions t USING (txn_id) "
-        "WHERE t.banner_code = 'KRG' AND i.category = 'DAIRY' "
-        "GROUP BY i.category"
+        "JOIN products p ON i.sku = p.sku "
+        "WHERE t.banner_code = 'KRG' AND p.functional_category = 'Milk' "
+        "GROUP BY p.functional_category"
     )
     emit = scripted_emit_response(
-        prose="Dairy peer wow_delta averages near 0, suggesting "
-              "market-wide flat demand.",
-        chart_intent={
-            "kind": "time_series_vs_peers",
-            "x": "category",
-            "series": ["own_value", "peer_benchmark"],
-            "y_format": "pct",
-            "title": "Dairy own units vs peer wow_delta",
-            "takeaway": "Peer wow_delta averages near zero.",
-        },
+        headline="Your milk units per line run at 1.24 — in line with peers, "
+                 "no unusual movement.",
+        evidence=["Your milk average units per line is 1.24."],
         claims=[{
-            "text_span": "0",
-            "value": 0,
+            "text_span": "1.24",
+            "value": 1.24,
             "source": {
                 "type": "CellLookup",
-                "row_filter": {"category": "DAIRY"},
-                "column": "peer_benchmark",
+                "row_filter": {"category": "Milk"},
+                "column": "own_avg_qty",
                 "agg": "mean",
+                "frame": "tenant",
             },
         }],
         caveats=["Peer set is 2 grocers (segment peers).",
@@ -71,20 +64,12 @@ def test_anomaly_canonical_operational_question(viewer_krg, monkeypatch) -> None
     )
     script = [
         scripted_tool_use("query_tenant", {"sql": own_sql}),
-        scripted_tool_use("read_lake_table", {
-            "table": "lake_category_metrics",
-            "filters": {"category": "DAIRY", "grain": "cat_week"},
-        }),
-        scripted_build_merge(
-            on=["category"],
-            own_value_col="own_avg_qty",
-            peer_value_col="wow_delta",
-        ),
+        scripted_tool_use("query_lake_sql", {"sql": "SELECT category, AVG(qty) AS peer_units FROM lake_transactions WHERE peer_relationship = 'peer' AND category = 'Milk' GROUP BY category"}),
         emit,
     ]
     specialist = AnomalyDetectionSpecialist(viewer_krg)
     with patch_llm(monkeypatch, script):
-        resp = specialist.answer("Is there anything anomalous in dairy?")
+        resp = specialist.answer("Is there anything unusual in milk?")
 
     assert isinstance(resp, AgentResponse)
     # No fraud/tampering vocabulary in the delivered prose (D20.3).

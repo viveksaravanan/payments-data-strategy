@@ -41,10 +41,10 @@ FORBIDDEN_PUBLISHED = {
 
 
 def _synthetic_global() -> pd.DataFrame:
-    """A handful of peer lines spanning grocery (KRG, ACM), qsr (TBL),
-    and off_price (TJX), with the internal columns the scoper needs."""
+    """A handful of peer lines spanning grocery (KRG, ACM) and qsr
+    (TBL, CFA), with the internal columns the scoper needs."""
     rows = []
-    spec = [("KRG", "s_krg"), ("ACM", "s_acm"), ("TBL", "s_tbl"), ("TJX", "s_tjx")]
+    spec = [("KRG", "s_krg"), ("ACM", "s_acm"), ("TBL", "s_tbl"), ("CFA", "s_cfa")]
     for banner, store in spec:
         for i in range(2):
             rows.append({
@@ -85,25 +85,26 @@ def test_viewer_rows_excluded() -> None:
     # check against, which is itself the point.
     assert "banner_code" not in lake_txn.columns
     assert "banner_code" not in lake_stores.columns
-    # KRG had 2 lines; excluded → only ACM/TBL/TJX (6) remain.
+    # KRG had 2 lines; excluded → only ACM/TBL/CFA (6) remain.
     assert len(lake_txn) == 6
     assert not lake_txn["lake_txn_id"].str.contains("KRG").any()
 
 
 def test_peer_relationship_relative_to_viewer() -> None:
     g = _synthetic_global()
-    # Grocery viewer: ACM is a same-segment peer; TBL/TJX are merchants.
+    # Grocery viewer: ACM is a same-segment peer; TBL/CFA are merchants.
     _, krg_stores = scope_lines_for_viewer(g, "KRG")
     rel = dict(zip(krg_stores["lake_store_id"], krg_stores["peer_relationship"]))
     assert rel["stok_s_acm"] == "peer"
     assert rel["stok_s_tbl"] == "merchant"
-    assert rel["stok_s_tjx"] == "merchant"
+    assert rel["stok_s_cfa"] == "merchant"
 
-    # The SAME ACM store is a `merchant` to a different-segment viewer.
-    _, tjx_stores = scope_lines_for_viewer(g, "TJX")
-    rel_tjx = dict(zip(tjx_stores["lake_store_id"], tjx_stores["peer_relationship"]))
-    assert rel_tjx["stok_s_acm"] == "merchant"
-    assert rel_tjx["stok_s_krg"] == "merchant"
+    # For a QSR viewer, CFA is the same-segment peer; the grocers are merchants.
+    _, tbl_stores = scope_lines_for_viewer(g, "TBL")
+    rel_tbl = dict(zip(tbl_stores["lake_store_id"], tbl_stores["peer_relationship"]))
+    assert rel_tbl["stok_s_cfa"] == "peer"
+    assert rel_tbl["stok_s_acm"] == "merchant"
+    assert rel_tbl["stok_s_krg"] == "merchant"
 
 
 def test_peer_segment_label_present_on_stores() -> None:
@@ -112,7 +113,7 @@ def test_peer_segment_label_present_on_stores() -> None:
     seg = dict(zip(krg_stores["lake_store_id"], krg_stores["peer_segment"]))
     assert seg["stok_s_acm"] == "grocery"
     assert seg["stok_s_tbl"] == "qsr"
-    assert seg["stok_s_tjx"] == "off_price"
+    assert seg["stok_s_cfa"] == "qsr"
 
 
 # ----- routing metadata --------------------------------------------------
@@ -120,7 +121,7 @@ def test_peer_segment_label_present_on_stores() -> None:
 @pytest.mark.parametrize(
     "viewer,segment,peers",
     [("KRG", "grocery", 2), ("ACM", "grocery", 2), ("WDX", "grocery", 2),
-     ("TBL", "qsr", 0), ("TJX", "off_price", 0)],
+     ("TBL", "qsr", 2), ("BKG", "qsr", 2), ("CFA", "qsr", 2)],
 )
 def test_viewer_metadata(viewer: str, segment: str, peers: int) -> None:
     meta = viewer_metadata(viewer)

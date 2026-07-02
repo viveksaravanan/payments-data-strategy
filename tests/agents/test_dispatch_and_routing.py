@@ -146,24 +146,25 @@ def test_dispatch_pill_goes_direct_to_pricing(monkeypatch) -> None:
     should NOT be invoked. We confirm by NOT scripting a router
     response — if route() were called, the test would fail."""
     own_sql = (
-        "SELECT i.category, AVG(i.unit_price) AS own_avg_price "
+        "SELECT p.functional_category AS category, AVG(i.unit_price) AS own_avg_price "
         "FROM transaction_items i JOIN transactions t USING (txn_id) "
-        "WHERE t.banner_code = 'KRG' AND i.category = 'DAIRY' "
-        "GROUP BY i.category"
+        "JOIN products p ON i.sku = p.sku "
+        "WHERE t.banner_code = 'KRG' AND p.functional_category = 'Milk' "
+        "GROUP BY p.functional_category"
     )
     emit_pricing = scripted_emit_response(
-        prose="Your dairy own price averages 3.50 across zones.",
+        prose="Your dairy own price averages 3.45 across zones.",
         chart_intent={
             "kind": "cross_merchant_comparison",
             "x": "category",
             "series": ["own_value", "peer_benchmark"],
         },
         claims=[{
-            "text_span": "3.50",
-            "value": 3.50,
+            "text_span": "3.45",
+            "value": 3.45,
             "source": {
                 "type": "CellLookup",
-                "row_filter": {"category": "DAIRY"},
+                "row_filter": {"category": "Milk"},
                 "column": "own_avg_price",
                 "agg": "mean",
                 "frame": "tenant",
@@ -188,7 +189,7 @@ def test_dispatch_pill_goes_direct_to_pricing(monkeypatch) -> None:
     assert decision.via_fallback is False
     assert "P1" in decision.rationale
     assert isinstance(resp, AgentResponse)
-    assert "3.50" in resp.prose
+    assert "3.45" in resp.prose
 
 
 def test_dispatch_pill_advisor_target_works(monkeypatch) -> None:
@@ -240,24 +241,25 @@ def test_dispatch_freeform_routes_via_keyword_fallback(monkeypatch) -> None:
     which runs the scripted tool sequence."""
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     own_sql = (
-        "SELECT i.category, AVG(i.unit_price) AS own_avg_price "
+        "SELECT p.functional_category AS category, AVG(i.unit_price) AS own_avg_price "
         "FROM transaction_items i JOIN transactions t USING (txn_id) "
-        "WHERE t.banner_code = 'KRG' AND i.category = 'DAIRY' "
-        "GROUP BY i.category"
+        "JOIN products p ON i.sku = p.sku "
+        "WHERE t.banner_code = 'KRG' AND p.functional_category = 'Milk' "
+        "GROUP BY p.functional_category"
     )
     emit_pricing = scripted_emit_response(
-        prose="Your dairy own price averages 3.50.",
+        prose="Your dairy own price averages 3.45.",
         chart_intent={
             "kind": "cross_merchant_comparison",
             "x": "category",
             "series": ["own_value", "peer_benchmark"],
         },
         claims=[{
-            "text_span": "3.50",
-            "value": 3.50,
+            "text_span": "3.45",
+            "value": 3.45,
             "source": {
                 "type": "CellLookup",
-                "row_filter": {"category": "DAIRY"},
+                "row_filter": {"category": "Milk"},
                 "column": "own_avg_price",
                 "agg": "mean",
                 "frame": "tenant",
@@ -278,7 +280,7 @@ def test_dispatch_freeform_routes_via_keyword_fallback(monkeypatch) -> None:
     assert decision.primary == "pricing"
     assert decision.via_fallback is True
     assert isinstance(resp, AgentResponse)
-    assert "3.50" in resp.prose
+    assert "3.45" in resp.prose
 
 
 def test_dispatch_freeform_ambiguous_question_to_advisor(monkeypatch) -> None:

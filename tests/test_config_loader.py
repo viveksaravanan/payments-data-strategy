@@ -37,7 +37,7 @@ def cfg() -> Config:
 def test_loads_global(cfg: Config) -> None:
     assert cfg.global_["seed"] == 42
     assert cfg.global_["window"]["days"] == 90
-    assert cfg.global_["expected_store_count"] == 29
+    assert cfg.global_["expected_store_count"] == 38
 
 
 def test_loads_eight_zones(cfg: Config) -> None:
@@ -49,21 +49,27 @@ def test_loads_eight_zones(cfg: Config) -> None:
     }
 
 
-def test_loads_three_segments(cfg: Config) -> None:
-    assert set(cfg.segments.keys()) == {"grocery", "qsr", "off_price"}
+def test_loads_two_segments(cfg: Config) -> None:
+    assert set(cfg.segments.keys()) == {"grocery", "qsr"}
 
 
-def test_loads_five_merchants(cfg: Config) -> None:
+def test_loads_six_merchants(cfg: Config) -> None:
     assert set(cfg.merchants.keys()) == {
-        "Kroger", "Acme", "Winn-Dixie", "Taco Bell", "TJ Maxx",
+        "Kroger", "Acme", "Winn-Dixie", "Taco Bell", "Burger King", "Chick-fil-A",
     }
 
 
 def test_segment_distance_decay_betas(cfg: Config) -> None:
-    """D13.4: grocery 2.0, qsr 2.2, off_price 1.3."""
+    """§C4: grocery 2.0, qsr 2.2 (off-price dropped)."""
     assert cfg.segments["grocery"]["distance_decay"]["beta"] == 2.0
     assert cfg.segments["qsr"]["distance_decay"]["beta"] == 2.2
-    assert cfg.segments["off_price"]["distance_decay"]["beta"] == 1.3
+
+
+def test_every_merchant_has_attractiveness_and_sku_target(cfg: Config) -> None:
+    """datamodel-v2 invariant: config-driven A_s + assortment breadth."""
+    for name, m in cfg.merchants.items():
+        assert isinstance(m["attractiveness"], (int, float)) and m["attractiveness"] > 0
+        assert isinstance(m["sku_target"], int) and m["sku_target"] > 0
 
 
 # ----- D12 invariants ------------------------------------------------
@@ -96,28 +102,21 @@ def test_store_counts_match_placement_sums(cfg: Config) -> None:
         )
 
 
-def test_total_store_count_is_29(cfg: Config) -> None:
-    """Per AskUserQuestion resolution: D5's 'Total: 24' is an
-    arithmetic typo; the D13.2 placement matrix sums to 29 and is
-    authoritative (5+5+5+9+5)."""
+def test_total_store_count_is_38(cfg: Config) -> None:
+    """§A11/§B1 placement grids: grocery 6+5+4=15 + QSR 9+8+6=23 = 38."""
     total = sum(m["store_count"] for m in cfg.merchants.values())
-    assert total == 29
+    assert total == 38
     assert total == cfg.global_["expected_store_count"]
 
 
-def test_volume_targets_satisfy_d5_band(cfg: Config) -> None:
-    """D5 band: per-segment totals × tolerance must contain the
-    declared per-segment targets. SPEC T1 enforces this at run
-    time; here we sanity-check the targets exist and sum."""
+def test_volume_targets_satisfy_band(cfg: Config) -> None:
+    """§C9 window transaction targets — grocery + qsr (off-price dropped)."""
     targets = cfg.global_["volume_targets"]
-    assert targets["grocery"] == 1_080_000
-    assert targets["qsr"] == 365_000
-    assert targets["off_price"] == 225_000
-    assert targets["total"] == 1_670_000
-    assert (
-        targets["grocery"] + targets["qsr"] + targets["off_price"]
-        == targets["total"]
-    )
+    assert targets["grocery"] == 2_670_000
+    assert targets["qsr"] == 1_760_000
+    assert targets["total"] == 4_430_000
+    assert "off_price" not in targets
+    assert targets["grocery"] + targets["qsr"] == targets["total"]
     assert targets["tolerance_pct"] == 10
 
 
@@ -148,14 +147,14 @@ def test_load_fails_on_unknown_zone_in_placement(tmp_path: Path) -> None:
 
 def test_load_fails_on_negative_affinity_boost(tmp_path: Path) -> None:
     """An affinity_matrix entry with a non-positive boost raises."""
-    _clone_config_with_affinity_override(tmp_path, "  - [BREAD, BUTTER, -2.0]")
+    _clone_config_with_affinity_override(tmp_path, '  - ["Sandwich Bread", "Butter", -2.0]')
     with pytest.raises(ConfigInvariantError, match="affinity_matrix"):
         load_config(tmp_path)
 
 
 def test_load_fails_on_malformed_affinity_entry(tmp_path: Path) -> None:
     """An affinity_matrix entry that isn't [anchor, partner, boost] raises."""
-    _clone_config_with_affinity_override(tmp_path, "  - [BREAD, BUTTER]")
+    _clone_config_with_affinity_override(tmp_path, '  - ["Sandwich Bread", "Butter"]')
     with pytest.raises(ConfigInvariantError, match="affinity_matrix"):
         load_config(tmp_path)
 
@@ -176,6 +175,8 @@ def test_dummy_extra_qsr_merchant_loads(tmp_path: Path) -> None:
         "segment: qsr\n"
         "positioning_tier: mainstream\n"
         "store_count: 3\n"
+        "attractiveness: 0.85\n"
+        "sku_target: 70\n"
         "zone_placement_bias:\n"
         "  matthews: 2\n"
         "  ballantyne: 1\n"
@@ -185,13 +186,13 @@ def test_dummy_extra_qsr_merchant_loads(tmp_path: Path) -> None:
     # is altered.
     global_path = tmp_path / "global.yaml"
     text = global_path.read_text()
-    text = text.replace("expected_store_count: 29", "expected_store_count: 32")
+    text = text.replace("expected_store_count: 38", "expected_store_count: 41")
     global_path.write_text(text)
 
     cfg = load_config(tmp_path)
     assert "Burger Shack" in cfg.merchants
     assert cfg.merchants["Burger Shack"]["store_count"] == 3
-    assert sum(m["store_count"] for m in cfg.merchants.values()) == 32
+    assert sum(m["store_count"] for m in cfg.merchants.values()) == 41
 
 
 # ----- helpers for negative tests -----------------------------------
@@ -233,5 +234,5 @@ def _clone_config_with_affinity_override(dest: Path, replacement: str) -> None:
     _clone_config(dest)
     grocery_path = dest / "segments" / "grocery.yaml"
     text = grocery_path.read_text()
-    text = text.replace("  - [BREAD, BUTTER, 2.0]", replacement, 1)
+    text = text.replace('  - ["Sandwich Bread", "Butter", 2.5]', replacement, 1)
     grocery_path.write_text(text)

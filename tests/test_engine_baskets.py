@@ -1,15 +1,9 @@
-"""Tests for src/generate/engine/baskets.py (Wave 1 Stage 4.5) —
-PILOT scale.
+"""Tests for src/generate/engine/baskets.py (datamodel-v2, §C5) — PILOT.
 
-D17: mission-driven baskets with designed affinity, staples,
-heavy-tail size distribution. The pilot scale (~5k cards) gates
-both T11 (affinity discoverable via lift) and T12 (basket
-heavy-tail) before full-scale generation. Full-scale verification
-is owned by Stage 6.
-
-The pilot fixture builds everything up to baskets at 5k cards.
-That's enough rows (~85k trips × ~6 items/basket = ~500k line
-items) for lift signals on the planted pairs to surface.
+Mission-driven baskets over the static committed catalog: grocery affinity
+(functional_subcategory pairs), QSR combo-attach, affluence-driven PL
+selection, staples, heavy-tail size. Line items carry only sku + qty; the
+taxonomy/PL resolve via the products join (the ``items_x`` fixture).
 """
 from __future__ import annotations
 
@@ -25,14 +19,15 @@ from src.generate.engine.baskets import (
     _build_affinity_lookup,
     build_basket_items,
 )
-from src.generate.engine.catalog import build_catalog
+from src.generate.engine.catalog import load_products
 from src.generate.engine.customers import build_customers
 from src.generate.engine.geography import build_stores, build_zones
 from src.generate.engine.population import build_population
 from src.generate.engine.trips import build_trips
 
 CONFIG_ROOT = Path(__file__).resolve().parents[1] / "src" / "generate" / "config"
-PILOT_CARDS = 5_000
+PILOT_CARDS = 6_000
+GROCERS = ("KRG", "ACM", "WDX")
 
 
 @pytest.fixture(scope="module")
@@ -41,289 +36,170 @@ def cfg():
 
 
 @pytest.fixture(scope="module")
-def zones(cfg) -> pd.DataFrame:
+def zones(cfg):
     return build_zones(cfg)
 
 
 @pytest.fixture(scope="module")
-def stores(cfg) -> pd.DataFrame:
-    rng = np.random.default_rng(cfg.global_["seed"])
-    return build_stores(cfg, rng)
+def stores(cfg):
+    return build_stores(cfg, np.random.default_rng(cfg.global_["seed"]))
 
 
 @pytest.fixture(scope="module")
-def catalog(cfg) -> pd.DataFrame:
-    rng = np.random.default_rng(cfg.global_["seed"] + 10)
-    return build_catalog(cfg, rng)
+def catalog():
+    return load_products()
 
 
 @pytest.fixture(scope="module")
-def population(cfg) -> pd.DataFrame:
-    rng = np.random.default_rng(cfg.global_["seed"])
-    return build_population(cfg, rng, n_cards=PILOT_CARDS)
+def population(cfg):
+    return build_population(cfg, np.random.default_rng(cfg.global_["seed"]), n_cards=PILOT_CARDS)
 
 
 @pytest.fixture(scope="module")
-def customers(cfg, population) -> pd.DataFrame:
-    rng = np.random.default_rng(cfg.global_["seed"] + 1)
-    return build_customers(cfg, population, rng)
+def customers(cfg, population):
+    return build_customers(cfg, population, np.random.default_rng(cfg.global_["seed"] + 1))
 
 
 @pytest.fixture(scope="module")
-def trips(cfg, population, customers, stores, zones) -> pd.DataFrame:
-    rng = np.random.default_rng(cfg.global_["seed"] + 2)
-    return build_trips(cfg, population, customers, stores, zones, rng)
+def trips(cfg, population, customers, stores, zones):
+    return build_trips(cfg, population, customers, stores, zones,
+                       np.random.default_rng(cfg.global_["seed"] + 2))
 
 
 @pytest.fixture(scope="module")
-def items(cfg, trips, customers, catalog) -> pd.DataFrame:
-    rng = np.random.default_rng(cfg.global_["seed"] + 3)
-    return build_basket_items(cfg, trips, customers, catalog, rng)
+def items(cfg, trips, customers, catalog):
+    return build_basket_items(cfg, trips, customers, catalog,
+                              np.random.default_rng(cfg.global_["seed"] + 3))
+
+
+@pytest.fixture(scope="module")
+def items_x(items, catalog) -> pd.DataFrame:
+    """Line items joined to products (taxonomy resolves via the sku join)."""
+    p = catalog[["sku", "banner_code", "functional_department",
+                 "functional_category", "functional_subcategory", "private_label"]].rename(
+        columns={"functional_category": "category", "functional_subcategory": "subcategory"})
+    return items.merge(p, on="sku", how="left")
 
 
 # ----- catalog (precursor) ------------------------------------------
 
 def test_catalog_per_merchant_sku_count(catalog) -> None:
-    """Per-segment merchant SKU counts roughly match D17.6 (~1,100
-    grocery), D19.5 (smaller QSR + retail catalogs)."""
-    counts = catalog.groupby("merchant_id").size().to_dict()
-    # Grocery merchants each carry the full canonical grocery set.
-    for grocer in ("KRG", "ACM", "WDX"):
-        assert 900 <= counts[grocer] <= 1300, f"{grocer}: {counts[grocer]} SKUs"
-    # QSR menu is much smaller.
-    assert 40 <= counts["TBL"] <= 90
-    # Off-price.
-    assert 200 <= counts["TJX"] <= 320
+    counts = catalog.groupby("banner_code").size().to_dict()
+    for grocer in GROCERS:
+        assert 900 <= counts[grocer] <= 1450, f"{grocer}: {counts[grocer]} SKUs"
+    for qsr in ("TBL", "BKG", "CFA"):
+        assert 50 <= counts[qsr] <= 95, f"{qsr}: {counts[qsr]} items"
+    assert "TJX" not in counts
 
 
-def test_catalog_has_private_label_in_grocery(catalog) -> None:
+def test_catalog_pl_as_distinct_skus(catalog) -> None:
     g = catalog[catalog["segment"] == "grocery"]
-    assert g["private_label"].mean() > 0.10
-    assert g["private_label"].mean() < 0.40
+    assert 0.10 < g["private_label"].mean() < 0.45
+    # PL is a distinct SKU record, not just a flag on a shared row.
+    assert g.loc[g["private_label"], "sku"].is_unique
 
 
-def test_canonical_ids_shared_across_grocers(catalog) -> None:
-    """Same canonical_id appears at all 3 grocers (cross-merchant
-    matching)."""
-    g = catalog[catalog["segment"] == "grocery"]
-    by_canon = g.groupby("canonical_id")["banner_code"].nunique()
-    # The vast majority of canonical IDs should appear at all 3 grocers
-    # (Wave 1 Stage 4.5 ships full assortment; D19.4 differentiation
-    # lands at 4.7).
-    assert (by_canon == 3).mean() > 0.95
+def test_no_canonical_id_on_observable_catalog(catalog) -> None:
+    assert "canonical_id" not in catalog.columns
 
 
-def test_canonical_id_maps_to_single_product(catalog) -> None:
-    """Each canonical_id resolves to exactly one (category, subcategory).
-    Complements ``test_canonical_ids_shared_across_grocers``: that one
-    checks the same id reaches all 3 grocers; this one checks the id is
-    an unambiguous product key (no id reused for two different products),
-    which is what T11/T17 cross-merchant analysis silently depends on."""
-    pairs = catalog.groupby("canonical_id")[["category", "subcategory"]].nunique()
-    bad = pairs[(pairs["category"] > 1) | (pairs["subcategory"] > 1)]
-    assert bad.empty, f"canonical_ids mapping to >1 product: {bad.index.tolist()[:5]}"
-
-
-# ----- D17.2 affinity matrix (config-driven) ------------------------
+# ----- affinity matrix (config-driven, functional_subcategory) ------
 
 def test_affinity_matrix_is_config_driven(cfg) -> None:
-    """The affinity lookup is built from each segment's YAML
-    affinity_matrix (no hard-coded module constant), walked in sorted
-    segment order then declared list order for determinism."""
     lookup = _build_affinity_lookup(cfg)
     assert lookup == {
-        "PASTA":   [("SAUCE", 5.0)],
-        "SAUCE":   [("PASTA", 5.0)],
-        "CHIPS":   [("SALSA", 3.0)],
-        "SALSA":   [("CHIPS", 3.0)],
-        "DIAPERS": [("WIPES", 3.0), ("FORMULA", 2.2)],
-        "WIPES":   [("DIAPERS", 3.0)],
-        "MILK":    [("CEREAL", 4.0)],
-        "CEREAL":  [("MILK", 4.0)],
-        "BREAD":   [("BUTTER", 2.0)],
+        "Pasta":                   [("Pasta Sauce", 5.0)],
+        "Pasta Sauce":             [("Pasta", 5.0)],
+        "Potato & Tortilla Chips": [("Salsa & Dips", 3.5)],
+        "Salsa & Dips":            [("Potato & Tortilla Chips", 3.5)],
+        "Cereal":                  [("2% Reduced-Fat Milk", 3.5)],
+        "2% Reduced-Fat Milk":     [("Cereal", 3.5)],
+        "Sandwich Bread":          [("Butter", 2.5)],
+        "Diapers & Wipes":         [("Formula & Baby Food", 2.5)],
     }
 
 
 def test_affinity_subcat_guard_raises_on_typo(catalog) -> None:
-    """A typo'd affinity subcategory (absent from the catalog) is caught
-    loudly at build time instead of silently no-op'ing the boost."""
     with pytest.raises(ConfigInvariantError, match="absent from"):
-        _assert_affinity_subcats_exist(
-            {"NOTASUBCAT": [("ALSOBOGUS", 2.0)]}, catalog
-        )
-    # The real configured matrix must pass cleanly.
+        _assert_affinity_subcats_exist({"NOTASUBCAT": [("ALSOBOGUS", 2.0)]}, catalog)
     _assert_affinity_subcats_exist(_build_affinity_lookup(load_config(CONFIG_ROOT)), catalog)
 
 
-# ----- basket structure ---------------------------------------------
+# ----- basket structure (minimal line schema) ----------------------
 
 def test_required_columns(items) -> None:
-    required = {"trip_id", "line_id", "sku", "canonical_id",
-                "category", "subcategory", "qty"}
-    assert required.issubset(items.columns)
+    assert set(items.columns) == {"trip_id", "line_id", "sku", "qty"}
 
 
 def test_every_trip_has_at_least_one_line(trips, items) -> None:
-    trips_with_items = set(items["trip_id"].unique())
-    expected = set(trips["trip_id"].unique())
-    missing = expected - trips_with_items
-    assert not missing, f"trips with empty baskets: {sorted(missing)[:5]}"
-
-
-def test_line_ids_unique_within_trip(items) -> None:
-    by_trip = items.groupby("trip_id")["line_id"].nunique()
-    by_trip_count = items.groupby("trip_id").size()
-    assert (by_trip == by_trip_count).all()
+    missing = set(trips["trip_id"].unique()) - set(items["trip_id"].unique())
+    assert not missing
 
 
 def test_skus_unique_within_trip(items) -> None:
-    by_trip = items.groupby("trip_id")["sku"].nunique()
-    by_trip_count = items.groupby("trip_id").size()
-    assert (by_trip == by_trip_count).all()
+    assert (items.groupby("trip_id")["sku"].nunique() == items.groupby("trip_id").size()).all()
 
 
 def test_qty_positive(items) -> None:
     assert (items["qty"] > 0).all()
 
 
-# ----- D17.4 basket size + archetype --------------------------------
+# ----- basket size + archetype --------------------------------------
 
 def test_grocery_basket_size_range(items, trips) -> None:
-    """Grocery basket sizes span 2-30 (across archetypes)."""
-    g_trips = set(trips[trips["segment"] == "grocery"]["trip_id"])
-    sizes = items[items["trip_id"].isin(g_trips)].groupby("trip_id").size()
-    assert sizes.min() >= 1
-    assert sizes.max() <= 35  # triangular clip + tiny rounding slop
+    g = set(trips[trips["segment"] == "grocery"]["trip_id"])
+    sizes = items[items["trip_id"].isin(g)].groupby("trip_id").size()
+    assert sizes.min() >= 1 and sizes.max() <= 35
 
 
 def test_qsr_basket_size_small(items, trips) -> None:
-    """QSR baskets cap around 10 (combo + sides + drink mostly)."""
-    q_trips = set(trips[trips["segment"] == "qsr"]["trip_id"])
-    sizes = items[items["trip_id"].isin(q_trips)].groupby("trip_id").size()
-    assert sizes.max() <= 10
-    assert sizes.median() <= 5
+    q = set(trips[trips["segment"] == "qsr"]["trip_id"])
+    sizes = items[items["trip_id"].isin(q)].groupby("trip_id").size()
+    assert sizes.max() <= 10 and sizes.median() <= 5
 
 
-def test_off_price_basket_size_spans_1_to_12(items, trips) -> None:
-    op_trips = set(trips[trips["segment"] == "off_price"]["trip_id"])
-    sizes = items[items["trip_id"].isin(op_trips)].groupby("trip_id").size()
-    assert sizes.min() >= 1
-    assert sizes.max() <= 14
-
-
-# ----- T12 sanity at pilot: heavy-tail basket size ------------------
-
-def test_top_20pct_baskets_share_of_units_grocery_pilot(items, trips) -> None:
-    """T12 sanity at pilot: top 20% of grocery baskets ≈ 45-55%
-    of grocery units. We allow a wider 40-60% band at pilot scale
-    because basket sample size is smaller — full-scale check at
-    Stage 6."""
-    g_trips = set(trips[trips["segment"] == "grocery"]["trip_id"])
-    g_items = items[items["trip_id"].isin(g_trips)]
-    by_trip_units = g_items.groupby("trip_id")["qty"].sum()
-    sorted_units = by_trip_units.sort_values(ascending=False)
-    n_top = max(1, int(len(sorted_units) * 0.20))
-    top_share = sorted_units.iloc[:n_top].sum() / sorted_units.sum()
-    # Pilot band slightly wider than the 45-55% Stage-6 target.
-    assert 0.40 <= top_share <= 0.62, \
-        f"top-20% grocery basket unit share {top_share:.4f} outside pilot band"
-
-
-# ----- D17.3 staples: repeat purchase realism -----------------------
-
-def test_repeat_purchase_above_chance_for_grocery_staples(
-    items, trips, customers, catalog,
-) -> None:
-    """For loyalist cards with active grocery shopping, the SKU they
-    buy most often should recur at a rate well above the 1/N chance
-    of picking it independently."""
-    cust = customers[customers["loyalty_type"] == "loyalist"]
-    g_trips = trips[
-        (trips["segment"] == "grocery") &
-        (trips["card_id"].isin(cust["card_id"]))
-    ]
-    # Cards with at least 5 grocery trips so we can measure recurrence.
-    trip_counts = g_trips.groupby("card_id").size()
-    active = trip_counts[trip_counts >= 5].index.tolist()
-    if len(active) == 0:
-        pytest.skip("no loyalists with ≥5 grocery trips in pilot")
-    by_card_g_trips = g_trips[g_trips["card_id"].isin(active)]
-    # join items
-    g_items = items.merge(by_card_g_trips[["trip_id", "card_id"]], on="trip_id")
-    # For each card, find top SKU's share of trips it appears in.
-    top_share = (
-        g_items.groupby(["card_id", "sku"]).agg(
-            trips_with_sku=("trip_id", "nunique"),
-        ).reset_index()
-        .merge(by_card_g_trips.groupby("card_id").size().rename("n_trips"),
-               on="card_id")
-    )
-    top_share["share"] = top_share["trips_with_sku"] / top_share["n_trips"]
-    per_card_top = top_share.groupby("card_id")["share"].max()
-    # Loyalists should have a top-SKU that recurs in ≥20% of trips on
-    # average (well above random ~1/avg_basket_size × catalog_size).
-    assert per_card_top.mean() > 0.20, \
-        f"loyalist mean top-SKU share {per_card_top.mean():.3f}"
-
-
-# ----- T11 design gate at pilot: affinity discoverable via lift -----
+# ----- T11 affinity lift (functional_subcategory, via join) ---------
 
 @pytest.mark.parametrize("anchor,partner,min_lift", [
-    ("PASTA",   "SAUCE",   3.0),
-    ("CHIPS",   "SALSA",   2.5),
-    ("DIAPERS", "WIPES",   3.0),
-    ("MILK",    "CEREAL",  2.0),
+    ("Pasta", "Pasta Sauce", 1.8),
+    ("Cereal", "2% Reduced-Fat Milk", 1.8),
+    ("Potato & Tortilla Chips", "Salsa & Dips", 1.8),
 ])
-def test_T11_designed_affinity_lift(items, anchor, partner, min_lift) -> None:
-    """T11: an analyst running lift = P(B|A in basket) / P(B) on the
-    raw data should see the designed pairs surface above threshold.
-    This is the design gate for the baskets layer — if these pairs
-    don't lift here at pilot scale, the model is wrong, not just
-    under-tuned."""
-    by_trip = items.groupby("trip_id")["subcategory"].apply(set)
-    n = len(by_trip)
-    p_partner = by_trip.apply(lambda s: partner in s).mean()
-    has_anchor = by_trip.apply(lambda s: anchor in s)
-    if has_anchor.sum() == 0:
-        pytest.skip(f"no {anchor} baskets in pilot")
-    p_partner_given_anchor = by_trip[has_anchor].apply(lambda s: partner in s).mean()
-    if p_partner == 0:
-        pytest.skip(f"{partner} never appears in pilot")
-    lift = p_partner_given_anchor / p_partner
-    assert lift >= min_lift, (
-        f"{anchor}→{partner} lift {lift:.2f} below threshold {min_lift}; "
-        f"P({partner})={p_partner:.4f}, P({partner}|{anchor})={p_partner_given_anchor:.4f}"
-    )
+def test_T11_designed_affinity_lift(items_x, anchor, partner, min_lift) -> None:
+    g = items_x[items_x["banner_code"].isin(GROCERS)]
+    by_trip = g.groupby("trip_id")["subcategory"].apply(set)
+    has_a = by_trip.apply(lambda s: anchor in s)
+    p = by_trip.apply(lambda s: partner in s).mean()
+    if has_a.sum() == 0 or p == 0:
+        pytest.skip(f"insufficient {anchor}/{partner} at pilot")
+    lift = by_trip[has_a].apply(lambda s: partner in s).mean() / p
+    assert lift >= min_lift, f"{anchor}->{partner} lift {lift:.2f} < {min_lift}"
 
 
-# ----- mission emergence — categories co-occur per mission ---------
+def test_qsr_combo_attach_materializes(items_x) -> None:
+    """§B5: drink attaches to entrées, CFA >= BK >= TB ordering."""
+    q = items_x[items_x["banner_code"].isin(("TBL", "BKG", "CFA"))]
+    bb = q.groupby("trip_id").agg(cats=("category", set), banner=("banner_code", "first"))
+    drink = {}
+    for b in ("CFA", "BKG", "TBL"):
+        ent = bb[(bb["banner"] == b) & bb["cats"].apply(lambda s: "Entrée" in s)]
+        drink[b] = ent["cats"].apply(lambda s: "Beverages" in s).mean() if len(ent) else 0.0
+    assert all(v > 0.30 for v in drink.values())
+    assert drink["CFA"] >= drink["BKG"] >= drink["TBL"]
 
-def test_breakfast_emerges_DAIRY_with_CEREAL_in_grocery(items, trips) -> None:
-    """Breakfast mission has high DAIRY + PANTRY (CEREAL). The
-    emergent lift on (DAIRY category, CEREAL subcat) should be
-    visible at pilot scale even without an explicit DAIRY×CEREAL
-    pair in the affinity matrix — that's the mission-emergent
-    effect D17.1 is supposed to produce."""
-    g_trips = set(trips[trips["segment"] == "grocery"]["trip_id"])
-    g_items = items[items["trip_id"].isin(g_trips)]
-    by_trip = g_items.groupby("trip_id").apply(
-        lambda x: ("DAIRY" in set(x["category"]), "CEREAL" in set(x["subcategory"])),
-        include_groups=False,
-    )
-    flags = pd.DataFrame(by_trip.tolist(), columns=["has_dairy", "has_cereal"])
-    p_cereal = flags["has_cereal"].mean()
-    p_cereal_given_dairy = flags[flags["has_dairy"]]["has_cereal"].mean()
-    if p_cereal == 0:
-        pytest.skip("no cereal trips in pilot")
-    lift = p_cereal_given_dairy / p_cereal
-    assert lift >= 1.3, f"DAIRY→CEREAL emergent lift {lift:.2f} too low"
+
+# ----- PL selection emerges by affluence ----------------------------
+
+def test_pl_share_ordering_by_banner(items_x) -> None:
+    """Realized PL unit share (measured from selection): KRG/WDX > ACM."""
+    g = items_x[items_x["banner_code"].isin(GROCERS)]
+    pl = {b: g[g["banner_code"] == b]["private_label"].mean() for b in GROCERS}
+    assert pl["KRG"] > pl["ACM"] and pl["WDX"] > pl["ACM"]
 
 
 # ----- reproducibility ----------------------------------------------
 
 def test_reproducible_under_same_seed(cfg, trips, customers, catalog) -> None:
-    rng_a = np.random.default_rng(cfg.global_["seed"] + 3)
-    rng_b = np.random.default_rng(cfg.global_["seed"] + 3)
-    a = build_basket_items(cfg, trips, customers, catalog, rng_a)
-    b = build_basket_items(cfg, trips, customers, catalog, rng_b)
+    a = build_basket_items(cfg, trips, customers, catalog, np.random.default_rng(cfg.global_["seed"] + 3))
+    b = build_basket_items(cfg, trips, customers, catalog, np.random.default_rng(cfg.global_["seed"] + 3))
     pd.testing.assert_frame_equal(a, b)

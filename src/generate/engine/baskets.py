@@ -162,7 +162,7 @@ _SEGMENT_ARCHETYPES = {"grocery": _GROCERY_ARCHETYPES, "qsr": _QSR_ARCHETYPES}
 # per-banner PL share lands ~27/19/25. The share is still an emergent
 # purchasing outcome (counted from baskets), not a catalog flag read.
 _PL_AFFLUENCE_SLOPE = 2.2
-_BANNER_PL_PROPENSITY = {"KRG": 1.25, "ACM": 0.52, "WDX": 1.05}
+_BANNER_PL_PROPENSITY = {"KRG": 0.92, "ACM": 0.52, "WDX": 0.74}
 
 # ----- §A13 affluence tilt on grocery category selection ------------
 # Per-department multiplier on the mission group-weights = exp(k × (affluence−1)):

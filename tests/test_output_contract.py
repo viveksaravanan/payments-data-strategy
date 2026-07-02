@@ -68,16 +68,18 @@ def test_all_contract_tables_present(tables) -> None:
                       "latitude", "longitude", "open_date"}),
     ("customers",    {"card_id", "home_zone", "loyalty_type", "primary_banner",
                       "tender", "network", "wallet_enrolled", "wallet_provider"}),
-    ("products",     {"sku", "merchant_id", "category", "subcategory",
-                      "canonical_id", "private_label", "base_price"}),
+    ("products",     {"sku", "merchant_id", "banner_code", "segment", "product_name",
+                      "functional_department", "functional_category", "functional_subcategory",
+                      "merchant_department", "merchant_category", "merchant_subcategory",
+                      "private_label", "shelf_price"}),
     ("transactions", {"txn_id", "customer_token", "store_id", "txn_ts",
                       "tender", "network", "entry_mode", "wallet_provider",
                       "connectivity_type", "subtotal"}),
-    ("transaction_items", {"txn_id", "line_id", "sku", "canonical_id",
+    ("transaction_items", {"txn_id", "line_id", "sku",
                           "qty", "unit_price", "discount", "promo_id", "line_total"}),
     ("promotions",   {"promo_id", "sku", "merchant_id", "promo_type",
                       "start_date", "end_date", "depth_pct"}),
-    ("anomalies_groundtruth", {"anomaly_id", "type", "description",
+    ("anomalies_groundtruth", {"anomaly_id", "anomaly_type",
                               "start_date", "end_date", "magnitude"}),
 ])
 def test_table_has_required_columns(tables, table, required) -> None:
@@ -169,16 +171,21 @@ def test_items_promo_ids_resolve(tables) -> None:
     assert set(on_promo["promo_id"].unique()) <= valid
 
 
-# ----- canonical_id consistency -------------------------------------
+# ----- canonical_id is HIDDEN (not on observable products) ----------
 
-def test_canonical_id_consistent_across_grocers(tables) -> None:
-    """Same canonical_id should map to the same (category, subcategory)
-    at every banner."""
-    p = tables["products"]
-    g = p[p["segment"] == "grocery"]
-    per_canon = g.groupby("canonical_id")[["category", "subcategory"]].nunique()
-    assert (per_canon["category"] == 1).all()
-    assert (per_canon["subcategory"] == 1).all()
+def test_canonical_id_absent_from_products(tables) -> None:
+    """datamodel-v2: canonical_id is the hidden answer key
+    (data/eval/canonical_map.csv) — it must NOT be on observable products."""
+    assert "canonical_id" not in tables["products"].columns
+    # dual taxonomy present on products instead
+    for col in ("functional_subcategory", "merchant_subcategory", "product_name"):
+        assert col in tables["products"].columns
+
+
+def test_promotions_and_anomalies_dormant(tables) -> None:
+    """Promotions + planted anomalies disabled — empty tables emitted."""
+    assert len(tables["promotions"]) == 0
+    assert len(tables["anomalies_groundtruth"]) == 0
 
 
 # ----- volume check at pilot ---------------------------------------

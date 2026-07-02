@@ -58,42 +58,40 @@ def test_pricing_canonical_question_produces_agentresponse(
     claims, returns an AgentResponse.
     """
     own_sql = (
-        "SELECT i.category, AVG(i.unit_price) AS own_avg_price "
+        "SELECT p.functional_category AS category, AVG(i.unit_price) AS own_avg_price "
         "FROM transaction_items i JOIN transactions t USING (txn_id) "
-        "WHERE t.banner_code = 'KRG' AND i.category = 'DAIRY' "
-        "GROUP BY i.category"
+        "JOIN products p ON i.sku = p.sku "
+        "WHERE t.banner_code = 'KRG' AND p.functional_category = 'Milk' "
+        "GROUP BY p.functional_category"
     )
-    # Lake at cat_week gives ~104 DAIRY rows. Merge on `category`
-    # produces 104 merged rows (single own × 104 peer cells). The
-    # claim uses CellLookup with agg='mean' over the matching cells
-    # — the natural way for the model to assert "averaged across
-    # zones and weeks".
-    # Wave 3.5 two-query flow: own claim resolves against the tenant
-    # frame (own_avg_price), peer against the lake frame (peer_val).
+    # datamodel-v2 two-query flow: category/taxonomy resolve via the
+    # products join (line items carry only sku). Own claim resolves
+    # against the tenant frame (own_avg_price), peer against the lake
+    # frame (peer_val). KRG own milk ASP ≈ $3.45; peer ≈ $3.66.
     emit = scripted_emit_response(
-        headline="Your dairy ASP is 3.50, slightly above the peer 3.52.",
+        headline="Your milk ASP is 3.45, below the peer 3.66.",
         evidence=[
-            "Your dairy average selling price is 3.50.",
-            "The same-segment peer average is 3.52.",
+            "Your milk average selling price is 3.45.",
+            "The same-segment peer average is 3.66.",
         ],
         claims=[
             {
-                "text_span": "3.50",
-                "value": 3.50,
+                "text_span": "3.45",
+                "value": 3.45,
                 "source": {
                     "type": "CellLookup",
-                    "row_filter": {"category": "DAIRY"},
+                    "row_filter": {"category": "Milk"},
                     "column": "own_avg_price",
                     "agg": "mean",
                     "frame": "tenant",
                 },
             },
             {
-                "text_span": "peer 3.52",
-                "value": 3.52,
+                "text_span": "peer 3.66",
+                "value": 3.66,
                 "source": {
                     "type": "CellLookup",
-                    "row_filter": {"category": "DAIRY"},
+                    "row_filter": {"category": "Milk"},
                     "column": "peer_val",
                     "agg": "mean",
                     "frame": "lake",
@@ -106,21 +104,21 @@ def test_pricing_canonical_question_produces_agentresponse(
 
     script = [
         scripted_tool_use("query_tenant", {"sql": own_sql}),
-        scripted_tool_use("query_lake_sql", {"sql": "SELECT category, AVG(unit_price) AS peer_val FROM lake_transactions WHERE peer_relationship = 'peer' AND category = 'DAIRY' GROUP BY category"}),
+        scripted_tool_use("query_lake_sql", {"sql": "SELECT category, AVG(unit_price) AS peer_val FROM lake_transactions WHERE peer_relationship = 'peer' AND category = 'Milk' GROUP BY category"}),
         emit,
     ]
 
     specialist = PricingSpecialist(viewer_krg)
     with patch_llm(monkeypatch, script):
-        resp = specialist.answer("How does our dairy pricing compare to peers?")
+        resp = specialist.answer("How does our milk pricing compare to peers?")
 
     assert isinstance(resp, AgentResponse)
     # Two-query flow: tenant frame is the result-of-record.
     assert "own_avg_price" in resp.result.columns
     # Charts are deferred to Wave 4 (§11.2) — gated off.
     assert resp.chart is None
-    # Prose retained the grounded own 3.50 claim.
-    assert "3.50" in resp.prose
+    # Prose retained the grounded own 3.45 claim.
+    assert "3.45" in resp.prose
     # Caveats survived.
     assert resp.caveats and any("Peer set" in c for c in resp.caveats)
     # SQL surfaces: tenant + lake_sql reads (no merge step in 3.5).
@@ -146,8 +144,8 @@ def test_pricing_render_block_required(viewer_krg, monkeypatch) -> None:
     from src.agents.specialist import RenderBlockMissingError
 
     own_sql = (
-        "SELECT category, COUNT(*) AS n FROM transactions "
-        "WHERE banner_code = 'KRG' GROUP BY category"
+        "SELECT segment, COUNT(*) AS n FROM transactions "
+        "WHERE banner_code = 'KRG' GROUP BY segment"
     )
     script = [
         scripted_tool_use("query_tenant", {"sql": own_sql}),

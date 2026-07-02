@@ -79,7 +79,7 @@ def test_stores_lat_long_allowed() -> None:
     will use."""
     df = load_table("stores", columns=["store_id", "latitude", "longitude"])
     assert set(df.columns) == {"store_id", "latitude", "longitude"}
-    assert len(df) == 29  # Wave 1 footprint per D5/D13.2 + AskUserQuestion resolution
+    assert len(df) == 38  # datamodel-v2 footprint (§A11/§B1: 15 grocery + 23 QSR)
 
 
 def test_allowed_full_table_load_returns_all_allowed_columns() -> None:
@@ -94,15 +94,18 @@ def test_subset_of_allowed_columns_works() -> None:
 
 
 def test_promotions_load_works() -> None:
+    """Promotions dormant in v2 → the table is empty but the accessor
+    still projects its allowed column set."""
     df = load_table("promotions")
-    assert len(df) > 0
     assert "promo_id" in df.columns
+    assert len(df) == 0
 
 
 def test_products_load_works() -> None:
     df = load_table("products")
-    assert "canonical_id" in df.columns
     assert "private_label" in df.columns
+    assert "functional_subcategory" in df.columns   # dual taxonomy
+    assert "canonical_id" not in df.columns          # hidden (data/eval)
 
 
 # ----- (c) DuckDB relation reader applies the same whitelist --------------
@@ -123,7 +126,7 @@ def test_relation_reader_returns_duckdb_relation() -> None:
     rel = read_parquet_relation("stores", columns=["store_id", "latitude"])
     assert isinstance(rel, duckdb.DuckDBPyRelation)
     n = rel.aggregate("count(*) AS n").fetchone()[0]
-    assert n == 29
+    assert n == 38
 
 
 # ----- (d) Static scan: no direct Parquet read bypasses the accessor -----

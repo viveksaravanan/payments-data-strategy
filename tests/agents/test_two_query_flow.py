@@ -31,11 +31,11 @@ def test_pricing_prompt_renders_peer_routing_directive() -> None:
     krg = PricingSpecialist(MerchantContext.for_merchant("KRG"))
     tbl = PricingSpecialist(MerchantContext.for_merchant("TBL"))
     assert "{{peer_routing}}" not in krg._system_prompt
-    # Grocer (2 peers): a normal peer-comparison directive.
+    # datamodel-v2: BOTH segments now have 2 same-segment peers
+    # (grocery KRG/ACM/WDX; QSR TBL/BKG/CFA) — the peer-comparison
+    # directive renders for both, no 0-peer decline.
     assert "2 same-segment peers" in krg._system_prompt
-    # QSR (0 peers): pricing declines, no cross-segment substitution.
-    assert "no comparable same-segment peers" in tbl._system_prompt
-    assert "not allowed" in tbl._system_prompt
+    assert "2 same-segment peers" in tbl._system_prompt
 
 
 # ----- the two-query flow produces a clean dual-frame response ----------
@@ -45,36 +45,43 @@ def test_two_query_flow_clean_response() -> None:
     spec = PricingSpecialist(MerchantContext.for_merchant("KRG"))
     spec._reset_state()
 
-    # 1. own dairy ASP
+    # 1. own milk ASP (category resolves via the products join)
     spec._dispatch_tool(
         "query_tenant",
-        {"sql": "SELECT i.category, AVG(i.unit_price) AS own_asp "
+        {"sql": "SELECT p.functional_category AS category, AVG(i.unit_price) AS own_asp "
                 "FROM transaction_items i JOIN transactions t ON i.txn_id = t.txn_id "
-                "WHERE t.banner_code = 'KRG' AND i.category = 'DAIRY' GROUP BY i.category"},
+                "JOIN products p ON i.sku = p.sku "
+                "WHERE t.banner_code = 'KRG' AND p.functional_category = 'Milk' "
+                "GROUP BY p.functional_category"},
     )
-    # 2. peer dairy ASP
+    # 2. peer milk ASP
     spec._dispatch_tool(
         "query_lake_sql",
         {"sql": "SELECT category, AVG(unit_price) AS peer_asp FROM lake_transactions "
-                "WHERE peer_relationship = 'peer' AND category = 'DAIRY' GROUP BY category"},
+                "WHERE peer_relationship = 'peer' AND category = 'Milk' GROUP BY category"},
     )
 
-    own_asp = round(float(spec._tenant_frame["own_asp"].iloc[0]), 2)
-    peer_asp = round(float(spec._lake_frame["peer_asp"].iloc[0]), 2)
+    # Exact (unrounded) cell values → the claim value matches the
+    # recomputed mean exactly, so the validator passes it without
+    # normalizing the 2-dp display span.
+    own_exact = float(spec._tenant_frame["own_asp"].iloc[0])
+    peer_exact = float(spec._lake_frame["peer_asp"].iloc[0])
+    own_asp = round(own_exact, 2)
+    peer_asp = round(peer_exact, 2)
 
     # 3. emit — must NOT raise (no merge gate in the two-query flow),
     #    claims resolve per-frame.
     out = spec._dispatch_tool(
         "emit_response",
         {
-            "headline": f"Your dairy ASP is ${own_asp} vs a same-segment peer "
+            "headline": f"Your milk ASP is ${own_asp} vs a same-segment peer "
                      f"average of ${peer_asp}.",
             "claims": [
-                {"text_span": f"${own_asp}", "value": own_asp,
-                 "source": {"type": "CellLookup", "row_filter": {"category": "DAIRY"},
+                {"text_span": f"${own_asp}", "value": own_exact,
+                 "source": {"type": "CellLookup", "row_filter": {"category": "Milk"},
                             "column": "own_asp", "agg": "mean", "frame": "tenant"}},
-                {"text_span": f"${peer_asp}", "value": peer_asp,
-                 "source": {"type": "CellLookup", "row_filter": {"category": "DAIRY"},
+                {"text_span": f"${peer_asp}", "value": peer_exact,
+                 "source": {"type": "CellLookup", "row_filter": {"category": "Milk"},
                             "column": "peer_asp", "agg": "mean", "frame": "lake"}},
             ],
             # No chart_intent — charts are deferred to Wave 4.

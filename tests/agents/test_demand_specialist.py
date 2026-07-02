@@ -41,10 +41,11 @@ def test_demand_canonical_question_units_index(viewer_krg, monkeypatch) -> None:
     # passes against peer units_index (~0.85). The Fix-2 guard
     # rejects raw SUM(qty) ~435k vs an index ~1 as nonsensical.
     own_sql = (
-        "SELECT i.category, AVG(i.qty) AS own_avg_qty "
+        "SELECT p.functional_category AS category, AVG(i.qty) AS own_avg_qty "
         "FROM transaction_items i JOIN transactions t USING (txn_id) "
-        "WHERE t.banner_code = 'KRG' AND i.category = 'DAIRY' "
-        "GROUP BY i.category"
+        "JOIN products p ON i.sku = p.sku "
+        "WHERE t.banner_code = 'KRG' AND p.functional_category = 'Milk' "
+        "GROUP BY p.functional_category"
     )
     # Wave 3.5 two-query flow: own claim against the tenant frame
     # (own_avg_qty), peer against the lake frame (peer_units).
@@ -59,7 +60,7 @@ def test_demand_canonical_question_units_index(viewer_krg, monkeypatch) -> None:
                 "value": 1.24,
                 "source": {
                     "type": "CellLookup",
-                    "row_filter": {"category": "DAIRY"},
+                    "row_filter": {"category": "Milk"},
                     "column": "own_avg_qty",
                     "agg": "mean",
                     "frame": "tenant",
@@ -71,7 +72,7 @@ def test_demand_canonical_question_units_index(viewer_krg, monkeypatch) -> None:
     )
     script = [
         scripted_tool_use("query_tenant", {"sql": own_sql}),
-        scripted_tool_use("query_lake_sql", {"sql": "SELECT category, AVG(qty) AS peer_units FROM lake_transactions WHERE peer_relationship = 'peer' AND category = 'DAIRY' GROUP BY category"}),
+        scripted_tool_use("query_lake_sql", {"sql": "SELECT category, AVG(qty) AS peer_units FROM lake_transactions WHERE peer_relationship = 'peer' AND category = 'Milk' GROUP BY category"}),
         emit,
     ]
     specialist = DemandForecastingSpecialist(viewer_krg)
