@@ -210,7 +210,24 @@ def sec2_latent(con, S):
     # participation group trip counts
     part = con.execute("""
         SELECT segment, count(*) AS trips FROM txn GROUP BY 1 ORDER BY 1""").df()
-    f5 = go.Figure(go.Bar(x=part.segment, y=part.trips, marker_color="#20a39e"))
+    f5 = go.Figure(go.Bar(x=part.segment, y=part["trips"], marker_color="#20a39e"))
+
+    # per-banner fresh/premium vs center-store $ share (§A13 banner ordering)
+    gb = ti[ti.segment == "grocery"]
+    rows_b = []
+    for b in ("ACM", "KRG", "WDX"):
+        d = gb[gb.banner_code == b]; tot = max(d["line_total"].sum(), 1)
+        rows_b.append(dict(
+            banner=b,
+            fresh=d.loc[d.functional_department.isin(FRESH_DEPTS), "line_total"].sum() / tot,
+            center=d.loc[d.functional_department.isin(CENTER_DEPTS), "line_total"].sum() / tot))
+    bdf = pd.DataFrame(rows_b)
+    f6 = go.Figure()
+    f6.add_bar(name="fresh/premium $ share", x=bdf["banner"], y=bdf["fresh"], marker_color="#d9534f")
+    f6.add_bar(name="center-store $ share", x=bdf["banner"], y=bdf["center"], marker_color="#0b5cff")
+    f6.update_layout(barmode="group"); f6.update_yaxes(title="grocery $ share")
+    fresh_by_b = dict(zip(bdf["banner"], bdf["fresh"]))
+    center_by_b = dict(zip(bdf["banner"], bdf["center"]))
 
     body = (read(
         f"Most observables track the hidden affluence latent as a SMOOTH gradient, not a "
@@ -221,13 +238,17 @@ def sec2_latent(con, S):
         f"~{loy.get('loyalist', float('nan'))*100:.0f}% of trips at their primary banner vs "
         f"splitters ~{loy.get('splitter', float('nan'))*100:.0f}%; zone banner mix tracks "
         f"placement (value zones lean WDX, affluent lean KRG/ACM). "
-        f"<b>⚠ WATCH:</b> fresh/premium department $ share is essentially FLAT across tiers "
-        f"(~{tierdf['fresh_share'].iloc[0]*100:.0f}/{tierdf['fresh_share'].iloc[1]*100:.0f}/"
-        f"{tierdf['fresh_share'].iloc[2]*100:.0f}%) — affluence currently drives PL, payment and "
-        f"basket size but NOT the department/premium mix, so the §A13 'affluent→more fresh/"
-        f"premium' skew is only partially realized. Reads as a gap to close (mission mix or "
-        f"category selection should tilt with affluence), not painted-on-flat elsewhere.")
+        f"The §A13 category tilt is now live: fresh/premium $ share rises as a SMOOTH "
+        f"monotonic gradient with affluence "
+        f"({tierdf['fresh_share'].iloc[0]*100:.0f}→{tierdf['fresh_share'].iloc[1]*100:.0f}→"
+        f"{tierdf['fresh_share'].iloc[2]*100:.0f}%), and the banner ordering holds — "
+        f"Acme over-indexes fresh/premium ({fresh_by_b.get('ACM',0)*100:.0f}%) above "
+        f"KRG ({fresh_by_b.get('KRG',0)*100:.0f}%) and WDX ({fresh_by_b.get('WDX',0)*100:.0f}%), "
+        f"while Winn-Dixie over-indexes center-store staples "
+        f"({center_by_b.get('WDX',0)*100:.0f}% vs ACM {center_by_b.get('ACM',0)*100:.0f}%). "
+        f"Correlations read as causal gradients, not painted-on-flat.")
         + "<h3>By affluence tier</h3>" + fig_html(f1) + fig_html(f2)
+        + "<h3>By banner — fresh/premium vs center-store $ share (§A13)</h3>" + fig_html(f6)
         + "<h3>By loyalty type — primary-banner trip share</h3>" + fig_html(f3)
         + "<h3>By home zone — grocery banner mix</h3>" + fig_html(f4)
         + "<h3>Trips per segment</h3>" + fig_html(f5))

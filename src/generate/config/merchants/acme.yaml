@@ -11,7 +11,7 @@ positioning_tier: premium
 store_count: 5
 
 # A_s starting point per Appendix D (1.00); assortment 1250 (§A8).
-attractiveness: 0.74        # calibrated (Phase 4 loop)
+attractiveness: 0.71        # calibrated (Phase 4/5; -nudge after ACM meat premium)
 sku_target: 1250
 
 # Per §A11 grocery grid. Sums to store_count.

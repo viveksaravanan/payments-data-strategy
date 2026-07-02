@@ -42,25 +42,25 @@ from src.generate.config.loader import Config, ConfigInvariantError
 _GROCERY_MISSIONS: dict[str, dict] = {
     "weekly_stockup": {
         "categories": {
-            "Dry Grocery": 0.25, "Snacks & Candy": 0.10, "Beverages": 0.09,
-            "Meat & Seafood": 0.09, "Produce": 0.13, "Dairy & Eggs": 0.11,
-            "Frozen": 0.07, "Bakery": 0.06, "Health & Household": 0.08,
+            "Dry Grocery": 0.26, "Snacks & Candy": 0.10, "Beverages": 0.09,
+            "Meat & Seafood": 0.08, "Produce": 0.13, "Dairy & Eggs": 0.11,
+            "Frozen": 0.08, "Bakery": 0.04, "Health & Household": 0.10,
             "Baby & Pet": 0.01,
         },
         "archetype": "stockup", "base_share": 0.24,
     },
     "meal_tonight": {
         "categories": {
-            "Meat & Seafood": 0.17, "Produce": 0.26, "Dry Grocery": 0.25,
-            "Dairy & Eggs": 0.12, "Bakery": 0.08, "Frozen": 0.06,
-            "Beverages": 0.06,
+            "Meat & Seafood": 0.14, "Produce": 0.27, "Dry Grocery": 0.27,
+            "Dairy & Eggs": 0.13, "Bakery": 0.05, "Frozen": 0.07,
+            "Beverages": 0.07,
         },
         "archetype": "fill_in", "base_share": 0.20,
     },
     "breakfast_staples": {
         "categories": {
-            "Dairy & Eggs": 0.26, "Bakery": 0.16, "Dry Grocery": 0.30,
-            "Produce": 0.10, "Beverages": 0.12, "Frozen": 0.06,
+            "Dairy & Eggs": 0.28, "Bakery": 0.10, "Dry Grocery": 0.32,
+            "Produce": 0.12, "Beverages": 0.12, "Frozen": 0.06,
         },
         "archetype": "fill_in", "base_share": 0.15,
     },
@@ -90,8 +90,8 @@ _GROCERY_MISSIONS: dict[str, dict] = {
     },
     "occasion_bbq": {
         "categories": {
-            "Meat & Seafood": 0.24, "Snacks & Candy": 0.24, "Beverages": 0.22,
-            "Produce": 0.14, "Bakery": 0.09, "Dry Grocery": 0.07,
+            "Meat & Seafood": 0.20, "Snacks & Candy": 0.26, "Beverages": 0.24,
+            "Produce": 0.14, "Bakery": 0.06, "Dry Grocery": 0.10,
         },
         "archetype": "stockup", "base_share": 0.06,
     },
@@ -162,7 +162,34 @@ _SEGMENT_ARCHETYPES = {"grocery": _GROCERY_ARCHETYPES, "qsr": _QSR_ARCHETYPES}
 # per-banner PL share lands ~27/19/25. The share is still an emergent
 # purchasing outcome (counted from baskets), not a catalog flag read.
 _PL_AFFLUENCE_SLOPE = 2.2
-_BANNER_PL_PROPENSITY = {"KRG": 1.25, "ACM": 0.42, "WDX": 1.05}
+_BANNER_PL_PROPENSITY = {"KRG": 1.25, "ACM": 0.52, "WDX": 1.05}
+
+# ----- §A13 affluence tilt on grocery category selection ------------
+# Per-department multiplier on the mission group-weights = exp(k × (affluence−1)):
+# a SMOOTH, monotonic tilt (never a threshold switch), so premium share rises
+# gradually low→mid→high. Affluent cards over-index fresh/premium (produce,
+# bakery), value cards over-index center-store staples (which also skew PL).
+# Meat is kept only mildly + so value shoppers still buy high meat volume —
+# preserving the §A13 WDX ≥ ACM meat ordering (ACM's fresh lead rides
+# produce/bakery, not meat). Depts absent here are neutral (k=0).
+_DEPT_AFFLUENCE_TILT = {
+    "Produce":        1.20,    # ACM's fresh lead rides produce…
+    "Bakery":         0.95,    # …and bakery/prepared
+    "Meat & Seafood": -0.20,   # mild — the WDX>ACM meat VOLUME ordering is a
+                               # banner trait (below), not an affluence effect
+    "Dry Grocery":   -0.60,
+    "Snacks & Candy": -0.40,
+    "Beverages":     -0.40,
+}
+
+# Per-banner meat-VOLUME emphasis (§A13): value banners run meat as a traffic
+# driver (WDX over-indexes meat units), premium banners emphasize produce/
+# prepared over meat volume (ACM under-indexes units) — a banner merchandising
+# trait, applied to the Meat & Seafood department weight. ACM's premium-cut
+# pricing (build_catalog _DEPT_MULT 1.13) still keeps meat DOLLARS ACM > WDX.
+# Affluence overlap across banners makes a per-card tilt too weak here, so this
+# is a banner-level lever (mirrors _BANNER_PL_PROPENSITY).
+_BANNER_MEAT_UNIT_BOOST = {"WDX": 1.08, "KRG": 1.0, "ACM": 0.92}
 
 
 # Default staple count / inclusion probability.
@@ -386,6 +413,18 @@ def build_basket_items(
                     for i, gname in enumerate(groups):
                         if gname in depts:
                             gw[i] *= boost
+            # §A13 affluence tilt (smooth, per-department) — affluent cards
+            # skew fresh/premium, value cards skew center-store.
+            for i, gname in enumerate(groups):
+                k = _DEPT_AFFLUENCE_TILT.get(gname, 0.0)
+                if k:
+                    gw[i] *= float(np.exp(k * (affluence - 1.0)))
+            # §A13 per-banner meat-volume trait (value banner meat-heavy).
+            meat_boost = _BANNER_MEAT_UNIT_BOOST.get(banner, 1.0)
+            if meat_boost != 1.0:
+                for i, gname in enumerate(groups):
+                    if gname == "Meat & Seafood":
+                        gw[i] *= meat_boost
 
         # Staples for this card+segment.
         skey = (card_id, segment)

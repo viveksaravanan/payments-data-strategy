@@ -54,8 +54,10 @@ CARRIAGE = {
 # department -> "no banner cheapest on everything" (T14) holds from shelf
 # prices alone.
 _DEPT_MULT = {
-    "ACM": {  # premium — marks up broadly, organic edge on produce
-        "Dairy & Eggs": 1.06, "Produce": 0.96, "Meat & Seafood": 1.05,
+    "ACM": {  # premium — marks up broadly, organic edge on produce, premium
+              # meat cuts (higher $/unit so ACM leads meat DOLLARS even as WDX
+              # buys more meat UNITS — §A13)
+        "Dairy & Eggs": 1.06, "Produce": 0.96, "Meat & Seafood": 1.28,
         "Dry Grocery": 1.07, "Snacks & Candy": 1.07, "Beverages": 1.06,
         "Frozen": 1.05, "Bakery": 1.05, "Health & Household": 1.05,
         "Baby & Pet": 1.06,
