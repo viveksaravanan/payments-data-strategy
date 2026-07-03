@@ -82,6 +82,74 @@ def build_pilot(scale: int):
                 txn=txn, ti=ti, n_cards=len(pop))
 
 
+def load_pilot_from_disk(sample_txns: int | None = 400_000):
+    """Build the same ``S`` dict from the ON-DISK data/raw Parquet (for
+    validating trends at the FULL 155k scale without an infeasible in-memory
+    rebuild). Reads the real emitted prices and JOINs products on sku to
+    recover the taxonomy/name that no longer live on the line. Optionally
+    samples ~``sample_txns`` transactions with a deterministic hash filter so
+    the report stays fast + memory-bounded — the sample fraction cancels in the
+    per-store-AUV scaling, so trends/ratios are faithful to the full build.
+    Only the loader differs; the measure/render layer is unchanged."""
+    from src.generate.engine.run_all import DATA_RAW
+
+    cfg = load_config(CONFIG_ROOT)
+    catalog = load_products()
+    zones = build_zones(cfg)
+    stores = build_stores(cfg, np.random.default_rng(int(cfg.global_["seed"])))
+    con = duckdb.connect()
+
+    def raw(t):
+        return f"read_parquet('{DATA_RAW / (t + '.parquet')}')"
+
+    full_txns = con.execute(f"SELECT count(*) FROM {raw('transactions')}").fetchone()[0]
+    n_cust = con.execute(f"SELECT count(*) FROM {raw('customers')}").fetchone()[0]
+    if sample_txns and sample_txns < full_txns:
+        thr = int(sample_txns / full_txns * 1_000_000)
+        cond = f"(hash({{q}}txn_id) % 1000000) < {thr}"
+        frac = sample_txns / full_txns
+        w_t, w_i = f"WHERE {cond.format(q='t.')}", f"WHERE {cond.format(q='i.')}"
+    else:
+        frac, w_t, w_i = 1.0, "", ""
+
+    txn = con.execute(f"""
+        SELECT t.txn_id, t.customer_token AS card_id, t.segment, t.banner_code,
+               t.store_id, t.txn_ts, t.entry_mode, t.wallet_at_tap, t.wallet_provider,
+               t.connectivity_type, t.subtotal, t.n_lines, t.tender, t.network,
+               c.home_zone, c.affluence, c.loyalty_type, c.primary_banner, c.qsr_primary
+        FROM {raw('transactions')} t
+        JOIN {raw('customers')} c ON t.customer_token = c.card_id
+        {w_t}""").df()
+    ti = con.execute(f"""
+        SELECT i.txn_id, i.line_id, i.sku, i.qty, i.unit_price, i.line_total,
+               p.banner_code, p.segment, p.product_name, p.brand, p.private_label,
+               p.shelf_price, p.merchant_department, p.merchant_category,
+               p.functional_department, p.functional_category, p.functional_subcategory,
+               t.store_id, t.txn_ts
+        FROM {raw('transaction_items')} i
+        JOIN {raw('products')} p ON i.sku = p.sku
+        JOIN {raw('transactions')} t ON i.txn_id = t.txn_id
+        {w_i}""").df()
+    con.close()
+
+    # n_cards effective: scale by the sampled fraction so the existing
+    # (155000 / n_cards × 365/90) AUV scaler resolves to (full_txns/sample ×
+    # 365/90) — the sample fraction cancels.
+    n_cards = max(1, round(n_cust * frac))
+    smp = (f"a deterministic ~{len(txn):,}-transaction sample of the "
+           f"{full_txns:,}-txn full build" if frac < 1.0
+           else f"the full {full_txns:,}-txn build")
+    banner_html = (
+        f"<div class='banner'><b>FULL-SCALE (on-disk) — {n_cust:,} cards, "
+        f"{full_txns:,} transactions.</b> Read from <code>data/raw/</code> "
+        f"({smp}); real emitted prices; taxonomy/name via the sku→products join. "
+        f"Per-store AUV + totals annualize the 90-day window (×365/90); the sample "
+        f"fraction cancels in the AUV scaling, so <b>trends and ratios are faithful "
+        f"to the full build</b>.</div>")
+    return dict(cfg=cfg, zones=zones, stores=stores, cust=None, catalog=catalog,
+                txn=txn, ti=ti, n_cards=n_cards, banner_html=banner_html)
+
+
 # ---------------------------------------------------------------- html utils
 
 def fig_html(fig) -> str:
@@ -522,12 +590,13 @@ def build_html(S) -> str:
     toc = " · ".join(f"<a href='#s{i}'>{t.split(' ')[0] if '·' in t else t}</a>"
                      for i, (t, _) in enumerate(secs))
     body = "".join(f"<h2 id='s{i}'>{html.escape(t)}</h2>{b}" for i, (t, b) in enumerate(secs))
-    banner = (f"<div class='banner'><b>PILOT scale — {S['n_cards']:,} cards.</b> "
-              f"Built in-memory from the v2 Phase 1–5 pipeline (the on-disk data/raw Parquet "
-              f"is stale v4 and is NOT used). Absolute dollars are scaled to full population + "
-              f"full year (×{155000/S['n_cards']:.1f} × 365/90 ≈ ×{155000/S['n_cards']*365/90:.1f}); "
-              f"<b>ratios and shapes</b> are what's validated, not absolute magnitudes. "
-              f"Flat pricing previewed inline (line_total = shelf_price × qty).</div>")
+    banner = S.get("banner_html") or (
+        f"<div class='banner'><b>PILOT scale — {S['n_cards']:,} cards.</b> "
+        f"Built in-memory from the v2 Phase 1–5 pipeline (the on-disk data/raw Parquet "
+        f"is stale and is NOT used). Absolute dollars are scaled to full population + "
+        f"full year (×{155000/S['n_cards']:.1f} × 365/90 ≈ ×{155000/S['n_cards']*365/90:.1f}); "
+        f"<b>ratios and shapes</b> are what's validated, not absolute magnitudes. "
+        f"Flat pricing previewed inline (line_total = shelf_price × qty).</div>")
     return (f"<!doctype html><html><head><meta charset='utf-8'>"
             f"<title>Pilot Exploratory — datamodel-v2</title><style>{CSS}</style>"
             f"<script>{get_plotlyjs()}</script></head><body><div class='wrap'>"
@@ -539,10 +608,20 @@ def build_html(S) -> str:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--scale", type=int, default=8000)
+    ap.add_argument("--scale", type=int, default=8000,
+                    help="in-memory pilot card count (ignored with --on-disk)")
+    ap.add_argument("--on-disk", action="store_true",
+                    help="read the full-scale data/raw Parquet instead of building in-memory")
+    ap.add_argument("--sample-txns", type=int, default=400_000,
+                    help="on-disk: ~transactions to sample (0 = full data, memory-heavy)")
     args = ap.parse_args()
-    print(f"Building v2 pilot in-memory ({args.scale} cards)…")
-    S = build_pilot(args.scale)
+    if args.on_disk:
+        smp = args.sample_txns or None
+        print(f"Loading v2 data from data/raw (on-disk, sample_txns={smp or 'full'})…")
+        S = load_pilot_from_disk(sample_txns=smp)
+    else:
+        print(f"Building v2 pilot in-memory ({args.scale} cards)…")
+        S = build_pilot(args.scale)
     print(f"  {len(S['txn']):,} transactions, {len(S['ti']):,} line items")
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(build_html(S))
