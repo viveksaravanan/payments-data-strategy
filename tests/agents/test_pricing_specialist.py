@@ -117,8 +117,12 @@ def test_pricing_canonical_question_produces_agentresponse(
     assert "own_avg_price" in resp.result.columns
     # Charts are deferred to Wave 4 (§11.2) — gated off.
     assert resp.chart is None
-    # Prose retained the grounded own 3.45 claim.
-    assert "3.45" in resp.prose
+    # Prose retained the grounded own milk-price claim. The validator
+    # normalizes the scripted 3.45 to the true own_avg_price (scale-dependent:
+    # ~3.45 at pilot, 3.4496 at full 155k), so assert the value READ FROM the
+    # response result frame reaches the prose — robust at any data scale.
+    _own = float(resp.result["own_avg_price"].iloc[0])
+    assert f"{_own:.4f}" in resp.prose or f"{_own:.2f}" in resp.prose
     # Caveats survived.
     assert resp.caveats and any("Peer set" in c for c in resp.caveats)
     # SQL surfaces: tenant + lake_sql reads (no merge step in 3.5).

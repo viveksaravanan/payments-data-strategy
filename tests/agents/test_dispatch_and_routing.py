@@ -189,7 +189,10 @@ def test_dispatch_pill_goes_direct_to_pricing(monkeypatch) -> None:
     assert decision.via_fallback is False
     assert "P1" in decision.rationale
     assert isinstance(resp, AgentResponse)
-    assert "3.45" in resp.prose
+    # Validator normalizes the scripted 3.45 to the true own_avg_price
+    # (scale-dependent); assert the value from the result frame reached prose.
+    _own = float(resp.result["own_avg_price"].iloc[0])
+    assert f"{_own:.4f}" in resp.prose or f"{_own:.2f}" in resp.prose
 
 
 def test_dispatch_pill_advisor_target_works(monkeypatch) -> None:
@@ -280,7 +283,10 @@ def test_dispatch_freeform_routes_via_keyword_fallback(monkeypatch) -> None:
     assert decision.primary == "pricing"
     assert decision.via_fallback is True
     assert isinstance(resp, AgentResponse)
-    assert "3.45" in resp.prose
+    # Validator normalizes the scripted 3.45 to the true own_avg_price
+    # (scale-dependent); assert the value from the result frame reached prose.
+    _own = float(resp.result["own_avg_price"].iloc[0])
+    assert f"{_own:.4f}" in resp.prose or f"{_own:.2f}" in resp.prose
 
 
 def test_dispatch_freeform_ambiguous_question_to_advisor(monkeypatch) -> None:
