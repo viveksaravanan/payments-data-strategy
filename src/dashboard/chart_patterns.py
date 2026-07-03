@@ -76,7 +76,7 @@ TEXT           = "#1A1F2E"   # primary text (cell-overlay numerals)
 TEXT_2         = "#4A5161"   # secondary text (point labels, neutral)
 TEXT_MUTED     = "#9CA3AF"   # muted text (footnotes, axis ticks)
 TAKEAWAY_GRAY  = "#4B5563"   # takeaway subtitle color (= --text-2 family)
-NEUTRAL_FILL   = "#E5E7EB"   # tailwind gray-200 — k=5 suppressed cells
+NEUTRAL_FILL   = "#E5E7EB"   # tailwind gray-200 — k=50 suppressed cells
 
 # Diverging palette (Pattern 3 heatmaps, Pattern 5 waterfall, Pattern
 # 2 diverging mode for D3-style fingerprints).
@@ -115,7 +115,7 @@ HOVERLABEL = dict(
 )
 
 
-# k=5 suppression footnote — when a chart suppresses cells / rows /
+# k=50 suppression footnote — when a chart suppresses cells / rows /
 # polygons because the underlying count fell below 5, the rendered
 # card surfaces this short caveat below the chart.
 K5_SUPPRESSION_FOOTNOTE = (
@@ -668,7 +668,7 @@ def render_heatmap(
       own above peer. Cell text overlays the gap value.
       ``data`` keys: ``rows`` (list[str]), ``cols`` (list[str]),
       ``cells`` (2D list[float|None] aligned to rows × cols).
-      ``None`` cells render transparent (k=5 suppression).
+      ``None`` cells render transparent (k=50 suppression).
 
     - ``"own_only_diverging"`` — diverging red-white-blue scale with
       white at parity (ratio = 1.0). Cells are ratios of recent-week
@@ -1524,7 +1524,7 @@ def render_neighborhood_map(
             continue
         val = p.get("value")
         if val is None or cmap is None:
-            # k=5 suppression / no-value polygon: light neutral fill,
+            # k=50 suppression / no-value polygon: light neutral fill,
             # very low opacity so it reads as "unavailable" rather
             # than "low". Tooltip carries the explanation if the
             # caller supplied one.
@@ -1585,7 +1585,7 @@ def render_neighborhood_map(
 
     _render_card_footnote(data.get("footnote", ""))
     # Per-data-helper-reported suppression count (e.g. neighborhoods
-    # whose customer count fell below k=5) overrides the local
+    # whose customer count fell below k=50) overrides the local
     # ``suppressed`` flag tally. Both paths fall back to the local
     # count if not explicitly set.
     n_suppressed = data.get("suppressed_count", suppressed_count)

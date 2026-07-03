@@ -51,7 +51,7 @@ viewer)` to expose `data/lake/items/<VIEWER>/lake_{transactions,stores}.parquet`
 as `lake_transactions` / `lake_stores`, then query a **single aggregate peer**
 (`peer_relationship='peer'` — the old `peer_a`/`peer_b` pseudonyms are GONE; the
 line-item lake has no per-competitor identity), count transactions via
-`COUNT(DISTINCT lake_txn_id)`, and apply the **k=5** floor. Gated on the viewer's
+`COUNT(DISTINCT lake_txn_id)`, and apply the **k=50** floor. Gated on the viewer's
 peer count via `has_same_segment_peers()` (datamodel-v2: all six banners —
 grocery KRG/ACM/WDX + QSR TBL/BKG/CFA — have 2 same-segment peers, so every
 viewer gets a peer overlay; the own-only path is a fallback for any future

@@ -34,7 +34,7 @@ basket spans many lines).
 
 ## Rule 1: thin peer slices are suppressed — retry at a coarser grain
 
-`query_lake_sql` enforces a **k=5 floor**: any returned group backed by fewer than
+`query_lake_sql` enforces a **k=50 floor**: any returned group backed by fewer than
 5 underlying lines is dropped, and the count comes back in the `suppressed` field.
 If your result is empty or thinner than expected:
 

@@ -57,7 +57,7 @@ the peer stores in that real neighborhood. Do NOT reference `neighborhood`
 directly off `lake_transactions` — it isn't there, and the query will fail.
 
 Rules: **aggregating only** (`GROUP BY` or whole-table aggregate; `SELECT *`
-rejected). Week-over-week = group by `date_trunc('week', txn_date)`. **k=5
+rejected). Week-over-week = group by `date_trunc('week', txn_date)`. **k=50
 floor**: thin groups drop, count in `suppressed` — a suppressed cell is "no peer
 data published for that slice," NOT an anomaly.
 
@@ -168,7 +168,7 @@ seeing the same drop?"), join `lake_stores` to reach `neighborhood`:
               "Peer set is your same-segment grocers in University City."])
 ```
 
-If the peer neighborhood slice is genuinely thin, the k=5 floor returns
+If the peer neighborhood slice is genuinely thin, the k=50 floor returns
 `suppressed` rows — say "no peer data published for that neighborhood slice,"
 NOT "a technical issue prevented me." Only claim suppression when the tool
 actually reports it.

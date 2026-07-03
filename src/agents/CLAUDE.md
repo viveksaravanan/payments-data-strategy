@@ -99,7 +99,7 @@ SQL, and there is no merge step):
 1. **`schema_info`** — Free, no args. Returns tenant column lists + the
    two line-item lake tables' schemas (`lake_transactions`, `lake_stores`,
    introspected from a viewer's materialized pair) + a "tips" array of
-   load-bearing reminders (lake_stores-join-for-neighborhood, the k=5
+   load-bearing reminders (lake_stores-join-for-neighborhood, the k=50
    floor, COUNT(DISTINCT lake_txn_id) for transaction-level shares).
    Always call first.
 2. **`query_tenant(sql)`** — Viewer-scoped SQL against `data/raw/`.
@@ -112,7 +112,7 @@ SQL, and there is no merge step):
    line-item peer lake (`lake_transactions` / `lake_stores` resolve to
    the viewer's materialized pair; own rows absent). Enforces single
    aggregating SELECT (raw-row selects rejected via the DuckDB AST),
-   applies the k=5 line-count floor, and surfaces the dropped-group
+   applies the k=50 line-count floor, and surfaces the dropped-group
    `suppressed` count. Same `_df_to_payload` shape as `query_tenant`, so
    CellLookup / the §1.4 validator resolve against it unchanged. The
    result is captured as the **`lake`** frame.
@@ -140,9 +140,9 @@ SQL, and there is no merge step):
   gone), `banner_code` is dropped, IDs are generalized, time is
   hour-bucketed, and there is no consumer linkage. There is no query-time
   scope step (`src/lake/scope.py` was removed in Wave 3.5 Stage E).
-- **Aggregating-only + k=5 floor.** `query_lake_sql` (`src/lake/lake_sql.py`)
+- **Aggregating-only + k=50 floor.** `query_lake_sql` (`src/lake/lake_sql.py`)
   enforces a **single aggregating `SELECT`** on the DuckDB AST (raw-row
-  selects rejected) and a **k=5 line-count floor** per group, surfacing the
+  selects rejected) and a **k=50 line-count floor** per group, surfacing the
   dropped-group `suppressed` count. The Wave 2 manifest grain-whitelist
   (`_validate_filter_keys` / `manifest["dimensions"]`) was removed with the
   aggregate lake — the peer surface is now raw line items queried with SQL.

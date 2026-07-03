@@ -43,7 +43,7 @@ zone mapping. "Why is University City declining?" → filter/group on
 
 Rules: **aggregating only** (`GROUP BY` or whole-table aggregate; `SELECT *`
 rejected). Density = `SUM(qty)` / `SUM(line_total)` / `COUNT(DISTINCT
-lake_txn_id)` by neighborhood × category. **k=5 floor**: thin neighborhood ×
+lake_txn_id)` by neighborhood × category. **k=50 floor**: thin neighborhood ×
 category cells drop; count in `suppressed`; coarsen to neighborhood-only if a
 slice is empty.
 

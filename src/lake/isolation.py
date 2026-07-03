@@ -42,14 +42,22 @@ import re
 from pathlib import Path
 from typing import Iterable
 
+from src.generate.config.loader import load_config
 from src.lake.observable_guard import DATA_RAW
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA_EVAL = REPO_ROOT / "data" / "eval"
+_CONFIG_ROOT = REPO_ROOT / "src" / "generate" / "config"
 
 # Merchant ID alphabet — used by the predicate check to recognize
-# "another merchant" literals in agent SQL.
-VALID_MERCHANTS: set[str] = {"KRG", "ACM", "WDX", "TBL", "TJX"}
+# "another merchant" literals in agent SQL. Derived from config
+# (datamodel-v2: KRG/ACM/WDX grocery + TBL/BKG/CFA qsr; TJX/off-price
+# gone) so a panel change needs no edit here (config-driven guardrail).
+def _valid_merchants() -> set[str]:
+    return {m["banner_code"] for m in load_config(_CONFIG_ROOT).merchants.values()}
+
+
+VALID_MERCHANTS: set[str] = _valid_merchants()
 
 # Tenant tables — the lake builder reads these but doesn't apply tenant
 # guards (trusted code path). Wave 3 agents read them via the guards.

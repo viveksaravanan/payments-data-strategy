@@ -63,7 +63,7 @@ Rules of the lake:
   whole-table aggregate). `SELECT *` and raw-row selects are rejected. For ASP
   use `AVG(unit_price)`; for transaction counts use `COUNT(DISTINCT lake_txn_id)`
   (a basket spans many lines).
-- **k=5 floor.** Groups backed by fewer than 5 lines are dropped for privacy; the
+- **k=50 floor.** Groups backed by fewer than 50 lines are dropped for privacy; the
   count comes back as `suppressed`. If a slice is empty, retry at a coarser grain.
 - **No peer SKU.** Peer detail stops at `subcategory`. If asked "what is a
   competitor charging for Horizon Milk?", decline — "Peer SKU detail isn't

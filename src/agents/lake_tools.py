@@ -202,7 +202,7 @@ def schema_info() -> dict[str, Any]:
         "Join transaction_items → products on sku to resolve product_name, functional_category/subcategory, private_label, shelf_price (the line carries only sku). Compare across banners on functional_subcategory — there is no cross-merchant product id.",
         "Peer data: query lake_transactions / lake_stores with aggregating SQL via query_lake_sql. It resolves to YOUR peer set; your own rows are absent. peer_relationship = 'peer' (same segment) | 'merchant' (different segment).",
         "neighborhood lives on lake_stores, not lake_transactions — JOIN lake_stores USING (lake_store_id) to group by neighborhood.",
-        "k=5 floor: groups backed by fewer than 5 lines are dropped and counted in `suppressed`. For transaction-level shares use COUNT(DISTINCT lake_txn_id); the line-count floor is the suppression gate only.",
+        "k=50 floor: groups backed by fewer than 50 lines are dropped and counted in `suppressed`. For transaction-level shares use COUNT(DISTINCT lake_txn_id); the line-count floor is the suppression gate only.",
     ]
 
     return {
@@ -250,7 +250,7 @@ def query_lake_sql(viewer: str, sql: str) -> dict[str, Any]:
     Mirrors ``query_tenant`` so the grounding path handles its results
     unchanged. ``lake_transactions`` / ``lake_stores`` resolve to the
     viewer's materialized pair; the query must be a single aggregating
-    SELECT (raw-row selects rejected); a per-group count floor (k=5) is
+    SELECT (raw-row selects rejected); a per-group count floor (k=50) is
     applied and the dropped-group count is surfaced as ``suppressed``.
 
     Returns the same ``_df_to_payload`` shape ``query_tenant`` returns
@@ -350,7 +350,7 @@ QUERY_LAKE_SQL_TOOL = {
         "MUST be aggregating: GROUP BY a dimension and select aggregate "
         "metrics (AVG(unit_price), SUM(line_total), COUNT(DISTINCT "
         "lake_txn_id) for transaction counts). Raw-row selects "
-        "(`SELECT *`) are rejected. Groups backed by fewer than 5 lines "
+        "(`SELECT *`) are rejected. Groups backed by fewer than 50 lines "
         "are dropped for privacy; the count is returned as `suppressed`. "
         "Columns: lake_txn_id, lake_line_id, lake_store_id, txn_date, "
         "hour_bucket, peer_relationship, category, subcategory, "

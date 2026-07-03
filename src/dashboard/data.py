@@ -25,9 +25,15 @@ import duckdb
 import pandas as pd
 import streamlit as st
 
+from src.lake.lake_sql import LAKE_K_FLOOR
+
 ROOT = Path(__file__).resolve().parents[2]
 DATA_RAW = ROOT / "data" / "raw"
 DATA_LAKE_ITEMS = ROOT / "data" / "lake" / "items"
+
+# k-anonymity floor for peer-card suppression — single source of truth
+# (mirrors the agent lake query floor). datamodel-v2: 50.
+_K = LAKE_K_FLOOR
 
 PANEL_START = date(2026, 3, 1)
 PANEL_END   = date(2026, 5, 29)
@@ -430,7 +436,7 @@ _P2_TIER_SYMMETRY_PP = 2.0
 _P1_TOP_N_CATEGORIES = 10
 
 # Minimum peer line-count per cell. Below this, the cell is suppressed
-# per Phase 1.5 k=5 (the lake materialization already filters at the
+# per Phase 1.5 k=50 (the lake materialization already filters at the
 # row level; we re-enforce at the aggregate cell level to match the
 # documented anchor-chart contract from V3_AUDIT.md §1.2).
 _P1_MIN_PEER_LINES = 5
@@ -620,7 +626,7 @@ def _neighborhood_performance_cached(merchant_id: str, key: tuple) -> dict:
         ).fetchall()
 
         # Peer per-neighborhood, TEMPORAL: same recent-vs-baseline window via
-        # the shared helper the store table uses (per-store, k=5 floor). Peer
+        # the shared helper the store table uses (per-store, k=50 floor). Peer
         # store counts (non-temporal) are kept for the peer_n_stores field.
         peer_recent_base = _peer_neighborhood_recent_vs_baseline(c, merchant_id)
         peer_store_rows = []
@@ -866,7 +872,7 @@ def _peer_neighborhood_recent_vs_baseline(
 
     # Wave 4: aggregate same-segment peers (peer_relationship='peer';
     # no per-competitor identity). Count transactions via
-    # COUNT(DISTINCT lake_txn_id); k=5 floor on each published week×nbhd cell.
+    # COUNT(DISTINCT lake_txn_id); k=50 floor on each published week×nbhd cell.
     rows = conn.execute(
         """
         WITH peer_weekly AS (
@@ -879,7 +885,7 @@ def _peer_neighborhood_recent_vs_baseline(
               AND strftime(date_trunc('week', lt.txn_date), '%Y-%m-%d')
                   BETWEEN ? AND ?
             GROUP BY ls.neighborhood, week
-            HAVING COUNT(DISTINCT lt.lake_txn_id) >= 5
+            HAVING COUNT(DISTINCT lt.lake_txn_id) >= 50  -- k-anon floor (LAKE_K_FLOOR)
         ),
         peer_store_counts AS (
             SELECT neighborhood, COUNT(*) AS n_stores
@@ -1131,7 +1137,7 @@ def _category_anomalies_cached(merchant_id: str, key: tuple) -> dict:
                       AND strftime(date_trunc('week', txn_date), '%Y-%m-%d')
                           BETWEEN ? AND ?
                     GROUP BY category, week
-                    HAVING COUNT(*) >= 5
+                    HAVING COUNT(*) >= 50  -- k-anon floor (LAKE_K_FLOOR)
                 )
                 SELECT category,
                        SUM(CASE WHEN week = ? THEN n_lines ELSE 0 END) AS recent,
@@ -1676,7 +1682,7 @@ def hour_dow_heatmap_card(merchant_id: str, filters: dict | None = None) -> dict
     """
     pivot = hour_dow_heatmap(merchant_id, _filters_key(filters or {}))
     # Re-order rows Mon..Sun and label them; columns stay 0..23.
-    # k=5 contract: cells with 0 < count < 5 are suppressed (set to
+    # k=50 contract: cells with 0 < count < 5 are suppressed (set to
     # None); cells with count == 0 stay as 0 (no activity, not
     # privacy-sensitive). The footnote surfaces only when the
     # 1-to-4-count band actually has entries.
@@ -1690,7 +1696,7 @@ def hour_dow_heatmap_card(merchant_id: str, filters: dict | None = None) -> dict
             row_out: list[int | None] = []
             for h in range(24):
                 v = int(row[h])
-                if 0 < v < 5:
+                if 0 < v < _K:      # k-anon floor (LAKE_K_FLOOR)
                     row_out.append(None)
                     suppressed += 1
                 else:
@@ -1726,7 +1732,7 @@ def hour_dow_heatmap_card(merchant_id: str, filters: dict | None = None) -> dict
     # Weekday (Mon-Fri) vs weekend (Sat-Sun) total volume. Sum only
     # non-None cells (suppressed cells contribute 1-4 each — a few
     # below the 5 floor — but excluding them keeps the comparison
-    # honest at the k=5 boundary).
+    # honest at the k=50 boundary).
     def _row_sum(row: list[int | None]) -> int:
         return sum(v for v in row if v is not None)
     weekday_total = sum(_row_sum(cells[i]) for i in range(0, 5))

@@ -243,8 +243,8 @@ def main() -> None:
     both_cards = set(txn.groupby("customer_token")["segment"].nunique().pipe(lambda s: s[s >= 2]).index)
     bz = customers[customers.card_id.isin(both_cards)].groupby("home_zone").size().sort_values(ascending=False)
     for z, n in bz.items():
-        w(f"- {z:<16}: {n:,} both-segment cards{'' if n >= 5 else '  ⚠ <k=5'}")
-    w(f"**{int((bz>=5).sum())}/8 zones** survive k=5; **{int((bz>=1).sum())}/8** populated"
+        w(f"- {z:<16}: {n:,} both-segment cards{'' if n >= 50 else '  ⚠ <k=50'}")
+    w(f"**{int((bz>=50).sum())}/8 zones** survive k=50; **{int((bz>=1).sum())}/8** populated"
       + ("" if sf >= 0.95 else f" (pilot; cells multiply ~{1/sf:.0f}× at full scale)."))
     w()
 

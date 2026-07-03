@@ -41,7 +41,7 @@ YOUR peer set; your own rows are absent.
 Rules: **aggregating only** (`GROUP BY` or whole-table aggregate; `SELECT *`
 rejected). Units velocity = `SUM(qty)` or `AVG(qty)`; revenue = `SUM(line_total)`;
 transactions = `COUNT(DISTINCT lake_txn_id)`. Week-over-week: group by
-`date_trunc('week', txn_date)`. **k=5 floor**: thin groups dropped, count in
+`date_trunc('week', txn_date)`. **k=50 floor**: thin groups dropped, count in
 `suppressed`; retry coarser if empty.
 
 {{peer_routing}}

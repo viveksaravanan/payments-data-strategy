@@ -17,7 +17,7 @@ of a viewer predicate:
   (plus the query's own CTEs) are readable; `read_parquet`-style table
   functions are rejected so the agent can't reach around the lake to
   the raw census.
-* **Count injection + k=5 suppression** (§7.3) — a `COUNT(*) AS _k` is
+* **Count injection + k=50 suppression** (§7.3) — a `COUNT(*) AS _k` is
   spliced into the outermost projection, groups with `_k <
   LAKE_K_FLOOR` are dropped, `_k` is stripped before the agent sees
   the result, and the dropped-group count is surfaced.
@@ -40,13 +40,25 @@ import pandas as pd
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA_LAKE_ITEMS = REPO_ROOT / "data" / "lake" / "items"
 
-# Single configurable privacy constant — raise later without code change.
-LAKE_K_FLOOR = 5
+# Single configurable privacy constant. k-anonymity line-count floor:
+# peer groups backed by fewer than this many line items are suppressed.
+# Raised 5 → 50 (datamodel-v2): at 155k scale coarse queries have thousands+
+# of lines so utility is unaffected; the floor protects the fine-grained
+# drill-down tail where a cell could otherwise be one competitor's few lines.
+LAKE_K_FLOOR = 50
 
 # The only table names the agent may reference (besides its own CTEs).
 ALLOWED_LAKE_TABLES = frozenset({"lake_transactions", "lake_stores"})
 
-VALID_MERCHANTS = frozenset({"ACM", "KRG", "TBL", "TJX", "WDX"})
+# Valid viewer merchants — derived from config (datamodel-v2 6-merchant panel;
+# TJX/off-price gone, BKG/CFA added) so a panel change needs no edit here.
+def _valid_merchants() -> frozenset[str]:
+    from src.generate.config.loader import load_config
+    root = REPO_ROOT / "src" / "generate" / "config"
+    return frozenset(m["banner_code"] for m in load_config(root).merchants.values())
+
+
+VALID_MERCHANTS = _valid_merchants()
 
 # Aggregate function names that make a no-GROUP-BY projection legal as a
 # whole-table aggregate. Generous but bounded; anything else must use a
@@ -216,7 +228,7 @@ def _register_viewer_views(con: duckdb.DuckDBPyConnection, viewer: str) -> None:
 # ----- public entrypoint -------------------------------------------------
 
 def run_lake_sql(viewer: str, sql: str) -> tuple[pd.DataFrame, int]:
-    """Validate, scope, count-inject, execute, and k=5-suppress a lake
+    """Validate, scope, count-inject, execute, and k=50-suppress a lake
     query. Returns ``(result_df, n_suppressed)``. The result carries no
     ``_k`` column. Raises ``LakeSqlError`` on a contract violation and
     ``duckdb.Error`` (wrapped by the caller) on execution failure."""

@@ -41,7 +41,7 @@ lake_transactions WHERE peer_relationship='peer' GROUP BY payment_type`. Compute
 shares as a `Derivation`. Same for `entry_mode`, `card_network`, `wallet_type`.
 
 Rules: **aggregating only** (`GROUP BY` or whole-table aggregate; `SELECT *`
-rejected). **k=5 floor**: thin groups drop, count in `suppressed`.
+rejected). **k=50 floor**: thin groups drop, count in `suppressed`.
 
 {{peer_routing}}
 

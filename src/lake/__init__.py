@@ -16,7 +16,7 @@ in Stage E (SPEC §11). What remains:
   reads (the anomaly answer key).
 * `build_line_items.py` — the per-viewer line-item lake builder
   (Wave 3.5 §13.A); `lake_sql.py` — the `query_lake_sql` engine
-  (aggregating-only + k=5 floor).
+  (aggregating-only + k=50 floor).
 """
 from src.lake.isolation import (
     LakeSourcePathError,

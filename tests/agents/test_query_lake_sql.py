@@ -143,12 +143,12 @@ def test_count_injection_nested_join_neighborhood() -> None:
     )
     assert set(p["columns"]) == {"neighborhood", "asp"}
     assert p["row_count"] > 0
-    assert p["suppressed"] == 0  # neighborhoods are well above k=5 at full scale
+    assert p["suppressed"] == 0  # neighborhoods are well above k=50 at full scale
 
 
 @needs_lake
 def test_k_floor_suppresses_thin_groups_and_strips_k() -> None:
-    # Grouping by basket → per-basket groups; those under k=5 lines drop.
+    # Grouping by basket → per-basket groups; those under k=50 lines drop.
     p = query_lake_sql(
         "KRG",
         "SELECT lake_txn_id, SUM(line_total) AS tot FROM lake_transactions GROUP BY lake_txn_id",
@@ -214,3 +214,42 @@ def test_dispatch_sets_lake_frame_and_logs_surface(viewer_krg) -> None:
     assert len(specialist._lake_frame) == payload["row_count"]
     surfaces = [e["surface"] for e in specialist._sql_log]
     assert "lake_sql" in surfaces
+
+
+# ----- datamodel-v2: the 6-merchant panel is valid across both guards ----
+
+def test_valid_merchants_tracks_config_in_both_guards() -> None:
+    """Regression: the runtime privacy guards hardcoded the old 5-merchant
+    set (with TJX, missing BKG/CFA), which rejected BKG/CFA viewers."""
+    from pathlib import Path
+
+    from src.generate.config.loader import load_config
+    from src.lake.isolation import VALID_MERCHANTS as ISO_VM
+    from src.lake.lake_sql import VALID_MERCHANTS as LAKE_VM
+
+    root = Path(__file__).resolve().parents[2] / "src" / "generate" / "config"
+    banners = {m["banner_code"] for m in load_config(root).merchants.values()}
+    assert banners == {"KRG", "ACM", "WDX", "TBL", "BKG", "CFA"}
+    assert set(LAKE_VM) == banners          # lake_sql guard is config-derived
+    assert ISO_VM == banners                # isolation guard is config-derived
+    assert "TJX" not in LAKE_VM and "TJX" not in ISO_VM
+
+
+def test_bkg_cfa_tenant_predicate_accepted() -> None:
+    from src.lake.isolation import check_tenant_predicate
+    for viewer in ("BKG", "CFA"):
+        check_tenant_predicate(
+            f"SELECT txn_id FROM transactions WHERE banner_code = '{viewer}'", viewer)
+
+
+@needs_lake
+def test_bkg_cfa_lake_queries_succeed() -> None:
+    """The v2 QSR banners must be accepted by query_lake_sql (they were
+    rejected as 'Unknown viewer' while VALID_MERCHANTS was stale)."""
+    for viewer in ("BKG", "CFA"):
+        p = query_lake_sql(
+            viewer,
+            "SELECT category, AVG(unit_price) AS asp FROM lake_transactions "
+            "WHERE peer_relationship = 'peer' GROUP BY category",
+        )
+        assert p["row_count"] > 0

@@ -85,7 +85,7 @@ Grocery (KRG/ACM/WDX) + QSR (TBL/BKG/CFA); 38 stores; flat shelf-price; promotio
 - noda            : 7,076 both-segment cards
 - center_city     : 5,737 both-segment cards
 - cabarrus_edge   : 5,653 both-segment cards
-**8/8 zones** survive k=5; **8/8** populated
+**8/8 zones** survive k=50; **8/8** populated
 
 ## T18 — Reproducibility
 - Verified content-identical (transactions + transaction_items) across two `build_all(scale=500)` runs by `test_T18_reproducibility_content_identical`.

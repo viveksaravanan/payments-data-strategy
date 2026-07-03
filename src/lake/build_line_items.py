@@ -19,7 +19,7 @@ to the ``peer_relationship`` label (never a name or pseudonym),
 tokenized non-reversible ids, hour-bucketed timestamps, dropped
 consumer linkage, no ZIP/lat-long. Real analytical fields
 (`unit_price`, `qty`, `category`, payment dims, …) pass through
-**raw** — protection at query time is the `k=5` cell floor (§7.1),
+**raw** — protection at query time is the `k=50` cell floor (§7.1),
 not value coarsening.
 
 Reads `data/raw/` ONLY through `observable_guard.load_table` so the
