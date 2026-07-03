@@ -52,7 +52,10 @@ as `lake_transactions` / `lake_stores`, then query a **single aggregate peer**
 (`peer_relationship='peer'` — the old `peer_a`/`peer_b` pseudonyms are GONE; the
 line-item lake has no per-competitor identity), count transactions via
 `COUNT(DISTINCT lake_txn_id)`, and apply the **k=5** floor. Gated on the viewer's
-peer count (TBL/TJX have 0 same-segment peers → own-only, no peer overlay).
+peer count via `has_same_segment_peers()` (datamodel-v2: all six banners —
+grocery KRG/ACM/WDX + QSR TBL/BKG/CFA — have 2 same-segment peers, so every
+viewer gets a peer overlay; the own-only path is a fallback for any future
+single-member segment).
 
 Card 5.3 "customer geography" was **redesigned** to "where customers shop"
 (distinct customers by the neighborhood of the stores they transact at) — v4 has

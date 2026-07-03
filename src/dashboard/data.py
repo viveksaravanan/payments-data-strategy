@@ -349,9 +349,10 @@ def hour_dow_heatmap(merchant_id: str, filters_key: tuple) -> pd.DataFrame:
 # pattern's render function (see chart_patterns.py).
 #
 # A1 (University City decline) anchors on Pattern 1: weekly transaction
-# trajectory for the merchant's UC stores plus peer_a / peer_b UC stores,
-# normalized to a 4-week baseline. Grocer viewers only — TBL and TJX
-# have no same-segment peer with UC presence.
+# trajectory for the merchant's UC stores plus same-segment peer UC stores,
+# normalized to a 4-week baseline. (datamodel-v2: all six banners now have
+# 2 same-segment peers — the peer overlay is driven by peer_relationship in
+# the lake, not a per-segment carve-out.)
 
 # The 90-day panel spans Sun Mar 1 2026 → Fri May 29 2026.
 # `strftime(date_trunc('week', ts), '%Y-%m-%d')` bins each timestamp to the
@@ -2088,12 +2089,13 @@ def _anomaly_count_breakdown(merchant_id: str, filters: dict | None = None) -> d
 
 
 # ---------------------------------------------------------------------------
-# Phase 4.3 — TBL / TJX question data (own-only)
+# Phase 4.3 — own-only question data (fallback path)
 # ---------------------------------------------------------------------------
 #
-# TBL (QSR) and TJX (off-price retail) have no same-segment peers in
-# the panel, so their pricing / anomaly / demand questions are all
-# tenant-only. Recent-vs-baseline questions share the A2/A3 baseline
+# The own-only variants exist as a fallback for any viewer with no
+# same-segment peers. (datamodel-v2: all six banners now have 2 peers, so
+# these are rarely hit — kept for a future single-member segment.)
+# Recent-vs-baseline questions share the A2/A3 baseline
 # convention: recent = last full Mon-Sun week (May 18 – 24), baseline
 # = first 4 weeks of the panel (Mar 2 – 23). The 15% deviation floor
 # is reused for store / SKU / category anomaly flags.
