@@ -253,8 +253,10 @@ def render_catalog_section(merchant_id: str, filters: dict) -> None:
                          "mix vs peers?"),
                 "TBL": ("What does my menu mix look like? Where am I "
                          "most concentrated?"),
-                "TJX": ("What does my category mix look like? Where am I "
-                         "concentrated?"),
+                "BKG": ("What does my menu mix look like? Where am I "
+                         "most concentrated?"),
+                "CFA": ("What does my menu mix look like? Where am I "
+                         "most concentrated?"),
             }
             ask_4_1 = {
                 "key":        f"ask_about_cat_mix_{merchant_id}",

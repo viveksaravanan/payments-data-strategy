@@ -103,49 +103,25 @@ QUESTIONS: dict[str, dict[str, list[dict]]] = {
         ],
     },
 
-    "RETAIL": {  # TJX
-        "pricing": [
-            {"id": "R-P1", "text": "How is my average ticket trending across categories?",                             "pattern": "pattern_1_time_series"},
-            {"id": "R-P2", "text": "Which categories have the widest price spread within them?",                       "pattern": "pattern_9_table"},
-            {"id": "R-P3", "text": "What's my high-ticket vs low-ticket transaction split?",                           "pattern": "pattern_2_comparison"},
-        ],
-        "anomaly": [
-            {"id": "R-A1", "text": "Which of my stores has unusual traffic this week?",                                "pattern": "pattern_9_table"},
-            {"id": "R-A2", "text": "Are any categories spiking or dropping unusually?",                                "pattern": "pattern_9_table"},
-            {"id": "R-A3", "text": "Which days of the week are running below my baseline?",                            "pattern": "pattern_3_heatmap"},
-        ],
-        "demand": [
-            {"id": "R-D1", "text": "What does my category mix look like?",                                             "pattern": "pattern_2_comparison"},
-            {"id": "R-D2", "text": "Which categories are gaining or losing share over time?",                          "pattern": "pattern_1_time_series"},
-            {"id": "R-D3", "text": "What's driving my revenue change this week?",                                      "pattern": "pattern_5_waterfall"},
-        ],
-        "trade": [
-            # TJX reuses T1/T2/T4 from the grocer set verbatim.
-            {"id": "T1", "text": "Which of my neighborhoods are over- or under-performing?",                           "pattern": "pattern_6_map"},
-            {"id": "T2", "text": "Where do my customers live relative to my stores?",                                  "pattern": "pattern_6_map"},
-            {"id": "T4", "text": "Which neighborhoods show the biggest expansion opportunity?",                        "pattern": "pattern_6_map"},
-        ],
-    },
+    # (RETAIL/TJX block removed in datamodel-v2 — off-price dropped.)
 }
 
 
 _GROCERS = {"KRG", "ACM", "WDX"}
-_QSR     = {"TBL"}
-_RETAIL  = {"TJX"}
+# datamodel-v2: all three QSR banners share the QSR pill set (chain-generic).
+_QSR     = {"TBL", "BKG", "CFA"}
 
 
 def segment_for_merchant(merchant_id: str) -> str:
-    """Return 'GROCER' / 'QSR' / 'RETAIL' for a panel merchant_id.
+    """Return 'GROCER' / 'QSR' for a panel merchant_id.
 
-    KRG, ACM, WDX → GROCER. TBL → QSR. TJX → RETAIL.
+    KRG, ACM, WDX → GROCER. TBL, BKG, CFA → QSR.
     Raises ValueError on unknown merchant_id.
     """
     if merchant_id in _GROCERS:
         return "GROCER"
     if merchant_id in _QSR:
         return "QSR"
-    if merchant_id in _RETAIL:
-        return "RETAIL"
     raise ValueError(f"Unknown merchant_id: {merchant_id!r}")
 
 

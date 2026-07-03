@@ -97,12 +97,13 @@ the result table only.** Required fields:
       FROM transaction_items i
       JOIN transactions t ON i.txn_id = t.txn_id
       JOIN stores s ON t.store_id = s.store_id
-      WHERE t.banner_code = '{{viewer_id}}' AND i.category = 'DAIRY'
+      JOIN products p ON i.sku = p.sku
+      WHERE t.banner_code = '{{viewer_id}}' AND p.functional_category = 'Milk'
       GROUP BY s.neighborhood")
 3. query_lake_sql(
      "SELECT s.neighborhood, SUM(t.qty) AS peer_units
       FROM lake_transactions t JOIN lake_stores s USING (lake_store_id)
-      WHERE t.peer_relationship = 'peer' AND t.category = 'DAIRY'
+      WHERE t.peer_relationship = 'peer' AND t.category = 'Milk'
       GROUP BY s.neighborhood")
 4. emit_response(
      headline="University City is your thinnest dairy catchment versus peers.",

@@ -23,7 +23,8 @@ _CSS = """
     --c-acm:        #3A6FA5;
     --c-wdx:        #6F8FB8;
     --c-tbl:        #C0563F;
-    --c-tjx:        #5B7B58;
+    --c-bkg:        #D9822B;
+    --c-cfa:        #B03A48;
     --good:         #2F855A;
     --bad:          #C44536;
     /* Phase 4.5 — peer / diverging palette additions (mirror the

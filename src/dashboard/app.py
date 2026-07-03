@@ -155,7 +155,7 @@ with header_col1:
     st.markdown(
         '<h1 style="margin-top: 0;">Merchant dashboard</h1>'
         '<div style="font-size:13px;color:var(--text-muted);margin-top:-4px;">'
-        'Cross-merchant analytics on a synthetic 100,000-customer Charlotte panel.'
+        'Cross-merchant analytics on a synthetic 155,000-customer Charlotte panel.'
         '</div>'
         '<div style="font-size:13px;margin:2px 0 14px;">'
         '<a id="methodology-link" '
@@ -166,9 +166,8 @@ with header_col1:
         unsafe_allow_html=True,
     )
 with header_col2:
-    merchant_labels = [f"{D.MERCHANT_NAME[m]}" for m in
-                        ("KRG", "ACM", "WDX", "TBL", "TJX")]
-    merchant_ids = ["KRG", "ACM", "WDX", "TBL", "TJX"]
+    merchant_ids = ["KRG", "ACM", "WDX", "TBL", "BKG", "CFA"]
+    merchant_labels = [D.MERCHANT_NAME[m] for m in merchant_ids]
     # Push "Acting as" down so the label clears Streamlit's top toolbar
     # and sits roughly in line with the "Merchant dashboard" heading
     # on the left. block-container padding-top alone (1.6 rem) doesn't

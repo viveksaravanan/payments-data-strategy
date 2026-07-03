@@ -182,10 +182,11 @@ categories on both sides (no single-category filter), compare week-over-week:
 ```
 1. schema_info()
 2. query_tenant(
-     "SELECT i.category, date_trunc('week', t.txn_ts) AS wk, SUM(i.qty) AS own_units
+     "SELECT p.functional_category AS category, date_trunc('week', t.txn_ts) AS wk, SUM(i.qty) AS own_units
       FROM transaction_items i JOIN transactions t ON i.txn_id = t.txn_id
+      JOIN products p ON i.sku = p.sku
       WHERE t.banner_code = '{{viewer_id}}' AND t.txn_ts < DATE '2026-05-24'
-      GROUP BY i.category, wk")
+      GROUP BY p.functional_category, wk")
 3. query_lake_sql(
      "SELECT category, date_trunc('week', txn_date) AS wk, SUM(qty) AS peer_units
       FROM lake_transactions WHERE peer_relationship = 'peer'

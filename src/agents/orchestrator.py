@@ -118,8 +118,7 @@ def _keyword_route(question: str, segment: str | None) -> RoutingDecision:
 # ---------------------------------------------------------------------
 
 _GROCER_MERCHANTS = {"KRG", "ACM", "WDX"}
-_QSR_MERCHANTS = {"TBL"}
-_RETAIL_MERCHANTS = {"TJX"}
+_QSR_MERCHANTS = {"TBL", "BKG", "CFA"}   # datamodel-v2: off-price dropped
 
 
 def _segment_for_merchant(merchant_id: str) -> str:
@@ -127,8 +126,6 @@ def _segment_for_merchant(merchant_id: str) -> str:
         return "grocer"
     if merchant_id in _QSR_MERCHANTS:
         return "qsr"
-    if merchant_id in _RETAIL_MERCHANTS:
-        return "retail"
     return "unknown"
 
 

@@ -32,17 +32,20 @@ DATA_LAKE_ITEMS = ROOT / "data" / "lake" / "items"
 PANEL_START = date(2026, 3, 1)
 PANEL_END   = date(2026, 5, 29)
 
+# datamodel-v2 6-merchant panel — grocery KRG/ACM/WDX + QSR TBL/BKG/CFA.
+# (TJ Maxx + off-price dropped.) These dicts back the viewer selector +
+# has_same_segment_peers(); all six now have 2 same-segment peers.
 MERCHANT_NAME = {
     "KRG": "Kroger", "ACM": "Acme", "WDX": "Winn-Dixie",
-    "TBL": "Taco Bell", "TJX": "TJ Maxx",
+    "TBL": "Taco Bell", "BKG": "Burger King", "CFA": "Chick-fil-A",
 }
 MERCHANT_SEGMENT = {
     "KRG": "grocery", "ACM": "grocery", "WDX": "grocery",
-    "TBL": "qsr", "TJX": "off_price_retail",
+    "TBL": "qsr", "BKG": "qsr", "CFA": "qsr",
 }
 MERCHANT_COLOR = {
     "KRG": "#0F4C81", "ACM": "#3A6FA5", "WDX": "#6F8FB8",
-    "TBL": "#C0563F", "TJX": "#5B7B58",
+    "TBL": "#C0563F", "BKG": "#D9822B", "CFA": "#B03A48",
 }
 
 
