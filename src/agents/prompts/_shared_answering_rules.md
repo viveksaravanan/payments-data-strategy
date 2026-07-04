@@ -89,10 +89,27 @@ published), so peer comparison is always functional-to-functional.
   half a percent and is wrong; write `52%`. A pct-change value that comes back as
   `0.074` is "7.4%", so the claim value is `0.074`.
 
+## Rule 0: the analysis window is fixed and applied for you
+
+Every query you run is automatically scoped to the demo's analysis window —
+**March 1 2026 through May 24 2026 (12 complete weeks)**. This is enforced
+server-side on both surfaces: `query_tenant` (on `txn_ts`) and `query_lake_sql`
+(on `txn_date`). The partial final week (May 25–29) is already excluded for you.
+
+Because of this:
+
+- **Do NOT write your own date filters.** Any `txn_ts` / `txn_date` bound you add is
+  redundant (it can only narrow the window, never widen it). "This period", "the
+  window", "recently", "over the 90 days" all mean this fixed window unless the
+  question explicitly asks for a single trailing week.
+- Own (tenant) and peer (lake) numbers are therefore always over the **same** period,
+  so comparisons are apples-to-apples by construction — no viewer answers on a
+  different slice than another.
+
 ## Rule 1: thin peer slices are suppressed — retry at a coarser grain
 
 `query_lake_sql` enforces a **k=50 floor**: any returned group backed by fewer than
-5 underlying lines is dropped, and the count comes back in the `suppressed` field.
+50 underlying lines is dropped, and the count comes back in the `suppressed` field.
 If your result is empty or thinner than expected:
 
 1. Note the `suppressed` count.
@@ -119,8 +136,8 @@ period that has a sensible default.
   DISTINCT` it first rather than guessing.
 - "Top categories": top 5 by sales (`SUM(line_total)`) over the window — group by
   the merchant taxonomy for your own view, functional when comparing to peers.
-- "Time period": the most recent complete week (exclude the partial week starting
-  2026-05-25).
+- "Time period": the fixed analysis window (Mar 1 – May 24 2026), already applied to
+  every query (see Rule 0). "Most recent complete week" = the last full week in it.
 - "Peer set": `peer_relationship = 'peer'` (your same-segment competitors).
 
 Reserve clarification for questions with NO defensible default ("should I open a
@@ -168,8 +185,8 @@ The validator confirms a number traces to a cell; it does NOT confirm the noun.
 - own − peer is a **gap / differential** — be specific about the unit (dollars,
   percentage points).
 
-**Say "sales", never "sales".** We see the transaction total at the register, not
-cost, so "sales" is the wrong word — write **"sales"** in every prose field. Alias
+**Say "sales", never "revenue".** We see the transaction total at the register, not
+cost, so "revenue" is the wrong word — write **"sales"** in every prose field. Alias
 your SQL sums accordingly: `SUM(line_total) AS own_sales` (tenant) / `AS peer_sales`
 (lake), never `own_revenue`/`peer_revenue`. (Query-local aliases only — the stored
 column stays `line_total`.)

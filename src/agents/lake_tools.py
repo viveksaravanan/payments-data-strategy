@@ -29,6 +29,7 @@ from typing import Any
 import duckdb
 import pandas as pd
 
+from src.agents.wow import compute_movers
 from src.lake.isolation import (
     TenantIsolationError,
     check_tenant_predicate,
@@ -277,6 +278,67 @@ def query_lake_sql(viewer: str, sql: str) -> dict[str, Any]:
         raise LakeToolError(f"DuckDB execution failed: {exc}") from exc
 
     return _df_to_payload(df, sql=sql, suppressed=n_suppressed)
+
+
+def top_movers(
+    viewer: str,
+    sql: str,
+    *,
+    source: str,
+    dim_col: str,
+    week_col: str,
+    value_col: str,
+    count_col: str | None = None,
+    top_n: int = 3,
+    min_volume: float = 0.0,
+) -> dict[str, Any]:
+    """Run a weekly-grain query and reduce it to its top recent-vs-baseline
+    movers server-side (Phase 4 — the A2/A3 truncation fix).
+
+    ``source`` routes the SQL through the SAME guarded path the model would use
+    directly — ``"tenant"`` → ``query_tenant`` (viewer scope + window),
+    ``"lake"`` → ``query_lake_sql`` (aggregating-only + k=50 + window) — so
+    isolation, the k floor, and the analysis window all still apply. The full
+    result frame is handed to ``wow.compute_movers``; the returned ``frame`` is
+    the reduced movers table (≤ ``2*top_n`` rows), so the model reasons over ~5
+    rows instead of hundreds and its claims resolve against real cells.
+
+    Returns the standard ``_df_to_payload`` shape plus ``source``,
+    ``input_rows`` (pre-reduction), ``movers_available`` (False when nothing
+    cleared the completeness / k / volume filters), and any ``suppressed`` count
+    forwarded from the lake query.
+    """
+    if source == "tenant":
+        base = query_tenant(viewer, sql)
+    elif source == "lake":
+        base = query_lake_sql(viewer, sql)
+    else:
+        raise LakeToolError(
+            f"top_movers: `source` must be 'tenant' or 'lake', got {source!r}."
+        )
+
+    full = base["frame"]
+    missing = [c for c in (dim_col, week_col, value_col) if c not in full.columns]
+    if count_col is not None and count_col not in full.columns:
+        missing.append(count_col)
+    if missing:
+        raise LakeToolError(
+            f"top_movers: column(s) {missing} not in your query result "
+            f"{list(full.columns)} — alias them or fix the SELECT."
+        )
+
+    movers = compute_movers(
+        full,
+        dim_col=dim_col, week_col=week_col, value_col=value_col,
+        count_col=count_col, top_n=top_n, min_volume=min_volume,
+    )
+    payload = _df_to_payload(
+        movers, sql=sql, source=source,
+        input_rows=int(base["row_count"]),
+        movers_available=bool(len(movers)),
+        suppressed=int(base.get("suppressed", 0)),
+    )
+    return payload
 
 
 # ---------------------------------------------------------------------
@@ -546,10 +608,66 @@ EMIT_RESPONSE_TOOL = {
 }
 
 
+TOP_MOVERS_TOOL = {
+    "name": "top_movers",
+    "description": (
+        "Reduce a WEEKLY-GRAIN query to its biggest week-over-week movers, "
+        "computed server-side — use this instead of pulling a full week×category "
+        "or week×store pivot and diffing it yourself (those pivots have hundreds "
+        "of rows and get truncated). You write a weekly-grain aggregating query "
+        "(one row per week × dimension, selecting the units metric and a line "
+        "count); it runs through the same guarded path as `query_tenant` / "
+        "`query_lake_sql` (viewer scope, k=50, analysis window all still apply), "
+        "and returns only the top risers and decliners by percentage change of "
+        "the most-recent complete week vs the mean of the prior 4 weeks. Call it "
+        "once with source='tenant' for your own movers and once with "
+        "source='lake' for peer movers, then compare. Each returned row has your "
+        "dimension column plus `recent`, `baseline`, `delta_pct` (e.g. 1.8 = "
+        "+180%), and `direction`. If `movers_available` is false, no dimension "
+        "cleared the floor — say so honestly rather than inventing a mover."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "sql": {
+                "type": "string",
+                "description": (
+                    "A weekly-grain aggregating SELECT: one row per week × "
+                    "dimension. Group by `date_trunc('week', <ts>)` and the "
+                    "dimension; select the week, the dimension, a units metric "
+                    "(e.g. SUM(qty)), and a line count (e.g. COUNT(*))."
+                ),
+            },
+            "source": {
+                "type": "string",
+                "enum": ["tenant", "lake"],
+                "description": "'tenant' for your own data, 'lake' for peers.",
+            },
+            "week_col":  {"type": "string", "description": "Name of the week column in your result."},
+            "dim_col":   {"type": "string", "description": "Name of the dimension column (e.g. 'category', 'store_id')."},
+            "value_col": {"type": "string", "description": "Name of the units/metric column the % change is computed on."},
+            "count_col": {"type": "string", "description": "Optional line-count column; when given, weeks below k=50 are dropped from a dimension's comparison."},
+            "top_n":     {"type": "integer", "description": "How many risers AND decliners to return (default 3)."},
+        },
+        "required": ["sql", "source", "week_col", "dim_col", "value_col"],
+    },
+}
+
+
 TOOLS_SPECIALIST = [
     SCHEMA_INFO_TOOL,
     QUERY_TENANT_TOOL,
     QUERY_LAKE_SQL_TOOL,
+    EMIT_RESPONSE_TOOL,
+]
+
+# Anomaly detection additionally gets the server-side week-over-week reducer so
+# it never hands the model a truncated weekly pivot (Phase 4).
+TOOLS_ANOMALY = [
+    SCHEMA_INFO_TOOL,
+    QUERY_TENANT_TOOL,
+    QUERY_LAKE_SQL_TOOL,
+    TOP_MOVERS_TOOL,
     EMIT_RESPONSE_TOOL,
 ]
 

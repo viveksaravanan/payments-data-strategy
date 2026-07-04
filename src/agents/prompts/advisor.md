@@ -73,11 +73,11 @@ When a question reads as a ratio/multiplier, ALWAYS report the base rate:
 - Counts (`COUNT(DISTINCT lake_txn_id)`, store counts) are structural integers —
   no claim needed when used as a count.
 
-## Partial-period guard
+## Partial-period guard (handled for you)
 
-The window ends **2026-05-29 (Saturday)**; the week of **2026-05-25** is
-incomplete. For any week-level answer, exclude the truncated boundary week or
-call it out — don't report a final-week "drop" as a finding.
+The analysis window (**Mar 1 – May 24 2026**) is applied to every query for you and
+the partial final week (May 25–29) is already excluded server-side — see Rule 0.
+Don't add your own date filters or report a final-week "drop" as a finding.
 
 ## emit_response — the contract you finish with
 

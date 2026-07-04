@@ -397,20 +397,24 @@ def test_emit_rejected_with_no_data_fetched(viewer_krg) -> None:
     assert "fetch data" in str(exc.value).lower()
 
 
-def test_max_turns_is_six(viewer_krg) -> None:
-    """Wave 3 Stage 6.5 follow-up #6 (Fix B): MAX_TURNS lowered
-    from 10 to 6 — converging pills finish in 3-5; 10 only ever
-    extended doomed pills."""
+def test_max_turns_budget(viewer_krg) -> None:
+    """Base default stays 6 (Wave 3 Stage 6.5 Fix B — converging pills
+    finish in 3-5). The three product-axis specialists are bumped to 8 to
+    accommodate the drill-down (locate top-line → drill flagged item to
+    subcategory → emit)."""
+    from src.agents.anomaly import AnomalyDetectionSpecialist
+    from src.agents.demand import DemandForecastingSpecialist
     from src.agents.specialist import DEFAULT_MAX_TURNS
-    specialist = PricingSpecialist(viewer_krg)
     assert DEFAULT_MAX_TURNS == 6
-    assert specialist.MAX_TURNS == 6
+    assert PricingSpecialist(viewer_krg).MAX_TURNS == 8
+    assert DemandForecastingSpecialist(viewer_krg).MAX_TURNS == 8
+    assert AnomalyDetectionSpecialist(viewer_krg).MAX_TURNS == 8
 
 
 def test_wall_clock_ceiling_constant_present() -> None:
-    """Wall-clock ceiling exists and is at the 90s default."""
+    """Wall-clock ceiling exists, raised to 120s for the drill-down."""
     from src.agents.specialist import WALL_CLOCK_CEILING_SEC
-    assert WALL_CLOCK_CEILING_SEC == 90.0
+    assert WALL_CLOCK_CEILING_SEC == 120.0
 
 
 # ---------------------------------------------------------------------

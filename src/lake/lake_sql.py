@@ -37,6 +37,8 @@ from typing import Any
 import duckdb
 import pandas as pd
 
+from src.agents.constants import ANALYSIS_END_ISO, ANALYSIS_START_ISO
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA_LAKE_ITEMS = REPO_ROOT / "data" / "lake" / "items"
 
@@ -220,8 +222,21 @@ def _register_viewer_views(con: duckdb.DuckDBPyConnection, viewer: str) -> None:
                 f"Line-item lake not materialized at {path}. Run "
                 "`make lake-items` to build it from data/raw/."
             )
+        # Pin the analysis window on the time-bearing lake table so peer
+        # queries cover exactly the same period as the tenant side
+        # (model-independent). lake_stores has no date column. The k=50
+        # count injection runs on top of this, so k is computed over the
+        # windowed rows.
+        if table == "lake_transactions":
+            where = (
+                f" WHERE txn_date >= DATE '{ANALYSIS_START_ISO}'"
+                f" AND txn_date < DATE '{ANALYSIS_END_ISO}'"
+            )
+        else:
+            where = ""
         con.execute(
-            f"CREATE VIEW {table} AS SELECT * FROM read_parquet('{path}')"
+            f"CREATE VIEW {table} AS "
+            f"SELECT * FROM read_parquet('{path}'){where}"
         )
 
 

@@ -34,6 +34,34 @@ def test_is_narration_flags_scratchpad_not_findings() -> None:
         assert not LT.is_narration(s), s
 
 
+# The verbatim scratchpad strings the last grocery answer key delivered as
+# final A2/A3 answers (docs/DEMO_ANSWER_KEY_GROCERY.md). The output-safety
+# layer post-dates that key; these pin that the exact strings can never leak.
+_ANSWER_KEY_LEAKS = [
+    "Placeholder - retrying query",
+    "Result was truncated — pulling the last two full weeks per store to "
+    "compute week-over-week changes now.",
+    "No anomalies found yet — let me compute week-over-week changes across "
+    "all categories…",
+]
+
+
+def test_answer_key_narration_strings_are_flagged() -> None:
+    for s in _ANSWER_KEY_LEAKS:
+        assert LT.is_narration(s), s
+
+
+def test_answer_key_narration_never_leaks_on_textstop(monkeypatch) -> None:
+    """Each verbatim answer-key leak, if emitted as the model's final text
+    block, collapses to the canonical fallback — the scratchpad is gone."""
+    for leak in _ANSWER_KEY_LEAKS:
+        adv = ConversationalAdvisor(MerchantContext.for_merchant("KRG"))
+        with patch_llm(monkeypatch, [scripted_text(leak)]):
+            resp = adv.answer("Which stores had unusual traffic this week?")
+        assert LT.business_fallback() in resp.prose
+        assert leak[:20] not in resp.prose
+
+
 def test_emit_guard_rejects_narration_headline() -> None:
     """A narration headline in emit_response is rejected (→ model retries)."""
     spec = PricingSpecialist(MerchantContext.for_merchant("KRG"))
@@ -89,6 +117,21 @@ def test_direction_no_false_flip_when_correct() -> None:
         "Pricing.",
         ["You charge $8.16 in Beef versus the peer average of $10.42, below peers."], [])
     assert "below" in ev[0] and "direction" not in checks
+
+
+def test_direction_over_performing_flips_to_under() -> None:
+    # D4 Acme: headline calls Ice Cream "over-performing" while the bound
+    # claims show own ($950K) < peer ($1.1M). Direction resolves via the
+    # claim-indexed path (validated claim floats), which is the robust one
+    # when prose mixes magnitude suffixes the label layer can't compare
+    # inline ("$950K" vs "$1.1M").
+    from types import SimpleNamespace as NS
+    def cl(v, k, f):
+        return NS(value=v, source=NS(row_filter={"category": k}, frame=f), text_span="")
+    claims = [cl(950000.0, "Ice Cream", "tenant"), cl(1100000.0, "Ice Cream", "lake")]
+    h, _, checks = _run("Acme's Ice Cream is over-performing versus peers.", [], claims)
+    assert "under-performing" in h and "over-performing" not in h
+    assert "direction" in checks
 
 
 def test_direction_claim_indexed_multi_category_headline() -> None:

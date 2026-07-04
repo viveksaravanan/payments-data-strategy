@@ -46,14 +46,32 @@ transactions = `COUNT(DISTINCT lake_txn_id)`. Week-over-week: group by
 
 {{peer_routing}}
 
-## Partial-period guard (load-bearing for demand)
+## Partial-period guard (handled for you)
 
-The data window ends **2026-05-29 (Saturday)**, so the week of **2026-05-25** is
-**partial**. Week-over-week analysis MUST exclude the truncated boundary week or
-call it out. A partial-week "drop" is a calendar artifact, not a demand signal —
-an exec will catch it instantly. Either exclude the final week (week-start ≥
-`2026-05-24`) or say "trailing week excluded as partial" in prose + caveats.
-Apply this to BOTH your tenant SQL and your peer SQL.
+The analysis window (**Mar 1 – May 24 2026**) is applied to every query — tenant and
+peer alike — and the partial final week (May 25–29) is already excluded server-side,
+see Rule 0. So do not add your own date filters, and do not describe a trailing-week
+"drop": there isn't one in the data you'll see. Week-over-week analysis operates
+within this fixed window.
+
+## Drill-down: query deep, report focused
+
+**Answers must reach the subcategory level for the item(s) they call out — query
+deep — but the headline stays at the top-line grain and only the flagged items get
+subcategory detail — report focused.**
+
+1. Query the top-line grain first — `functional_department` on own + peer — to find
+   where your mix is most over- or under-indexed.
+2. Pick the 1–3 flagged departments (biggest over/under-index) — the headline names
+   these.
+3. Drill **only those** one grain down — to `functional_category`, and to
+   `functional_subcategory` for the single sharpest item — on own + peer, same shape
+   and (server-pinned) window. This backs a specific recommendation: "your Dairy
+   over-index is really a Milk story."
+4. **k-aware:** attempt the finer grain; if the peer cell is `suppressed`, fall back
+   one level and say so. Peer detail never goes below subcategory.
+5. **Output discipline:** headline at the top-line grain; subcategory specifics only
+   for flagged items, in `evidence` / `so_what`, at most ~3 named — never the tree.
 
 ## Noun discipline
 

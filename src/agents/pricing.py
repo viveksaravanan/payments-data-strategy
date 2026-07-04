@@ -22,7 +22,7 @@ from src.agents.specialist import Specialist
 class PricingSpecialist(Specialist):
     AGENT_LABEL = "Pricing & Benchmarking Agent"
     PROMPT_PATH = Path(__file__).parent / "prompts" / "pricing.md"
-    MAX_TURNS = 6   # Wave 3 Stage 6.5 follow-up #6 — converging pills finish in 3-5
+    MAX_TURNS = 8   # +2 over the base for the drill-down (locate → subcategory → emit)
     # Wave 3 Stage 6.5 Fix 12 — pricing reads peer prices.
     PREFERRED_PEER_METRIC = "price_index"
     PEER_ROUTING_KIND = "pricing"   # Wave 3.5 §6 — decline when 0 same-segment peers

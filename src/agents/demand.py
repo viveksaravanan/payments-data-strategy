@@ -14,10 +14,8 @@ from src.agents.specialist import Specialist
 class DemandForecastingSpecialist(Specialist):
     AGENT_LABEL = "Demand Forecasting Agent"
     PROMPT_PATH = Path(__file__).parent / "prompts" / "demand.md"
-    # Phase 5.1.5: standardized to 8 across all specialists.
-    # Phase 5.1.9: bumped to 10 to accommodate the analytical
-    # reconciliation step chart-takeaway injection adds.
-    MAX_TURNS = 6
+    # Base is 6; +2 for the drill-down (top-line → subcategory → emit).
+    MAX_TURNS = 8
     # Wave 3 Stage 6.5 Fix 12 — demand reads peer unit velocity.
     PREFERRED_PEER_METRIC = "units_index"
     PEER_ROUTING_KIND = "comparative"   # Wave 3.5 §6 — cross-segment fallback, labeled

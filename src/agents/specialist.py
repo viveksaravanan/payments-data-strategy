@@ -74,7 +74,7 @@ MAX_TOKENS = 4096
 # now rarely fires; when it does (Fix 9c multi-row CellLookup
 # without agg), the model retries within MAX_TURNS=6 and the
 # wall-clock ceiling catches any genuine runaway.
-WALL_CLOCK_CEILING_SEC = 90.0
+WALL_CLOCK_CEILING_SEC = 120.0  # +30s headroom for the drill-down extra query/turn
 
 
 PROGRESS_MESSAGES = [
@@ -413,6 +413,32 @@ class Specialist:
             self._lake_frame = payload["frame"]
             self._sql_log.append({
                 "surface":   "lake_sql",
+                "query":     args["sql"],
+                "row_count": payload["row_count"],
+                "suppressed": payload.get("suppressed", 0),
+            })
+            return payload
+        if name == "top_movers":
+            # Server-side week-over-week reducer (Phase 4). Runs the weekly
+            # SQL through the guarded tenant/lake path and returns the top
+            # movers as the frame — captured as the tenant or lake frame per
+            # `source` so emitted claims resolve against it.
+            payload = LT.top_movers(
+                self.context.viewing_merchant_id,
+                args["sql"],
+                source=args["source"],
+                dim_col=args["dim_col"],
+                week_col=args["week_col"],
+                value_col=args["value_col"],
+                count_col=args.get("count_col"),
+                top_n=int(args.get("top_n", 3)),
+            )
+            if args["source"] == "tenant":
+                self._tenant_frame = payload["frame"]
+            else:
+                self._lake_frame = payload["frame"]
+            self._sql_log.append({
+                "surface":   f"top_movers_{args['source']}",
                 "query":     args["sql"],
                 "row_count": payload["row_count"],
                 "suppressed": payload.get("suppressed", 0),

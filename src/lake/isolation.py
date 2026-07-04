@@ -42,6 +42,7 @@ import re
 from pathlib import Path
 from typing import Iterable
 
+from src.agents.constants import ANALYSIS_END_ISO, ANALYSIS_START_ISO
 from src.generate.config.loader import load_config
 from src.lake.observable_guard import DATA_RAW
 
@@ -174,9 +175,19 @@ def wrap_tenant_query(sql: str, viewer: str) -> str:
         # dimension; just filter to viewer's row.
         if table == "merchants":
             scope = f"merchant_id = '{viewer}'"
+        elif table == "transactions":
+            # The one time-bearing tenant table. Pin the analysis window
+            # here (server-side, model-independent) so the agent cannot
+            # answer on a self-chosen slice; transaction_items inherits
+            # the window via its inner join to this CTE.
+            scope = (
+                f"banner_code = '{viewer}' "
+                f"AND txn_ts >= DATE '{ANALYSIS_START_ISO}' "
+                f"AND txn_ts < DATE '{ANALYSIS_END_ISO}'"
+            )
         elif table == "transaction_items":
             # Items don't carry banner_code; scope via inner join on the
-            # already-scoped transactions CTE.
+            # already-scoped (and windowed) transactions CTE.
             parts.append(
                 f"{table} AS (SELECT i.* FROM "
                 f"read_parquet('{path}') i JOIN transactions t "
@@ -186,7 +197,7 @@ def wrap_tenant_query(sql: str, viewer: str) -> str:
         elif table == "promotions":
             scope = f"merchant_id = '{viewer}'"
         else:
-            # transactions, products, stores all carry banner_code.
+            # products, stores carry banner_code (no time column).
             scope = f"banner_code = '{viewer}'"
         parts.append(
             f"{table} AS (SELECT * FROM read_parquet('{path}') WHERE {scope})"
