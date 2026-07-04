@@ -1343,6 +1343,9 @@ LEAFLET_HEAD = (
 
 CSS_ADD = """
   /* ---- Section 1 (generated) additions ---- */
+  /* Drop the header's bottom rule so only the section's top rule divides the
+     header from Section 1 (was a doubled divider line). */
+  header.top{border-bottom:none}
   .thesis{font-size:15.5px; color:var(--text); border-left:3px solid var(--accent);
     padding-left:14px; margin:16px 0 0; max-width:70ch; line-height:1.5}
   .s1-wide{margin:26px calc(50% - 50vw); padding:0 max(28px, calc(50vw - 540px))}
