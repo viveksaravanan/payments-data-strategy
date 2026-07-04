@@ -15,5 +15,9 @@ __pycache__/
 .venv/
 *.egg-info/context/
 
+# Generated reports (scripts/pilot_report.py, etc.)
+reports/
+pilot_exploratory.html
+
 # macOS
 .DS_Store
