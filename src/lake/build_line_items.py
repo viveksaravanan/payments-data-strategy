@@ -18,8 +18,11 @@ Privacy posture (deliberately minimal — §7 / §12): identity reduced
 to the ``peer_relationship`` label (never a name or pseudonym),
 tokenized non-reversible ids, hour-bucketed timestamps, dropped
 consumer linkage, no ZIP/lat-long. Real analytical fields
-(`unit_price`, `qty`, `category`, payment dims, …) pass through
-**raw** — protection at query time is the `k=50` cell floor (§7.1),
+(`unit_price`, `qty`, payment dims, …) pass through **raw**; the
+taxonomy (`department`/`category`/`subcategory`) is the shared
+*functional* hierarchy resolved from the `products` join (the
+cross-merchant comparison key — the merchant's own labels never reach
+the lake). Protection at query time is the `k=50` cell floor (§7.1),
 not value coarsening.
 
 Reads `data/raw/` ONLY through `observable_guard.load_table` so the
@@ -70,7 +73,7 @@ _TOKEN_WIDTH = 16
 _TXN_PUBLISHED = [
     "lake_txn_id", "lake_line_id", "lake_store_id",
     "txn_date", "hour_bucket", "peer_relationship",
-    "category", "subcategory",
+    "department", "category", "subcategory",
     "unit_price", "qty", "discount", "line_total",
     "payment_type", "card_network", "entry_mode", "wallet_type",
 ]
@@ -128,7 +131,7 @@ def build_global_lines() -> pd.DataFrame:
     )
     products = load_table(
         "products",
-        ["sku", "functional_category", "functional_subcategory"],
+        ["sku", "functional_department", "functional_category", "functional_subcategory"],
     )
     txns = load_table(
         "transactions",
@@ -144,8 +147,10 @@ def build_global_lines() -> pd.DataFrame:
     con.register("stores", stores)
     # txn_date = date only; hour_bucket = coarse 10-bucket time of day.
     # Payment columns renamed to the stable lake names (§3.1 mapping).
-    # The published lake `category`/`subcategory` are sourced from the
-    # products join (functional taxonomy) — the peer comparison key.
+    # The published lake `department`/`category`/`subcategory` are sourced
+    # from the products join (functional taxonomy) — the shared cross-merchant
+    # comparison key. The merchant's own (divergent) labels are never read
+    # into the lake.
     enriched = con.execute(
         """
         SELECT
@@ -156,6 +161,7 @@ def build_global_lines() -> pd.DataFrame:
           CAST(t.txn_ts AS DATE)                      AS txn_date,
           CAST(EXTRACT(hour FROM t.txn_ts) AS INTEGER) * 10 / 24
                                                       AS hour_bucket,
+          p.functional_department                     AS department,
           p.functional_category                       AS category,
           p.functional_subcategory                    AS subcategory,
           i.unit_price                                AS unit_price,

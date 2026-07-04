@@ -21,7 +21,13 @@ the v4 column names so most query SQL is unchanged:
 - `tenant_customers`: `card_id AS customer_id`. (v4 has **no ZIP** — `home_zone`
   is a planted zone code, no neighborhood mapping.)
 - `tenant_stores` / `tenant_products` / `tenant_transaction_items`: mostly direct;
-  `products` has no name → `sku AS name`.
+  `products` has `product_name AS name`. **Own-data taxonomy = MERCHANT labels:**
+  `tenant_products` aliases `merchant_category AS category` /
+  `merchant_subcategory AS subcategory` (this banner's real shelf labels, the right
+  view for own-only cards). The `functional_*` columns are also exposed under their
+  own names — any card that compares own vs the peer lake (e.g.
+  `category_anomalies`) MUST group its own side on `functional_category`, since the
+  lake publishes the shared functional taxonomy as `category`/`subcategory`/`department`.
 
 DuckDB dialect notes vs the old SQLite: `DATE()` and `strftime` work as-is;
 `SUBSTR(txn_ts,…)` for the hour → `EXTRACT(hour FROM txn_ts)`; the

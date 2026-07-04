@@ -100,8 +100,15 @@ SQL, and there is no merge step):
    two line-item lake tables' schemas (`lake_transactions`, `lake_stores`,
    introspected from a viewer's materialized pair) + a "tips" array of
    load-bearing reminders (lake_stores-join-for-neighborhood, the k=50
-   floor, COUNT(DISTINCT lake_txn_id) for transaction-level shares).
-   Always call first.
+   floor, COUNT(DISTINCT lake_txn_id) for transaction-level shares, and the
+   taxonomy rule below). Always call first.
+   - **Taxonomy rule.** `products` carries a dual taxonomy. For answers about
+     the merchant's OWN data, group by `merchant_department/category/subcategory`
+     (their real shelf labels). For any comparison to PEERS, group by
+     `functional_department/category/subcategory` — the lake publishes the
+     functional hierarchy as `department`/`category`/`subcategory`, so only
+     functional labels line up across merchants. The lake never carries merchant
+     labels.
 2. **`query_tenant(sql)`** — Viewer-scoped SQL against `data/raw/`.
    Two-layer enforcement: `check_tenant_predicate` requires
    `WHERE banner_code = '<viewer>'` AND rejects any other 3-letter

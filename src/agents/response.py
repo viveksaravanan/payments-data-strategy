@@ -121,6 +121,11 @@ class AgentResponse:
     # Stored as a list of dicts to avoid a hard dependency from
     # response.py on claims.py.
     claim_dispositions: list[dict[str, Any]] = field(default_factory=list)
+    # Post-validation label-review corrections (direction/share/round/register/
+    # non-answer). Each: {"check", "before", "after", "reason"}. The grounding
+    # wall verifies values; this records how the layer fixed the labels around
+    # them so debug surfaces (validate_agents.py) can show every edit.
+    corrections: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def prose(self) -> str:

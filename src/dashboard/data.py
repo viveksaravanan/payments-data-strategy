@@ -95,10 +95,14 @@ _TENANT_VIEWS: dict[str, str] = {
         SELECT sku,
                product_name       AS name,
                banner_code, merchant_id,
-               functional_category    AS category,
-               functional_subcategory AS subcategory,
+               -- Own-data default: `category`/`subcategory` are the MERCHANT's own
+               -- shelf labels (what this banner actually calls things). Any peer
+               -- comparison must instead group on the functional_* columns below,
+               -- which are what the lake publishes.
+               merchant_category    AS category,
+               merchant_subcategory AS subcategory,
                merchant_department, merchant_category, merchant_subcategory,
-               functional_department,
+               functional_department, functional_category, functional_subcategory,
                shelf_price        AS base_price,
                private_label, segment
         FROM read_parquet('{DATA_RAW / "products.parquet"}')
@@ -387,31 +391,6 @@ _A1_DECLINE_PCT     = 15.0
 
 
 
-
-
-# ---------------------------------------------------------------------------
-# P2 — Staple vs non-food tier pricing comparison (Pattern 2 two-panel)
-# ---------------------------------------------------------------------------
-#
-# Pricing tiers follow the catalog overlays from Phase 1.6:
-#   tight (staples):   BAKERY, BEVERAGES, DAIRY, FROZEN, MEAT, PANTRY,
-#                      PRODUCE, SNACKS
-#   loose (non-food):  BABY, HOUSEHOLD, PERSONAL, PET
-#
-# Each panel shows the per-category percentage gap between own mean
-# unit price and each peer's mean unit price. Weighted aggregates (by
-# own category revenue) feed the takeaway sentence.
-
-_P2_TIGHT_CATEGORIES = [
-    "BAKERY", "BEVERAGES", "DAIRY", "FROZEN",
-    "MEAT", "PANTRY", "PRODUCE", "SNACKS",
-]
-_P2_LOOSE_CATEGORIES = ["BABY", "HOUSEHOLD", "PERSONAL", "PET"]
-
-# Width (in pp) below which we read staple-vs-non-food gaps as the
-# same. Above this, we label the strategy "asymmetric" and report
-# which tier is softer.
-_P2_TIER_SYMMETRY_PP = 2.0
 
 
 
@@ -1097,8 +1076,12 @@ def _category_anomalies_cached(merchant_id: str, key: tuple) -> dict:
     with _conn() as c:
         own_rows = c.execute(
             f"""
+            -- This card compares own vs the peer lake, so the OWN side groups
+            -- on functional_category (the shared key the lake publishes as
+            -- `category`), NOT the merchant label — otherwise the buckets
+            -- wouldn't line up.
             WITH weekly AS (
-                SELECT p.category,
+                SELECT p.functional_category AS category,
                        strftime(date_trunc('week', t.txn_ts), '%Y-%m-%d') AS week,
                        COUNT(*) AS n_lines
                 FROM tenant_transaction_items i
@@ -1107,7 +1090,7 @@ def _category_anomalies_cached(merchant_id: str, key: tuple) -> dict:
                 WHERE t.merchant_id = ?{extra_where}
                   AND strftime(date_trunc('week', t.txn_ts), '%Y-%m-%d')
                       BETWEEN ? AND ?
-                GROUP BY p.category, week
+                GROUP BY p.functional_category, week
             )
             SELECT category,
                    SUM(CASE WHEN week = ? THEN n_lines ELSE 0 END) AS recent,
@@ -1622,8 +1605,8 @@ def _performance_trajectory_cached(merchant_id: str, key: tuple) -> dict:
             # 8 % deadband — calibrated to the synthetic data's
             # overall ~6-10 % growth band. Below 8 % growth reads as
             # tracking the panel-wide trend; above signals genuine
-            # acceleration. A tighter 5 % deadband classified all
-            # five viewers as accelerating in the current data;
+            # acceleration. A tighter 5 % deadband classified every
+            # viewer as accelerating in the current data;
             # 8 % differentiates per-viewer.
             if abs(growth) < 0.08:
                 trend_shape = "stable"
@@ -1705,8 +1688,8 @@ def hour_dow_heatmap_card(merchant_id: str, filters: dict | None = None) -> dict
 
     # Peak / slow over all cells (ignore zeros and suppressed cells
     # for slow — empty cells aren't "slow", they're "closed";
-    # suppressed cells aren't comparable). For grocers and TBL/TJX
-    # alike there are typically zero-traffic overnight hours; calling
+    # suppressed cells aren't comparable). For grocers and QSR
+    # banners alike there are typically zero-traffic overnight hours; calling
     # "Tuesday 3am" the slowest is uninformative.
     peak = (0, 0, 0)  # (value, dow_idx, hr)
     slow = (None, 0, 0)
@@ -1784,9 +1767,12 @@ def hour_dow_heatmap_card(merchant_id: str, filters: dict | None = None) -> dict
 
 
 def kpi_strip(merchant_id: str, filters: dict | None = None) -> dict:
-    """Five-card KPI strip data — Revenue / Transactions / Avg basket /
-    Unique customers / Anomaly count, each with a delta vs the prior
-    4-week average and a 12-week trailing sparkline.
+    """KPI-strip data — Revenue / Transactions / Avg basket /
+    Unique customers, each with a delta vs the prior 4-week average
+    and a 12-week trailing sparkline. Also returns an ``anomaly``
+    block (concerning / notable counts) that the strip no longer
+    renders as a 5th card (datamodel-v2 dropped it — planted
+    anomalies are dormant) but other surfaces still read.
 
     Filter semantics (Phase 4.5 — Decision 2 re-anchor):
       * "Recent week" = last full week ≤ filters["date_end"].
@@ -1928,8 +1914,8 @@ def _kpi_strip_cached(merchant_id: str, key: tuple) -> dict:
     # (below baseline by ≥ 15 %); notable = ratio > 1.15 (above
     # baseline). The card flags "alert" only when there's a
     # concerning item — growth-mode merchants whose stores all run
-    # above baseline (TBL, TJX in the current synthetic data) read
-    # as "all clear" instead of red.
+    # above baseline (e.g. QSR banners in the current synthetic data)
+    # read as "all clear" instead of red.
     anomaly_counts = _anomaly_counts_series(merchant_id, weeks, filters=f)
     anomaly_breakdown = _anomaly_count_breakdown(merchant_id, filters=f)
 
@@ -2106,7 +2092,7 @@ def _anomaly_count_breakdown(merchant_id: str, filters: dict | None = None) -> d
 # = first 4 weeks of the panel (Mar 2 – 23). The 15% deviation floor
 # is reused for store / SKU / category anomaly flags.
 
-# Dayparts for QSR (TBL). Hour buckets are 00-23 from
+# Dayparts for QSR (TBL / BKG / CFA). Hour buckets are 00-23 from
 # ``SUBSTR(txn_ts, 12, 2)``. The boundaries match common QSR daypart
 # definitions: late-night / breakfast / lunch / afternoon / dinner.
 # Kept to five for chart readability in the 35 % chat panel.

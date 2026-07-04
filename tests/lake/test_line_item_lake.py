@@ -55,8 +55,9 @@ def _synthetic_global() -> pd.DataFrame:
                 "neighborhood": f"Nbhd_{store}",
                 "txn_date": dt.date(2026, 4, 1),
                 "hour_bucket": 5,
-                "category": "DAIRY",
-                "subcategory": "MILK",
+                "department": "Dairy & Eggs",
+                "category": "Milk",
+                "subcategory": "Whole Milk",
                 "unit_price": 3.50,
                 "qty": 1,
                 "discount": 0.0,
@@ -165,6 +166,14 @@ def test_materialized_schema_is_clean() -> None:
                 f"{viewer}/{tbl} leaked identity columns: "
                 f"{FORBIDDEN_PUBLISHED & cols}"
             )
+            if tbl == "lake_transactions":
+                # Taxonomy is the SHARED functional hierarchy (dept/cat/subcat);
+                # a merchant's own labels must never reach the lake.
+                assert {"department", "category", "subcategory"} <= cols
+                assert not any(c.startswith("merchant_") for c in cols), (
+                    f"{viewer}/{tbl} leaked merchant-own taxonomy: "
+                    f"{[c for c in cols if c.startswith('merchant_')]}"
+                )
 
 
 @pytest.mark.skipif(not _built(), reason="line-item lake not built (run `make lake-items`)")
