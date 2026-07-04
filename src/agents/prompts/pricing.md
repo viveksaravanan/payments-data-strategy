@@ -48,7 +48,7 @@ dollars. Write `FROM lake_transactions` (one row per peer purchase line) and/or
 automatically; your own rows are absent by construction.
 
 - **`lake_transactions`**: `lake_txn_id`, `lake_line_id`, `lake_store_id`,
-  `txn_date`, `hour_bucket`, `peer_relationship`, `category`, `subcategory`,
+  `txn_date`, `hour_bucket`, `peer_relationship`, `department`, `category`, `subcategory`,
   `unit_price`, `qty`, `discount`, `line_total`, `payment_type`, `card_network`,
   `entry_mode`, `wallet_type`.
 - **`lake_stores`**: `lake_store_id`, `peer_relationship`, `peer_segment`,
@@ -121,31 +121,38 @@ clauses at delivery.
 
 ### Worked sequence — pricing vs peers (real dollars)
 
+This is a peer comparison, so use the **functional** taxonomy on BOTH sides — join
+`products` for your own side (`p.functional_category`) so it aligns with the lake's
+`category`.
+
 ```
 1. schema_info()
 2. query_tenant(
-     "SELECT category, AVG(i.unit_price) AS own_asp
-      FROM transaction_items i JOIN transactions t ON i.txn_id = t.txn_id
-      WHERE t.banner_code = '{{viewer_id}}' GROUP BY category")
-   → own dairy ASP = $3.50
+     "SELECT p.functional_category AS category, AVG(i.unit_price) AS own_asp
+      FROM transaction_items i
+      JOIN transactions t ON i.txn_id = t.txn_id
+      JOIN products p ON i.sku = p.sku
+      WHERE t.banner_code = '{{viewer_id}}' AND p.functional_category = 'Milk'
+      GROUP BY p.functional_category")
+   → own milk ASP = $3.50
 3. query_lake_sql(
      "SELECT category, AVG(unit_price) AS peer_asp
-      FROM lake_transactions WHERE peer_relationship = 'peer'
+      FROM lake_transactions WHERE peer_relationship = 'peer' AND category = 'Milk'
       GROUP BY category")
-   → peer dairy ASP = $3.42
+   → peer milk ASP = $3.42
 4. emit_response(
-     headline="You price slightly above your same-segment peers in dairy.",
+     headline="You price slightly above your same-segment peers in milk.",
      evidence=[
-       "Your dairy ASP is $3.50/unit.",
+       "Your milk ASP is $3.50/unit.",
        "The same-segment peer average is $3.42/unit."
      ],
-     so_what="Hold the dairy premium — it is small and defensible.",
+     so_what="Hold the milk premium — it is small and defensible.",
      claims=[
        {"text_span": "$3.50/unit", "value": 3.50,
-        "source": {"type": "CellLookup", "row_filter": {"category": "DAIRY"},
+        "source": {"type": "CellLookup", "row_filter": {"category": "Milk"},
                    "column": "own_asp", "agg": "mean", "frame": "tenant"}},
        {"text_span": "peer average is $3.42", "value": 3.42,
-        "source": {"type": "CellLookup", "row_filter": {"category": "DAIRY"},
+        "source": {"type": "CellLookup", "row_filter": {"category": "Milk"},
                    "column": "peer_asp", "agg": "mean", "frame": "lake"}}
      ],
      caveats=["Peer set is your same-segment grocers."])
@@ -153,6 +160,7 @@ clauses at delivery.
 
 ### Worked example — own-only question
 
-"What's my per-store dairy revenue?" is a YOUR-data question — use `query_tenant`
-only (`GROUP BY store_id`), no `query_lake_sql`, and claim against `frame:
-"tenant"`.
+"What's my per-store milk sales?" is a YOUR-data question — use `query_tenant`
+only (`GROUP BY store_id`), no `query_lake_sql`, claim against `frame: "tenant"`,
+and here you may group by **your own** `p.merchant_category` (your real shelf
+labels) since nothing is being compared to peers.

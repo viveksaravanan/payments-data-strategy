@@ -26,7 +26,7 @@ Aggregating SQL against peers' line items; resolves to YOUR peer set, own rows
 absent.
 
 - **`lake_transactions`**: `lake_txn_id`, `lake_store_id`, `txn_date`,
-  `hour_bucket`, `peer_relationship`, `category`, `subcategory`, `unit_price`,
+  `hour_bucket`, `peer_relationship`, `department`, `category`, `subcategory`, `unit_price`,
   `qty`, `discount`, `line_total`, **`payment_type`** (credit/debit),
   **`card_network`** (visa/mc/amex/discover), **`entry_mode`**
   (contactless/chip/swipe/manual), **`wallet_type`** (apple/google/samsung/none).

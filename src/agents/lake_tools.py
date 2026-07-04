@@ -74,16 +74,20 @@ _TENANT_TABLE_DESCRIPTIONS: dict[str, dict[str, Any]] = {
         "description": (
             "Line items — one row per (txn_id, line_id). Carries ONLY "
             "sku, qty, unit_price, discount, line_total, promo_id. "
-            "Product NAME + category/subcategory + functional taxonomy "
-            "are NOT on the line — JOIN to products on sku to resolve "
-            "them. NOTE: NO banner_code on this table — scope by joining "
-            "to transactions and using transactions.banner_code = '<viewer>'."
+            "Product NAME + all taxonomy are NOT on the line — you MUST "
+            "JOIN to products on sku to resolve them. NOTE: NO banner_code "
+            "on this table — scope by joining to transactions and using "
+            "transactions.banner_code = '<viewer>'."
         ),
         "primary_key": ["txn_id", "line_id"],
         "join_keys": {
             "txn_id":   "→ transactions.txn_id",
-            "sku":      "→ products.sku (resolve product_name, "
-                        "functional_category/subcategory, private_label, shelf_price)",
+            "sku":      "→ products.sku. For answers about YOUR OWN data, "
+                        "group by merchant_department/category/subcategory "
+                        "(your real shelf labels). For any comparison to "
+                        "PEERS, group by functional_department/category/"
+                        "subcategory so it aligns with the lake. Also "
+                        "resolves product_name, private_label, shelf_price.",
             "promo_id": "→ promotions.promo_id (when not null; promotions dormant)",
         },
     },
@@ -96,14 +100,17 @@ _TENANT_TABLE_DESCRIPTIONS: dict[str, dict[str, Any]] = {
     },
     "products": {
         "description": (
-            "One row per SKU (the item master). Dual taxonomy: "
-            "functional_department/category/subcategory (the SHARED, "
-            "normalized comparison key — use these to compare across "
-            "banners) plus merchant_department/category/subcategory (each "
-            "banner's own labels). Also product_name, brand, size, "
-            "private_label, shelf_price. Has banner_code; scope by "
-            "banner_code = '<viewer>' for own catalogue. Peer comparison "
-            "rides functional_subcategory — there is NO cross-merchant id."
+            "One row per SKU (the item master). DUAL taxonomy, and which "
+            "one you use depends on the question: merchant_department/"
+            "category/subcategory are THIS banner's own shelf labels — use "
+            "them when the answer is solely about your own data (e.g. your "
+            "own sales mix or top categories). functional_department/"
+            "category/subcategory are the SHARED, normalized labels — use "
+            "them for ANY comparison to peers, so your numbers line up with "
+            "the lake (which publishes functional taxonomy). Also "
+            "product_name, brand, size, private_label, shelf_price. Has "
+            "banner_code; scope by banner_code = '<viewer>' for own "
+            "catalogue. There is NO cross-merchant product id."
         ),
         "primary_key": ["sku"],
     },
@@ -140,7 +147,10 @@ def _lake_items_schema() -> dict[str, Any]:
     descriptions = {
         "lake_transactions": (
             "Peer purchase lines — resolves to YOUR peer set, your own "
-            "rows absent. Aggregating SQL only (query_lake_sql)."
+            "rows absent. Aggregating SQL only (query_lake_sql). Its "
+            "department/category/subcategory are the SHARED functional "
+            "taxonomy (never a competitor's own labels) — the comparison "
+            "key that lines up with your own functional_* columns."
         ),
         "lake_stores": (
             "Peer store reference; JOIN via lake_store_id. Carries "
@@ -199,10 +209,12 @@ def schema_info() -> dict[str, Any]:
     tips = [
         "Always call schema_info first; it tells you the real column names so you don't burn turns guessing.",
         "transaction_items has NO banner_code — scope it by joining to transactions and filtering transactions.banner_code = '<viewer>'.",
-        "Join transaction_items → products on sku to resolve product_name, functional_category/subcategory, private_label, shelf_price (the line carries only sku). Compare across banners on functional_subcategory — there is no cross-merchant product id.",
+        "Join transaction_items → products on sku to resolve taxonomy + product_name (the line carries only sku). TAXONOMY RULE: for answers about your OWN data, group by products.merchant_category/subcategory (your real shelf labels); for any comparison to PEERS, group by products.functional_category/subcategory/department so it aligns with the lake. There is no cross-merchant product id.",
         "Peer data: query lake_transactions / lake_stores with aggregating SQL via query_lake_sql. It resolves to YOUR peer set; your own rows are absent. peer_relationship = 'peer' (same segment) | 'merchant' (different segment).",
         "neighborhood lives on lake_stores, not lake_transactions — JOIN lake_stores USING (lake_store_id) to group by neighborhood.",
         "k=50 floor: groups backed by fewer than 50 lines are dropped and counted in `suppressed`. For transaction-level shares use COUNT(DISTINCT lake_txn_id); the line-count floor is the suppression gate only.",
+        "DuckDB day-of-week: dayofweek() returns Sunday=0, Monday=1, ... Saturday=6 (NOT Sunday=1). Filter Sundays with dayofweek(txn_ts)=0 (own) / dayofweek(txn_date)=0 (lake). A wrong constant silently returns a different day.",
+        "Shares/percentages are fractions in [0,1]: a claim value is 0.52 (not 52) and a 9% drop is -0.09; render as '52%' in prose but never write '0.52%'.",
     ]
 
     return {
@@ -602,11 +614,32 @@ _INTERNAL_NARRATION_PATTERNS = [
     r"\bdo you want me to\b",
     r"\bshall i\b",
     r"\?\s*$",
+    # Phase 1.1 — mid-loop planning / scratchpad that leaks when the model stops
+    # with a text block instead of calling emit_response. Starts-with planning
+    # verbs, in-flight status, and trailing ellipsis.
+    r"^\s*(?:let me|let's|i'?ll|i will|now\b|first,? i|okay)\b",
+    r"\bretrying\b",
+    r"^\s*placeholder\b",
+    r"no anomalies found yet",
+    r"result was truncated",
+    r"pulling the last",
+    r"let me compute\b",
+    r"\bcompute\b[^.]*\bnow\b",
+    r"^\s*checking\b",
+    r"…\s*$",
+    r"\.\.\.\s*$",
 ]
 _INTERNAL_NARRATION_RE = re.compile(
     "|".join(_INTERNAL_NARRATION_PATTERNS),
     re.IGNORECASE,
 )
+
+
+def is_narration(text: str | None) -> bool:
+    """True if ``text`` reads as mid-loop scratchpad / planning rather than a
+    finished answer. Shared by ``sanitize_prose`` (whole-field replace) and the
+    emit-time narration guard in the specialist (reject → retry)."""
+    return bool(text and _INTERNAL_NARRATION_RE.search(text))
 
 # Wave 3 Stage 6.5 Fix 9e — single source for any user-facing
 # "answer couldn't be substantiated" prose. Every fallback path
@@ -615,10 +648,8 @@ _INTERNAL_NARRATION_RE = re.compile(
 # so a future regression can't reintroduce mechanics-talk
 # ("validator", "draft", "merge spec", "retry with corrected
 # parameters", etc.).
-_BUSINESS_FALLBACK = (
-    "A grounded peer comparison wasn't available for this view; "
-    "your own figures and the peer benchmark are shown below."
-)
+from src.agents.fallbacks import BUSINESS_FALLBACK as _BUSINESS_FALLBACK
+from src.agents.fallbacks import COMPARISON_UNAVAILABLE  # re-exported for callers
 
 # Mechanics terms that must NEVER reach user-facing prose. A
 # regression test scans every assembled AgentResponse.prose for

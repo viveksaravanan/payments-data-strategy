@@ -34,6 +34,7 @@ from typing import Any, Callable
 
 import pandas as pd
 
+from src.agents import label_review as LR
 from src.agents import lake_tools as LT
 from src.agents.lake_tools import LakeToolError
 from src.agents import llm as L
@@ -526,6 +527,20 @@ class Specialist:
                 "`so_what`. Do not emit an empty or question-only headline."
             )
 
+        # --- Phase 1.1: narration guard. The emitted answer must be a finished
+        # statement, never mid-loop scratchpad ("let me pull…", "retrying…",
+        # trailing "…"). Reject so the model re-emits a clean answer; if it can't
+        # within the turn budget, the loop falls back to a canonical string. ---
+        narration_fields = [args.get("headline") or ""] + list(args.get("evidence") or [])
+        if any(LT.is_narration(f) for f in narration_fields):
+            raise LakeToolError(
+                "emit_response rejected: the `headline`/`evidence` reads as "
+                "in-progress narration (e.g. 'let me…', 'retrying…', 'result "
+                "was truncated…', or a trailing '…'). Emit a finished answer: a "
+                "declarative headline and evidence bullets that state findings, "
+                "with no mention of what you are about to do."
+            )
+
         # --- Fix 9c: multi-row CellLookup without agg ---
         for claim in (args.get("claims") or []):
             if not isinstance(claim, dict):
@@ -630,13 +645,15 @@ class Specialist:
         report = validate_claims(prose, claims, result)
 
         # Legacy single-string path: the whole validated prose becomes
-        # the headline (evidence/so_what are structured-contract fields
-        # the fenced-render flow never authored).
+        # the headline. Phase 1.1 — the claims validator grounds numbers but
+        # does not strip narration prose, so this text-stop branch could still
+        # leak "let me pull the peer data" etc.; run it through sanitize_prose.
+        headline = LT.sanitize_prose(report.prose)
         return AgentResponse(
             result=result,
             chart_intent=chart_intent,
             chart=chart,
-            headline=report.prose,
+            headline=headline,
             claims=claims,
             caveats=caveats,
             sql=[
@@ -842,9 +859,11 @@ class Specialist:
             headline = evidence[0]
             evidence = evidence[1:]
         if not headline.strip():
-            # Nothing survived validation — single canonical fallback
-            # (Fix 9e); never fragment-join. Shape info lives in caveats.
-            headline = LT.business_fallback()
+            # Nothing survived validation. Non-answer-with-data check: if both
+            # frames actually returned rows, do NOT emit the generic punt —
+            # state a specific honest reason naming what was fetched.
+            specific = LR.nonanswer_reason(self._tenant_frame, self._lake_frame)
+            headline = specific if specific else LT.business_fallback()
             evidence = []
             so_what = None
 
@@ -855,6 +874,17 @@ class Specialist:
                 "skipped query_tenant / query_lake_sql. Result frame "
                 "is empty.)"
             )
+
+        # Post-validation label-review layer (§ label checks): repair the labels
+        # around the already-grounded numbers — direction words, share format,
+        # display rounding, leaked register — and lint day-of-week SQL. It never
+        # re-queries and never introduces a new number.
+        headline, evidence, so_what, corrections = LR.review_prose(
+            headline, evidence, so_what, claims,
+        )
+        effective_caveats.extend(
+            LR.dayofweek_lint(self._sql_log, self.context.viewing_merchant_id)
+        )
 
         return AgentResponse(
             result=result,
@@ -892,6 +922,7 @@ class Specialist:
                 }
                 for d in report.claim_dispositions
             ],
+            corrections=corrections,
         )
 
     def _minimal_response(
@@ -910,6 +941,17 @@ class Specialist:
                   if self._lake_frame is not None
                   else pd.DataFrame())
         )
+        # Phase 1.1 — this is a leak sink for the non-emit text-stop exit: the
+        # `prose` here can be raw model text. Route it through the same narration
+        # sanitizer the emit path uses, so scratchpad → canonical fallback, never
+        # the user's screen.
+        prose = LT.sanitize_prose(prose)
+        # Non-answer-with-data: if this is the generic fallback but both frames
+        # actually returned rows, state a specific reason instead of the punt.
+        if prose == LT.business_fallback():
+            specific = LR.nonanswer_reason(self._tenant_frame, self._lake_frame)
+            if specific:
+                prose = specific
         return AgentResponse(
             result=result,
             chart_intent={},

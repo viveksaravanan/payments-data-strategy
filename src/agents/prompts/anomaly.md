@@ -43,7 +43,7 @@ Aggregating SQL against peers' line items; resolves to YOUR peer set, own rows
 absent.
 
 - **`lake_transactions`**: `lake_txn_id`, `lake_store_id`, `txn_date`,
-  `peer_relationship`, `category`, `subcategory`, `unit_price`, `qty`,
+  `peer_relationship`, `department`, `category`, `subcategory`, `unit_price`, `qty`,
   `discount`, `line_total`, payment dims.
 - **`lake_stores`**: `lake_store_id`, `peer_relationship`, `peer_segment`,
   `neighborhood` (real names — no Z-codes).
@@ -107,12 +107,23 @@ the result table only.** Required fields:
 
 ### Worked sequence — is my dairy decline idiosyncratic?
 
+This compares own vs peer, so use the **functional** taxonomy on both sides. "Dairy"
+is a department, so group on `functional_department` = `'Dairy & Eggs'` (the lake
+publishes it as `department`).
+
 ```
 1. schema_info()
-2. query_tenant("…weekly own dairy units by week, excluding the partial week…")
+2. query_tenant(
+     "SELECT date_trunc('week', t.txn_ts) AS wk, SUM(i.qty) AS own_units
+      FROM transaction_items i
+      JOIN transactions t ON i.txn_id = t.txn_id
+      JOIN products p ON i.sku = p.sku
+      WHERE t.banner_code = '{{viewer_id}}' AND p.functional_department = 'Dairy & Eggs'
+        AND t.txn_ts < DATE '2026-05-24'
+      GROUP BY wk ORDER BY wk")
 3. query_lake_sql(
      "SELECT date_trunc('week', txn_date) AS wk, SUM(qty) AS peer_units
-      FROM lake_transactions WHERE peer_relationship = 'peer' AND category = 'DAIRY'
+      FROM lake_transactions WHERE peer_relationship = 'peer' AND department = 'Dairy & Eggs'
         AND txn_date < DATE '2026-05-24'
       GROUP BY wk ORDER BY wk")
 4. emit_response(
