@@ -61,11 +61,14 @@ def test_specialist_tools_list_does_not_offer_make_chart() -> None:
 
 def test_chart_patterns_palette_preserved() -> None:
     """SPEC §5 KEEP: `chart_patterns.py` survives as the renderer
-    palette. The nine pattern functions are intact."""
+    palette. The live pattern functions are intact. (The dead two-peer
+    `render_time_series_vs_peers` / `render_cross_merchant_comparison`
+    helpers were removed in datamodel-v2 — the line-item lake publishes a
+    single aggregate peer, so nothing fed their `peer_a`/`peer_b` keys.)"""
     from src.dashboard import chart_patterns as CP
     # Sample the most-used patterns; the file is the source of truth.
-    assert hasattr(CP, "render_time_series_vs_peers")
-    assert hasattr(CP, "render_cross_merchant_comparison")
+    assert hasattr(CP, "render_time_series_own_multi")
+    assert hasattr(CP, "render_horizontal_bars_own")
     assert hasattr(CP, "render_heatmap")
     assert hasattr(CP, "render_scatter_with_peers")
     assert hasattr(CP, "render_waterfall")

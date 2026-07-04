@@ -166,8 +166,10 @@ with header_col1:
         unsafe_allow_html=True,
     )
 with header_col2:
-    merchant_ids = ["KRG", "ACM", "WDX", "TBL", "BKG", "CFA"]
-    merchant_labels = [D.MERCHANT_NAME[m] for m in merchant_ids]
+    # Derive the selector order from the canonical registry (grocery
+    # then QSR, per MERCHANT_NAME insertion order) so the panel is
+    # defined in exactly one place — data.MERCHANT_NAME.
+    merchant_ids = list(D.MERCHANT_NAME)
     # Push "Acting as" down so the label clears Streamlit's top toolbar
     # and sits roughly in line with the "Merchant dashboard" heading
     # on the left. block-container padding-top alone (1.6 rem) doesn't
@@ -236,10 +238,11 @@ styling.apply_chat_state_class(state.chat_state)
 chart_patterns.reset_plot_keys()
 
 views.render_kpi_strip(mid, filters)
-views.render_performance_section(mid, filters)
-views.render_geography_section(mid, filters)
-views.render_catalog_section(mid, filters)
-views.render_customers_section(mid, filters)
+views.render_sku_performance(mid, filters)
+views.render_department_mix(mid, filters)
+views.render_payment_mix(mid, filters)
+views.render_store_performance(mid, filters)
+views.render_hour_dow_traffic(mid, filters)
 
 # Backdrop renders in both side and expanded modes — a light gray scrim
 # covering the dashboard to the left of the panel. It's a real (keyed)

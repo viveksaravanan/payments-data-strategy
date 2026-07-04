@@ -19,6 +19,8 @@ _CSS = """
     --text-2:       #4A5161;
     --text-muted:   #7B8294;
     --anomaly:      #C44536;
+    /* Per-merchant brand colors — canonical source is
+       data.MERCHANT_COLOR (CSS can't read Python; keep in sync). */
     --c-krg:        #0F4C81;
     --c-acm:        #3A6FA5;
     --c-wdx:        #6F8FB8;

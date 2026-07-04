@@ -37,9 +37,9 @@ DuckDB has **strict GROUP BY** (every selected non-aggregate must be grouped).
 **Week-key bucketing — use `strftime`, not a bare VARCHAR cast.**
 `date_trunc('week', txn_ts)` on a **TIMESTAMP** column returns a **TIMESTAMP**, so
 `CAST(date_trunc('week', txn_ts) AS VARCHAR)` yields `'2026-05-18 00:00:00'` — the
-` 00:00:00` suffix means it never matches the Monday-keyed string constants
-(`_RECENT_WEEK`, `_A_RECENT_WEEK_START`, the 12-week default list), silently zeroing
-every "recent week" lookup (blank KPIs, all-stores −100% deltas). Bin weeks with
+` 00:00:00` suffix means it never matches the Monday-keyed string keys
+(the KPI 12-week default list, the weeks from `_recent_baseline_weeks`), silently
+zeroing every "recent week" lookup (blank KPIs, all-stores −100% deltas). Bin weeks with
 `strftime(date_trunc('week', X), '%Y-%m-%d')`, which returns a date-only
 `'YYYY-MM-DD'` for both TIMESTAMP and DATE inputs (and so keeps own `txn_ts` keys
 aligned with peer-lake `txn_date` keys).
@@ -80,8 +80,10 @@ no home address. The v3 "under-served neighborhood" sub-insight is dropped.
 - `chat.py::_render_structured_answer()` renders headline (bold) + evidence
   (bullets) + so-what (italic), falling back to the joined `prose` for error /
   legacy responses, then the result table. No chart slot.
-- Pills come from `questions.py` keyed by segment; TBL/TJX pricing pills are
-  already own-framed, so no per-viewer pill hiding is needed.
+- Pills come from `questions.py` keyed by segment (GROCER / QSR). Since every
+  datamodel-v2 banner has same-segment peers, the QSR pricing / demand / anomaly
+  sets now lead with a peer-comparison pill (parity with the grocer set), so no
+  per-viewer pill hiding is needed.
 
 ## chart_patterns.py
 

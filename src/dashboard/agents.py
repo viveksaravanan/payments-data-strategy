@@ -39,7 +39,7 @@ AGENT_LABELS = {
 }
 
 # Generic descriptions per docs/archive/V3_DASHBOARD_DESIGN.md Section 4 — written
-# to be true for any viewer (grocer, QSR, retail).
+# to be true for any viewer (grocer or QSR).
 AGENT_DESCRIPTIONS = {
     "pricing": "Benchmarks your pricing across categories and SKUs, surfaces where you're aligned or out of position.",
     "anomaly": "Detects unusual patterns in your stores, categories, and traffic — flags what changed and helps you investigate.",

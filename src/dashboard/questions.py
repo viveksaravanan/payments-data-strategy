@@ -68,7 +68,7 @@ QUESTIONS: dict[str, dict[str, list[dict]]] = {
             },
             {
                 "id":      "T2",
-                "text":    "Where do my customers live relative to my stores?",
+                "text":    "Which neighborhoods do my customers shop from most?",
                 "pattern": "pattern_6_map",
             },
             {
@@ -79,26 +79,30 @@ QUESTIONS: dict[str, dict[str, list[dict]]] = {
         ],
     },
 
-    "QSR": {  # TBL
+    "QSR": {  # TBL / BKG / CFA — shared, chain-generic QSR pill set.
+              # datamodel-v2: each QSR banner now has 2 same-segment
+              # peers, so pricing / demand / anomaly lead with a peer
+              # comparison (parity with the grocer set); the old
+              # own-only framing dated to when TBL was the lone QSR.
         "pricing": [
+            {"id": "T-P4", "text": "How do my menu prices compare to peer QSR chains across categories?",             "pattern": "pattern_3_heatmap"},
             {"id": "T-P1", "text": "How is my average ticket trending across dayparts?",                                "pattern": "pattern_1_time_series"},
             {"id": "T-P2", "text": "Which menu categories have shifted in price over the last 90 days?",               "pattern": "pattern_1_time_series"},
-            {"id": "T-P3", "text": "What's my price distribution across stores? Are any outliers?",                    "pattern": "pattern_2_comparison"},
         ],
         "anomaly": [
+            {"id": "T-A4", "text": "Which of my stores or dayparts are dropping — are peers seeing the same decline?", "pattern": "pattern_1_time_series"},
             {"id": "T-A1", "text": "Which of my stores has unusual traffic this week?",                                "pattern": "pattern_9_table"},
             {"id": "T-A2", "text": "Are any menu items spiking or dropping unusually?",                                "pattern": "pattern_9_table"},
-            {"id": "T-A3", "text": "Which dayparts are running below my own baseline?",                                "pattern": "pattern_3_heatmap"},
         ],
         "demand": [
-            {"id": "T-D1", "text": "What does my menu mix look like? Where am I most concentrated?",                   "pattern": "pattern_2_comparison"},
+            {"id": "T-D4", "text": "How does my menu mix compare to peer chains — where am I over- or under-indexed?", "pattern": "pattern_2_comparison"},
             {"id": "T-D2", "text": "Which categories are gaining or losing share over time?",                          "pattern": "pattern_1_time_series"},
             {"id": "T-D3", "text": "What's driving my revenue change this week — traffic, ticket, or mix?",            "pattern": "pattern_5_waterfall"},
         ],
         "trade": [
-            # TBL reuses T1/T2/T4 from the grocer set verbatim.
+            # Shared with the grocer set — map-based, segment-agnostic.
             {"id": "T1", "text": "Which of my neighborhoods are over- or under-performing?",                           "pattern": "pattern_6_map"},
-            {"id": "T2", "text": "Where do my customers live relative to my stores?",                                  "pattern": "pattern_6_map"},
+            {"id": "T2", "text": "Which neighborhoods do my customers shop from most?",                                 "pattern": "pattern_6_map"},
             {"id": "T4", "text": "Which neighborhoods show the biggest expansion opportunity?",                        "pattern": "pattern_6_map"},
         ],
     },
