@@ -98,9 +98,14 @@ QUESTIONS: dict[str, dict[str, list[dict]]] = {
               # comparison (parity with the grocer set); the old
               # own-only framing dated to when TBL was the lone QSR.
         "pricing": [
-            {"id": "T-P4", "text": "How do my menu prices compare to peer QSR chains across categories?",             "pattern": "pattern_3_heatmap"},
-            {"id": "T-P1", "text": "How is my average ticket trending across dayparts?",                                "pattern": "pattern_1_time_series"},
-            {"id": "T-P2", "text": "Which menu categories have shifted in price over the last 90 days?",               "pattern": "pattern_1_time_series"},
+            # Mirrors the grocer flagship set (P1/P2/P3): the same pricing agent
+            # + sortable own-vs-peer gap query + product drill, QSR-worded.
+            # QP3 is re-aimed for QSR — it drops the grocery known-value-item
+            # concept (a no-op here) for the segment-neutral "worth acting on"
+            # question driven by per-store volume. See docs/AGENT_QUALITY_STANDARD.md.
+            {"id": "QP1", "text": "Which menu subcategory am I priced furthest below peer chains on — and which items drive it?",              "pattern": "pattern_2_comparison"},
+            {"id": "QP2", "text": "Which menu subcategory am I priced furthest above peer chains on — and which items drive it?",              "pattern": "pattern_2_comparison"},
+            {"id": "QP3", "text": "Where is a price gap actually worth acting on — cheaper but not winning the extra traffic, or a premium that's costing me volume?", "pattern": "pattern_2_comparison"},
         ],
         "anomaly": [
             {"id": "T-A4", "text": "Which of my stores or dayparts are dropping — are peers seeing the same decline?", "pattern": "pattern_1_time_series"},
