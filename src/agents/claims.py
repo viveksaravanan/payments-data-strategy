@@ -1087,13 +1087,29 @@ def _format_normalized(
     # true value (up to a sensible cap).
     significant = _decimal_places_for(true_value, cap=4)
     if has_pct:
-        rendered = f"{true_value:.{max(significant, 1)}f}%"
+        # A ``%`` span in this system always traces to a FRACTION — a
+        # ``ratio``, a ``pct_change``, or a share — never a stored
+        # percentage-point cell (raw cells are prices, unit counts, or
+        # transaction counts). The faithful display is therefore the
+        # fraction × 100: without this, a true_value of -0.268 rendered as
+        # "-0.268%" instead of "-26.8%", silently mangling every derived
+        # percentage the model normalized.
+        pct_val = true_value * 100.0
+        pct_places = _decimal_places_for(pct_val, cap=1)
+        rendered = f"{pct_val:.{pct_places}f}%"
     elif has_dollar:
         rendered = f"${true_value:,.{max(significant, 2)}f}"
     elif has_x:
         rendered = f"{true_value:.{max(significant, 1)}f}x"
     elif has_bps:
         rendered = f"{int(round(true_value))}bps"
+    elif abs(true_value) >= 100:
+        # A plain number this large is a count/volume (units, transactions,
+        # per-store figures) — never a price or ratio (those carry $/x/% or
+        # sit below 100). Render it as a clean integer with thousands
+        # separators ("27,442"), not a spurious-precision float
+        # ("27442.3333") the model happened to compute from a ratio.
+        rendered = f"{true_value:,.0f}"
     else:
         rendered = f"{true_value:.{max(significant, 2)}f}"
     return text_span[:num_start] + rendered + text_span[num_end:]

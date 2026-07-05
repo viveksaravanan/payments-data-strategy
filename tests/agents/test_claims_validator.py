@@ -446,6 +446,59 @@ def test_custom_tolerance_passed(merged_dairy) -> None:
     assert rep.claim_dispositions[0].status == "normalized"
 
 
+def test_pct_change_normalizes_to_scaled_percent() -> None:
+    """A ``%`` span backed by a pct_change resolves to a FRACTION
+    (-0.268). When the model's rounded value normalizes, the display must
+    scale the fraction ×100 — "27%" → "26.8%", never the raw "0.268%".
+    Regression for the _format_normalized percent-units bug."""
+    frame = pd.DataFrame([{"merchant": "KRG", "own": 11.257, "peer": 15.386}])
+    claim = Claim(
+        text_span="27% below peers", value=-0.27,
+        source=Derivation(op="pct_change", operands=[
+            CellLookup({"merchant": "KRG"}, "own"),
+            CellLookup({"merchant": "KRG"}, "peer"),
+        ]),
+    )
+    rep = validate_claims("Steak is 27% below peers.", [claim], frame,
+                          frames={"tenant": frame})
+    assert rep.claim_dispositions[0].status == "normalized"
+    # Resolved fraction is -0.268 → must render "-26.8%", never "-0.268%".
+    assert "26.8%" in rep.prose
+    assert "0.268%" not in rep.prose
+
+
+def test_ratio_share_normalizes_to_scaled_percent() -> None:
+    """A share written as a ``%`` traces to a fraction (ratio) cell;
+    normalized display scales ×100 (0.465 → "46.5%", not "0.5%")."""
+    frame = pd.DataFrame([{"merchant": "KRG", "steak": 46.5, "total": 100.0}])
+    claim = Claim(
+        text_span="46% of units", value=0.463,
+        source=Derivation(op="ratio", operands=[
+            CellLookup({"merchant": "KRG"}, "steak"),
+            CellLookup({"merchant": "KRG"}, "total"),
+        ]),
+    )
+    rep = validate_claims("Steak is 46% of units.", [claim], frame,
+                          frames={"tenant": frame})
+    assert rep.claim_dispositions[0].status == "normalized"
+    assert "46.5%" in rep.prose
+
+
+def test_large_count_renders_as_clean_integer() -> None:
+    """A plain per-store/volume figure (>=100) must render as a clean
+    comma-integer ("27,442"), never a spurious-precision float
+    ("27442.3333") a model computed from a units/stores ratio. Regression
+    for the per-store-volume decimal artifact; contrast: prices/ratios
+    (<100) keep decimals."""
+    from src.agents.claims import _format_normalized
+    # Large count → comma integer, no decimals.
+    out = _format_normalized("27442.3333 units per store", 27000.0, 27442.3333)
+    assert "27,442" in out and "27442.3333" not in out and ".33" not in out
+    # A small ratio/price keeps its decimals (magnitude < 100).
+    assert _format_normalized("$4.1", 4.1, 4.08) == "$4.08"
+    assert "6.8" in _format_normalized("6.8x", 6.8, 6.81)
+
+
 # ---------------------------------------------------------------------
 # Wave 3.5 — validate_structured_response (per-field validation)
 # ---------------------------------------------------------------------
