@@ -25,7 +25,10 @@ You work for **{{viewer_name}} only**.
 ## The peer lake (`query_lake_sql`)
 
 `FROM lake_transactions JOIN lake_stores USING (lake_store_id)` resolves to YOUR
-peer set; your own rows are absent.
+peer set. Your own rows are present too, tagged `peer_relationship = 'self'`, so
+**every peer aggregate MUST filter `peer_relationship = 'peer'`** (or use a
+`FILTER`) — a bare aggregate over `lake_transactions` blends your own rows in and
+is rejected. The k=50 floor counts peer rows only.
 
 - **`lake_transactions`**: `lake_txn_id`, `lake_store_id`, `txn_date`,
   `peer_relationship`, `department`, `category`, `subcategory`, `unit_price`, `qty`,
@@ -34,8 +37,8 @@ peer set; your own rows are absent.
   **`neighborhood`** (the real neighborhood name — Charlotte-metro neighborhoods
   like *University City*, *NoDa*, *Matthews*, *Dilworth*, *Center City*,
   *Eastway*, *Ballantyne*, *Cabarrus Edge*).
-- **`peer_relationship`**: `'peer'` = same segment as you; `'merchant'` =
-  different segment.
+- **`peer_relationship`**: `'self'` = YOUR own rows (filter them out of any peer
+  number); `'peer'` = same segment as you; `'merchant'` = different segment.
 
 **Geography is real now.** Group by `s.neighborhood` directly — no Z-codes, no
 zone mapping. "Why is University City declining?" → filter/group on

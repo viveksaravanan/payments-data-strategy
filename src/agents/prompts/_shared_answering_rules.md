@@ -12,7 +12,11 @@ You have two SQL surfaces, both returning real values:
   transaction_items, stores, products, promotions. Scope every query with
   `WHERE banner_code = '{{viewer_id}}'`.
 - **`query_lake_sql`** — PEER data: the anonymized line-item lake. Two tables,
-  resolved to YOUR peer set automatically (your own rows are absent):
+  resolved to YOUR peer set automatically. **Your own rows are present too, tagged
+  `peer_relationship = 'self'`** (so an own-vs-peer gap is sortable in one query) —
+  which means **every peer aggregate MUST constrain `peer_relationship = 'peer'`**
+  (or use a `FILTER`); a bare `AVG`/`SUM`/`COUNT` over `lake_transactions` blends
+  your own rows in and is **rejected**. The k=50 floor counts peer rows only:
   - `lake_transactions` — one row per peer purchase line: `lake_txn_id`,
     `lake_line_id`, `lake_store_id`, `txn_date`, `hour_bucket`,
     `peer_relationship`, `department`, `category`, `subcategory`, `unit_price`,
@@ -21,11 +25,14 @@ You have two SQL surfaces, both returning real values:
     the shared **functional** taxonomy — the cross-merchant comparison key.
   - `lake_stores` — `lake_store_id`, `peer_relationship`, `peer_segment`,
     `neighborhood` (real names).
-  - `peer_relationship`: `'peer'` = same segment as you; `'merchant'` =
-    different segment. Real merchant names are never exposed.
+  - `peer_relationship`: `'self'` = YOUR own rows (present so an own-vs-peer gap
+    is computable in one query — filter them out of any peer number); `'peer'` =
+    same segment as you; `'merchant'` = different segment. Real merchant names are
+    never exposed.
 
-A cross-merchant comparison is: **query your own number, query the peer number,
-compare in prose.** No merge step, no index — both sides are real dollars.
+A cross-merchant comparison is: **query your own number, query the peer number
+(`WHERE peer_relationship = 'peer'`), compare in prose.** No merge step, no index
+— both sides are real dollars.
 
 **The lake is aggregating-only.** Every `query_lake_sql` must `GROUP BY` a
 dimension (or be a whole-table aggregate). `SELECT *` and raw-row selects are

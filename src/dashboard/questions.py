@@ -10,20 +10,33 @@ from __future__ import annotations
 QUESTIONS: dict[str, dict[str, list[dict]]] = {
     "GROCER": {
         "pricing": [
+            # The two flagship both-directions questions. Each resolves
+            # deterministically off the sortable own-vs-peer gap query (own
+            # from `self` rows, peer from `'peer'` rows, ORDER BY gap with a
+            # total tiebreak) → the furthest-gap subcategory is a row the
+            # agent reads off, then drills to named own products. Same answer
+            # every run (temp 0 + total order). See docs/AGENT_QUALITY_STANDARD.md.
             {
                 "id":      "P1",
-                "text":    "How do my prices compare to peer grocers across categories?",
-                "pattern": "pattern_3_heatmap",
-            },
-            {
-                "id":      "P2",
-                "text":    "How does my pricing position compare across my staple vs non-food categories?",
+                "text":    "Which subcategory am I priced furthest below peer grocers on — and which of my products drive it?",
                 "pattern": "pattern_2_comparison",
             },
             {
+                "id":      "P2",
+                "text":    "Which subcategory am I priced furthest above peer grocers on — and which of my products drive it?",
+                "pattern": "pattern_2_comparison",
+            },
+            {
+                # P3 is the decision layer that P1/P2 (descriptive, both
+                # directions) set up: it forces the full gate stack — rank the
+                # below-peer gaps, screen out known-value items, confirm it's
+                # price not mix, check per-store volume, size the prize — and
+                # hand back the shortlist worth acting on. This is the agent's
+                # differentiator (earning the recommendation), not another
+                # furthest-gap readout.
                 "id":      "P3",
-                "text":    "Which categories show the biggest pricing-leverage opportunity?",
-                "pattern": "pattern_4_scatter",
+                "text":    "Where's my best opportunity to raise price without losing traffic — a real gap that isn't a known-value staple?",
+                "pattern": "pattern_2_comparison",
             },
         ],
         "anomaly": [

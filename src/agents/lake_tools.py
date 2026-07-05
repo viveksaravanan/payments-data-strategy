@@ -211,7 +211,7 @@ def schema_info() -> dict[str, Any]:
         "Always call schema_info first; it tells you the real column names so you don't burn turns guessing.",
         "transaction_items has NO banner_code — scope it by joining to transactions and filtering transactions.banner_code = '<viewer>'.",
         "Join transaction_items → products on sku to resolve taxonomy + product_name (the line carries only sku). TAXONOMY RULE: for answers about your OWN data, group by products.merchant_category/subcategory (your real shelf labels); for any comparison to PEERS, group by products.functional_category/subcategory/department so it aligns with the lake. There is no cross-merchant product id.",
-        "Peer data: query lake_transactions / lake_stores with aggregating SQL via query_lake_sql. It resolves to YOUR peer set; your own rows are absent. peer_relationship = 'peer' (same segment) | 'merchant' (different segment).",
+        "Peer data: query lake_transactions / lake_stores with aggregating SQL via query_lake_sql. peer_relationship = 'peer' (same segment) | 'merchant' (different segment) | 'self' (YOUR OWN rows — present so you can compute an own-vs-peer gap in ONE sortable query). IMPORTANT: any peer average/count MUST constrain peer_relationship (WHERE peer_relationship = 'peer', or AVG(...) FILTER (WHERE peer_relationship = 'peer')) so your 'self' rows don't contaminate the peer number — an unfiltered aggregate over lake_transactions is REJECTED. The k=50 floor counts peer rows only.",
         "neighborhood lives on lake_stores, not lake_transactions — JOIN lake_stores USING (lake_store_id) to group by neighborhood.",
         "k=50 floor: groups backed by fewer than 50 lines are dropped and counted in `suppressed`. For transaction-level shares use COUNT(DISTINCT lake_txn_id); the line-count floor is the suppression gate only.",
         "DuckDB day-of-week: dayofweek() returns Sunday=0, Monday=1, ... Saturday=6 (NOT Sunday=1). Filter Sundays with dayofweek(txn_ts)=0 (own) / dayofweek(txn_date)=0 (lake). A wrong constant silently returns a different day.",
@@ -418,9 +418,15 @@ QUERY_LAKE_SQL_TOOL = {
         "`query_tenant` but for peers: write `FROM lake_transactions` "
         "(one row per peer purchase line) and/or `JOIN lake_stores "
         "USING (lake_store_id)` — they resolve to your peer set "
-        "automatically; your own rows are absent by construction. "
-        "Identity is reduced to `peer_relationship` ('peer' = same "
-        "segment as you, 'merchant' = different segment) — never a name. "
+        "automatically. Your OWN rows are present too, tagged "
+        "`peer_relationship = 'self'`, so an own-vs-peer gap is sortable in "
+        "ONE query — but every peer aggregate MUST constrain "
+        "`peer_relationship = 'peer'` (or use a FILTER); a bare "
+        "AVG/SUM/COUNT over lake_transactions blends your own rows in and is "
+        "REJECTED. The k=50 floor counts peer rows only. "
+        "Identity is reduced to `peer_relationship` ('self' = your own rows, "
+        "'peer' = same segment as you, 'merchant' = different segment) — "
+        "never a name. "
         "MUST be aggregating: GROUP BY a dimension and select aggregate "
         "metrics (AVG(unit_price), SUM(line_total), COUNT(DISTINCT "
         "lake_txn_id) for transaction counts). Raw-row selects "

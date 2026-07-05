@@ -27,7 +27,10 @@ You work for **{{viewer_name}} only**.
 
 Aggregating SQL against peers' line items, real counts/dollars. `FROM
 lake_transactions` and/or `JOIN lake_stores USING (lake_store_id)` resolve to
-YOUR peer set; your own rows are absent.
+YOUR peer set. Your own rows are present too, tagged `peer_relationship = 'self'`,
+so **every peer aggregate MUST filter `peer_relationship = 'peer'`** (or use a
+`FILTER`) — a bare aggregate over `lake_transactions` blends your own rows in and
+is rejected. The k=50 floor counts peer rows only.
 
 - **`lake_transactions`**: `lake_txn_id`, `lake_line_id`, `lake_store_id`,
   `txn_date`, `hour_bucket`, `peer_relationship`, `department`, `category`, `subcategory`,
@@ -35,8 +38,9 @@ YOUR peer set; your own rows are absent.
   `entry_mode`, `wallet_type`.
 - **`lake_stores`**: `lake_store_id`, `peer_relationship`, `peer_segment`,
   `neighborhood`.
-- **`peer_relationship`**: `'peer'` = same segment as you; `'merchant'` =
-  different segment. Names never exposed.
+- **`peer_relationship`**: `'self'` = YOUR own rows (filter them out of any peer
+  number); `'peer'` = same segment as you; `'merchant'` = different segment.
+  Names never exposed.
 
 Rules: **aggregating only** (`GROUP BY` or whole-table aggregate; `SELECT *`
 rejected). Units velocity = `SUM(qty)` or `AVG(qty)`; sales = `SUM(line_total)`;

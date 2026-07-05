@@ -181,3 +181,157 @@ def test_pricing_prompt_declares_no_peer_sku() -> None:
     Exclude so the model knows to decline."""
     prompt = PricingSpecialist.PROMPT_PATH.read_text().lower()
     assert "no peer sku" in prompt or "peer sku detail" in prompt
+
+
+# ---------------------------------------------------------------------
+# Reasoning gates — the rendered prompt must carry them (prompt-contract)
+# ---------------------------------------------------------------------
+
+def test_pricing_prompt_carries_both_gates_and_query_shape(viewer_krg) -> None:
+    """The pricing contract is prompt-borne: the rendered system prompt
+    must carry Gate A (mix), Gate B (KVI/direction), the both-directions
+    requirement, and the sortable own-vs-peer gap query shape (the self-tag
+    architecture). Guards against a silent prompt regression."""
+    prompt = PricingSpecialist(viewer_krg)._system_prompt
+    low = prompt.lower()
+    # Gate A — mix control via subcategory grain.
+    assert "gate a" in low and "mix" in low and "assortment" in low
+    # Gate B — KVI / traffic-driver.
+    assert "gate b" in low
+    assert "known-value" in low or "kvi" in low
+    assert "traffic" in low          # traffic-driver framing
+    # Both directions — ASC for a below question, DESC for an above one.
+    assert "order by gap asc" in low
+    assert "desc" in low
+    assert "furthest below" in low and "above" in low
+    # The sortable gap query: own via FILTER self, peer via FILTER peer, in
+    # ONE lake query — ranked, not eyeballed across two frames.
+    assert "filter (where peer_relationship = 'self')" in low
+    assert "filter (where peer_relationship = 'peer')" in low
+    assert "functional_subcategory" in low
+    # emit is terminal, never a placeholder checkpoint.
+    assert "placeholder" in low and "last action" in low
+    # Elasticity honesty on sizing.
+    assert "elasticity" in low
+
+
+def test_pricing_prompt_injects_full_kvi_list(viewer_krg) -> None:
+    """Every KVI subcategory from the single-source constant must appear
+    verbatim in the rendered prompt — so the prompt and the (future)
+    server-side classifier can never drift."""
+    from src.agents import constants
+    prompt = PricingSpecialist(viewer_krg)._system_prompt
+    assert constants.KVI_SUBCATEGORIES_PROMPT in prompt
+    for sub in constants.KVI_SUBCATEGORIES:
+        assert sub in prompt, f"KVI subcategory {sub!r} missing from prompt"
+
+
+# ---------------------------------------------------------------------
+# Query shape — CASE-split + list row_filter grounds end-to-end
+# ---------------------------------------------------------------------
+
+def _built() -> bool:
+    from src.lake.lake_sql import DATA_LAKE_ITEMS
+    return (DATA_LAKE_ITEMS / "KRG" / "lake_transactions.parquet").exists()
+
+
+needs_lake = pytest.mark.skipif(
+    not _built(), reason="line-item lake not built (run `make lake-items`)"
+)
+
+
+@needs_lake
+def test_pricing_subcategory_query_grounds_both_directions(
+    viewer_krg, monkeypatch,
+) -> None:
+    """The taught query shape must actually execute and ground: one
+    subcategory-grain query per side (category + subcategory), a KVI-aware
+    emit that features BOTH directions (steak below, bananas at parity), a
+    steak-share claim that totals beef via a category-only row_filter, and
+    a pct_change gap that renders as a scaled percent (…% in the tens,
+    never a sub-1% artifact from the pre-fix normalizer bug)."""
+    import re
+
+    own_sql = (
+        "SELECT p.functional_category AS category, p.functional_subcategory AS subcategory, "
+        "AVG(i.unit_price) AS own_asp, SUM(i.qty) AS own_units "
+        "FROM transaction_items i JOIN transactions t ON i.txn_id = t.txn_id "
+        "JOIN products p ON i.sku = p.sku WHERE t.banner_code = 'KRG' "
+        "GROUP BY 1, 2 ORDER BY own_units DESC"
+    )
+    peer_sql = (
+        "SELECT category, subcategory, AVG(unit_price) AS peer_asp, SUM(qty) AS peer_units "
+        "FROM lake_transactions WHERE peer_relationship = 'peer' "
+        "GROUP BY category, subcategory ORDER BY peer_units DESC"
+    )
+    B = {"category": "Beef", "subcategory": "Beef Steaks"}
+    G = {"category": "Beef", "subcategory": "Ground Beef"}
+    N = {"category": "Fresh Fruit", "subcategory": "Bananas & Everyday Fruit"}
+    emit = scripted_emit_response(
+        headline="Your beef gap versus peers is real and sits in steak, not a mix artifact.",
+        evidence=[
+            "Your beef steaks run 11.26 per unit versus the peer average of 15.39 — about 27% below peers.",
+            "Ground beef is near parity at 5.45 versus 5.78, so the gap is a steak story.",
+            "You are under-indexed on steak: 46% of your beef units are steak.",
+            "On known-value items you're right at peers — bananas are 2.46 versus 2.44.",
+        ],
+        so_what=(
+            "Beef steaks are worth testing a modest increase while watching units; "
+            "leave ground beef and bananas, known-value items you keep matched to peers."
+        ),
+        claims=[
+            {"text_span": "11.26 per unit", "value": 11.257,
+             "source": {"type": "CellLookup", "row_filter": B,
+                        "column": "own_asp", "agg": "mean", "frame": "tenant"}},
+            {"text_span": "peer average of 15.39", "value": 15.386,
+             "source": {"type": "CellLookup", "row_filter": B,
+                        "column": "peer_asp", "agg": "mean", "frame": "lake"}},
+            {"text_span": "about 27% below peers", "value": -0.268,
+             "source": {"type": "Derivation", "op": "pct_change", "operands": [
+                 {"type": "CellLookup", "row_filter": B,
+                  "column": "own_asp", "agg": "mean", "frame": "tenant"},
+                 {"type": "CellLookup", "row_filter": B,
+                  "column": "peer_asp", "agg": "mean", "frame": "lake"}]}},
+            {"text_span": "5.45 versus 5.78", "value": 5.454,
+             "source": {"type": "CellLookup", "row_filter": G,
+                        "column": "own_asp", "agg": "mean", "frame": "tenant"}},
+            {"text_span": "46% of your beef units are steak", "value": 0.465,
+             "source": {"type": "Derivation", "op": "ratio", "operands": [
+                 {"type": "CellLookup", "row_filter": B,
+                  "column": "own_units", "agg": "sum", "frame": "tenant"},
+                 {"type": "CellLookup", "row_filter": {"category": "Beef"},
+                  "column": "own_units", "agg": "sum", "frame": "tenant"}]}},
+            {"text_span": "bananas are 2.46 versus 2.44", "value": 2.456,
+             "source": {"type": "CellLookup", "row_filter": N,
+                        "column": "own_asp", "agg": "mean", "frame": "tenant"}},
+        ],
+        caveats=[
+            "Category ASP blends assortment; comparing at subcategory isolates price from mix.",
+            "Realized gain depends on price elasticity, which this data doesn't measure.",
+        ],
+    )
+
+    script = [
+        scripted_tool_use("query_tenant", {"sql": own_sql}),
+        scripted_tool_use("query_lake_sql", {"sql": peer_sql}),
+        emit,
+    ]
+    specialist = PricingSpecialist(viewer_krg)
+    with patch_llm(monkeypatch, script):
+        resp = specialist.answer("Where should I reprice versus peers?")
+
+    assert isinstance(resp, AgentResponse)
+    prose = resp.prose
+    # Both directions survived grounding: a beef (below) number and the
+    # bananas (at-parity, above) number both reach the prose.
+    assert re.search(r"11\.2\d", prose), "steak own price missing"
+    assert re.search(r"2\.4\d", prose), "bananas own price missing (other-direction KVI dropped)"
+    # The pct_change gap renders as a scaled percent in the tens — the
+    # _format_normalized fix. Never a sub-1% artifact.
+    assert re.search(r"\b2\d(\.\d+)?%", prose), f"expected a scaled ~20s% gap, got: {prose!r}"
+    assert not re.search(r"\b0\.\d+%", prose), f"sub-1% normalizer artifact leaked: {prose!r}"
+    # so_what carried the KVI-aware action.
+    assert resp.so_what and "ground beef" in resp.so_what.lower()
+    # Two-query flow, no chart.
+    assert {s.surface for s in resp.sql} == {"tenant", "lake_sql"}
+    assert resp.chart is None

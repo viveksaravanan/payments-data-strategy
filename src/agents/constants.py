@@ -28,3 +28,38 @@ ANALYSIS_END = date(2026, 5, 25)  # exclusive — excludes the partial final wee
 # ISO strings for splicing into SQL (`DATE '2026-03-01'`).
 ANALYSIS_START_ISO = ANALYSIS_START.isoformat()
 ANALYSIS_END_ISO = ANALYSIS_END.isoformat()
+
+
+# ---------------------------------------------------------------------------
+# Known-Value Items (KVI) — pricing gate B
+# ---------------------------------------------------------------------------
+# Price-visible, traffic-driver subcategories that shoppers comparison-shop
+# across banners (milk, eggs, bread, bananas, coffee, ground beef). A
+# below-peer price on a KVI is usually a *deliberate* loss-leader to pull the
+# trip — so the pricing agent must NOT read "cheaper than peers here" as
+# "raise" without flagging that it is a traffic driver. The grain is
+# ``functional_subcategory`` (the lake's like-for-like grain), so the list is
+# matched against the drilled subcategory, not the category headline.
+#
+# Grocery-specific by design: QSR banners have no matching functional
+# subcategories, so the KVI gate is a graceful no-op for them (nothing to
+# match) rather than a special case in the agent code.
+#
+# Single source of truth: this same tuple is injected into the pricing prompt
+# (``{{kvi_subcategories}}`` in ``Specialist._render_prompt``) and is the list
+# the Tier-2 ``price_benchmark`` helper will classify against, so the prompt
+# and the server-side helper can never drift.
+KVI_SUBCATEGORIES = (
+    "Whole Milk",
+    "2% Reduced-Fat Milk",
+    "Skim & Low-Fat Milk",
+    "Grade A Eggs",
+    "Sandwich Bread",
+    "Buns & Rolls",
+    "Bananas & Everyday Fruit",
+    "Coffee",
+    "Ground Beef",
+)
+
+# Comma-joined form for splicing into the prompt template.
+KVI_SUBCATEGORIES_PROMPT = ", ".join(KVI_SUBCATEGORIES)

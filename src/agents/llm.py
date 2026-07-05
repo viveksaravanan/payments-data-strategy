@@ -160,6 +160,7 @@ def call_with_tools(
     tools: list[dict[str, Any]],
     max_tokens: int = 2048,
     tool_choice: dict[str, Any] | None = None,
+    temperature: float = 0.0,
 ) -> tuple[Any, CallTelemetry]:
     """Wrap `client.messages.create` with retry + telemetry.
 
@@ -181,6 +182,11 @@ def call_with_tools(
             kwargs: dict[str, Any] = dict(
                 model=model, system=system, tools=tools,
                 messages=messages, max_tokens=max_tokens,
+                # Deterministic decoding (default 0.0) — the specialists'
+                # answers must be repeatable run-to-run for a fixed question +
+                # data, and the deterministic gap ranking only pays off if the
+                # model isn't re-sampling its SQL/prose each turn.
+                temperature=temperature,
             )
             if tool_choice is not None:
                 kwargs["tool_choice"] = tool_choice

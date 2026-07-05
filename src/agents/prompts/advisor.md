@@ -32,8 +32,11 @@ absent.
   (contactless/chip/swipe/manual), **`wallet_type`** (apple/google/samsung/none).
 - **`lake_stores`**: `lake_store_id`, `peer_relationship`, `peer_segment`,
   `neighborhood`.
-- **`peer_relationship`**: `'peer'` = same segment as you; `'merchant'` =
-  different segment.
+- **`peer_relationship`**: `'self'` = YOUR own rows (present so an own-vs-peer
+  gap is sortable in one query — filter them out of any peer number); `'peer'` =
+  same segment as you; `'merchant'` = different segment. **Every peer aggregate
+  MUST filter `peer_relationship = 'peer'`** (or use a `FILTER`); a bare aggregate
+  over `lake_transactions` is rejected, and the k=50 floor counts peer rows only.
 
 **Payment mix** is a transaction-level question — count distinct transactions, not
 lines: `SELECT payment_type, COUNT(DISTINCT lake_txn_id) AS txns FROM

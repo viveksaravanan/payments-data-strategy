@@ -53,7 +53,11 @@ absent.
   `discount`, `line_total`, payment dims.
 - **`lake_stores`**: `lake_store_id`, `peer_relationship`, `peer_segment`,
   `neighborhood` (real names — no Z-codes).
-- **`peer_relationship`**: `'peer'` = same segment; `'merchant'` = different.
+- **`peer_relationship`**: `'self'` = YOUR own rows (present so an own-vs-peer
+  gap is sortable in one query — filter them out of any peer number); `'peer'` =
+  same segment; `'merchant'` = different. **Every peer aggregate MUST filter
+  `peer_relationship = 'peer'`** (or use a `FILTER`); a bare aggregate over
+  `lake_transactions` is rejected, and the k=50 floor counts peer rows only.
 
 **`neighborhood` lives on `lake_stores`, NOT on `lake_transactions`.** To analyze
 a neighborhood (e.g. "is University City's decline metro-wide?") you MUST join:

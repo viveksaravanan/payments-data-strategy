@@ -117,12 +117,17 @@ SQL, and there is no merge step):
    the full frame captured in specialist state.
 3. **`query_lake_sql(sql)`** — Aggregating SQL against the viewer's
    line-item peer lake (`lake_transactions` / `lake_stores` resolve to
-   the viewer's materialized pair; own rows absent). Enforces single
-   aggregating SELECT (raw-row selects rejected via the DuckDB AST),
-   applies the k=50 line-count floor, and surfaces the dropped-group
-   `suppressed` count. Same `_df_to_payload` shape as `query_tenant`, so
-   CellLookup / the §1.4 validator resolve against it unchanged. The
-   result is captured as the **`lake`** frame.
+   the viewer's materialized pair). The viewer's OWN rows are **present**
+   tagged `peer_relationship = 'self'` (so the own-vs-peer gap is sortable
+   in one query); any aggregate over `lake_transactions` MUST reference
+   `peer_relationship` — a bare `AVG`/`SUM`/`COUNT` is rejected
+   (`_check_peer_scoped`) so self can't contaminate a peer number, and the
+   k=50 floor counts peer rows only (`_inject_count` FILTERs to `'peer'`).
+   Enforces single aggregating SELECT (raw-row selects rejected via the
+   DuckDB AST), applies the k=50 line-count floor, and surfaces the
+   dropped-group `suppressed` count. Same `_df_to_payload` shape as
+   `query_tenant`, so CellLookup / the §1.4 validator resolve against it
+   unchanged. The result is captured as the **`lake`** frame.
 4. **`emit_response(headline, evidence, so_what, claims, caveats)`** —
    Single terminator, the Wave 3.5 structured contract. `headline` is
    required; `evidence` is a list of grounded sentences; `so_what` is
@@ -141,18 +146,29 @@ SQL, and there is no merge step):
   reads). Defense in depth. Both live in `src/lake/isolation.py`.
 - **Lake identity strip (D24.1) — at build time.** The per-viewer line-item
   lake is materialized by `src/lake/build_line_items.py`: the viewer's own
-  rows are excluded, every other row carries only a `peer_relationship`
-  label (`'peer'` = same segment, `'merchant'` = different segment) with
-  **no per-competitor identity** (the old `peer_a`/`peer_b` pseudonyms are
-  gone), `banner_code` is dropped, IDs are generalized, time is
-  hour-bucketed, and there is no consumer linkage. There is no query-time
-  scope step (`src/lake/scope.py` was removed in Wave 3.5 Stage E).
-- **Aggregating-only + k=50 floor.** `query_lake_sql` (`src/lake/lake_sql.py`)
-  enforces a **single aggregating `SELECT`** on the DuckDB AST (raw-row
-  selects rejected) and a **k=50 line-count floor** per group, surfacing the
-  dropped-group `suppressed` count. The Wave 2 manifest grain-whitelist
-  (`_validate_filter_keys` / `manifest["dimensions"]`) was removed with the
-  aggregate lake — the peer surface is now raw line items queried with SQL.
+  rows are **present but tagged `peer_relationship = 'self'`** (so the
+  own-vs-peer gap is sortable in one query); every row carries only a
+  `peer_relationship` label (`'self'` = the viewer, `'peer'` = same segment,
+  `'merchant'` = different segment) with **no per-competitor identity** (the
+  old `peer_a`/`peer_b` pseudonyms are gone), `banner_code` is dropped, IDs
+  are generalized, time is hour-bucketed, and there is no consumer linkage.
+  Self rows pass through the identical projection — no SKU, no merchant
+  labels, no privileged detail. There is no query-time scope step
+  (`src/lake/scope.py` was removed in Wave 3.5 Stage E). The privacy of the
+  self-tag rests on two query-time guards (below): peer aggregates must
+  FILTER `'peer'`, and the k-floor counts peer rows only.
+- **Aggregating-only + k=50 floor + peer-scoped.** `query_lake_sql`
+  (`src/lake/lake_sql.py`) enforces a **single aggregating `SELECT`** on the
+  DuckDB AST (raw-row selects rejected), a **k=50 line-count floor** per group
+  (`_inject_count` FILTERs the count to `peer_relationship = 'peer'`, so self
+  volume can't pad a thin peer group past the floor), surfacing the
+  dropped-group `suppressed` count, and a **peer-scope check**
+  (`_check_peer_scoped`): any aggregate over `lake_transactions` that never
+  references `peer_relationship` is rejected, so a bare `AVG`/`SUM` can't
+  silently blend the viewer's own (`'self'`) rows into the peer number. The
+  Wave 2 manifest grain-whitelist (`_validate_filter_keys` /
+  `manifest["dimensions"]`) was removed with the aggregate lake — the peer
+  surface is now raw line items queried with SQL.
 - **All SQL is SELECT-only.** Regex check before any DB connection. Never
   trust the model to self-restrict.
 - **`MAX_TURNS = 6`** (Stage 6.5 follow-up #6 — lowered from 10).

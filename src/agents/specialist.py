@@ -34,6 +34,7 @@ from typing import Any, Callable
 
 import pandas as pd
 
+from src.agents import constants
 from src.agents import label_review as LR
 from src.agents import lake_tools as LT
 from src.agents.lake_tools import LakeToolError
@@ -190,6 +191,7 @@ class Specialist:
                    self.context.viewing_merchant_segment,
                )
                .replace("{{peer_routing}}", self._peer_routing_directive())
+               .replace("{{kvi_subcategories}}", constants.KVI_SUBCATEGORIES_PROMPT)
         )
 
     def _peer_routing_directive(self) -> str:
