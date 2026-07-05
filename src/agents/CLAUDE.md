@@ -22,11 +22,14 @@ Segmentation) ride through the Advisor in Wave 3 by design (D26.5).
   `MAX_TURNS = 6`.
 - **`trade.py`** — Trade Area Intelligence. `PREFERRED_PEER_METRIC =
   "share_of_zone"`. `MAX_TURNS = 6`.
-- **`advisor.py`** — Conversational Advisor. Owns
-  `lake_payment_mix` and `lake_segment_mix`; falls through here for
-  ambiguous / multi-topic / definitional questions. `MAX_TURNS = 6`,
-  `MERGE_REQUIRED = False` (single-source pills like payment-mix don't
-  need own/peer merge).
+- **`advisor.py`** — Conversational Advisor. Owns **payment-mix**
+  questions (tender / card network / entry mode / wallet) — answered on
+  the line-item lake via `query_lake_sql` with a `peer_relationship`
+  self/peer `FILTER` (own rows present tagged `self`; the Wave 2
+  `lake_payment_mix` / `lake_segment_mix` aggregate tables were removed
+  in Stage E). Also falls through here for ambiguous / multi-topic /
+  definitional questions. `MAX_TURNS = 6`, `MERGE_REQUIRED = False` (no
+  own/peer merge step in Wave 3.5 — own-vs-peer resolves per-frame).
 
 All four specialists + the Advisor subclass `specialist.py::Specialist`
 — the shared bounded tool loop, the §1.4 claims validator integration,

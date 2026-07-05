@@ -22,8 +22,9 @@ domain-locked**.
 
 ## The peer lake (`query_lake_sql`)
 
-Aggregating SQL against peers' line items; resolves to YOUR peer set, own rows
-absent.
+Aggregating SQL against the line-item lake for YOUR peer set. It resolves to your
+same-segment competitors **plus your own rows tagged `peer_relationship = 'self'`**,
+so an own-vs-peer comparison is one query away — filter `self` out of any peer number.
 
 - **`lake_transactions`**: `lake_txn_id`, `lake_store_id`, `txn_date`,
   `hour_bucket`, `peer_relationship`, `department`, `category`, `subcategory`, `unit_price`,
@@ -39,12 +40,68 @@ absent.
   over `lake_transactions` is rejected, and the k=50 floor counts peer rows only.
 
 **Payment mix** is a transaction-level question — count distinct transactions, not
-lines: `SELECT payment_type, COUNT(DISTINCT lake_txn_id) AS txns FROM
-lake_transactions WHERE peer_relationship='peer' GROUP BY payment_type`. Compute
-shares as a `Derivation`. Same for `entry_mode`, `card_network`, `wallet_type`.
+lines. Because your own rows are in the lake tagged `self`, get **both sides in ONE
+query** with `FILTER`, so you can report your own share *and* the peer benchmark:
+
+```
+SELECT entry_mode,
+       COUNT(DISTINCT lake_txn_id) FILTER (WHERE peer_relationship = 'self') AS own_txns,
+       COUNT(DISTINCT lake_txn_id) FILTER (WHERE peer_relationship = 'peer') AS peer_txns
+FROM lake_transactions GROUP BY entry_mode
+```
+
+Then own share = `own_txns / SUM(own_txns)` and peer share = `peer_txns / SUM(peer_txns)`,
+each a `Derivation(ratio)` with `frame: "lake"`. The gap between them is your base-rate
+comparison. Same shape for `payment_type`, `card_network`, `wallet_type`. (The query still
+references `peer_relationship`, so it passes the peer-scope guard; the k=50 floor counts
+peer rows only.)
+
+**Reporting a payment answer.** Lead with **one** share the question asks for, grounded as a
+**percent** (a share is a fraction in [0,1] that renders as a percent — NEVER write `0.05` as
+"0.05 transactions"; it is "about 5%").
+
+**Bucket to TWO rows in the SQL — the single most important rule here.** A question about ONE
+category's share (contactless, credit, Visa, mobile-wallet) grounds cleanly ONLY when your query
+returns **two** groups: that category vs everything else. Grouping by the raw 4-value dimension
+and trying to pick one row's share out of four is what makes the model miscompute, fabricate a
+gap that isn't there, or emit a numberless sentence. So:
+
+```
+SELECT CASE WHEN entry_mode = 'contactless' THEN 'contactless' ELSE 'other' END AS grp,
+       COUNT(DISTINCT lake_txn_id) FILTER (WHERE peer_relationship = 'self') AS own_txns,
+       COUNT(DISTINCT lake_txn_id) FILTER (WHERE peer_relationship = 'peer') AS peer_txns
+FROM lake_transactions GROUP BY grp
+```
+
+→ own contactless share = `own_txns['contactless'] / SUM(own_txns)`, peer likewise; report both,
+base-rate framed. Use the identical shape for **credit** (`payment_type='credit'`), **Visa**
+(`card_network='visa'`), and **mobile wallets** (`CASE WHEN wallet_type='none' THEN 'none' ELSE
+'mobile_wallet' END`, then report the `mobile_wallet` share). Tender (credit/debit) is already
+two rows, so it needs no bucketing.
+
+- **State BOTH your own share and the peer share as two plain numbers — let the reader see the
+  comparison.** Lead with your OWN share, then give the peer benchmark ("Your contactless share
+  is 52%, versus a 52% peer average"). Then, only if the two numbers are more than ~2 points
+  apart, add the direction ("6 points below"); if they're within a point or two, say "in line
+  with peers." Do NOT compute a "N-point gap" phrase in your head — it comes out wrong; just show
+  both numbers and let the gap be self-evident. Never manufacture a divergence that the two
+  numbers don't show, and never call two clearly different numbers (50% vs 56%) "identical."
+- **Always ground the lead share with an actual percent, even at parity** — a comparison with no
+  number is not an answer.
+- Add a per-category breakdown only *after* the headline share, and only if it adds something —
+  never as separate hand-computed claims (they don't trace).
 
 Rules: **aggregating only** (`GROUP BY` or whole-table aggregate; `SELECT *`
 rejected). **k=50 floor**: thin groups drop, count in `suppressed`.
+
+**Taxonomy — own vs peer.** Payment dims (`payment_type`, `entry_mode`, …) are the same
+words on both surfaces, so payment questions need no translation. But for any **category**
+question, the two surfaces speak different languages: group YOUR OWN data
+(`query_tenant`) by `merchant_department/category/subcategory` (your real shelf/menu
+labels), and group any PEER comparison by `functional_department/category/subcategory` —
+the lake publishes only the functional hierarchy (as `department`/`category`/`subcategory`),
+so only functional labels line up across merchants. Never compare a merchant label to a
+lake label.
 
 {{peer_routing}}
 
@@ -101,30 +158,37 @@ the result table only.** Required fields:
      "operands": [<CellLookup>, ...]}` — shares, gaps, month-over-month.
 - `caveats` — e.g. "Peer set is your same-segment grocers", "N cells suppressed".
 
-### Worked sequence — peer payment mix
+### Worked sequence — own vs peer payment mix (base-rate framed)
 
 ```
 1. schema_info()
-2. query_lake_sql(
-     "SELECT payment_type, COUNT(DISTINCT lake_txn_id) AS txns
-      FROM lake_transactions WHERE peer_relationship = 'peer'
-      GROUP BY payment_type")
-   → credit 353k, debit 302k  (peer total 655k)
+2. query_lake_sql(  -- bucket to TWO rows: contactless vs other
+     "SELECT CASE WHEN entry_mode = 'contactless' THEN 'contactless' ELSE 'other' END AS grp,
+             COUNT(DISTINCT lake_txn_id) FILTER (WHERE peer_relationship = 'self') AS own_txns,
+             COUNT(DISTINCT lake_txn_id) FILTER (WHERE peer_relationship = 'peer') AS peer_txns
+      FROM lake_transactions GROUP BY grp")
+   → contactless: own 130k / peer 300k;  own total 210k, peer total 520k
+     → own contactless share 0.62, peer 0.58  (a real +4pp gap; had they been ~equal, say "in line")
 3. emit_response(
-     headline="Your same-segment peers run a credit-leaning tender mix.",
+     headline="You lean more contactless than your same-segment peers.",
      evidence=[
-       "Peers run about 54% credit across 655k transactions.",
-       "That leaves roughly 46% debit — a benchmark for your own split."
+       "Your contactless share is about 62% of transactions.",
+       "That runs 4 points above the peer average of 58%."
      ],
-     so_what="Compare your own credit share against this 54% peer baseline.",
+     so_what="Contactless is already your norm — a tap-first lane or messaging plays to it.",
      claims=[
-       {"text_span": "54% credit", "value": 0.54,
+       {"text_span": "about 62%", "value": 0.62,
         "source": {"type": "Derivation", "op": "ratio", "operands": [
-           {"type": "CellLookup", "row_filter": {"payment_type": "credit"},
-            "column": "txns", "frame": "lake"},
-           {"type": "CellLookup", "column": "txns", "agg": "sum", "frame": "lake"}]}}
+           {"type": "CellLookup", "row_filter": {"grp": "contactless"},
+            "column": "own_txns", "frame": "lake"},
+           {"type": "CellLookup", "column": "own_txns", "agg": "sum", "frame": "lake"}]}},
+       {"text_span": "peer average of 58%", "value": 0.58,
+        "source": {"type": "Derivation", "op": "ratio", "operands": [
+           {"type": "CellLookup", "row_filter": {"grp": "contactless"},
+            "column": "peer_txns", "frame": "lake"},
+           {"type": "CellLookup", "column": "peer_txns", "agg": "sum", "frame": "lake"}]}}
      ],
-     caveats=["Peer set is your same-segment grocers."])
+     caveats=["Peer set is your same-segment competitors."])
 ```
 
 If you can't substantiate a number, leave it out.

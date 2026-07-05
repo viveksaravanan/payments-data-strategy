@@ -185,6 +185,7 @@ def route(question: str, ctx: MerchantContext) -> RoutingDecision:
             system=_render_router_prompt(ctx),
             messages=[{"role": "user", "content": question}],
             max_tokens=200,
+            temperature=0,   # deterministic routing (parity with the specialists' temp=0)
         )
         elapsed = time.monotonic() - t0
         usage = getattr(resp, "usage", None)
@@ -257,6 +258,12 @@ class Orchestrator:
         if progress is not None:
             progress(0, "Picking a specialist…")
         decision = route(question, self.context)
+        # Anomaly Detection + Trade Area specialists are deferred — their
+        # questions are handled by the Conversational Advisor. The backend
+        # agents stay intact; the orchestrator simply never dispatches to
+        # them. Remove this remap to re-enable them.
+        if decision.primary in ("anomaly", "trade"):
+            decision.primary = "advisor"
         agent = build_agent(decision.primary, self.context)
         resp = agent.answer(question, progress=progress, on_token=on_token)
         return decision, resp

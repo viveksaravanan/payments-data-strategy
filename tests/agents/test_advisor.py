@@ -1,45 +1,51 @@
-"""Stage 3 — Conversational Advisor tests.
+"""Conversational Advisor tests.
 
-The Advisor owns ``lake_payment_mix`` and ``lake_segment_mix`` (the
-two tables no specialist owns), uses ``MERGE_REQUIRED=False`` so
-single-table answers don't fail when no render block is supplied,
-and is the decline-gracefully owner per D23.7.
+The Advisor owns **payment-mix** questions (tender / card network /
+entry mode / wallet) on the Wave 3.5 line-item lake — there is no
+``lake_payment_mix`` / ``lake_segment_mix`` aggregate table and no merge
+step (both removed in Stage E). It uses ``MERGE_REQUIRED=False`` and is
+the decline-gracefully owner (no consumer linkage / no SKU in the peer
+lake).
 
-Coverage:
+Coverage (prompt-invariant string assertions — no live LLM here; live
+behavior is exercised by the ground-truth validation harness):
 
-* Payment-mix question: reads ``lake_payment_mix``, emits an empty
-  merge, delivers the lake frame as the result; chart kind matches
-  the intent.
-* Segment-mix question: uses the four DERIVED labels
-  (`premium_loyalist`, `frequent_value`, `occasional_premium`,
-  `occasional`) — never references `loyalty_type`.
-* Out-of-grain peer SKU ask: the Advisor's prompt carries the
-  decline template + grain_notes flag the exclude.
-* The Advisor prompt explicitly states the median-only rule, the
-  no-loyalty-type rule, and the base-rate framing rule.
+* Self-tag structure: the prompt teaches the ``peer_relationship`` self /
+  peer ``FILTER`` pattern and never claims own rows are absent.
+* Merchant-vs-functional taxonomy discipline for category questions.
+* Decline templates: peer SKU, cross-merchant cohorts, peer behavioral
+  segmentation — all with the "no consumer linkage" boundary.
+* Base-rate framing; no fraud vocabulary; ``MERGE_REQUIRED is False``.
 """
 from __future__ import annotations
 
-import pytest
-
 from src.agents.advisor import ConversationalAdvisor
-from src.agents.context import MerchantContext
-from src.agents.response import AgentResponse
-from tests.agents._fake_llm import (
-    patch_llm,
-    scripted_emit_response,
-    scripted_tool_use,
-)
-
-
-@pytest.fixture
-def viewer_krg() -> MerchantContext:
-    return MerchantContext.for_merchant("KRG")
 
 
 # ---------------------------------------------------------------------
-# Payment mix path
+# Self-tag lake structure (guards against drift off the Wave 3.5 lake)
 # ---------------------------------------------------------------------
+
+def test_advisor_prompt_teaches_self_tag_filter_pattern() -> None:
+    """The advisor must teach the own-vs-peer single-query FILTER pattern
+    (own from ``peer_relationship='self'``, peer from ``'peer'``) so its
+    base-rate payment comparisons are answerable — matching pricing/demand."""
+    prompt = " ".join(ConversationalAdvisor.PROMPT_PATH.read_text().split())
+    assert "peer_relationship = 'peer'" in prompt
+    # Own rows are PRESENT tagged 'self' — the prompt must not claim they're absent.
+    assert "own rows absent" not in prompt.lower()
+    assert "peer_relationship = 'self'" in prompt
+    # The single-query FILTER pattern that yields own AND peer in one lake query.
+    assert "FILTER (WHERE peer_relationship = 'self')" in prompt
+    assert "FILTER (WHERE peer_relationship = 'peer')" in prompt
+
+
+def test_advisor_prompt_declares_taxonomy_rule() -> None:
+    """Category questions must group OWN data on merchant_* and PEER
+    comparisons on functional_* (the lake speaks functional only)."""
+    prompt = ConversationalAdvisor.PROMPT_PATH.read_text()
+    assert "merchant_" in prompt and "functional_" in prompt
+
 
 # ---------------------------------------------------------------------
 # Decline-gracefully — peer SKU
