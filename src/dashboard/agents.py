@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 AGENT_LABELS = {
-    "demand":  "Demand Forecasting Agent",
+    "demand":  "Demand & Assortment Agent",
     "pricing": "Pricing & Benchmarking Agent",
     "anomaly": "Anomaly Detection Agent",
     "trade":   "Trade Area Intelligence Agent",

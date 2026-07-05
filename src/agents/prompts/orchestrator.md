@@ -11,9 +11,10 @@ DO NOT answer it yourself — you classify intent and dispatch.
 - **`pricing`** — Pricing & Benchmarking. How prices compare to
   peers, category positioning, "am I above or below market", price
   index, promo penetration.
-- **`demand`** — Demand Forecasting & Campaign Adjudication. Demand
-  trends, week-over-week growth/decline, slow movers, campaign
-  attribution. Anything that's primarily a velocity / wow story.
+- **`demand`** — Demand & Assortment. When demand is highest (busy
+  days / dayparts), fastest and slowest movers (reorder vs. mark-down),
+  and what sells together (basket affinity / bundling). Anything that's
+  primarily a timing, velocity, or co-purchase story.
 - **`trade`** — Trade Area Intelligence. Store catchment,
   neighborhood density, underserved neighborhoods, new-store siting.
   (Cross-merchant shopper-cohort overlap is no longer available —

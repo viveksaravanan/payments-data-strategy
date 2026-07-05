@@ -57,20 +57,24 @@ QUESTIONS: dict[str, dict[str, list[dict]]] = {
             },
         ],
         "demand": [
+            # Own-data demand-planning trio (timing / velocity / affinity),
+            # grounded in signals the data actually carries. The old peer-mix /
+            # revenue-gap pills echoed pricing and (T-D2-style) leaned on a flat
+            # within-window trend. See docs/AGENT_QUALITY_STANDARD.md.
             {
-                "id":      "D3",
-                "text":    "What does my basket-mix look like compared to peers? Where am I over or under indexed?",
+                "id":      "GD1",
+                "text":    "When is demand highest — which days and dayparts should I stock and staff around?",
+                "pattern": "pattern_1_time_series",
+            },
+            {
+                "id":      "GD2",
+                "text":    "Which categories and items are my fastest and slowest movers — what should I stock up on versus mark down?",
                 "pattern": "pattern_2_comparison",
             },
             {
-                "id":      "D4",
-                "text":    "Which categories over- or under-perform vs peers given my mix?",
-                "pattern": "pattern_4_scatter",
-            },
-            {
-                "id":      "D7",
-                "text":    "What's driving my revenue gap vs peers this period?",
-                "pattern": "pattern_5_waterfall",
+                "id":      "GD3",
+                "text":    "What reliably sells together in my baskets — where can I cross-merchandise or bundle?",
+                "pattern": "pattern_2_comparison",
             },
         ],
         "trade": [
@@ -113,9 +117,12 @@ QUESTIONS: dict[str, dict[str, list[dict]]] = {
             {"id": "T-A2", "text": "Are any menu items spiking or dropping unusually?",                                "pattern": "pattern_9_table"},
         ],
         "demand": [
-            {"id": "T-D4", "text": "How does my menu mix compare to peer chains — where am I over- or under-indexed?", "pattern": "pattern_2_comparison"},
-            {"id": "T-D2", "text": "Which categories are gaining or losing share over time?",                          "pattern": "pattern_1_time_series"},
-            {"id": "T-D3", "text": "What's driving my revenue change this week — traffic, ticket, or mix?",            "pattern": "pattern_5_waterfall"},
+            # Own-data demand-planning trio, QSR-worded (timing leads on dayparts;
+            # CFA Sunday-closed surfaces in D1). Replaces the peer-mix pill, the
+            # dead over-time-trend pill, and the "this week" revenue decomposition.
+            {"id": "QD1", "text": "When is demand highest across the day and week — which dayparts should I plan around?", "pattern": "pattern_1_time_series"},
+            {"id": "QD2", "text": "Which menu items are my fastest and slowest movers right now?",                        "pattern": "pattern_2_comparison"},
+            {"id": "QD3", "text": "Which items sell together, so I can build combos or upsell them?",                     "pattern": "pattern_2_comparison"},
         ],
         "trade": [
             # Shared with the grocer set — map-based, segment-agnostic.
