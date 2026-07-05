@@ -307,7 +307,7 @@ def _own_filters_sql(filters: dict | None) -> tuple[str, list]:
 # Merchant metadata
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=3600, show_spinner="Loading stores…")
 def stores_for(merchant_id: str) -> pd.DataFrame:
     """All of a merchant's stores with neighborhood + lat/lng + 90-day
     txn count + 90-day revenue. Cached for the session."""
@@ -370,7 +370,7 @@ def _unpack_filters_key(key: tuple) -> dict:
 # Time Patterns — hour × day-of-week heatmap
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=3600, show_spinner=False)
 def hour_dow_heatmap(merchant_id: str, filters_key: tuple) -> pd.DataFrame:
     """24×7 grid of transaction counts. Returns a DataFrame indexed by
     day_of_week (0=Sun … 6=Sat per SQLite strftime('%w', …)) with
@@ -450,7 +450,7 @@ def sku_performance(merchant_id: str, filters: dict | None = None) -> dict:
     return _sku_performance_cached(merchant_id, _filters_key(filters or {}))
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=3600, show_spinner=False)
 def _sku_performance_cached(merchant_id: str, key: tuple) -> dict:
     filters = _unpack_filters_key(key)
     extra_where, extra_params = _own_filters_sql(filters)
@@ -691,7 +691,7 @@ def kpi_strip(merchant_id: str, filters: dict | None = None) -> dict:
     return _kpi_strip_cached(merchant_id, _filters_key(filters or {}))
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=3600, show_spinner=False)
 def _kpi_strip_cached(merchant_id: str, key: tuple) -> dict:
     filters = _unpack_filters_key(key)
     f = filters
@@ -829,7 +829,7 @@ def store_anomalies_own_only(merchant_id: str, filters: dict | None = None) -> d
     return _store_anomalies_own_only_cached(merchant_id, _filters_key(filters or {}))
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=3600, show_spinner=False)
 def _store_anomalies_own_only_cached(merchant_id: str, key: tuple) -> dict:
     filters = _unpack_filters_key(key)
     f = filters
@@ -916,95 +916,112 @@ def _store_anomalies_own_only_cached(merchant_id: str, key: tuple) -> dict:
 # Department mix with category drill (own-data)
 # ---------------------------------------------------------------------------
 
-def department_mix_own(
-    merchant_id: str, top_n: int = 12, filters: dict | None = None,
-) -> dict:
-    """Share of own sales by the merchant's own DEPARTMENT, with a
-    per-department CATEGORY breakdown for the drill-down. Department is the
-    right top-level grain for a merchant's mix: at category grain a large
-    department that is split across many categories (e.g. Meat & Seafood →
-    Beef / Poultry / Pork / Seafood) is understated relative to a single
-    undivided category (e.g. Cleaning). Departments are few (~10), so
-    ``top_n`` normally surfaces them all; any beyond ``top_n`` roll into
-    "Other". Uses MERCHANT labels (``merchant_department`` at the top level,
-    ``merchant_category`` in the drill) — the shelf taxonomy this banner
-    actually merchandises by."""
-    return _department_mix_own_cached(merchant_id, top_n, _filters_key(filters or {}))
+def department_mix_own(merchant_id: str, filters: dict | None = None) -> dict:
+    """Share of own sales, drilled down through the merchant's own shelf
+    taxonomy — **segment-aware**:
+
+    - **grocery** (KRG/ACM/WDX): department → category → subcategory (3 levels).
+      Department is the intuitive top grain (~10 real departments each split
+      into categories then subcategories).
+    - **qsr** (TBL/BKG/CFA): category → subcategory (2 levels). A QSR's
+      ``merchant_department`` is a single "Menu" bucket, so it is dropped and
+      the top grain is category (the menu sections).
+
+    Every top-level item is shown (no ``top_n`` cap, no "Other" roll-up) —
+    cardinality is small and bounded (≤10 depts / ≤15 categories), so nothing is
+    hidden in an undiggable bucket. Uses MERCHANT labels (the shelf taxonomy this
+    banner actually merchandises by). Percentages are relative to the parent at
+    each level, so every drill sums to ~100%."""
+    return _department_mix_own_cached(merchant_id, _filters_key(filters or {}))
 
 
-@st.cache_data(ttl=3600)
-def _department_mix_own_cached(merchant_id: str, top_n: int, key: tuple) -> dict:
+@st.cache_data(ttl=3600, show_spinner=False)
+def _department_mix_own_cached(merchant_id: str, key: tuple) -> dict:
     filters = _unpack_filters_key(key)
     extra_where, extra_params = _own_filters_sql(filters)
 
+    grocery = MERCHANT_SEGMENT.get(merchant_id) == "grocery"
+    top_grain = "department" if grocery else "category"
+    # Grouping levels, coarsest first. Grocery has 3; QSR starts at category.
+    if grocery:
+        cols = ["p.merchant_department", "p.merchant_category", "p.merchant_subcategory"]
+    else:
+        cols = ["p.merchant_category", "p.merchant_subcategory"]
+    select_cols = ", ".join(f"{c} AS l{n}" for n, c in enumerate(cols))
+    group_cols = ", ".join(cols)
+
     with _conn() as c:
-        dept_rows = c.execute(
+        rows = c.execute(
             f"""
-            SELECT p.merchant_department AS dept, SUM(i.line_total) AS rev
+            SELECT {select_cols}, SUM(i.line_total) AS rev
             FROM tenant_transaction_items i
             JOIN tenant_products p     ON p.sku    = i.sku
             JOIN tenant_transactions t ON t.txn_id = i.txn_id
             WHERE t.merchant_id = ?{extra_where}
-            GROUP BY p.merchant_department
-            ORDER BY rev DESC
-            """,
-            (merchant_id, *extra_params),
-        ).fetchall()
-        sub_rows = c.execute(
-            f"""
-            SELECT p.merchant_department AS dept, p.category, SUM(i.line_total) AS rev
-            FROM tenant_transaction_items i
-            JOIN tenant_products p     ON p.sku    = i.sku
-            JOIN tenant_transactions t ON t.txn_id = i.txn_id
-            WHERE t.merchant_id = ?{extra_where}
-            GROUP BY p.merchant_department, p.category
+            GROUP BY {group_cols}
             """,
             (merchant_id, *extra_params),
         ).fetchall()
 
-    if not dept_rows:
-        return {"labels": [], "values": [], "top3_names": [],
-                "top3_pct": 0.0, "subcats": {}}
+    empty = {"top_grain": top_grain, "labels": [], "values": [],
+             "top3_names": [], "top3_pct": 0.0, "drill": {}}
+    if not rows:
+        return empty
 
-    total = sum(float(r[1]) for r in dept_rows) or 1.0
-    top = dept_rows[:top_n]
-    rest = dept_rows[top_n:]
-    labels = [r[0] for r in top]
-    values = [round(float(r[1]) / total * 100, 1) for r in top]
-    if rest:
-        other_rev = sum(float(r[1]) for r in rest)
-        labels.append("Other")
-        values.append(round(other_rev / total * 100, 1))
+    # Aggregate revenue at each level from the flat rows.
+    three = grocery  # 3-level tree vs 2-level
+    l0_rev: dict[str, float] = {}
+    l1_rev: dict[str, dict[str, float]] = {}          # l0 -> l1 -> rev
+    l2_rev: dict[str, dict[str, dict[str, float]]] = {}  # l0 -> l1 -> l2 -> rev
+    for row in rows:
+        if three:
+            l0, l1, l2, rev = row[0], row[1], row[2], float(row[3])
+        else:
+            l0, l1, rev = row[0], row[1], float(row[2])
+            l2 = None
+        l0_rev[l0] = l0_rev.get(l0, 0.0) + rev
+        l1_rev.setdefault(l0, {})
+        l1_rev[l0][l1] = l1_rev[l0].get(l1, 0.0) + rev
+        if three:
+            l2_rev.setdefault(l0, {}).setdefault(l1, {})
+            l2_rev[l0][l1][l2] = l2_rev[l0][l1].get(l2, 0.0) + rev
 
-    top3 = top[:3]
-    top3_names = [r[0] for r in top3]
-    top3_pct = round(sum(float(r[1]) for r in top3) / total * 100, 1)
+    total = sum(l0_rev.values()) or 1.0
+    top_sorted = sorted(l0_rev.items(), key=lambda x: x[1], reverse=True)
+    labels = [k for k, _ in top_sorted]
+    values = [round(v / total * 100, 1) for _, v in top_sorted]
 
-    # Category breakdown per DISPLAYED department, as a share of that
-    # department's own sales (so each expander sums to ~100%).
-    displayed = {r[0] for r in top}
-    dept_total = {r[0]: float(r[1]) for r in dept_rows}
-    sub_by_dept: dict[str, list[tuple[str, float]]] = {}
-    for dept, cat, rev in sub_rows:
-        if dept not in displayed:
-            continue
-        sub_by_dept.setdefault(dept, []).append((cat, float(rev)))
+    top3 = top_sorted[:3]
+    top3_names = [k for k, _ in top3]
+    top3_pct = round(sum(v for _, v in top3) / total * 100, 1)
 
-    subcats: dict[str, dict] = {}
-    for dept, subs in sub_by_dept.items():
-        subs.sort(key=lambda x: x[1], reverse=True)
-        dtot = dept_total.get(dept) or sum(s[1] for s in subs) or 1.0
-        subcats[dept] = {
-            "labels": [s[0] for s in subs],
-            "values": [round(s[1] / dtot * 100, 1) for s in subs],
+    drill: dict[str, dict] = {}
+    for l0, l0tot in top_sorted:
+        l0tot = l0tot or 1.0
+        cat_sorted = sorted(l1_rev.get(l0, {}).items(), key=lambda x: x[1], reverse=True)
+        sub: dict[str, dict] = {}
+        if three:
+            for l1, l1tot in cat_sorted:
+                l1tot = l1tot or 1.0
+                s_sorted = sorted(l2_rev.get(l0, {}).get(l1, {}).items(),
+                                  key=lambda x: x[1], reverse=True)
+                sub[l1] = {
+                    "labels": [k for k, _ in s_sorted],
+                    "values": [round(v / l1tot * 100, 1) for _, v in s_sorted],
+                }
+        drill[l0] = {
+            "labels": [k for k, _ in cat_sorted],
+            "values": [round(v / l0tot * 100, 1) for _, v in cat_sorted],
+            "sub":    sub,
         }
 
     return {
+        "top_grain":  top_grain,
         "labels":     labels,
         "values":     values,
         "top3_names": top3_names,
         "top3_pct":   top3_pct,
-        "subcats":    subcats,
+        "drill":      drill,
     }
 
 
@@ -1035,7 +1052,7 @@ def payment_mix(merchant_id: str, filters: dict | None = None) -> dict:
     return _payment_mix_cached(merchant_id, _filters_key(filters or {}))
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=3600, show_spinner=False)
 def _payment_mix_cached(merchant_id: str, key: tuple) -> dict:
     filters = _unpack_filters_key(key)
     extra_where, extra_params = _own_filters_sql(filters)

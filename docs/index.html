@@ -160,6 +160,25 @@
   .score-t td:nth-child(4){color:var(--accent); font-weight:600}
   ul.src li{font-size:14px}
   h4{font-size:14px; margin:16px 0 4px; color:var(--muted)}
+  /* Section 4 — layered tech stack */
+  .stack{display:flex; flex-direction:column; border:1px solid var(--line); border-radius:12px; overflow:hidden; margin:20px 0}
+  .layer{display:grid; grid-template-columns:190px 1fr; gap:0; border-top:1px solid var(--line); background:#fff}
+  .layer:first-child{border-top:none}
+  .layer:nth-child(odd){background:var(--surface)}
+  .layer-name{padding:16px 18px; border-right:1px solid var(--line); border-left:3px solid var(--accent)}
+  .layer-name b{display:block; font-size:15px; color:var(--text)}
+  .layer-name .lk{font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--accent2); font-weight:700; margin-bottom:3px}
+  .layer-body{padding:15px 18px}
+  .layer-body p{margin:0 0 10px; font-size:14.5px; color:#2c3344}
+  .vchips{display:flex; flex-wrap:wrap; gap:6px}
+  .vchip{font-size:12px; font-weight:600; color:var(--muted); background:#fff; border:1px solid var(--line); border-radius:20px; padding:3px 11px; white-space:nowrap; cursor:pointer; transition:border-color .12s, color .12s}
+  .vchip:hover{color:var(--text); border-color:var(--accent3)}
+  .vchip.active{background:var(--accent); color:#fff; border-color:var(--accent)}
+  .vchip:focus-visible{outline:2px solid var(--accent3); outline-offset:2px}
+  .stack-detail{border:1px solid var(--line); border-radius:10px; padding:14px 18px; margin:14px 0 0; font-size:14.5px; color:#2c3344; background:var(--surface); min-height:1.4em}
+  .stack-detail b{color:var(--accent)}
+  .stack-detail .sd-hint{color:var(--muted)}
+  @media(max-width:720px){.layer{grid-template-columns:1fr} .layer-name{border-right:none; border-bottom:1px solid var(--line)}}
 </style>
 </head>
 <body>
@@ -169,6 +188,7 @@
   <a href="#s1">The World</a>
   <a href="#s2">Privacy &amp; the Lake</a>
   <a href="#s3">The Agents</a>
+  <a href="#s4">Built On</a>
 </nav>
 
 <header class="top">
@@ -181,7 +201,7 @@
 <section id="s1">
   <span class="secnum">SECTION 1</span>
   <h2>The world behind the data</h2>
-  <div class="stats"><div class="stat"><div class="n">6 merchants</div><div class="l">2 segments · 38 stores · one metro</div></div><div class="stat"><div class="n">155,000</div><div class="l">shared customer cards</div></div><div class="stat"><div class="n">4.1M</div><div class="l">transactions · 27M line items</div></div><div class="stat"><div class="n">90 days</div><div class="l">Mar 1 – May 29, 2026</div></div><div class="stat"><div class="n">5 AI agents</div><div class="l">4 specialists + an advisor</div></div><div class="stat"><div class="n">k = 50</div><div class="l">peer-privacy suppression floor</div></div></div>
+  <div class="stats"><div class="stat"><div class="n">6 merchants</div><div class="l">2 segments · 38 stores · one metro</div></div><div class="stat"><div class="n">155,000</div><div class="l">shared customer cards</div></div><div class="stat"><div class="n">4.1M</div><div class="l">transactions · 27M line items</div></div><div class="stat"><div class="n">90 days</div><div class="l">Mar 1 – May 29, 2026</div></div><div class="stat"><div class="n">3 AI agents</div><div class="l">2 specialists + an advisor</div></div><div class="stat"><div class="n">k = 50</div><div class="l">peer-privacy suppression floor</div></div></div>
   <p class="disclaimer"><b>All data is synthetic.</b> The six merchants are plausible stand-ins generated from scratch — no real customers, cards, or companies are involved.</p>
 
   <h3>The metro</h3>
@@ -214,7 +234,7 @@
 </div>
 <script>
 const ZONES=[{"id": "center_city", "name": "Center City", "affluence": 1.15, "tier": "Mid-high", "customers": 12358, "stores": 4, "desc": "The dense urban core; younger professionals \u2014 smaller quick-trip baskets."}, {"id": "dilworth", "name": "Dilworth", "affluence": 1.45, "tier": "High", "customers": 18763, "stores": 3, "desc": "Historic, tree-lined neighborhood south of uptown; established professionals \u2014 fresh-forward baskets."}, {"id": "ballantyne", "name": "Ballantyne", "affluence": 1.4, "tier": "High", "customers": 21698, "stores": 4, "desc": "Affluent master-planned far-south suburb; the metro's premium anchor \u2014 national brands, credit, and contactless run highest."}, {"id": "noda", "name": "NoDa", "affluence": 1.1, "tier": "Mid (rising)", "customers": 15446, "stores": 5, "desc": "The arts district, younger and gentrifying \u2014 a mixed basket."}, {"id": "university_city", "name": "University City", "affluence": 0.8, "tier": "Mid-low", "customers": 20264, "stores": 6, "desc": "Anchored by the university to the northeast; students plus mixed residential \u2014 value-leaning and QSR-heavy."}, {"id": "eastway", "name": "Eastway", "affluence": 0.75, "tier": "Low", "customers": 24963, "stores": 4, "desc": "Diverse, working-class east-side corridor \u2014 the value-banner heartland; highest store-brand and debit share."}, {"id": "matthews", "name": "Matthews", "affluence": 1.0, "tier": "Mid", "customers": 29172, "stores": 9, "desc": "Established SE suburban town; families and the largest residential base \u2014 big weekly-stockup baskets."}, {"id": "cabarrus_edge", "name": "Cabarrus Edge", "affluence": 0.9, "tier": "Low-mid", "customers": 12336, "stores": 3, "desc": "The exurban northern fringe; lower-density, value-oriented households."}];
-const MERCH={"KRG": {"name": "Kroger", "seg": "Grocery", "tier": "Mainstream, large-format", "logo": "assets/logos/KRG.png", "stores": 6, "auv": 44.8806, "basket": 52.8156, "pl": 27.5927, "bullets": ["Fullest assortment in the panel \u2014 ~1,350 SKUs across every department.", "Deepest own-brand program \u2014 ~27% of units are store brands (Kroger / Simple Truth).", "Priced cheapest on meat and center-store staples; near-market elsewhere.", "Draws the biggest baskets, spanning affluent and mainstream neighborhoods."], "distinct": "Widest own-brand range in the panel \u2014 value shoppers reach for it most."}, "ACM": {"name": "Acme", "seg": "Grocery", "tier": "Mainstream, fresh-forward", "logo": "assets/logos/ACM.png", "stores": 5, "auv": 32.8981, "basket": 61.885, "pl": 19.3264, "bullets": ["Fresh-forward premium tilt \u2014 over-indexes on produce and bakery.", "Leads meat <em>dollars</em> through premium cuts (priced ~+28% there).", "Lightest store-brand lean (~19%, \u201cSignature SELECT\u201d), with a premium/organic tail.", "Clusters in the five most affluent neighborhoods."], "distinct": "Fresh-forward mid-market, with a lighter store-brand lean than Kroger."}, "WDX": {"name": "Winn-Dixie", "seg": "Grocery", "tier": "Value", "logo": "assets/logos/WDX.png", "stores": 4, "auv": 22.5534, "basket": 47.6808, "pl": 26.2574, "bullets": ["Value banner \u2014 leanest assortment (~1,050 SKUs), everyday-low staples.", "Heaviest store-brand lean (~25%, \u201cSE Grocers\u201d).", "Meat is a traffic driver \u2014 over-indexes on meat <em>units</em>.", "Smaller baskets, high trip counts in working-class zones."], "distinct": "The value banner \u2014 most store-brand, meat volume up front."}, "TBL": {"name": "Taco Bell", "seg": "QSR", "tier": "Value, late-night", "logo": "assets/logos/TBL.png", "stores": 9, "auv": 2.247, "basket": 8.5386, "pl": null, "bullets": ["Value Mexican-inspired menu \u2014 the lowest check in the panel.", "Most locations of any banner (nine restaurants).", "Signature: Crunchwrap Supreme, Doritos Locos Tacos, Baja Blast.", "A real late-night daypart \u2014 ~18% of sales land after 9pm."], "distinct": "The most locations and the lowest check \u2014 a wide, value-priced footprint."}, "BKG": {"name": "Burger King", "seg": "QSR", "tier": "Value, breakfast", "logo": "assets/logos/BKG.png", "stores": 8, "auv": 1.6915, "basket": 10.006, "pl": null, "bullets": ["Flame-grilled value \u2014 the price floor of the QSR set.", "Signature: Whopper, Chicken Fries, Croissan\u2019wich.", "Carries a breakfast daypart alongside its all-day menu.", "Lowest per-unit volume, spread across a broad roadside footprint."], "distinct": "The lowest per-unit volume \u2014 the value floor of the QSR set."}, "CFA": {"name": "Chick-fil-A", "seg": "QSR", "tier": "Premium chicken", "logo": "assets/logos/CFA.png", "stores": 6, "auv": 7.7167, "basket": 13.4333, "pl": null, "bullets": ["Highest sales per unit in the panel (~$8M/yr) from just six restaurants.", "Signature: Original Chicken Sandwich, Waffle Fries, Icedream.", "Closed Sundays; lunch- and dinner-driven, with no late-night.", "Highest check; draws affluent suburban families and campuses."], "distinct": "Six restaurants out-earn the other seventeen QSR units combined."}};
+const MERCH={"KRG": {"name": "Kroger", "seg": "Grocery", "tier": "Mainstream, large-format", "logo": "assets/logos/KRG.png", "stores": 6, "auv": 44.8806, "basket": 52.8156, "pl": 27.5927, "bullets": ["Fullest assortment in the panel \u2014 spans every department.", "Deepest own-brand program \u2014 ~27% of units are store brands (Kroger / Simple Truth).", "Priced cheapest on meat and center-store staples; near-market elsewhere.", "Draws the biggest baskets, spanning affluent and mainstream neighborhoods."], "distinct": "Widest own-brand range in the panel \u2014 value shoppers reach for it most."}, "ACM": {"name": "Acme", "seg": "Grocery", "tier": "Mainstream, fresh-forward", "logo": "assets/logos/ACM.png", "stores": 5, "auv": 32.8981, "basket": 61.885, "pl": 19.3264, "bullets": ["Fresh-forward premium tilt \u2014 over-indexes on produce and bakery.", "Leads meat <em>dollars</em> through premium cuts (priced ~+28% there).", "Lightest store-brand lean (~19%, \u201cSignature SELECT\u201d), with a premium/organic tail.", "Clusters in the five most affluent neighborhoods."], "distinct": "Fresh-forward mid-market, with a lighter store-brand lean than Kroger."}, "WDX": {"name": "Winn-Dixie", "seg": "Grocery", "tier": "Value", "logo": "assets/logos/WDX.png", "stores": 4, "auv": 22.5534, "basket": 47.6808, "pl": 26.2574, "bullets": ["Value banner \u2014 leanest assortment, everyday-low staples.", "Heaviest store-brand lean (~25%, \u201cSE Grocers\u201d).", "Meat is a traffic driver \u2014 over-indexes on meat <em>units</em>.", "Smaller baskets, high trip counts in working-class zones."], "distinct": "The value banner \u2014 most store-brand, meat volume up front."}, "TBL": {"name": "Taco Bell", "seg": "QSR", "tier": "Value, late-night", "logo": "assets/logos/TBL.png", "stores": 9, "auv": 2.247, "basket": 8.5386, "pl": null, "bullets": ["Value Mexican-inspired menu \u2014 the lowest check in the panel.", "Most locations of any banner (nine restaurants).", "Signature: Crunchwrap Supreme, Doritos Locos Tacos, Baja Blast.", "A real late-night daypart \u2014 ~18% of sales land after 9pm."], "distinct": "The most locations and the lowest check \u2014 a wide, value-priced footprint."}, "BKG": {"name": "Burger King", "seg": "QSR", "tier": "Value, breakfast", "logo": "assets/logos/BKG.png", "stores": 8, "auv": 1.6915, "basket": 10.006, "pl": null, "bullets": ["Flame-grilled value \u2014 the price floor of the QSR set.", "Signature: Whopper, Chicken Fries, Croissan\u2019wich.", "Carries a breakfast daypart alongside its all-day menu.", "Lowest per-unit volume, spread across a broad roadside footprint."], "distinct": "The lowest per-unit volume \u2014 the value floor of the QSR set."}, "CFA": {"name": "Chick-fil-A", "seg": "QSR", "tier": "Premium chicken", "logo": "assets/logos/CFA.png", "stores": 6, "auv": 7.7167, "basket": 13.4333, "pl": null, "bullets": ["Highest sales per unit in the panel (~$8M/yr) from just six restaurants.", "Signature: Original Chicken Sandwich, Waffle Fries, Icedream.", "Closed Sundays; lunch- and dinner-driven, with no late-night.", "Highest check; draws affluent suburban families and campuses."], "distinct": "Six restaurants out-earn the other seventeen QSR units combined."}};
 const AFFL=[0.75,1.45];
 (function(){
   var svg=document.getElementById('s1-map-svg');
@@ -293,13 +313,7 @@ const AFFL=[0.75,1.45];
   <text class="ax" x="604" y="218" text-anchor="end">25+ items</text>
   <rect x="494" y="30" width="110" height="170" fill="#4A7BA6" opacity="0.08"/>
   <text class="b-val" x="598" y="44" text-anchor="end" fill="#4A7BA6">top 20% of baskets → 41.9% of units</text>
-</svg></figure><p class="anchor">A weekly stock-up fills a big basket; a quick trip grabs three things. The long right tail is the stock-up behavior every grocer sees.</p><figure><svg viewBox="0 0 640 240" role="img" aria-label="Weekly transactions across the window, drifting up through spring, with Easter week marked">
-  <line x1="56" y1="196" x2="604" y2="196" stroke="#C9D0D8"/>
-  <line x1="255.3" y1="34" x2="255.3" y2="196" stroke="#B4543B" stroke-width="1" stroke-dasharray="3 3"/><text class="ax" x="255.3" y="30" text-anchor="middle" fill="#B4543B">Easter week</text>
-  <polyline fill="none" stroke="#0F4C81" stroke-width="2.5" points="56.0,119.1 105.8,150.1 155.6,171.0 205.5,196.0 255.3,82.6 305.1,160.4 354.9,172.9 404.7,175.5 454.5,128.1 504.4,51.3 554.2,73.5 604.0,34.0"/>
-  <text class="ax" x="56" y="214">early March</text>
-  <text class="ax" x="604" y="214" text-anchor="end">late May</text>
-</svg></figure><p class="anchor">The window runs early March to late May. The lift concentrates in Easter categories rather than spreading evenly across the basket.</p></div></details>
+</svg></figure><p class="anchor">A weekly stock-up fills a big basket; a quick trip grabs three things. The long right tail is the stock-up behavior every grocer sees.</p></div></details>
 
   <h3>Anatomy of a transaction</h3>
   <p>One real Kroger stock-up — what a payments company observes at the register.</p>
@@ -337,7 +351,7 @@ const AFFL=[0.75,1.45];
 </div></div></details>
 
   <h3>How the data checks out</h3>
-  <details class="disc"><summary>See all checks</summary><div class="disc-body"><table class="score-t"><thead><tr><th>Claim</th><th>Anchor (source)</th><th>Target</th><th>Measured (155k)</th></tr></thead><tbody><tr><td>Kroger per-store sales</td><td>FMI Food Industry Facts; Kroger 10-K</td><td>~$45M/yr</td><td class="mono">$44.9M</td></tr><tr><td>Grocery dollars split KRG/ACM/WDX</td><td>banner positioning</td><td>52/31/17</td><td class="mono">51/31/17</td></tr><tr><td>Chick-fil-A out-earns Taco Bell + Burger King</td><td>QSR 50 per-unit AUV</td><td>>1x</td><td class="mono">1.37x (6 vs 17 units)</td></tr><tr><td>Contactless share of payments</td><td>Fed Diary 2025</td><td>45–60%</td><td class="mono">56.0%</td></tr><tr><td>Store-brand unit share, Kroger</td><td>Numerator (unit)</td><td>~27%</td><td class="mono">27.6%</td></tr><tr><td>Store-brand unit share, Acme</td><td>Numerator (unit, Albertsons)</td><td>~19%</td><td class="mono">19.3%</td></tr><tr><td>Store-brand unit share, Winn-Dixie</td><td>value-banner assumption</td><td>~25%</td><td class="mono">26.3%</td></tr><tr><td>Late-night skew, Taco Bell</td><td>industry ~4%, raised to be detectable</td><td>15–23%</td><td class="mono">18.9% after 9pm</td></tr><tr><td>Breakfast skew, Burger King</td><td>QSR breakfast daypart</td><td>12–28%</td><td class="mono">20.0%</td></tr><tr><td>Pasta → sauce bought together</td><td>market-basket norm</td><td>≥1.8x</td><td class="mono">2.39x</td></tr><tr><td>No banner cheapest on everything</td><td>price arbitrage</td><td>none >70%</td><td class="mono">WDX 68%</td></tr><tr><td>Fresh share rises with affluence</td><td>affluent buy more fresh</td><td>monotonic</td><td class="mono">32.9→36.6→42.2</td></tr><tr><td>Both-segment shoppers</td><td>shared-wallet overlap</td><td>~46%</td><td class="mono">46.1%</td></tr><tr><td>Loyalty concentration</td><td>primary-banner habit</td><td>68–82%</td><td class="mono">78.6%</td></tr><tr><td>Heavy-tail baskets</td><td>stock-up behavior</td><td>40–60%</td><td class="mono">41.9% of units</td></tr></tbody></table><details class="disc"><summary>Sources</summary><div class="disc-body"><ul class="src"><li><strong>Grocery per-store sales &amp; store size</strong> — <a href="https://www.fmi.org/our-research/food-industry-facts" target="_blank" rel="noopener">FMI Food Industry Facts</a></li><li><strong>Per-banner private-label (unit) share</strong> — <a href="https://www.numerator.com/press/top-5-private-label-brands-are-owned-by-walmart-krogers-smart-way-is-fastest-growing-store-brand-numerator-reports/" target="_blank" rel="noopener">Numerator Private Label Trends Tracker</a></li><li><strong>QSR per-unit sales (AUV)</strong> — <a href="https://www.qsrmagazine.com/story/the-2025-qsr-50-fast-foods-leading-annual-report/" target="_blank" rel="noopener">QSR Magazine, The QSR 50</a></li><li><strong>Payment mix (credit/debit/contactless)</strong> — <a href="https://www.frbservices.org/news/research/2025-findings-from-the-diary-of-consumer-payment-choice" target="_blank" rel="noopener">Federal Reserve, Diary of Consumer Payment Choice</a></li><li><strong>Kroger own-brand scale (supporting)</strong> — <a href="https://www.stocktitan.net/sec-filings/KR/10-k-kroger-co-files-annual-report-38d6497b0466.html" target="_blank" rel="noopener">Kroger FY2025 10-K</a></li><li><strong>Grocery department sales mix</strong> — Circana / 210 Analytics 2024 (department mix) <em>(URL to be confirmed)</em></li></ul></div></details></div></details>
+  <details class="disc"><summary>See all checks</summary><div class="disc-body"><table class="score-t"><thead><tr><th>Claim</th><th>Anchor (source)</th><th>Target</th><th>Measured (155k)</th></tr></thead><tbody><tr><td>Kroger per-store sales</td><td>FMI Food Industry Facts; Kroger 10-K</td><td>~$45M/yr</td><td class="mono">$44.9M</td></tr><tr><td>Grocery dollars split KRG/ACM/WDX</td><td>banner positioning</td><td>52/31/17</td><td class="mono">51/31/17</td></tr><tr><td>Chick-fil-A out-earns Taco Bell + Burger King</td><td>QSR 50 per-unit AUV</td><td>>1x</td><td class="mono">1.37x (6 vs 17 units)</td></tr><tr><td>Contactless share of payments</td><td>Fed Diary 2025</td><td>45–60%</td><td class="mono">56.0%</td></tr><tr><td>Store-brand unit share, Kroger</td><td>Numerator (unit)</td><td>~27%</td><td class="mono">27.6%</td></tr><tr><td>Store-brand unit share, Acme</td><td>Numerator (unit, Albertsons)</td><td>~19%</td><td class="mono">19.3%</td></tr><tr><td>Store-brand unit share, Winn-Dixie</td><td>value-banner assumption</td><td>~25%</td><td class="mono">26.3%</td></tr><tr><td>Late-night skew, Taco Bell</td><td>industry ~4%, raised to be detectable</td><td>15–23%</td><td class="mono">18.9% after 9pm</td></tr><tr><td>Breakfast skew, Burger King</td><td>QSR breakfast daypart</td><td>12–28%</td><td class="mono">20.0%</td></tr><tr><td>Pasta → sauce bought together</td><td>market-basket norm</td><td>≥1.8x</td><td class="mono">2.39x</td></tr><tr><td>No banner cheapest on everything</td><td>price arbitrage</td><td>none >70%</td><td class="mono">WDX 68%</td></tr><tr><td>Fresh share rises with affluence</td><td>affluent buy more fresh</td><td>monotonic</td><td class="mono">32.9→36.6→42.2</td></tr><tr><td>Both-segment shoppers</td><td>shared-wallet overlap</td><td>~46%</td><td class="mono">46.1%</td></tr><tr><td>Loyalty concentration</td><td>primary-banner habit</td><td>68–82%</td><td class="mono">78.6%</td></tr><tr><td>Heavy-tail baskets</td><td>stock-up behavior</td><td>40–60%</td><td class="mono">41.9% of units</td></tr></tbody></table><details class="disc"><summary>Sources</summary><div class="disc-body"><ul class="src"><li><strong>Grocery per-store sales &amp; store size</strong> — <a href="https://www.fmi.org/our-research/food-industry-facts" target="_blank" rel="noopener">FMI Food Industry Facts</a></li><li><strong>Per-banner private-label (unit) share</strong> — <a href="https://www.numerator.com/press/top-5-private-label-brands-are-owned-by-walmart-krogers-smart-way-is-fastest-growing-store-brand-numerator-reports/" target="_blank" rel="noopener">Numerator Private Label Trends Tracker</a></li><li><strong>QSR per-unit sales (AUV)</strong> — <a href="https://www.qsrmagazine.com/story/the-2025-qsr-50-fast-foods-leading-annual-report/" target="_blank" rel="noopener">QSR Magazine, The QSR 50</a></li><li><strong>Payment mix (credit/debit/contactless)</strong> — <a href="https://www.frbservices.org/news/research/2025-findings-from-the-diary-of-consumer-payment-choice" target="_blank" rel="noopener">Federal Reserve, Diary of Consumer Payment Choice</a></li><li><strong>Kroger own-brand scale (supporting)</strong> — <a href="https://www.stocktitan.net/sec-filings/KR/10-k-kroger-co-files-annual-report-38d6497b0466.html" target="_blank" rel="noopener">Kroger FY2025 10-K</a></li><li><strong>Grocery department sales mix</strong> — Circana / 210 Analytics 2024 (department mix)</li></ul></div></details></div></details>
 </section>
 <!-- ==== SECTION 1 (generated) END ==== -->
 
@@ -418,6 +432,93 @@ const AFFL=[0.75,1.45];
   </div>
 
   <p class="callout"><b>A note on posture.</b> This runs on synthetic data, so k = 50 is the live floor here and there is no real merchant behind the numbers. On real data, a production deployment would go further still: adding statistical noise to published aggregates (differential privacy) and requiring a minimum variety within each released cell (l-diversity), on top of the k = 50 floor.</p>
+
+  <h3>Building clean, comparable data from messy inputs</h3>
+  <p>Everything so far assumes clean data — full product names, tidy categories, a subcategory that means the same at every merchant. Real data never arrives that way. At the register you usually see a short, truncated string — <code>TYSON BNLS SKNLS BRST</code>, not "Tyson Boneless Skinless Breast Chicken" — and every merchant labels its products differently: what one grocer files under "Chicken," another files under "Poultry," a third under "Refrigerated." Before any cross-merchant comparison could run, that mess has to be cleaned up <em>and</em> made comparable.</p>
+
+  <table class="cat-t">
+    <thead><tr><th>At the register we see</th><th>What analysis needs</th></tr></thead>
+    <tbody>
+      <tr><td>A truncated product string (<code>BNLS SKNLS CHKN</code>)</td><td>A full description — "Boneless Skinless Chicken Breast"</td></tr>
+      <tr><td>No category, or a merchant-internal code (<code>MEAT</code>, <code>DELI-3</code>)</td><td>A clean category the merchant would recognize</td></tr>
+      <tr><td>Nothing comparable — every merchant labels differently</td><td>A shared label that means the same across banners</td></tr>
+      <tr><td>A broad business-type code</td><td>Product mix fine enough to tell a steakhouse from a drive-thru</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Two models, two taxonomies</h3>
+  <p>Two learning tasks produce the two halves of the dual taxonomy: labels for a merchant's <em>own</em> analysis, and a shared set for <em>peer</em> comparison.</p>
+  <div class="g2">
+    <div class="gcol">
+      <div class="gh"><span>Model 1 · Reconstruct</span><span class="when">the merchant's own catalog</span></div>
+      <div class="mitem">Rebuild each merchant's products from the raw line stream: expand <code>CHKN BRST</code> to "Chicken Breast," enrich from barcode databases and product pages, and infer the category tree.</div>
+      <div class="mitem"><b>Output —</b> a clean, merchant-specific catalog, behind that merchant's own dashboard.</div>
+    </div>
+    <div class="gcol q">
+      <div class="gh"><span>Model 2 · Normalize</span><span class="when">onto a shared taxonomy</span></div>
+      <div class="mitem">Map every merchant's products onto one shared taxonomy, so Kroger's "Chicken" and Acme's "Poultry" both land on <b>Meat &amp; Seafood ▸ Poultry</b>.</div>
+      <div class="mitem"><b>Output —</b> the label peer comparison runs on, and the signal that identifies true peers.</div>
+    </div>
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 680 340" role="img" aria-label="The normalization pipeline: a truncated terminal string is reconstructed into a merchant's own catalog, then normalized onto a shared functional taxonomy; the own catalog feeds the merchant's dashboard and the shared taxonomy feeds cross-merchant peer comparison">
+      <defs>
+        <marker id="arn" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+          <path d="M0,0 L7,3 L0,6 Z" fill="#5B6472"/>
+        </marker>
+      </defs>
+
+      <!-- feedback loop (output re-feeds the classifier) -->
+      <path d="M576,80 L576,44 L100,44 L100,80" fill="none" stroke="#4A7BA6" stroke-width="1.3" stroke-dasharray="4 5" marker-end="url(#arn)"/>
+      <text class="nsub" x="338" y="38" text-anchor="middle" style="fill:#4A7BA6">live: new transactions re-classified against the taxonomy · novel items held aside and re-batched</text>
+
+      <!-- A · raw capture -->
+      <rect x="16" y="80" width="168" height="104" rx="8" fill="#F7F8FA" stroke="#E3E7EC"/>
+      <text class="nsub" x="100" y="103" text-anchor="middle">AT THE REGISTER</text>
+      <text x="100" y="127" text-anchor="middle" class="mono" style="fill:#1A1F2E; font-size:11.5px">TYSON BNLS SKNLS BRST</text>
+      <text class="nsub" x="100" y="150" text-anchor="middle">truncated, merchant-worded,</text>
+      <text class="nsub" x="100" y="166" text-anchor="middle">no category captured</text>
+
+      <!-- Model 1 arrow -->
+      <line x1="184" y1="132" x2="250" y2="132" stroke="#5B6472" stroke-width="1.5" marker-end="url(#arn)"/>
+      <text class="node" x="217" y="118" text-anchor="middle" style="font-size:11.5px">Model 1</text>
+      <text class="nsub" x="217" y="150" text-anchor="middle">reconstruct</text>
+
+      <!-- B · merchant's own catalog -->
+      <rect x="252" y="80" width="168" height="104" rx="8" fill="#fff" stroke="#0F4C81" stroke-width="1.4"/>
+      <text class="nsub" x="336" y="103" text-anchor="middle">MERCHANT'S OWN CATALOG</text>
+      <text class="nsub" x="336" y="126" text-anchor="middle">Meat &amp; Seafood ▸</text>
+      <text class="node" x="336" y="146" text-anchor="middle" style="fill:#0F4C81">Chicken</text>
+      <text class="nsub" x="336" y="168" text-anchor="middle">each chain's own words</text>
+
+      <!-- Model 2 arrow -->
+      <line x1="420" y1="132" x2="486" y2="132" stroke="#5B6472" stroke-width="1.5" marker-end="url(#arn)"/>
+      <text class="node" x="453" y="118" text-anchor="middle" style="font-size:11.5px">Model 2</text>
+      <text class="nsub" x="453" y="150" text-anchor="middle">normalize</text>
+
+      <!-- C · shared functional taxonomy -->
+      <rect x="488" y="80" width="176" height="104" rx="8" fill="#0F4C81"/>
+      <text class="nsub" x="576" y="103" text-anchor="middle" style="fill:#D8E2EE">FUNCTIONAL TAXONOMY</text>
+      <text class="node" x="576" y="126" text-anchor="middle" style="fill:#fff">Meat &amp; Seafood ▸</text>
+      <text class="node" x="576" y="146" text-anchor="middle" style="fill:#fff">Poultry</text>
+      <text class="nsub" x="576" y="168" text-anchor="middle" style="fill:#D8E2EE">same at every banner</text>
+
+      <!-- outputs -->
+      <line x1="336" y1="184" x2="336" y2="248" stroke="#5B6472" stroke-width="1.5" marker-end="url(#arn)"/>
+      <line x1="576" y1="184" x2="576" y2="248" stroke="#5B6472" stroke-width="1.5" marker-end="url(#arn)"/>
+      <rect x="246" y="250" width="180" height="46" rx="8" fill="#1A1F2E"/>
+      <text class="node" x="336" y="271" text-anchor="middle" style="fill:#fff">Your own dashboard</text>
+      <text class="nsub" x="336" y="287" text-anchor="middle" style="fill:#C9D0D8">full depth · own labels</text>
+      <rect x="486" y="250" width="178" height="46" rx="8" fill="#1A1F2E"/>
+      <text class="node" x="575" y="271" text-anchor="middle" style="fill:#fff">Peer comparison</text>
+      <text class="nsub" x="575" y="287" text-anchor="middle" style="fill:#C9D0D8">like-for-like across banners</text>
+    </svg>
+  </figure>
+
+  <p><b>Bootstrap once, then classify live.</b> A bulk data dump bootstraps both models; after that, new transactions are classified against the taxonomy in real time — familiar strings resolve instantly, while novel ones (a new SKU, a seasonal item) are held aside and re-batched to extend it. The bulk pass builds the classifier; live traffic uses it and grows it.</p>
+
+  <p class="callout"><b>What this stands in for.</b> The generator here emits clean names, categories, and subcategories directly — already split into the dual taxonomy these two models would otherwise have to <em>produce</em> from real data. That is a deliberate simplification: synthetic data is normalized by construction. On real terminal data, this normalization step is the harder — and more defensible — piece of engineering; the insights sit downstream of it.</p>
 </section>
 
 <!-- ================= SECTION 3 ================= -->
@@ -426,7 +527,7 @@ const AFFL=[0.75,1.45];
   <h2>The agents: every number is checked before you see it</h2>
   <p class="sublede">A question in plain English becomes a grounded answer. The system routes the question, runs real queries, and validates every figure against the data before displaying it.</p>
 
-  <p>A free-form question is classified by a lightweight router to the specialist best suited to answer it; a clicked suggested question skips the router and goes straight to its specialist. Anything that doesn't fit a specialist falls to a conversational advisor.</p>
+  <p>A free-form question is classified by a lightweight router to the specialist best suited to answer it. Anything that doesn't fit a specialist falls to a conversational advisor.</p>
 
   <figure>
     <svg viewBox="0 0 680 470" role="img" aria-label="How a question becomes a validated answer: route, query own and peer, validate every number, then answer">
@@ -440,7 +541,7 @@ const AFFL=[0.75,1.45];
 
       <rect x="170" y="92" width="340" height="48" rx="8" fill="#F7F8FA" stroke="#E3E7EC"/>
       <text class="node" x="340" y="113" text-anchor="middle">Router</text>
-      <text class="nsub" x="340" y="131" text-anchor="middle">pricing · demand · trade · anomaly · advisor</text>
+      <text class="nsub" x="340" y="131" text-anchor="middle">pricing · demand · advisor</text>
 
       <rect x="220" y="172" width="240" height="44" rx="8" fill="#fff" stroke="#E3E7EC"/>
       <text class="node" x="340" y="194" text-anchor="middle">Specialist</text>
@@ -470,22 +571,85 @@ const AFFL=[0.75,1.45];
       <line x1="460" y1="298" x2="460" y2="334" stroke="#5B6472" stroke-width="1.5" marker-end="url(#ar2)"/>
       <line x1="340" y1="394" x2="340" y2="418" stroke="#5B6472" stroke-width="1.5" marker-end="url(#ar2)"/>
     </svg>
-    <figcaption>Pills go straight to a specialist; free-form questions are routed. Either way the specialist queries your own data and the peer lake, then every stated number is checked against a real result cell before the answer is shown.</figcaption>
+    <figcaption>A free-form question is routed to a specialist; either way the specialist queries your own data and the peer lake, then every stated number is checked against a real result cell before the answer is shown.</figcaption>
   </figure>
 
   <h3>What each agent is for</h3>
   <ul>
     <li><strong>Pricing</strong> — how your prices compare to peers, category by category, in real dollars, and where you have room to move.</li>
     <li><strong>Demand</strong> — category and basket performance, and where you over- or under-perform your peer set.</li>
-    <li><strong>Trade area</strong> — neighborhood and store-level performance, and expansion opportunity.</li>
-    <li><strong>Anomaly</strong> — unusual spikes and drops, including the planted University City decline, set against peer baselines.</li>
     <li><strong>Conversational advisor</strong> — free-form questions, and anything that spans more than one specialist.</li>
   </ul>
 
-  <p>Peer comparison is only offered when it's honest. The three grocers each have two same-segment peers; Taco Bell and TJ Maxx have none in this panel, so a pricing-style peer comparison correctly declines for them rather than inventing one — while trend and trade-area views still work on their own data.</p>
+  <p>Peer comparison is only offered when it's honest — a merchant is only ever compared with same-segment peers. In this panel all six qualify: the three grocers against each other, the three QSR chains against each other. If a segment ever had a lone merchant, the system would decline a peer comparison for it rather than invent one, and fall back to that merchant's own data.</p>
 
-  <p class="callout"><b>The trust guarantee.</b> The agent reasons over real query results, not its own memory. Before any answer is shown, <b>every number in it is checked against an actual cell in the query result</b> — within tolerance — and any figure that can't be traced is removed, not displayed. The model cannot surface a fabricated number. This grounding check is the credibility core of the whole system. <span style="color:var(--muted)">(Today an answer is prose, grounded numbers, and a result table; charts inside answers are a planned fast-follow.)</span></p>
+  <p class="callout"><b>No fabricated numbers.</b> The agent answers only from real query results, never from memory. Every number in an answer is checked against an actual cell in that result — within tolerance — and any figure that doesn't match is dropped before you see it. It cannot show a number it didn't measure.</p>
 </section>
+
+<!-- ================= SECTION 4 ================= -->
+<section id="s4">
+  <span class="secnum">SECTION 4</span>
+  <h2>What it's built on</h2>
+  <p class="sublede">The prototype runs on one language and is served as a hosted web app. Below is the full stack, layer by layer.</p>
+
+  <p>Each layer handles one part of the path the data travels — from generating it at the base, through storing, querying, and reasoning over it, to serving the dashboard at the top.</p>
+
+  <div class="stack">
+    <div class="layer">
+      <div class="layer-name"><span class="lk">Hosting &amp; delivery</span><b>Live web app</b></div>
+      <div class="layer-body">
+        <p>Containerized and served as a live web app; a realism battery guards the synthetic data on every build.</p>
+        <div class="vchips"><span class="vchip" data-explain="Packages the app and everything it needs into one container, so it runs the same way anywhere.">Docker</span><span class="vchip" data-explain="A hosting platform for data and AI apps. The live demo runs there as a Docker container.">Hugging Face Spaces</span><span class="vchip" data-explain="A testing framework. It runs the test suite, including an 18-check battery that keeps the synthetic data within believable bands.">pytest 9.0</span></div>
+      </div>
+    </div>
+    <div class="layer">
+      <div class="layer-name"><span class="lk">Interface</span><b>Dashboard &amp; maps</b></div>
+      <div class="layer-body">
+        <p>The dashboard, the geography maps, and the interactive charts.</p>
+        <div class="vchips"><span class="vchip" data-explain="A framework for building data apps in pure Python. It renders the whole dashboard — the pages, the controls, and the chat panel.">Streamlit 1.57</span><span class="vchip" data-explain="Mapping tools. Folium builds the maps in Python; Leaflet draws them in the browser, showing store locations and the peer overlay.">Folium / Leaflet 0.20</span><span class="vchip" data-explain="A charting library. It draws the interactive charts in the dashboard.">Plotly 6.7</span></div>
+      </div>
+    </div>
+    <div class="layer">
+      <div class="layer-name"><span class="lk">AI agents</span><b>Claude</b></div>
+      <div class="layer-body">
+        <p>A fast Claude Haiku model routes each question; specialists can be upgraded to Claude Sonnet for harder reasoning.</p>
+        <div class="vchips"><span class="vchip" data-explain="The official library for calling Anthropic's Claude models. It carries each question to the model and returns the answer.">Anthropic SDK</span><span class="vchip" data-explain="A fast, low-cost Claude model. It reads each question and routes it to the right specialist agent.">Claude Haiku 4.5</span><span class="vchip" data-explain="A more capable Claude model. Specialists can be switched up to it for harder reasoning; Haiku is the default.">Claude Sonnet 4.6 (opt.)</span></div>
+      </div>
+    </div>
+    <div class="layer">
+      <div class="layer-name"><span class="lk">Data &amp; storage</span><b>Files as the database</b></div>
+      <div class="layer-body">
+        <p>Flat Parquet files are the database — written byte-identically for reproducibility and queried in-process, with no server.</p>
+        <div class="vchips"><span class="vchip" data-explain="A columnar file format built for analytics. Each table — customers, transactions, line items — is stored as a Parquet file on disk.">Parquet</span><span class="vchip" data-explain="The library that reads and writes Parquet. It is pinned to one version so every build produces byte-identical files, which keeps results reproducible.">pyarrow 17.0</span><span class="vchip" data-explain="An analytics database that runs inside the app, with no server to set up. It reads the Parquet files directly and answers every query the dashboard and agents make.">DuckDB 1.5</span><span class="vchip" data-explain="Reads the YAML config files. The whole panel — which merchants, the date window, the scale — is defined in config, not code.">PyYAML</span></div>
+      </div>
+    </div>
+    <div class="layer">
+      <div class="layer-name"><span class="lk">Language &amp; tooling</span><b>One language</b></div>
+      <div class="layer-body">
+        <p>One language across the generator, lake, agents, and dashboard; one command builds the data and runs the tests.</p>
+        <div class="vchips"><span class="vchip" data-explain="A general-purpose programming language. The entire prototype — data generator, peer lake, agents, and dashboard — is written in it.">Python 3.11</span><span class="vchip" data-explain="A Python library for fast numerical work. It drives the seeded math that generates the synthetic transactions.">numpy 2.4</span><span class="vchip" data-explain="A Python library for working with tables of data in memory. It assembles the rows before they are written to disk.">pandas 3.0</span><span class="vchip" data-explain="A fast package and task manager for Python. One command installs everything, builds the data, and runs the tests.">uv</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stack-detail" id="stackDetail"><span class="sd-hint">Select any tool above to see what it is and how it's used here.</span></div>
+</section>
+<script>
+(function(){
+  var detail=document.getElementById('stackDetail'); if(!detail) return;
+  var pills=document.querySelectorAll('#s4 .vchip');
+  pills.forEach(function(p){
+    p.setAttribute('tabindex','0'); p.setAttribute('role','button');
+    function show(){
+      pills.forEach(function(q){q.classList.remove('active');});
+      p.classList.add('active');
+      detail.innerHTML='<b>'+p.textContent+'</b> — '+p.getAttribute('data-explain');
+    }
+    p.addEventListener('click',show);
+    p.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault(); show();}});
+  });
+})();
+</script>
 
 <footer>
   Synthetic demonstrator · Merchant names are stand-ins and imply no affiliation. Built as a static page — no data leaves your browser.

@@ -290,30 +290,31 @@ def render_sku_performance(merchant_id: str, filters: dict) -> None:
 # ---------------------------------------------------------------------------
 
 def render_department_mix(merchant_id: str, filters: dict) -> None:
-    """Share of sales by the merchant's own DEPARTMENT, with each
-    department expandable to its category breakdown. Department is the
-    intuitive top-level grain: at category grain a big department split
-    across many categories (Meat & Seafood → Beef/Poultry/Pork/Seafood)
-    reads smaller than a single undivided category. Uses the merchant's own
-    shelf labels (readable names, department/category only — never SKU
-    codes or customer segments)."""
+    """Share of sales through the merchant's own shelf taxonomy, drilled
+    down — **segment-aware**. Grocery drills department → category →
+    subcategory; QSR (whose ``merchant_department`` is a single "Menu"
+    bucket) starts at category → subcategory. Uses the merchant's own shelf
+    labels (readable names — never SKU codes or customer segments)."""
     from . import chart_patterns as CP
 
     with st.container(border=True):
+        with st.spinner("Loading sales mix…"):
+            data = D.department_mix_own(merchant_id, filters=filters)
+        grain = data["top_grain"]                      # "department" | "category"
+        title = "Sales by department" if grain == "department" else "Sales by category"
+
         ask = {
             "key":        f"ask_about_dept_mix_{merchant_id}",
             "specialist": "demand",
             "prefill": (
-                "What does my sales mix look like by department? Where am "
+                f"What does my sales mix look like by {grain}? Where am "
                 "I most concentrated?"
             ),
         }
-        with st.spinner("Loading sales by department…"):
-            data = D.department_mix_own(merchant_id, filters=filters)
 
         if not data["labels"]:
-            CP._render_card_header("Sales by department", "", ask_about_this=ask)
-            st.caption("_No department-sales data available._")
+            CP._render_card_header(title, "", ask_about_this=ask)
+            st.caption(f"_No {grain}-sales data available._")
             return
 
         names = data["top3_names"]
@@ -322,7 +323,7 @@ def render_department_mix(merchant_id: str, filters: dict) -> None:
             if len(names) >= 3 else ", ".join(names)
         )
         takeaway = (
-            f"{lead} are the largest departments — together "
+            f"{lead} are the largest {grain}s — together "
             f"{data['top3_pct']:.0f}% of sales."
         )
         CP.render_horizontal_bars_own(
@@ -332,33 +333,55 @@ def render_department_mix(merchant_id: str, filters: dict) -> None:
                 "x_label":      "Share of sales (%)",
                 "value_format": ".1f",
             },
-            title="Sales by department",
+            title=title,
             takeaway=takeaway,
             height=360,
             ask_about_this=ask,
         )
 
-        # Category drill — one expander per displayed department (the
-        # "Other" roll-up has no single category breakdown, so skip it).
-        st.caption("Expand a department to see its category breakdown.")
-        for dept in data["labels"]:
-            if dept == "Other":
-                continue
-            sub = data["subcats"].get(dept)
-            if not sub or not sub["labels"]:
-                continue
-            with st.expander(dept):
+        # Drill — one expander per top-level item. Grocery goes one level
+        # deeper (category → subcategory) via a selectbox inside the expander,
+        # because Streamlit forbids nesting expanders.
+        st.caption(f"Expand a {grain} to see its breakdown.")
+        for label in data["labels"]:
+            node = data["drill"].get(label)
+            if not node or not node["labels"]:
+                continue  # no children → bar shown above, just not expandable
+            child_grain = "category" if grain == "department" else "subcategory"
+            with st.expander(label):
                 CP.render_horizontal_bars_own(
                     {
-                        "labels":       sub["labels"],
-                        "values":       sub["values"],
-                        "x_label":      "Share of department sales (%)",
+                        "labels":       node["labels"],
+                        "values":       node["values"],
+                        "x_label":      f"Share of {grain} sales (%)",
                         "value_format": ".1f",
                     },
-                    title="Category mix",
+                    title=f"{child_grain.capitalize()} mix",
                     takeaway="",
-                    height=max(180, 26 * len(sub["labels"]) + 60),
+                    height=max(180, 26 * len(node["labels"]) + 60),
                 )
+                # Grocery only: 3rd level (subcategory) behind a selectbox.
+                sub = node.get("sub") or {}
+                drillable = [c for c in node["labels"] if sub.get(c, {}).get("labels")]
+                if drillable:
+                    chosen = st.selectbox(
+                        "Drill into a category",
+                        drillable,
+                        key=f"subcat_sel_{merchant_id}_{label}",
+                    )
+                    leaf = sub.get(chosen) or {"labels": [], "values": []}
+                    if leaf["labels"]:
+                        CP.render_horizontal_bars_own(
+                            {
+                                "labels":       leaf["labels"],
+                                "values":       leaf["values"],
+                                "x_label":      "Share of category sales (%)",
+                                "value_format": ".1f",
+                            },
+                            title=f"{chosen} — subcategory mix",
+                            takeaway="",
+                            height=max(160, 26 * len(leaf["labels"]) + 60),
+                        )
 
 
 # ---------------------------------------------------------------------------

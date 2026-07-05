@@ -453,7 +453,7 @@ ZONE_DESC = {
 MERCHANT_META = {
     "KRG": {"tier": "Mainstream, large-format",
             "bullets": [
-                "Fullest assortment in the panel — ~1,350 SKUs across every department.",
+                "Fullest assortment in the panel — spans every department.",
                 "Deepest own-brand program — ~27% of units are store brands (Kroger / Simple Truth).",
                 "Priced cheapest on meat and center-store staples; near-market elsewhere.",
                 "Draws the biggest baskets, spanning affluent and mainstream neighborhoods.",
@@ -469,7 +469,7 @@ MERCHANT_META = {
             "distinct": "Fresh-forward mid-market, with a lighter store-brand lean than Kroger."},
     "WDX": {"tier": "Value",
             "bullets": [
-                "Value banner — leanest assortment (~1,050 SKUs), everyday-low staples.",
+                "Value banner — leanest assortment, everyday-low staples.",
                 "Heaviest store-brand lean (~25%, “SE Grocers”).",
                 "Meat is a traffic driver — over-indexes on meat <em>units</em>.",
                 "Smaller baskets, high trip counts in working-class zones.",
@@ -1269,7 +1269,7 @@ def scorecard_table(M: dict) -> str:
 def sources_block() -> str:
     lis = []
     for what, src, url in SOURCES:
-        link = f'<a href="{url}" target="_blank" rel="noopener">{esc(src)}</a>' if url else esc(src) + " <em>(URL to be confirmed)</em>"
+        link = f'<a href="{url}" target="_blank" rel="noopener">{esc(src)}</a>' if url else esc(src)
         lis.append(f'<li><strong>{esc(what)}</strong> — {link}</li>')
     return f'<details class="disc"><summary>Sources</summary><div class="disc-body"><ul class="src">{"".join(lis)}</ul></div></details>'
 
@@ -1280,7 +1280,7 @@ def stats_band(M) -> str:
         (f"{M['cards']:,}", "shared customer cards"),
         (f"{M['txns']/1e6:.1f}M", f"transactions · {M['lines']/1e6:.0f}M line items"),
         ("90 days", "Mar 1 – May 29, 2026"),
-        ("5 AI agents", "4 specialists + an advisor"),
+        ("3 AI agents", "2 specialists + an advisor"),
         ("k = 50", "peer-privacy suppression floor"),
     ]
     return '<div class="stats">' + "".join(
@@ -1304,9 +1304,7 @@ def render_section(con, zones, rows, M, CD) -> str:
     mech_charts = details(
         "How this works",
         f'<figure>{svg_basket_tail(CD["basket_hist"])}</figure>'
-        '<p class="anchor">A weekly stock-up fills a big basket; a quick trip grabs three things. The long right tail is the stock-up behavior every grocer sees.</p>'
-        f'<figure>{svg_seasonality(CD)}</figure>'
-        '<p class="anchor">The window runs early March to late May. The lift concentrates in Easter categories rather than spreading evenly across the basket.</p>')
+        '<p class="anchor">A weekly stock-up fills a big basket; a quick trip grabs three things. The long right tail is the stock-up behavior every grocer sees.</p>')
 
     return f"""<!-- ==== SECTION 1 (generated) START ==== -->
 <section id="s1">

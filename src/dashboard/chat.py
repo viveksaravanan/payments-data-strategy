@@ -407,9 +407,15 @@ def render_chat_panel(merchant_id: str) -> None:
 
     # -- Agent selector — back to ``st.selectbox`` (the radio aesthetic
     # was generic Streamlit default; the dropdown is cleaner). The
-    # 4-item list makes the type-ahead filter a non-issue in practice
-    # — the committed value is always one of the four specialists. --
-    agent_ids = ["demand", "pricing", "anomaly", "trade"]
+    # short list makes the type-ahead filter a non-issue in practice
+    # — the committed value is always one of the listed specialists.
+    # Anomaly + Trade Area are deferred, so they are not offered here;
+    # their questions route to the Conversational Advisor. --
+    agent_ids = ["demand", "pricing"]
+    # Guard against a stale ``active_agent`` persisted from before the
+    # two specialists were deferred (would raise in ``.index`` below).
+    if state.active_agent not in agent_ids:
+        state.active_agent = agent_ids[0]
     agent_labels = {a: A.AGENT_LABELS[a] for a in agent_ids}
     chosen = st.selectbox(
         "Specialist agent",
