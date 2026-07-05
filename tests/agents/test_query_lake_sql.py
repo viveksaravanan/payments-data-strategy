@@ -97,7 +97,11 @@ def test_union_rejected() -> None:
 
 def test_invalid_viewer_rejected() -> None:
     with pytest.raises(LakeToolError, match="Unknown viewer"):
-        query_lake_sql("ZZZ", "SELECT category, COUNT(*) FROM lake_transactions GROUP BY category")
+        query_lake_sql(
+            "ZZZ",
+            "SELECT category, COUNT(*) FROM lake_transactions "
+            "WHERE peer_relationship = 'peer' GROUP BY category",
+        )
 
 
 # ----- execution / scoping / suppression (needs built lake) -------------
@@ -149,9 +153,11 @@ def test_count_injection_nested_join_neighborhood() -> None:
 @needs_lake
 def test_k_floor_suppresses_thin_groups_and_strips_k() -> None:
     # Grouping by basket → per-basket groups; those under k=50 lines drop.
+    # Post self-tag the aggregate must constrain peer_relationship.
     p = query_lake_sql(
         "KRG",
-        "SELECT lake_txn_id, SUM(line_total) AS tot FROM lake_transactions GROUP BY lake_txn_id",
+        "SELECT lake_txn_id, SUM(line_total) AS tot FROM lake_transactions "
+        "WHERE peer_relationship = 'peer' GROUP BY lake_txn_id",
     )
     assert "_k" not in p["columns"]
     assert p["suppressed"] > 0
@@ -181,13 +187,82 @@ def test_group_by_all_accepted_and_counts_correctly() -> None:
 
 
 @needs_lake
-def test_whole_table_aggregate_ok() -> None:
+def test_whole_table_peer_aggregate_ok() -> None:
+    # Post self-tag: a whole-table aggregate must still exclude self, so it
+    # carries an explicit peer filter.
     p = query_lake_sql(
         "KRG",
-        "SELECT AVG(unit_price) AS asp, COUNT(DISTINCT lake_txn_id) AS txns FROM lake_transactions",
+        "SELECT AVG(unit_price) AS asp, COUNT(DISTINCT lake_txn_id) AS txns "
+        "FROM lake_transactions WHERE peer_relationship = 'peer'",
     )
     assert p["row_count"] == 1
     assert "_k" not in p["columns"]
+
+
+# ----- self-tag: the peer_relationship guard (Change 2) -----------------
+
+def test_unfiltered_lake_aggregate_rejected() -> None:
+    """The viewer's own rows are present tagged 'self'. An aggregate that
+    never constrains peer_relationship would blend self into the peer
+    number, so the engine refuses it (guidance names peer_relationship)."""
+    with pytest.raises(LakeToolError, match="peer_relationship"):
+        query_lake_sql(
+            "KRG",
+            "SELECT category, AVG(unit_price) AS asp FROM lake_transactions "
+            "GROUP BY category",
+        )
+
+
+def test_self_filter_reference_satisfies_guard() -> None:
+    # The guard is a reference check, not a value check — a query that
+    # references peer_relationship (here via FILTER, no top-level WHERE)
+    # passes. A query that never mentions it is rejected.
+    import duckdb as _duckdb
+
+    from src.lake.lake_sql import _check_peer_scoped, _parse
+
+    con = _duckdb.connect()
+    ok = _parse(
+        con,
+        "SELECT subcategory, "
+        "AVG(unit_price) FILTER (WHERE peer_relationship = 'self') AS own, "
+        "AVG(unit_price) FILTER (WHERE peer_relationship = 'peer') AS peer "
+        "FROM lake_transactions GROUP BY subcategory",
+    )
+    _check_peer_scoped(ok)  # does not raise
+
+    bad = _parse(
+        con,
+        "SELECT subcategory, AVG(unit_price) AS asp "
+        "FROM lake_transactions GROUP BY subcategory",
+    )
+    with pytest.raises(Exception, match="peer_relationship"):
+        _check_peer_scoped(bad)
+
+
+@needs_lake
+def test_gap_query_ranks_own_vs_peer_in_one_query() -> None:
+    """The load-bearing shape: own via FILTER self, peer via FILTER peer,
+    sortable gap in ONE lake query. Peer averages exclude self (the guard +
+    FILTER), and the k-floor counts peer lines only."""
+    p = query_lake_sql(
+        "KRG",
+        "SELECT subcategory, "
+        "AVG(unit_price) FILTER (WHERE peer_relationship = 'self') AS own_asp, "
+        "AVG(unit_price) FILTER (WHERE peer_relationship = 'peer') AS peer_asp, "
+        "SUM(qty)        FILTER (WHERE peer_relationship = 'self') AS own_units "
+        "FROM lake_transactions "
+        "GROUP BY subcategory "
+        "HAVING own_asp IS NOT NULL AND peer_asp IS NOT NULL "
+        "ORDER BY own_asp / peer_asp NULLS LAST, own_units DESC, subcategory",
+    )
+    cols = set(p["columns"])
+    assert {"subcategory", "own_asp", "peer_asp", "own_units"} <= cols
+    assert "_k" not in cols
+    assert p["row_count"] > 0
+    # own and peer are both real dollars and genuinely distinct surfaces.
+    first = dict(zip(p["columns"], p["rows"][0]))
+    assert first["own_asp"] is not None and first["peer_asp"] is not None
 
 
 @needs_lake

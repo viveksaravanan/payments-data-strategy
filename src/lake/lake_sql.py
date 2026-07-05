@@ -192,12 +192,62 @@ def _check_tables(ast: dict[str, Any]) -> None:
         )
 
 
+def _references_peer_relationship(ast: dict[str, Any]) -> bool:
+    """True if the query references the ``peer_relationship`` column
+    anywhere (a WHERE predicate, a FILTER clause, a GROUP BY, …)."""
+    for node in _iter_nodes(ast):
+        if (
+            isinstance(node, dict)
+            and node.get("class") == "COLUMN_REF"
+            and "peer_relationship" in (node.get("column_names") or [])
+        ):
+            return True
+    return False
+
+
+def _check_peer_scoped(ast: dict[str, Any]) -> None:
+    """§7.2b — the viewer's own rows live in the lake tagged
+    ``peer_relationship = 'self'`` (so the own-vs-peer gap is sortable in one
+    query). Any aggregate over ``lake_transactions`` MUST therefore constrain
+    ``peer_relationship`` — otherwise a bare ``AVG``/``SUM`` silently blends
+    the viewer's own rows into the peer number. The k-floor is already
+    peer-only (``_inject_count``); this closes the correctness half.
+
+    Passes: ``WHERE peer_relationship = 'peer'`` (a plain peer aggregate) and
+    ``AVG(...) FILTER (WHERE peer_relationship = 'self' | 'peer')`` (the gap
+    query). Rejected: a projection over ``lake_transactions`` that never
+    mentions ``peer_relationship``."""
+    reads_lt = any(
+        isinstance(n, dict) and n.get("type") == "BASE_TABLE"
+        and n.get("table_name") == "lake_transactions"
+        for n in _iter_nodes(ast)
+    )
+    if reads_lt and not _references_peer_relationship(ast):
+        raise LakeSqlError(
+            "Query reads lake_transactions without referencing "
+            "peer_relationship. The viewer's own rows are present tagged "
+            "'self', so a peer aggregate must exclude them: add "
+            "WHERE peer_relationship = 'peer'. To compute an own-vs-peer gap "
+            "in one query, use conditional aggregates — e.g. "
+            "AVG(unit_price) FILTER (WHERE peer_relationship = 'self') for own "
+            "and AVG(unit_price) FILTER (WHERE peer_relationship = 'peer') for "
+            "peer."
+        )
+
+
 def _inject_count(con: duckdb.DuckDBPyConnection, ast: dict[str, Any]) -> str:
-    """Splice ``COUNT(*) AS _k`` into the outermost SELECT's projection
-    and return the rewritten SQL. Robust to any FROM/WHERE/JOIN/CTE
-    shape because only the projection is touched."""
+    """Splice ``COUNT(*) FILTER (WHERE peer_relationship = 'peer') AS _k`` into
+    the outermost SELECT's projection and return the rewritten SQL. The FILTER
+    is load-bearing: the viewer's own (``self``) rows are present in the lake,
+    so a bare ``COUNT(*)`` would let self volume pad a thin peer group past the
+    k-floor (a k-anonymity break). Counting peer rows only keeps the floor
+    honest. Robust to any FROM/WHERE/JOIN/CTE shape because only the projection
+    is touched."""
     ref = json.loads(
-        con.execute("SELECT json_serialize_sql(?)", ["SELECT COUNT(*) AS _k"]).fetchone()[0]
+        con.execute(
+            "SELECT json_serialize_sql(?)",
+            ["SELECT COUNT(*) FILTER (WHERE peer_relationship = 'peer') AS _k"],
+        ).fetchone()[0]
     )
     count_node = ref["statements"][0]["node"]["select_list"][0]
     ast["statements"][0]["node"]["select_list"].append(count_node)
@@ -252,6 +302,7 @@ def run_lake_sql(viewer: str, sql: str) -> tuple[pd.DataFrame, int]:
     node = ast["statements"][0]["node"]
     _check_aggregating(node)
     _check_tables(ast)
+    _check_peer_scoped(ast)
 
     _register_viewer_views(con, viewer)
     injected = _inject_count(con, ast)

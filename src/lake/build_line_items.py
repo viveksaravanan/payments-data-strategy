@@ -9,10 +9,14 @@ merchants (§5):
 * ``lake_stores``       — peer store reference (tokenized id + segment
                           + neighborhood).
 
-Per-viewer means: the viewing merchant's own rows are **excluded**
-(structural, not a runtime filter — §3.3) and every remaining row is
-labeled ``peer`` (same segment as the viewer) or ``merchant``
-(different segment) **relative to that viewer** (§3.2).
+Per-viewer means: every row is labeled **relative to that viewer** (§3.2) —
+``self`` (the viewer's own rows), ``peer`` (same segment as the viewer), or
+``merchant`` (different segment). The viewer's own rows are kept but tagged
+``self`` (they used to be excluded) so the own-vs-peer gap is sortable in a
+single lake query; they carry **no** privileged detail — same identity-strip,
+same functional taxonomy, no SKU — and ``self`` only ever appears in that
+viewer's own file. Peer averages and the ``k=50`` floor exclude ``self`` at
+query time (``peer_relationship = 'peer'``); see ``lake_sql.py``.
 
 Privacy posture (deliberately minimal — §7 / §12): identity reduced
 to the ``peer_relationship`` label (never a name or pseudonym),
@@ -210,9 +214,12 @@ def scope_lines_for_viewer(
     """Produce the published ``(lake_transactions, lake_stores)`` pair
     for ``viewer`` from the enriched global frame:
 
-    * **Viewer exclusion** — drop the viewer's own rows (§3.3).
-    * **Relationship relabel** — ``peer`` if same segment as viewer,
-      else ``merchant`` (§3.2).
+    * **Relationship label** — ``self`` if the viewer's own row, ``peer``
+      if same segment as the viewer, else ``merchant`` (§3.2). The
+      viewer's own rows are **kept** (tagged ``self``) so the own-vs-peer
+      gap is sortable in one lake query; ``self`` carries no privileged
+      detail and only appears in the viewer's own file. Peer aggregates
+      and the k-floor exclude ``self`` at query time (``lake_sql.py``).
     * **Identity strip** — the real ``banner_code`` / ``store_id`` /
       ``txn_id`` / ``line_id`` never reach the published frames.
     """
@@ -221,16 +228,17 @@ def scope_lines_for_viewer(
     seg = _segment_by_banner()
     viewer_segment = seg[viewer]
 
-    peers = global_lines[global_lines["banner_code"] != viewer].copy()
-    rel = peers["banner_code"].map(
-        lambda b: "peer" if seg.get(b) == viewer_segment else "merchant"
+    scoped = global_lines.copy()
+    rel = scoped["banner_code"].map(
+        lambda b: "self" if b == viewer
+        else ("peer" if seg.get(b) == viewer_segment else "merchant")
     )
-    peers["peer_relationship"] = rel
+    scoped["peer_relationship"] = rel
 
-    lake_transactions = peers[_TXN_PUBLISHED].reset_index(drop=True)
+    lake_transactions = scoped[_TXN_PUBLISHED].reset_index(drop=True)
 
-    # Store reference: one row per peer store.
-    store_ref = peers.drop_duplicates(subset=["lake_store_id"]).copy()
+    # Store reference: one row per store (incl. the viewer's own, tagged self).
+    store_ref = scoped.drop_duplicates(subset=["lake_store_id"]).copy()
     store_ref["peer_segment"] = store_ref["banner_code"].map(seg)
     lake_stores = store_ref[_STORE_PUBLISHED].reset_index(drop=True)
 

@@ -77,18 +77,29 @@ def test_published_column_lists_carry_no_identity() -> None:
     assert FORBIDDEN_PUBLISHED.isdisjoint(_STORE_PUBLISHED)
 
 
-# ----- viewer exclusion + relationship labeling -------------------------
+# ----- viewer inclusion (tagged `self`) + relationship labeling ---------
 
-def test_viewer_rows_excluded() -> None:
+def test_viewer_rows_present_and_tagged_self() -> None:
+    """Post self-tag change: the viewer's own rows are KEPT in its lake
+    but labeled `peer_relationship = 'self'`, so the own-vs-peer gap is
+    sortable in one lake query. `banner_code` is still stripped, and the
+    self rows carry no privileged detail (same projection as peers)."""
     g = _synthetic_global()
     lake_txn, lake_stores = scope_lines_for_viewer(g, "KRG")
-    # The viewer's own tokens are gone — and no real banner survives to
-    # check against, which is itself the point.
+    # banner_code still gone from both published frames.
     assert "banner_code" not in lake_txn.columns
     assert "banner_code" not in lake_stores.columns
-    # KRG had 2 lines; excluded → only ACM/TBL/CFA (6) remain.
-    assert len(lake_txn) == 6
-    assert not lake_txn["lake_txn_id"].str.contains("KRG").any()
+    # All 8 lines survive now (KRG's 2 kept, tagged self).
+    assert len(lake_txn) == 8
+    # KRG's own store is present and tagged self; ACM is a peer.
+    rel = dict(zip(lake_stores["lake_store_id"], lake_stores["peer_relationship"]))
+    assert rel["stok_s_krg"] == "self"
+    assert rel["stok_s_acm"] == "peer"
+    # The transaction frame carries the self label too.
+    self_lines = lake_txn[lake_txn["peer_relationship"] == "self"]
+    assert len(self_lines) == 2
+    # Self rows carry NO merchant-own columns and no banner leak.
+    assert not any(c.startswith("merchant_") for c in lake_txn.columns)
 
 
 def test_peer_relationship_relative_to_viewer() -> None:
@@ -195,7 +206,9 @@ def test_materialized_generalization_holds() -> None:
             f"SELECT DISTINCT peer_relationship FROM read_parquet('{path}')"
         ).df()["peer_relationship"]
     )
-    assert rels <= {"peer", "merchant"}
+    # Post self-tag: the viewer's own rows are present as `self`.
+    assert rels <= {"self", "peer", "merchant"}
+    assert "self" in rels, "viewer's own rows should be present tagged self"
 
 
 HOUR_BUCKETS_MAX = 9
