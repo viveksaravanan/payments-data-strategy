@@ -1,4 +1,4 @@
-.PHONY: seed seed-pilot demo test test-quick clean dq-report lake-items agent-preview catalog push-data
+.PHONY: seed seed-pilot demo test test-quick clean dq-report lake-items agent-preview catalog push-data deploy
 
 # datamodel-v2: author the static committed catalog. Emits the
 # observable data/catalog/products.csv (committed) + the hidden
@@ -57,3 +57,11 @@ clean:
 push-data:
 	huggingface-cli upload viveks2862/payments-data-strategy-data ./data/raw raw --repo-type dataset
 	huggingface-cli upload viveks2862/payments-data-strategy-data ./data/lake/items lake/items --repo-type dataset
+
+# Deploy the current working tree (code only) to the HF Space as a single
+# orphan commit — the one-command redeploy for dashboard / agent changes.
+# Data is unchanged and served from the dataset repo on boot; if you
+# regenerated data, run `make push-data` first. See scripts/deploy_hfspace.sh
+# for why an orphan push is required (1GB cap + old LFS history).
+deploy:
+	bash scripts/deploy_hfspace.sh
