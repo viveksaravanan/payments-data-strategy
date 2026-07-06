@@ -1,4 +1,4 @@
-.PHONY: seed seed-pilot demo test test-quick clean dq-report lake-items agent-preview catalog
+.PHONY: seed seed-pilot demo test test-quick clean dq-report lake-items agent-preview catalog push-data
 
 # datamodel-v2: author the static committed catalog. Emits the
 # observable data/catalog/products.csv (committed) + the hidden
@@ -48,3 +48,12 @@ demo:
 clean:
 	rm -rf data/raw data/eval data/*.db data/parquet
 	mkdir -p data/raw data/eval
+
+# Sync the full-scale data/ tree to the companion HF Dataset repo that the
+# Space downloads on boot. Run this after every `make seed` + `make
+# lake-items` regen, then redeploy — otherwise the Space serves stale data
+# against new pills. ALLOWLIST only (data/raw + data/lake/items); the eval
+# answer key is never uploaded. Requires a logged-in `huggingface-cli`.
+push-data:
+	huggingface-cli upload viveks2862/payments-data-strategy-data ./data/raw raw --repo-type dataset
+	huggingface-cli upload viveks2862/payments-data-strategy-data ./data/lake/items lake/items --repo-type dataset

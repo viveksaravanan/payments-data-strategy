@@ -13,6 +13,12 @@
 
 data/eval/
 
+# Runtime data now lives in the companion HF Dataset repo and is
+# downloaded on boot by streamlit_app.py — keep it OUT of the image so
+# the Space ships code only (the line-item lake alone is ~2GB).
+data/raw/
+data/lake/
+
 # Python / build cruft
 **/__pycache__/
 *.pyc

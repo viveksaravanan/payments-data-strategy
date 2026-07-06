@@ -1,11 +1,10 @@
 """HF Spaces entry point. Wraps src/dashboard/app.py.
 
-Wave 1 (v4): the v3 SQLite cold-boot path (subprocess to
-`src.generate.run_all` + `src.db.seed`) has been removed because
-`src/db/seed.py` is quarantined and the dashboard hasn't been
-rewired to the new DuckDB+Parquet engine yet. The v4 deploy path
-is rebuilt in a later wave; for the working v3 deploy, check out
-the `v3-final` tag.
+The Space image ships **code only** — the ~2GB `data/` tree (full-scale
+tenant Parquet + the six per-viewer line-item lakes) lives in a companion
+HF **Dataset** repo and is downloaded on first boot (see `_ensure_data`
+below). This keeps the Space under its Git/LFS cap; regenerate locally,
+re-run `make push-data`, and redeploy to refresh.
 """
 import os
 import sys
@@ -16,6 +15,39 @@ import streamlit as st
 
 REPO_ROOT = Path(__file__).parent
 sys.path.insert(0, str(REPO_ROOT))
+
+# --- Boot-time dataset download ------------------------------------------
+# The companion public Dataset repo mirrors what goes under `data/`:
+# `raw/*.parquet` + `lake/items/<VIEWER>/*.parquet` (the eval answer key is
+# NEVER uploaded). Downloading into REPO_ROOT/data reconstructs the exact
+# layout every module expects (data/raw/…, data/lake/items/…), so no path
+# code changes. Idempotent: this script re-runs on every Streamlit rerun,
+# so we skip the download once the data is present.
+DATA_REPO = "viveks2862/payments-data-strategy-data"
+DATA_ROOT = REPO_ROOT / "data"
+
+
+def _ensure_data() -> None:
+    if (DATA_ROOT / "raw" / "transactions.parquet").exists():
+        return
+    from huggingface_hub import snapshot_download  # noqa: PLC0415
+
+    with st.spinner(
+        "First boot: downloading the dataset from the Hub (~2 GB, a few "
+        "minutes). This happens once per cold start."
+    ):
+        snapshot_download(
+            repo_id=DATA_REPO,
+            repo_type="dataset",
+            local_dir=str(DATA_ROOT),
+        )
+
+
+try:
+    _ensure_data()
+except Exception as exc:  # noqa: BLE001 — surface a clear boot error
+    st.error(f"Could not load the dataset from the Hub: {exc}")
+    st.stop()
 
 # Load Anthropic API key from Streamlit secrets into env (if available).
 # Wrapped: accessing st.secrets raises StreamlitSecretNotFoundError when

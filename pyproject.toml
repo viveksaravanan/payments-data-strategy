@@ -8,6 +8,10 @@ dependencies = [
     "duckdb>=1.0,<2.0",
     "faker>=30",
     "folium>=0.16",
+    # huggingface_hub: boot-time download of the data/ tree from the
+    # companion HF Dataset repo (the Space ships code only; the 2GB
+    # line-item lake lives in the dataset, not the Space image).
+    "huggingface-hub>=0.25",
     "matplotlib>=3.8,<4.0",
     "numpy>=2",
     "pandas>=2",
