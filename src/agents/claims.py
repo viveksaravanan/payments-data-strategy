@@ -717,6 +717,19 @@ _MAGNITUDE_RE = re.compile(
     r"(\d[\d,]*(?:\.\d+)?)\s*(k|m|mn|b|bn|thousand|million|billion)\b",
     re.IGNORECASE,
 )
+# Max relative gap between the scale-word number's mantissa and the claim's
+# resolved-value mantissa for the magnitude check to fire. A real mislabel
+# keeps the digits (ratio ~1.0); an unrelated same-span metric does not.
+_MAGNITUDE_MANTISSA_TOL = 0.03
+
+
+def _mantissa(x: float) -> float | None:
+    """Normalize ``|x|`` to a mantissa in ``[1, 10)`` (the significant
+    digits, scale removed), or None for zero/degenerate input."""
+    x = abs(x)
+    if x == 0 or not math.isfinite(x):
+        return None
+    return x / (10.0 ** math.floor(math.log10(x)))
 
 # Metric-MOVEMENT words for the direction check. These describe the
 # metric itself going up / down, so their polarity is subject-independent.
@@ -755,6 +768,20 @@ def _check_magnitude_semantics(text_span: str, true_value: float) -> str | None:
     num = float(m.group(1).replace(",", ""))
     displayed = num * _SCALE_FACTORS[m.group(2).lower()]
     if displayed == 0:
+        return None
+    # Multi-metric-span guard. A genuine magnitude MISLABEL keeps the
+    # significant digits and corrupts only the scale ($6.4M cell written
+    # as "$6.4B" — same 6.4 mantissa). When the scale-word number's
+    # mantissa does NOT match the claim's resolved value, the scale word
+    # is describing a DIFFERENT metric that happens to share the span —
+    # e.g. a "33k units" volume next to a "$3.03" price claim. Attributing
+    # it to this claim is a false positive; stay silent unless the digits
+    # line up. (Bias toward not stripping legitimate prose, consistent with
+    # the direction check's mixed-signal guard.)
+    mant_num, mant_true = _mantissa(num), _mantissa(true_value)
+    if mant_num is None or mant_true is None:
+        return None
+    if abs(mant_num / mant_true - 1.0) > _MAGNITUDE_MANTISSA_TOL:
         return None
     ratio = abs(displayed) / abs(true_value)
     if ratio >= 100 or ratio <= 0.01:

@@ -659,6 +659,29 @@ def test_correct_magnitude_passes_untouched(semantic_frame) -> None:
     assert not rep.has_any_strip
 
 
+def test_magnitude_multimetric_span_not_stripped(semantic_frame) -> None:
+    """A price claim whose span also carries an UNRELATED volume scale word
+    ('90k units') must NOT be stripped. The scale word describes a different
+    metric than the claim's resolved value ($3.20), so the magnitude check's
+    mantissa guard keeps it silent — a real magnitude mislabel preserves the
+    digits (6.4→6.4), an unrelated same-span metric does not (9.0 vs 3.2).
+
+    Regression for the product-drill false positive: 'Kroger 2% Half Gallon
+    (about $3.03, 33k units)' was wrongly stripped_semantic because '33k' was
+    measured against the $3.03 price cell.
+    """
+    prose = "Kroger 2% Half Gallon (about $3.20, 90k units) leads the drill."
+    claim = Claim(
+        text_span="Kroger 2% Half Gallon (about $3.20, 90k units)",
+        value=3.20,
+        source=CellLookup({"merchant": "KRG"}, "own_price"),
+    )
+    rep = validate_claims(prose, [claim], semantic_frame)
+    assert rep.claim_dispositions[0].status == "passed"
+    assert "90k units" in rep.prose
+    assert not rep.has_any_strip
+
+
 def test_direction_down_word_contradicts_increase_strips(semantic_frame) -> None:
     """pct_change is +0.10 (up) but the prose says 'fell' → strip."""
     prose = "Sales fell 10% versus the prior week."
