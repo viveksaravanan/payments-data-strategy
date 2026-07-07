@@ -10,32 +10,43 @@ from __future__ import annotations
 QUESTIONS: dict[str, dict[str, list[dict]]] = {
     "GROCER": {
         "pricing": [
-            # The two flagship both-directions questions. Each resolves
-            # deterministically off the sortable own-vs-peer gap query (own
-            # from `self` rows, peer from `'peer'` rows, ORDER BY gap with a
-            # total tiebreak) → the furthest-gap subcategory is a row the
-            # agent reads off, then drills to named own products. Same answer
-            # every run (temp 0 + total order). See docs/AGENT_QUALITY_STANDARD.md.
+            # Three complementary shapes, all off the one sortable own-vs-peer
+            # gap query (own from `self` rows, peer from `'peer'` rows, per-store
+            # normalized). P1 = a two-directional POSITIONING scan; P2 = the
+            # DECISION layer (the full gate stack); P3 = a named-subcategory
+            # LOOKUP. All three validated live ground-truth-first (temp 0).
             {
+                # Two-directional positioning scan: the agent reads the gap
+                # ranking from BOTH ends (most below-peer AND most above-peer)
+                # in one answer, and calls out "well-aligned, nothing stands
+                # out" when the widest gap is small (the WDX ~+2.7% case) rather
+                # than dressing a trivial gap up as a finding.
                 "id":      "P1",
-                "text":    "Which subcategory am I priced furthest below peer grocers on — and which of my products drive it?",
+                "text":    "Where is my pricing out of line with peer grocers — too high or too low?",
                 "pattern": "pattern_2_comparison",
             },
             {
+                # The decision layer: forces the full gate stack — rank the
+                # below-peer gaps, check per-store volume, screen out known-value
+                # items, confirm price-not-mix, size the prize. When no gap is
+                # both below-peer AND under-selling per store (the KRG case —
+                # every low price is winning traffic), the honest answer names
+                # the best *tested* raise candidate, it does not fabricate a
+                # free-margin category or return a bare null.
                 "id":      "P2",
-                "text":    "Which subcategory am I priced furthest above peer grocers on — and which of my products drive it?",
+                "text":    "Where can I raise price without losing traffic?",
                 "pattern": "pattern_2_comparison",
             },
             {
-                # P3 is the decision layer that P1/P2 (descriptive, both
-                # directions) set up: it forces the full gate stack — rank the
-                # below-peer gaps, screen out known-value items, confirm it's
-                # price not mix, check per-store volume, size the prize — and
-                # hand back the shortlist worth acting on. This is the agent's
-                # differentiator (earning the recommendation), not another
-                # furthest-gap readout.
+                # Named-subcategory lookup. The named subcategory (2% Reduced-Fat
+                # Milk) is a Known-Value Item, so this pill uniquely exercises the
+                # KVI gate: a below-peer price on a price-checked staple reads as a
+                # deliberate traffic driver ("hold on purpose"), not a margin
+                # opportunity. Then it drills to the viewer's own milk SKUs. The
+                # agent filters the gap query to the named subcategory (it does not
+                # rank-and-drift) — validated live.
                 "id":      "P3",
-                "text":    "Where's my best opportunity to raise price without losing traffic — a real gap that isn't a known-value staple?",
+                "text":    "How does 2% Reduced-Fat Milk pricing compare to peers, and which of my products should I look at?",
                 "pattern": "pattern_2_comparison",
             },
         ],
@@ -102,14 +113,23 @@ QUESTIONS: dict[str, dict[str, list[dict]]] = {
               # comparison (parity with the grocer set); the old
               # own-only framing dated to when TBL was the lone QSR.
         "pricing": [
-            # Mirrors the grocer flagship set (P1/P2/P3): the same pricing agent
-            # + sortable own-vs-peer gap query + product drill, QSR-worded.
-            # QP3 is re-aimed for QSR — it drops the grocery known-value-item
-            # concept (a no-op here) for the segment-neutral "worth acting on"
-            # question driven by per-store volume. See docs/AGENT_QUALITY_STANDARD.md.
-            {"id": "QP1", "text": "Which menu subcategory am I priced furthest below peer chains on — and which items drive it?",              "pattern": "pattern_2_comparison"},
-            {"id": "QP2", "text": "Which menu subcategory am I priced furthest above peer chains on — and which items drive it?",              "pattern": "pattern_2_comparison"},
-            {"id": "QP3", "text": "Where is a price gap actually worth acting on — cheaper but not winning the extra traffic, or a premium that's costing me volume?", "pattern": "pattern_2_comparison"},
+            # Mirrors the grocer three-shape set (P1/P2/P3), QSR-worded: the same
+            # pricing agent + sortable own-vs-peer gap query + product drill.
+            # QP1 = two-directional positioning scan; QP2 = the raise-decision
+            # layer; QP3 = a named-subcategory lookup. QSR has no grocery
+            # known-value-item concept, so QP3's named lookup naturally exercises
+            # the price-vs-per-store-volume quadrant read instead of the KVI gate.
+            # QP3 names **Fries** — a verified-comparable subcategory (a fried
+            # potato side is genuinely the same item at all three banners, so the
+            # gap is real, not a taxonomy artifact). It gives a strong contrast:
+            # BKG cheaper-and-under-selling (margin on the table) vs CFA a premium
+            # that's still winning (hold). NOTE: some functional QSR subcategories
+            # (Wrap/Handheld, Chicken Nuggets, Combo Meal, Potatoes) lump
+            # non-comparable items across banners and can produce inflated gaps in
+            # the QP1/QP2 scan — flagged for a taxonomy-comparability audit.
+            {"id": "QP1", "text": "Where is my menu pricing out of line with peer chains — too high or too low?",                             "pattern": "pattern_2_comparison"},
+            {"id": "QP2", "text": "Where can I raise price without losing traffic?",                                                          "pattern": "pattern_2_comparison"},
+            {"id": "QP3", "text": "How do my Fries prices compare to peers, and which items should I look at?",                               "pattern": "pattern_2_comparison"},
         ],
         "anomaly": [
             {"id": "T-A4", "text": "Which of my stores or dayparts are dropping — are peers seeing the same decline?", "pattern": "pattern_1_time_series"},
