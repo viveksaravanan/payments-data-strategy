@@ -345,8 +345,8 @@ def render_department_mix(merchant_id: str, filters: dict) -> None:
         st.caption(f"Expand a {grain} to see its breakdown.")
         for label in data["labels"]:
             node = data["drill"].get(label)
-            if not node or not node["labels"]:
-                continue  # no children → bar shown above, just not expandable
+            if not node or len(node["labels"]) <= 1:
+                continue  # ≤1 child → collapse: bar shown above, no dead-end drill
             child_grain = "category" if grain == "department" else "subcategory"
             with st.expander(label):
                 CP.render_horizontal_bars_own(
@@ -362,7 +362,8 @@ def render_department_mix(merchant_id: str, filters: dict) -> None:
                 )
                 # Grocery only: 3rd level (subcategory) behind a selectbox.
                 sub = node.get("sub") or {}
-                drillable = [c for c in node["labels"] if sub.get(c, {}).get("labels")]
+                drillable = [c for c in node["labels"]
+                             if len(sub.get(c, {}).get("labels", [])) > 1]
                 if drillable:
                     chosen = st.selectbox(
                         "Drill into a category",

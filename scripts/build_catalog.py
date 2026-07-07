@@ -200,7 +200,13 @@ def _grocery_rows():
                             "size": size,
                             "merchant_department": mdept[banner],
                             "merchant_category": mcat[banner],
-                            "merchant_subcategory": fsub,
+                            # Own subcategory = the granular product TYPE (e.g.
+                            # "Boneless Skinless Breast"), not the coarse
+                            # functional subcategory (which often just restates
+                            # the category, e.g. "Chicken"). Surfaces real
+                            # variety in the own-data drill-down. The functional
+                            # subcategory below stays coarse for peer alignment.
+                            "merchant_subcategory": typ,
                             "functional_department": fdept,
                             "functional_category": fcat,
                             "functional_subcategory": fsub,
