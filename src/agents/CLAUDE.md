@@ -14,7 +14,8 @@ Segmentation) ride through the Advisor in Wave 3 by design (D26.5).
   it classifies and dispatches. The no-match target is the **Advisor**
   (D26.4 — replaces v3's force-routing to a segment-default specialist).
 - **`pricing.py`** — Pricing & Benchmarking. `PREFERRED_PEER_METRIC =
-  "price_index"`. `MAX_TURNS = 6`.
+  "price_index"`. `MAX_TURNS = 8` (+2 over the base default for the
+  subcategory drill-down: locate → subcategory → emit).
 - **`demand.py`** — Demand Forecasting & Campaign Adjudication.
   `PREFERRED_PEER_METRIC = "units_index"`. `MAX_TURNS = 6`.
 - **`anomaly.py`** — Anomaly Detection (operational only; **never**
@@ -174,8 +175,9 @@ SQL, and there is no merge step):
   surface is now raw line items queried with SQL.
 - **All SQL is SELECT-only.** Regex check before any DB connection. Never
   trust the model to self-restrict.
-- **`MAX_TURNS = 6`** (Stage 6.5 follow-up #6 — lowered from 10).
-  After the Stage 7 trim, `WALL_CLOCK_CEILING_SEC = 90.0` is the only
+- **`MAX_TURNS = 6`** base default (Stage 6.5 follow-up #6 — lowered
+  from 10); `pricing.py` overrides to 8 for its drill-down.
+  After the Stage 7 trim, `WALL_CLOCK_CEILING_SEC = 120.0` is the only
   in-loop runtime bound — per-question wall-clock cap; exit to
   `_minimal_response` with `business_fallback()` if exceeded. The
   earlier `MAX_PRECONDITION_REJECTIONS = 3` force-accept floor was
