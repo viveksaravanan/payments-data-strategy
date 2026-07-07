@@ -159,6 +159,12 @@ class Specialist:
         self._sql_log:      list[dict[str, Any]] = []
         self._tenant_frame: pd.DataFrame | None = None
         self._lake_frame:   pd.DataFrame | None = None
+        # Every non-empty captured frame, in call order. Claims resolve
+        # against the UNION so a claim citing an earlier query's cell
+        # doesn't strip when a later query overwrites the singular frame
+        # (e.g. velocity runs a fast DESC query then a slow ASC query).
+        self._tenant_frames: list[pd.DataFrame] = []
+        self._lake_frames:   list[pd.DataFrame] = []
         self._lake_manifest: dict[str, Any] | None = None
         self._emit_args:    dict[str, Any] | None = None
         self._in_tokens:    int = 0
@@ -399,6 +405,7 @@ class Specialist:
                 self.context.viewing_merchant_id, args["sql"],
             )
             self._tenant_frame = payload["frame"]
+            self._accumulate_frame("tenant", payload["frame"])
             self._sql_log.append({
                 "surface": "tenant",
                 "query":   args["sql"],
@@ -413,6 +420,7 @@ class Specialist:
             # default) and CellLookup resolve against it unchanged
             # (Wave 3.5 §10.1 / Finding 9).
             self._lake_frame = payload["frame"]
+            self._accumulate_frame("lake", payload["frame"])
             self._sql_log.append({
                 "surface":   "lake_sql",
                 "query":     args["sql"],
@@ -437,8 +445,10 @@ class Specialist:
             )
             if args["source"] == "tenant":
                 self._tenant_frame = payload["frame"]
+                self._accumulate_frame("tenant", payload["frame"])
             else:
                 self._lake_frame = payload["frame"]
+                self._accumulate_frame("lake", payload["frame"])
             self._sql_log.append({
                 "surface":   f"top_movers_{args['source']}",
                 "query":     args["sql"],
@@ -481,6 +491,36 @@ class Specialist:
             return len(sub)
         except (LookupError, ValueError, TypeError):
             return None
+
+    def _accumulate_frame(self, surface: str, frame: pd.DataFrame | None) -> None:
+        """Record a non-empty captured frame so later queries don't hide it.
+
+        The singular ``_tenant_frame`` / ``_lake_frame`` keep the LATEST
+        frame (used by the emit preconditions and the dormant merge path);
+        these lists keep every non-empty frame so claim resolution can walk
+        the union (Bug B — a fast/slow two-query velocity flow used to strip
+        the first query's claims when the second overwrote the frame)."""
+        if frame is None or len(frame) == 0:
+            return
+        (self._tenant_frames if surface == "tenant" else self._lake_frames).append(frame)
+
+    @staticmethod
+    def _union_frames(frames: list[pd.DataFrame]) -> pd.DataFrame | None:
+        """Union captured frames for claim resolution; None if all empty.
+
+        One frame → returned as-is. Several → concat + drop_duplicates
+        (collapses the fast/slow row overlap of a two-query flow). Frames
+        with incompatible schemas that won't concat fall back to the latest
+        (prior behavior) rather than raising."""
+        non_empty = [f for f in frames if f is not None and len(f) > 0]
+        if not non_empty:
+            return None
+        if len(non_empty) == 1:
+            return non_empty[0]
+        try:
+            return pd.concat(non_empty, ignore_index=True).drop_duplicates()
+        except (ValueError, TypeError):
+            return non_empty[-1]
 
     def _resolve_target_frame(
         self, frame_name: str | None,
@@ -817,11 +857,17 @@ class Specialist:
         # field ("tenant" / "lake") via the frames dict, and an untagged
         # claim walks result → tenant → lake. The display
         # result-of-record is the tenant frame when present, else lake.
+        # Resolve claims against the UNION of every non-empty frame captured
+        # on each surface, not just the last one (Bug B). drop_duplicates
+        # collapses the fast/slow overlap of a two-query velocity flow so a
+        # naked (first-match) CellLookup and an agg claim both stay correct.
         frames: dict[str, pd.DataFrame] = {}
-        if self._tenant_frame is not None and len(self._tenant_frame) > 0:
-            frames["tenant"] = self._tenant_frame
-        if self._lake_frame is not None and len(self._lake_frame) > 0:
-            frames["lake"] = self._lake_frame
+        tenant_union = self._union_frames(self._tenant_frames)
+        lake_union = self._union_frames(self._lake_frames)
+        if tenant_union is not None:
+            frames["tenant"] = tenant_union
+        if lake_union is not None:
+            frames["lake"] = lake_union
 
         if self._tenant_frame is not None and len(self._tenant_frame) > 0:
             result = self._tenant_frame
@@ -1010,6 +1056,8 @@ class Specialist:
         self._sql_log = []
         self._tenant_frame = None
         self._lake_frame = None
+        self._tenant_frames = []
+        self._lake_frames = []
         self._lake_manifest = None
         self._emit_args = None
         self._in_tokens = 0
