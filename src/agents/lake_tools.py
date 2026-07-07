@@ -723,7 +723,14 @@ _INTERNAL_NARRATION_PATTERNS = [
     r"retry with corrected parameters?",
     r"corrected parameters?",
     r"peer benchmark fetch",
-    r"\blet me (?:pull|fetch|query|grab|retrieve|try)\b",
+    r"\blet me (?:pull|fetch|query|grab|retrieve|try|run|rewrite|reformulate|rework|adjust)\b",
+    # SQL-mechanics leak — the model narrating a query error / rewrite mid-answer
+    # (never legitimate merchant prose). Kept narrow to avoid stripping business text.
+    r"\bcte\b",
+    r"\bsubquery\b",
+    r"\bsql\b[^.]*?\b(?:parsing|syntax|parse|execution)\s+error",
+    r"query surface",
+    r"(?:isn'?t|is not|not)\s+supported",
     r"\bi(?:'ll| will) need to\b",
     r"\bi would need to\b",
     r"\bi need to (?:pull|fetch|query|grab|retrieve|compare|check)\b",

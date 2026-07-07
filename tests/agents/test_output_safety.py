@@ -51,6 +51,35 @@ def test_answer_key_narration_strings_are_flagged() -> None:
         assert LT.is_narration(s), s
 
 
+# Verbatim SQL-mechanics leaks that reached the QD3-BKG / QD3-CFA headlines
+# during demand validation — the model narrated a query error / CTE rewrite
+# instead of answering. The narration guard now catches them (the root CTE
+# fix removes the trigger; this is the defense-in-depth backstop).
+_SQL_MECHANICS_LEAKS = [
+    "The WITH/CTE syntax isn't supported in this query surface — let me run "
+    "the affinity query using a subquery rewrite.",
+    "The CFA affinity query hit a SQL parsing error — here's what I can tell "
+    "you from your menu subcategories, and the fix needed to get the pairs.",
+    "Retrying affinity query with subquery form.",
+]
+
+
+def test_sql_mechanics_leaks_are_flagged() -> None:
+    for s in _SQL_MECHANICS_LEAKS:
+        assert LT.is_narration(s), s
+
+
+def test_sql_mechanics_guard_spares_real_demand_headlines() -> None:
+    """The added patterns must not false-positive on genuine demand answers."""
+    for s in [
+        "Freezes are your #1 upsell — about 1 in 4 orders also includes a Freeze.",
+        "You're closed Sundays (0 trips); on open days midday is your biggest window.",
+        "Produce and snacks are your fastest movers; Pet and Baby are your slowest.",
+        "Pasta and sauce sell together — about 1 in 4 pasta baskets adds a sauce.",
+    ]:
+        assert not LT.is_narration(s), s
+
+
 def test_answer_key_narration_never_leaks_on_textstop(monkeypatch) -> None:
     """Each verbatim answer-key leak, if emitted as the model's final text
     block, collapses to the canonical fallback — the scratchpad is gone."""
