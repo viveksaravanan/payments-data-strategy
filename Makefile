@@ -53,10 +53,11 @@ clean:
 # Space downloads on boot. Run this after every `make seed` + `make
 # lake-items` regen, then redeploy — otherwise the Space serves stale data
 # against new pills. ALLOWLIST only (data/raw + data/lake/items); the eval
-# answer key is never uploaded. Requires a logged-in `huggingface-cli`.
+# answer key is never uploaded. Requires a logged-in `hf` CLI
+# (`hf auth login`; the old `huggingface-cli` is deprecated and no longer works).
 push-data:
-	huggingface-cli upload viveks2862/payments-data-strategy-data ./data/raw raw --repo-type dataset
-	huggingface-cli upload viveks2862/payments-data-strategy-data ./data/lake/items lake/items --repo-type dataset
+	uv run hf upload viveks2862/payments-data-strategy-data ./data/raw raw --repo-type dataset
+	uv run hf upload viveks2862/payments-data-strategy-data ./data/lake/items lake/items --repo-type dataset
 
 # Deploy the current working tree (code only) to the HF Space as a single
 # orphan commit — the one-command redeploy for dashboard / agent changes.
