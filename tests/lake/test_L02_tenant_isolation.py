@@ -140,6 +140,49 @@ def test_wrap_scopes_transaction_items_via_join() -> None:
     assert n > 0
 
 
+def test_wrap_merges_user_leading_with_cte() -> None:
+    """A user query that is itself a CTE (starts with `WITH`) must execute.
+
+    Regression: the wrapper prepends its own `WITH <shadow>`; naive
+    concatenation put two `WITH` keywords back-to-back and DuckDB rejected
+    it (`Parser Error at "WITH"`), so any CTE query — e.g. the demand
+    affinity self-join, whose prompt example starts with `WITH bk AS (…)` —
+    failed. The wrapper now merges the user's CTEs into the shadow list."""
+    sql = (
+        "WITH bk AS ("
+        "  SELECT DISTINCT t.txn_id, p.merchant_subcategory AS g"
+        "  FROM transaction_items i"
+        "  JOIN transactions t ON i.txn_id = t.txn_id"
+        "  JOIN products p ON i.sku = p.sku"
+        "  WHERE t.banner_code = 'KRG'),"
+        "base AS (SELECT g, COUNT(*) AS a_baskets FROM bk GROUP BY 1),"
+        "pair AS (SELECT a.g AS item_a, b.g AS item_b, COUNT(*) AS both_ct"
+        "         FROM bk a JOIN bk b ON a.txn_id = b.txn_id AND a.g <> b.g"
+        "         GROUP BY 1, 2)"
+        "SELECT pair.item_a, pair.item_b, pair.both_ct, base.a_baskets,"
+        "       pair.both_ct * 1.0 / base.a_baskets AS attach_rate "
+        "FROM pair JOIN base ON pair.item_a = base.g "
+        "WHERE pair.both_ct >= 200 ORDER BY attach_rate DESC LIMIT 3"
+    )
+    wrapped = wrap_tenant_query(sql, "KRG")
+    df = duckdb.connect().sql(wrapped).df()  # no ParserException
+    assert len(df) > 0
+    assert (df["attach_rate"] > 0).all()
+
+
+def test_wrap_user_leading_with_cte_still_viewer_scoped() -> None:
+    """The merged CTE must not widen scope: a leading-`WITH` query that
+    surfaces banner_code from inside its CTE still sees only the viewer,
+    because the user's CTE reads the viewer-scoped `transactions` shadow."""
+    sql = (
+        "WITH mine AS (SELECT banner_code FROM transactions) "
+        "SELECT banner_code, COUNT(*) AS n FROM mine GROUP BY banner_code"
+    )
+    wrapped = wrap_tenant_query(sql, "WDX")
+    df = duckdb.connect().sql(wrapped).df()
+    assert set(df["banner_code"]) == {"WDX"}
+
+
 def test_wrap_unknown_viewer_rejected() -> None:
     with pytest.raises(TenantIsolationError):
         wrap_tenant_query("SELECT 1", "ZZZ")

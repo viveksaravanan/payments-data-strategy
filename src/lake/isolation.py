@@ -203,8 +203,19 @@ def wrap_tenant_query(sql: str, viewer: str) -> str:
             f"{table} AS (SELECT * FROM read_parquet('{path}') WHERE {scope})"
         )
 
-    cte_clause = "WITH " + ",\n     ".join(parts) + "\n"
-    return cte_clause + sql
+    shadow = ",\n     ".join(parts)
+    # If the user's SQL is itself a CTE (starts with `WITH`), merge its CTEs
+    # into the shadow WITH list. Naively concatenating would put two `WITH`
+    # keywords back-to-back ("WITH <shadow> WITH bk AS …"), which DuckDB
+    # rejects with `Parser Error at "WITH"` — so any CTE query (e.g. the
+    # demand affinity self-join) would fail. The user's CTEs reference the
+    # shadow tables by name and DuckDB resolves later CTEs against earlier
+    # ones, so merging keeps the viewer scope + analysis window intact.
+    lead_with = re.match(r"(?is)\s*WITH\s+", sql)
+    if lead_with:
+        user_ctes = sql[lead_with.end():]
+        return "WITH " + shadow + ",\n     " + user_ctes
+    return "WITH " + shadow + "\n" + sql
 
 
 # ----- Lake-builder source-path guard ------------------------------------
