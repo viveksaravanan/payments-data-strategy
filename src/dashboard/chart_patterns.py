@@ -40,6 +40,14 @@ PEER_AGGREGATE  = "#4B5563"   # darker gray (for aggregate peer overlays)
 BASELINE_LINE   = "rgba(128, 128, 128, 0.4)"
 
 
+# Per-card "Ask about this" (✦) affordance — temporarily hidden per product
+# decision (2026-07). Flip back to True to restore the top-right AI buttons on
+# every card. All ask_about_this call sites are intact; only the render is gated
+# (both header blocks below fall through to the no-affordance branch when False,
+# so there is no empty right-hand column / visual gap).
+_ASK_ABOUT_THIS_ENABLED = False
+
+
 # ---------------------------------------------------------------------------
 # Unique chart keys
 #
@@ -272,7 +280,7 @@ def _render_card_header(
     ``ask_about_this`` schema: ``{key, specialist, prefill}`` —
     forwarded to ``render_ask_about_this``.
     """
-    if ask_about_this:
+    if ask_about_this and _ASK_ABOUT_THIS_ENABLED:
         head_l, head_r = st.columns([0.84, 0.16], gap="small")
         with head_l:
             st.markdown(f"**{title}**")
@@ -1492,7 +1500,7 @@ def render_kpi_callout(
 
     with st.container(border=True):
         # Header row: label + optional ask-about-this affordance.
-        if ask_about_this:
+        if ask_about_this and _ASK_ABOUT_THIS_ENABLED:
             head_l, head_r = st.columns([0.84, 0.16], gap="small")
             with head_l:
                 st.markdown(
