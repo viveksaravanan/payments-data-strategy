@@ -78,8 +78,12 @@ QUESTIONS: dict[str, dict[str, list[dict]]] = {
                 "pattern": "pattern_1_time_series",
             },
             {
+                # Cross-merchant: the one demand flow that earns a peer angle.
+                # Mix-share over/under-index vs the same-segment market (functional
+                # category, self vs peer). Grocer-only — QSR menus converge so the
+                # QSR velocity pill (QD2) stays own-data. See demand.md Flow 2P.
                 "id":      "GD2",
-                "text":    "Which categories and items are my fastest and slowest movers — what should I stock up on versus mark down?",
+                "text":    "Where am I over- or under-indexed versus the market — which categories am I giving up share on, and what should I do about my assortment?",
                 "pattern": "pattern_2_comparison",
             },
             {
