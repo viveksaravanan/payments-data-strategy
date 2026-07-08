@@ -508,17 +508,29 @@ class Specialist:
     def _union_frames(frames: list[pd.DataFrame]) -> pd.DataFrame | None:
         """Union captured frames for claim resolution; None if all empty.
 
-        One frame → returned as-is. Several → concat + drop_duplicates
-        (collapses the fast/slow row overlap of a two-query flow). Frames
-        with incompatible schemas that won't concat fall back to the latest
-        (prior behavior) rather than raising."""
+        One frame → returned as-is. Several → concat, then dedup the fast/slow
+        row overlap of a two-query flow. Frames with incompatible schemas that
+        won't concat fall back to the latest (prior behavior) rather than raising.
+
+        The dedup is done on a **rounded view** while the ORIGINAL rows are
+        returned: a `SUM(line_total)` cell differs in the last floating-point
+        bit between two query runs (summation order differs — e.g.
+        `49167.989999999816` vs `…82`), so an exact `drop_duplicates` leaves
+        phantom duplicate rows and a naked CellLookup on a slow-mover present in
+        both frames matches 2 rows → strips. Rounding numeric columns for the
+        duplicate test collapses that jitter without merging genuinely-distinct
+        rows (different labels, or numbers ≥1e-4 apart)."""
         non_empty = [f for f in frames if f is not None and len(f) > 0]
         if not non_empty:
             return None
         if len(non_empty) == 1:
             return non_empty[0]
         try:
-            return pd.concat(non_empty, ignore_index=True).drop_duplicates()
+            combined = pd.concat(non_empty, ignore_index=True)
+            rounded = combined.copy()
+            for col in rounded.select_dtypes(include="number").columns:
+                rounded[col] = rounded[col].round(4)
+            return combined[~rounded.duplicated()]
         except (ValueError, TypeError):
             return non_empty[-1]
 

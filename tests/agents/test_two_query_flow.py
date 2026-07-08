@@ -148,3 +148,34 @@ def test_second_tenant_query_does_not_strip_first_frame_claim() -> None:
     resp = spec._finalize_from_emit(converged=True, turns=3)
     # The fast-mover units survived — the earlier frame's cell resolved.
     assert f"about {int(fast_units)} units" in resp.prose
+
+
+@needs_raw
+def test_union_dedups_float_jitter_slow_mover() -> None:
+    """A slow-mover present in BOTH the DESC and ASC velocity frames must not
+    double-match. `SUM(line_total)` differs in the last float bit between the two
+    runs, so an exact drop_duplicates left the row twice — a naked CellLookup then
+    matched 2 rows and stripped. The rounded dedup collapses the jitter to 1 row."""
+    spec = DemandForecastingSpecialist(MerchantContext.for_merchant("TBL"))
+    spec._reset_state()
+    q = ("SELECT p.product_name, p.merchant_category AS category, SUM(i.qty) AS units, "
+         "SUM(i.line_total) AS sales FROM transaction_items i "
+         "JOIN transactions t ON i.txn_id = t.txn_id JOIN products p ON i.sku = p.sku "
+         "WHERE t.banner_code = 'TBL' GROUP BY 1, 2 ")
+    spec._dispatch_tool("query_tenant", {"sql": q + "ORDER BY units DESC"})
+    spec._dispatch_tool("query_tenant", {"sql": q + "ORDER BY units ASC LIMIT 3"})
+    slow = spec._tenant_frame.iloc[0]  # bottom product — present in BOTH frames
+    slow_name = str(slow["product_name"]); slow_units = float(slow["units"])
+
+    out = spec._dispatch_tool("emit_response", {
+        "headline": f"Your slowest mover is {slow_name} at about {int(slow_units)} units.",
+        "claims": [{
+            "text_span": f"about {int(slow_units)} units", "value": slow_units,
+            # NAKED CellLookup (no agg) — must resolve to the single deduped row.
+            "source": {"type": "CellLookup", "row_filter": {"product_name": slow_name},
+                       "column": "units", "frame": "tenant"},
+        }],
+    })
+    assert out == {"ok": True}
+    resp = spec._finalize_from_emit(converged=True, turns=3)
+    assert f"about {int(slow_units)} units" in resp.prose  # not stripped as multi-row
