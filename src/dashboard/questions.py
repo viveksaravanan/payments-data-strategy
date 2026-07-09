@@ -68,27 +68,41 @@ QUESTIONS: dict[str, dict[str, list[dict]]] = {
             },
         ],
         "demand": [
-            # Own-data demand-planning trio (timing / velocity / affinity),
-            # grounded in signals the data actually carries. The old peer-mix /
-            # revenue-gap pills echoed pricing and (T-D2-style) leaned on a flat
-            # within-window trend. See docs/AGENT_QUALITY_STANDARD.md.
+            # Demand = cross-merchant ASSORTMENT intelligence: three reads off the one
+            # robust peer signal — the functional-SUBcategory mix-share index (own
+            # unit-share ÷ market unit-share). Each pairs the functional grain (peer
+            # benchmark, via query_lake_sql) with the merchant's OWN category/subcategory
+            # (the action drill, via query_tenant). Timing + affinity were DROPPED from
+            # demand: grocer timing is identical across grocers (no peer signal) and
+            # basket affinity is shared structure once you strip assortment (not a
+            # cross-merchant story). White-space / concentration also tested → no signal.
+            # See demand.md Flow 2P. All three validated ground-truth-first (temp 0).
             {
-                "id":      "GD1",
-                "text":    "When is demand highest — which days and dayparts should I stock and staff around?",
-                "pattern": "pattern_1_time_series",
-            },
-            {
-                # Cross-merchant: the one demand flow that earns a peer angle.
-                # Mix-share over/under-index vs the same-segment market (functional
-                # category, self vs peer). Grocer-only — QSR menus converge so the
-                # QSR velocity pill (QD2) stays own-data. See demand.md Flow 2P.
-                "id":      "GD2",
-                "text":    "Where am I over- or under-indexed versus the market — which categories am I giving up share on, and what should I do about my assortment?",
+                # CM1 — ceded demand: biggest UNDER-index, ranked by opportunity size
+                # (units). Own drill diagnoses breadth-hole (few SKUs → add) vs mere
+                # lower share (already deep → hold). Defeats survivorship bias — own data
+                # can't see demand that flowed to competitors (e.g. WDX Coffee, 0.17x /
+                # ~85k units, only 4 own SKUs).
+                "id":      "CM1",
+                "text":    "Which categories are the same shoppers buying elsewhere that I'm under-developed in — where am I ceding demand?",
                 "pattern": "pattern_2_comparison",
             },
             {
-                "id":      "GD3",
-                "text":    "What reliably sells together in my baskets — where can I cross-merchandise or bundle?",
+                # CM2 — signature strength: biggest OVER-index = differentiated demand.
+                # Non-obvious payoff — a balanced merchant learns it has NO moat (you
+                # can't know you're the default without the market): ACM = health (Organic
+                # Veg 2.45x), WDX = value (Frozen Veg 3.06x), KRG = the commodity default.
+                "id":      "CM2",
+                "text":    "Where do I over-index versus the market — what's my differentiated strength, and where am I just the default?",
+                "pattern": "pattern_2_comparison",
+            },
+            {
+                # CM3 — opportunity size (units) + action: rank ceded categories by
+                # own_total x peer_share - own_units, drill the top one into the
+                # merchant's own missing/thin subcategories = a buying list in their own
+                # vocabulary (functional gap "Coffee" -> "1 K-Cup SKU, no cold brew").
+                "id":      "CM3",
+                "text":    "Where's my biggest assortment opportunity versus the market, and which of my own items should I expand?",
                 "pattern": "pattern_2_comparison",
             },
         ],
@@ -141,12 +155,16 @@ QUESTIONS: dict[str, dict[str, list[dict]]] = {
             {"id": "T-A2", "text": "Are any menu items spiking or dropping unusually?",                                "pattern": "pattern_9_table"},
         ],
         "demand": [
-            # Own-data demand-planning trio, QSR-worded (timing leads on dayparts;
-            # CFA Sunday-closed surfaces in D1). Replaces the peer-mix pill, the
-            # dead over-time-trend pill, and the "this week" revenue decomposition.
-            {"id": "QD1", "text": "When is demand highest across the day and week — which dayparts should I plan around?", "pattern": "pattern_1_time_series"},
-            {"id": "QD2", "text": "Which menu items are my fastest and slowest movers right now?",                        "pattern": "pattern_2_comparison"},
-            {"id": "QD3", "text": "Which items sell together, so I can build combos or upsell them?",                     "pattern": "pattern_2_comparison"},
+            # Same three cross-merchant assortment reads as the grocer set (see the
+            # GROCER "demand" comment), menu-worded. QSR carries a comparability caveat:
+            # some functional subcategories lump non-comparable items across chains, and
+            # the raw ceded ranking surfaces menu-identity artifacts (e.g. Chick-fil-A
+            # "missing" Tacos/Burgers at index 0 — a different menu, not a capturable gap).
+            # The agent flags these; NO allowlist (per decision). Genuine QSR signals:
+            # BKG under-indexes Chicken Sandwich 0.33x; CFA over-indexes it 11.9x.
+            {"id": "CM1", "text": "Which menu categories are the same guests buying more of at other chains — where am I under-developed?", "pattern": "pattern_2_comparison"},
+            {"id": "CM2", "text": "Which menu categories do I over-index on versus other chains — what's my signature?",                    "pattern": "pattern_2_comparison"},
+            {"id": "CM3", "text": "Where's my biggest menu opportunity versus other chains, and which of my own items should I expand?",     "pattern": "pattern_2_comparison"},
         ],
         "trade": [
             # Shared with the grocer set — map-based, segment-agnostic.
