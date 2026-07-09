@@ -18,6 +18,7 @@ for placeholder responses.
 """
 from __future__ import annotations
 
+import base64
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -53,6 +54,22 @@ MERCHANT_COLOR = {
     "KRG": "#0F4C81", "ACM": "#3A6FA5", "WDX": "#6F8FB8",
     "TBL": "#C0563F", "BKG": "#D9822B", "CFA": "#B03A48",
 }
+
+# Per-banner logos for the dashboard header. Transparent-background PNGs
+# committed under docs/ (also bundled into the HF Space by deploy_hfspace.sh).
+_LOGO_DIR = ROOT / "docs" / "assets" / "logos"
+
+
+@st.cache_data(show_spinner=False)
+def merchant_logo_uri(merchant_id: str) -> str | None:
+    """Base64 ``data:`` URI for a banner's logo, or None if the file is
+    absent (header then falls back to the text name). Cached so each PNG is
+    read + encoded once per session."""
+    path = _LOGO_DIR / f"{merchant_id}.png"
+    if not path.exists():
+        return None
+    b64 = base64.b64encode(path.read_bytes()).decode("ascii")
+    return f"data:image/png;base64,{b64}"
 
 
 # ---------------------------------------------------------------------------

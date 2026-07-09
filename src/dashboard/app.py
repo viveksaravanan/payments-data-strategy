@@ -152,9 +152,24 @@ if not state.onboarding_seen:
 
 header_col1, header_col2 = st.columns([5, 2])
 with header_col1:
+    # Title = the active merchant's logo (falls back to the text name if the
+    # logo file is missing), followed by the subtitle + methodology link.
+    logo_uri = D.merchant_logo_uri(state.merchant_id)
+    if logo_uri:
+        # Per-banner header height. Default 64px; Acme's wordmark already
+        # renders larger for its height, so it gets a slightly smaller bump.
+        logo_h = {"ACM": 50}.get(state.merchant_id, 64)
+        title_html = (
+            f'<img src="{logo_uri}" alt="{D.MERCHANT_NAME[state.merchant_id]}" '
+            f'style="height:{logo_h}px;width:auto;margin:0 0 6px;display:block;" />'
+        )
+    else:
+        title_html = (
+            f'<h1 style="margin-top: 0;">{D.MERCHANT_NAME[state.merchant_id]}</h1>'
+        )
     st.markdown(
-        '<h1 style="margin-top: 0;">Merchant dashboard</h1>'
-        '<div style="font-size:13px;color:var(--text-muted);margin-top:-4px;">'
+        title_html
+        + '<div style="font-size:13px;color:var(--text-muted);margin-top:-4px;">'
         'Cross-merchant analytics on a synthetic 155,000-customer Charlotte panel.'
         '</div>'
         '<div style="font-size:13px;margin:2px 0 14px;">'
