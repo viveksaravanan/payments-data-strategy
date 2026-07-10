@@ -131,12 +131,10 @@ if not state.onboarding_seen:
     with st.container(key="onboarding_card"):
         st.markdown(
             "<p style='font-weight:700;font-size:15px;margin-bottom:6px;'>"
-            "👋 Welcome — three quick ways to explore this dashboard</p>"
+            "👋 Welcome — two quick ways to explore this dashboard</p>"
             "<p style='font-size:13.5px;line-height:1.75;'>"
             "<b>✦ AI agents</b> — ask questions about the data in plain English. "
             "Open the panel from the <b>AI agents</b> tab on the right edge.<br>"
-            "<b>✦ Ask about this</b> — every chart has a ✦ button; click it to send "
-            "that chart straight to an agent.<br>"
             "<b>✦ Methodology</b> — see how this synthetic dataset and analysis were "
             "built, via the link under the title.</p>",
             unsafe_allow_html=True,
